@@ -1,0 +1,192 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package edu.cmu.cs.hawk.api;
+
+enum DatasetSplit {
+  TRAIN = 0;
+  TEST = 1;
+}
+
+message MissionId {
+  string value = 1;
+}
+
+message ScoutConfiguration {
+  string missionId = 1;
+  repeated string scouts = 2;
+  int32 scoutIndex = 3;
+  string homeIP = 4;
+  string trainLocation = 5; 
+  string missionDirectory = 6;
+  TrainConfig trainStrategy = 7;
+  RetrainPolicyConfig retrainPolicy = 8;
+  Dataset dataset = 9;
+  SelectiveConfig selector = 10;
+  ReexaminationStrategyConfig reexamination = 11;  
+  ModelArchive initialModel = 12;
+  bytes bootstrapZip = 13;
+  map<int32, string> bandwidthFunc = 14;
+}
+
+message MissionStats {
+  int64 totalObjects = 1;
+  int64 processedObjects = 2;
+  int64 droppedObjects = 3;
+  int64 falseNegatives = 4;
+  map<string, string> others = 5;
+}
+
+message TestResults {
+  int64 testExamples = 1;
+  double auc = 2;
+  ModelMetrics modelMetrics = 3;
+  double bestThreshold = 4;
+  repeated double precisions = 5;
+  repeated double recalls = 6;
+  int32 version = 7;
+}
+
+message ModelMetrics {
+  int64 truePositives = 1;
+  int64 falsePositives = 2;
+  int64 falseNegatives = 3;
+  double precision = 4;
+  double recall = 5;
+  double f1Score = 6;
+}
+
+message ImportModel {
+  ModelArchive model = 1;
+  string path = 2;
+}
+
+message ModelArchive {
+  bytes content = 1;
+}
+
+message TrainConfig {
+  oneof value {
+    ModelConfig dnn_classifier = 1;
+    ModelConfig yolo = 2;
+  }
+}
+
+message ModelConfig {
+  map<string, string> args = 1;
+}
+
+message YOLOConfig {
+  int32 imageSize = 1;
+  string args = 2;
+}
+
+message RetrainPolicyConfig {
+  oneof value {
+    AbsoluteThresholdPolicyConfig absolute = 1;
+    PercentageThresholdPolicyConfig percentage = 2;
+    ModelPolicyConfig model = 3;
+  }
+}
+
+message AbsoluteThresholdPolicyConfig {
+  int32 threshold = 1;
+  bool onlyPositives = 2;
+}
+
+message PercentageThresholdPolicyConfig {
+  double threshold = 1;
+  bool onlyPositives = 2;
+}
+
+message ModelPolicyConfig {
+  string name = 1;
+}
+
+message Dataset {
+  oneof value {
+    FileDataset filesystem = 1; // ultra high-def images
+    FileDataset random = 2; // random sampling
+    FileDataset dota = 3; // DOTA sampling
+  }
+}
+
+message FileDataset {
+  string dataPath = 1; // path to index file or directory on scout
+  int32 tileSize = 2; 
+  int32 numTiles = 3; // optional param for random sampling
+}
+
+message SelectiveConfig {
+  oneof value {
+    TopKConfig topk = 1;
+    ThresholdConfig threshold = 2;
+    PushPullConfig pipe = 3;
+  }
+}
+
+message TopKConfig {
+  int32 k = 1;
+  int32 batchSize = 2;
+}
+
+message ThresholdConfig {
+  double threshold = 1;
+}
+
+message PushPullConfig {
+  int32 k = 1;
+  int32 batchSize = 2;
+  int32 bandwidth = 3;
+}
+
+message ReexaminationStrategyConfig {
+  string type = 1;
+  int32 k = 2; 
+}
+
+message NoReexaminationStrategyConfig {
+}
+
+message TopReexaminationStrategyConfig {
+  int32 k = 1;
+}
+
+message FullReexaminationStrategyConfig {
+}
+
+message TileMetadata {
+  string objectId = 1;
+  LabelWrapper label = 2;
+}
+
+message LabeledTile {
+  HawkObject object = 1;
+  LabelWrapper label = 2;
+}
+
+message LabelWrapper {
+  string objectId = 1;
+  int32 scoutIndex = 2;
+  string imageLabel = 3;
+  repeated string boundingBoxes = 4;
+}
+
+message HawkObject {
+  string objectId = 1;
+  bytes content = 2;
+  map<string, bytes> attributes = 3;
+}
+
+message SendTiles {
+  string objectId = 1;
+  int32 scoutIndex = 2;
+  double score = 3;
+  int32 version = 4;
+  map<string, bytes> attributes = 5;
+}
+
+message SendLabels {
+  LabelWrapper label = 1;
+}

@@ -1,0 +1,22 @@
+syntax = "proto3";
+option java_multiple_files = true;
+
+package edu.cmu.cs.hawk.api;
+
+message SVMTrainerMessage {
+  oneof value {
+    SetTrainResult setTrainResult = 1;
+    SetParamGrid setParamGrid = 2;
+  }
+}
+
+message SetTrainResult {
+  int32 version = 1;
+  string params = 2;
+  double score = 3;
+  bytes model = 4;
+}
+
+message SetParamGrid {
+  string grid = 1;
+}

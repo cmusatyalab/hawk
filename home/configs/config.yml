@@ -1,0 +1,37 @@
+mission-name: "test-hawk" # Mission identifier 
+train-location: scout 
+label-mode: script # type of labeling interface
+scouts: # list of addresses of scouts
+- scout-ip-address-1
+- scout-ip-address-2
+- scout-ip-address-3
+scout-params: # directory on scouts where data, models and logs of mission are saved
+  mission_dir: /path/on/scout/mission_dir
+home-params:
+  mission_dir: /path/on/home/mission_dir # directory where inbound and outbound data stored 
+  gt_dir: /path/on/home/gt_labels # directory where labels present
+  log_dir: /path/on/home/log_dir
+dataset:
+  type: filesystem # type of input data
+  stream_path: /path/on/home/stream.txt # path on home of stream path
+  index_path: /path/on/scout/HawkIndexFile # path on scout of index file
+retrain_policy:
+  type: percentage # type of retrain condition 
+  only_positives: true # if only positives are counted
+  threshold: 0.33 # percentage of increment
+train_strategy:
+  type: dnn_classifier # type of model training
+  args:
+    arch: resnet50
+    mode: hawk
+  initial_model_path: /path/on/home/model0.pth # path to intial model on home
+  bootstrap_path: /path/on/home/bootstrap.zip # path to compressed bootstrap zipfile @ home (0/* and 1/*)
+selector:
+  type: topk # type of selective transmission
+  topk:
+    k: 30
+    batchSize: 1000
+reexamination:
+  type: top # type of reexamination strategy
+  k: 100 
+bandwidth: 100 # bandwidth in kbps 
