@@ -46,7 +46,7 @@ def main():
     mission_dir = mission_dir / mission_id
     print(mission_dir)
 
-    log_dir = Path(config['home-params']['log_dir']) / mission_id
+    log_dir = mission_dir / mission_id
     end_file = log_dir / 'end'
 
     image_dir = mission_dir / 'images'
@@ -103,7 +103,7 @@ def main():
         # Start labeler process 
         logger.info("Starting Labeler Process")
         labeler =  config.get('labeler', 'script')
-        gt_dir = config['home-params'].get('gt_dir', "")
+        gt_dir = config['home-params'].get('label_dir', "")
         trainer = (config['train_strategy']['type']).lower()
         logger.info("Trainer {}".format(trainer))
         label_mode = "classify"

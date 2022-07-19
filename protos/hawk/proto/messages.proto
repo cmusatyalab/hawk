@@ -108,7 +108,7 @@ message Dataset {
   oneof value {
     FileDataset filesystem = 1; // ultra high-def images
     FileDataset random = 2; // random sampling
-    FileDataset dota = 3; // DOTA sampling
+    FileDataset tile = 3; // tile sampling
   }
 }
 

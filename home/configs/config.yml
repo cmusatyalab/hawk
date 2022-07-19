@@ -8,13 +8,14 @@ scouts: # list of addresses of scouts
 scout-params: # directory on scouts where data, models and logs of mission are saved
   mission_dir: /path/on/scout/mission_dir
 home-params:
-  mission_dir: /path/on/home/mission_dir # directory where inbound and outbound data stored 
-  gt_dir: /path/on/home/gt_labels # directory where labels present
-  log_dir: /path/on/home/log_dir
+  mission_dir: /path/on/home/mission_dir # directory where results and logs stored 
+  image_dir: /path/on/home/image_dir # directory where images present
+  label_dir: /path/on/home/label_dir # directory where labels present
 dataset:
   type: filesystem # type of input data
   stream_path: /path/on/home/stream.txt # path on home of stream path
   index_path: /path/on/scout/HawkIndexFile # path on scout of index file
+  tile_size: 256 # if frames are split into tiles
 retrain_policy:
   type: percentage # type of retrain condition 
   only_positives: true # if only positives are counted

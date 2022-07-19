@@ -129,9 +129,9 @@ class Admin:
         dataset_type = dataset_config['type']
         logger.info("Index {}".format(dataset_config['index_path']))
 
-        if dataset_type == "dota":
+        if dataset_type == "tile":
             dataset = Dataset(
-                filesystem=FileDataset(
+                tile=FileDataset(
                     dataPath=dataset_config['index_path'],
                 )
             ) 

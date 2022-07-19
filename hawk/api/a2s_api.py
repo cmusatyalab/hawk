@@ -22,7 +22,7 @@ from hawk.retrain.absolute_threshold_policy import AbsoluteThresholdPolicy
 from hawk.retrain.percentage_threshold_policy import PercentageThresholdPolicy                      
 from hawk.retrain.model_policy import ModelPolicy 
 from hawk.retrain.retrain_policy import RetrainPolicy
-from hawk.retrieval.dota_retriever import DotaRetriever                                             
+from hawk.retrieval.tile_retriever import TileRetriever                                             
 from hawk.retrieval.filesystem_retriever import FileSystemRetriever                                             
 from hawk.retrieval.random_retriever import RandomRetriever                                             
 from hawk.retrieval.retriever import Retriever   
@@ -322,8 +322,8 @@ class A2SAPI(object):
                     json_format.MessageToJson(reexamination_strategy)))
 
     def _get_retriever(self, dataset: Dataset) -> Retriever:
-        if dataset.HasField('dota'):
-            return DotaRetriever(dataset.dota)
+        if dataset.HasField('tile'):
+            return TileRetriever(dataset.tile)
         if dataset.HasField('filesystem'):
             return FileSystemRetriever(dataset.filesystem)
         elif dataset.HasField('random'):

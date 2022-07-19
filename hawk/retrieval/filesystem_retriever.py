@@ -39,13 +39,13 @@ class FileSystemRetriever(Retriever):
         self._start_time = time.time()
         self.result_queue = queue.Queue()
         index_file = self._dataset.dataPath
-        self.subsize = 256 if self._dataset.tileSize == 0 else self._dataset.tileSize
-        self.overlap = 100 if 100 < 0.5*self.subsize else 0
+        self.tilesize = 256 if self._dataset.tileSize == 0 else self._dataset.tileSize
+        self.overlap = 100 if 100 < 0.5*self.tilesize else 0
         logger.info("Started ret {}".format(index_file))
         contents = open(index_file).read().splitlines()
         self.img_tile_map = defaultdict(list)
         self.padding = True
-        self.slide = self.subsize - self.overlap
+        self.slide = self.tilesize - self.overlap
         self.images = []
         for content in contents:
             # content = "<path>"
@@ -58,11 +58,11 @@ class FileSystemRetriever(Retriever):
     def save_tile(self, img, imagename, subimgname, left, up):
         dirname = os.path.dirname(imagename)
         ext = os.path.basename(imagename).split['.'][-1]
-        subimg = copy.deepcopy(img[up: (up + self.subsize), left: (left + self.subsize)])
+        subimg = copy.deepcopy(img[up: (up + self.tilesize), left: (left + self.tilesize)])
         outdir = os.path.join(dirname, subimgname + ext)
         h, w, c = np.shape(subimg)
         if (self.padding):
-            outimg = np.zeros((self.subsize, self.subsize, 3))
+            outimg = np.zeros((self.tilesize, self.tilesize, 3))
             outimg[0:h, 0:w, :] = subimg
             cv2.imwrite(outdir, outimg)
         else:
@@ -82,23 +82,23 @@ class FileSystemRetriever(Retriever):
         left, up = 0, 0
         tiles = []
         while (left < weight):
-            if (left + self.subsize >= weight):
-                left = max(weight - self.subsize, 0)
+            if (left + self.tilesize >= weight):
+                left = max(weight - self.tilesize, 0)
             up = 0
             while (up < height):
-                if (up + self.subsize >= height):
-                    up = max(height - self.subsize, 0)
-                right = min(left + self.subsize, weight - 1)
-                down = min(up + self.subsize, height - 1)
+                if (up + self.tilesize >= height):
+                    up = max(height - self.tilesize, 0)
+                right = min(left + self.tilesize, weight - 1)
+                down = min(up + self.tilesize, height - 1)
                 subimgname = outbasename + str(left) + '___' + str(up)
                 # self.f_sub.write(name + ' ' + subimgname + ' ' + str(left) + ' ' + str(up) + '\n')
                 tile = self.save_tile(image, frame, subimgname, left, up)
                 tiles.append(tile)
-                if (up + self.subsize >= height):
+                if (up + self.tilesize >= height):
                     break
                 else:
                     up = up + self.slide
-            if (left + self.subsize >= weight):
+            if (left + self.tilesize >= weight):
                 break
             else:
                 left = left + self.slide   

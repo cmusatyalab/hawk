@@ -21,7 +21,7 @@ from hawk.retrieval.retriever_stats import RetrieverStats
 from hawk.core.utils import get_server_ids
 from hawk.core.utils import ATTR_GT_LABEL
 
-class DotaRetriever(Retriever):
+class TileRetriever(Retriever):
 
     def __init__(self, dataset: FileDataset):
         super().__init__()

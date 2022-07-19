@@ -14,8 +14,6 @@ scout-params: # directory on scouts where data, models and logs of mission are s
   mission_dir: /srv/diamond/dota/delphi/
 home-params:
   mission_dir: /home/hawk-data # directory where inbound and outbound data stored @ home
-  gt_dir: /home/labels # directory where labels present
-  log_dir: /home/logs
 dataset:
   type: random # type of input data
   stream_path: /home/stream.txt # path on home of stream path
