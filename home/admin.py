@@ -68,7 +68,7 @@ class Admin:
     def _setup_mission(self, config):
 
         self._mission_name = config['mission-name']    
-        self.log_dir = Path(config['home-params']['log_dir']) / self._mission_id
+        self.log_dir = Path(config['home-params']['mission_dir']) / self._mission_id
         self.end_file = self.log_dir / 'end'
         self.end_time = config.get('end-time', 5000)
         scouts = config['scouts']
@@ -189,18 +189,20 @@ class Admin:
             raise NotImplementedError("Unknown selector {}".format(selector_type))
         
         # initialModel
-        model_path = train_config['initial_model_path']
+        model_path = train_config.get('initial_model_path','')
         model_content = b''
         if os.path.isfile(model_path):
             with open(model_path, 'rb') as f:
                 model_content = f.read()
-            
-        initial_model = ModelArchive(
-            content=model_content,      
-        )
+       
+        initial_model = None 
+        if len(model_content):    
+            initial_model = ModelArchive(
+                content=model_content,      
+            )
        
         # bootstrapZip
-        bootstrap_path = train_config['bootstrap_path']
+        bootstrap_path = train_config.get('bootstrap_path', '')
         bootstrap_zip = b''
         if os.path.exists(bootstrap_path):
             with open(bootstrap_path, 'rb') as f:
