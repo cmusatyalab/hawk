@@ -33,8 +33,8 @@ def main():
     # Setting up mission 
     mission_name = config.get('mission-name', "test")
     
-    assert Path(config['train_strategy']['initial_model_path']).exists()
-    assert Path(config['train_strategy']['bootstrap_path']).exists()    
+    assert (Path(config['train_strategy'].get('initial_model_path', '')).exists() or 
+            Path(config['train_strategy'].get('bootstrap_path', '')).exists())    
 
     mission_id = "_".join([mission_name, 
                                datetime.now().strftime('%Y%m%d-%H%M%S')])

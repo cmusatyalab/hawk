@@ -143,11 +143,17 @@ class Mission(DataManagerContext, ModelTrainerContext):
         logger.info("Setting up trainer")
         self.trainer = trainer
         threading.Thread(target=self._train_thread, name='train-model').start()
-        if self.check_initial_model():
-            self._retrain_policy.reset()
-            self._model_event.set()
+        self._retrain_policy.reset()
+        self._model_event.set()
+
+        # Wait for intial model to be trained
+        while not self._model:
+            pass
+            
 
     def check_initial_model(self):
+        if self.initial_model is None:
+            return False
         return len(self.initial_model.content)
 
     def store_labeled_tile(self, tile: LabeledTile) -> None:
