@@ -32,4 +32,7 @@ class DataManagerContext(ContextBase):
                               new_negatives: int, retrain: bool = True) -> None:
         pass
 
+    @abstractmethod
+    def create_validation(self) -> bool:
+        pass
 

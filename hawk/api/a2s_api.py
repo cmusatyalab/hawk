@@ -115,7 +115,7 @@ class A2SAPI(object):
                             self._root_dir / mission_id.value,
                             self._port, self._get_retriever(request.dataset),
                             self._get_selector(request.selector, request.reexamination),
-                            request.bootstrapZip, request.initialModel)
+                            request.bootstrapZip, request.initialModel, request.validate)
             self._mission = mission
 
             model = request.trainStrategy

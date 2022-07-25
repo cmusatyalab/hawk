@@ -18,9 +18,8 @@ from hawk.proto.messages_pb2 import DatasetSplit, LabelWrapper, LabeledTile, Haw
 from hawk.core.utils import get_example_key
 
 TMP_DIR = 'test-0'
-
 IGNORE_FILE = ['ignore', '-1', 'labels']
-
+TRAIN_TO_TEST_RATIO = 4
 
 class DataManager(object):
 
@@ -37,6 +36,7 @@ class DataManager(object):
         self._tmp_dir = self._examples_dir / TMP_DIR
         self._tmp_dir.mkdir(parents=True, exist_ok=True)
         self._example_counts = defaultdict(int)
+        self._validate = self._context.create_validation()
         bootstrap_zip = self._context.bootstrap_zip
         if bootstrap_zip is not None and len(bootstrap_zip):
             self.add_initial_examples(bootstrap_zip)
@@ -120,26 +120,42 @@ class DataManager(object):
                 parent_name = Path(filename).parent.name
                     
                 if basename.endswith(image_extensions) and name_is_integer(parent_name):
-                    label = parent_name
+                    label = str(parent_name)
                     content = zf.read(filename)
                     example_file = get_example_key(content)
-                    train_dir = os.path.join(self._examples_dir, 'train', str(label))
-                    if not os.path.exists(train_dir):
-                        os.makedirs(train_dir, exist_ok=True)
-                    example_path = os.path.join(train_dir, example_file)
+                    if (self._validate and 
+                        (self._get_example_count(DatasetSplit.TEST, 
+                                                 label) * TRAIN_TO_TEST_RATIO < 
+                         self._get_example_count(DatasetSplit.TRAIN, label))):
+                        example_set = DatasetSplit.TEST
+                    else: 
+                        example_set = DatasetSplit.TRAIN
+                    
+                    example_dir = os.path.join(self._examples_dir, 
+                                               DatasetSplit.Name(example_set).lower(), 
+                                               label)
+
+                    if not os.path.exists(example_dir):
+                        os.makedirs(example_dir, exist_ok=True)
+
+                    example_path = os.path.join(example_dir, example_file)
                     with open(example_path, 'wb') as f:
                         f.write(content)
+
+                    self._increment_example_count(example_set, label, 1)
 
                     # check if labels folder exists
                     label_filename = os.path.join('labels', basename.split('.')[0]+".txt")
                     if label_filename in example_files:
                         logger.info("label_file {} ".format(label_filename))
                         label_content = zf.read(label_filename)
-                        train_dir = os.path.join(self._examples_dir, 'train', 'labels')
-                        if not os.path.exists(train_dir):
-                            os.makedirs(train_dir, exist_ok=True)
-                        example_path = os.path.join(train_dir, example_file.split('.')[0]+".txt")
-                        with open(example_path, 'wb') as f:
+                        label_dir = os.path.join(self._examples_dir, 
+                                                 DatasetSplit.Name(example_set).lower(),
+                                                 'labels')
+                        if not os.path.exists(label_dir):
+                            os.makedirs(label_dir, exist_ok=True)
+                        label_path = os.path.join(label_dir, example_file.split('.')[0]+".txt")
+                        with open(label_path, 'wb') as f:
                             f.write(label_content)
                         
                     labels.append(int(label))
@@ -219,10 +235,13 @@ class DataManager(object):
 
                 label =  example.label.imageLabel
                 bounding_boxes = example.label.boundingBoxes
-                split = DatasetSplit.TRAIN
-                if label != '-1':
-                    example_subdir = self._to_dir(split)
 
+                if self._validate: 
+                    example_subdir = "unspecified"
+                else:
+                    example_subdir = self._to_dir(DatasetSplit.TRAIN)
+
+                if label != '-1':
                     label_dir = self._staging_dir / example_subdir / label
                     label_dir.mkdir(parents=True, exist_ok=True)
                     example_path = label_dir / example_file
@@ -288,18 +307,14 @@ class DataManager(object):
         new_positives = 0
         new_negatives = 0
 
-        if subdir.name == 'test':
-            return new_positives, new_negatives
-
         for label in subdir.iterdir():
             example_files = list(label.iterdir())
-            if subdir.name != 'test':
-                if label.name == '1':
-                    new_positives += len(example_files)
-                elif label.name == 'labels':
-                    pass
-                else:
-                    new_negatives += len(example_files)
+            if label.name == '1':
+                new_positives += len(example_files)
+            elif label.name == 'labels':
+                pass
+            else:
+                new_negatives += len(example_files)
 
             for example_file in example_files:
                 for example_set in set_dirs:
@@ -307,7 +322,14 @@ class DataManager(object):
                     if old_path is not None:
                         self._increment_example_count(example_set, old_path.parent.name, -1)
 
-                example_set = DatasetSplit.TRAIN
+                if (subdir.name == 'test' or 
+                    (subdir.name == 'unspecified' and 
+                     self._get_example_count(DatasetSplit.TEST, 
+                                             label) * TRAIN_TO_TEST_RATIO < 
+                     self._get_example_count(DatasetSplit.TRAIN, label))):
+                    example_set = DatasetSplit.TEST
+                else: 
+                    example_set = DatasetSplit.TRAIN
 
                 self._increment_example_count(example_set, label.name, 1)
                 example_dir = self._examples_dir / self._to_dir(example_set) / label.name
@@ -337,3 +359,4 @@ class DataManager(object):
     @staticmethod
     def _to_dir(example_set: DatasetSplit):
         return DatasetSplit.Name(example_set).lower()
+

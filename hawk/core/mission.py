@@ -43,7 +43,8 @@ class Mission(DataManagerContext, ModelTrainerContext):
     def __init__(self, mission_id: MissionId, scout_index: int, scouts: List[HawkStub],
                  home_ip: str, retrain_policy: RetrainPolicy,
                  root_dir: Path, port: int, retriever: Retriever, selector: Selector, 
-                 bootstrap_zip: bytes, initial_model: ModelArchive):
+                 bootstrap_zip: bytes, initial_model: ModelArchive, 
+                 validate: bool = False):
 
         super().__init__()
         logger.info("Initialization")
@@ -77,6 +78,7 @@ class Mission(DataManagerContext, ModelTrainerContext):
         self.bootstrap_zip = bootstrap_zip
         
         self.initial_model = initial_model
+        self._validate = validate
 
         # Indicates that the mission will seed the strategy with an initial set
         # of examples. The strategy should therefore hold off on returning
@@ -296,6 +298,9 @@ class Mission(DataManagerContext, ModelTrainerContext):
     def model_dir(self) -> Path:
         return self._model_dir
 
+    def create_validation(self):
+        return self._validate
+
     def new_examples_callback(self, new_positives: int, new_negatives: int, retrain=True) -> None:
         if self._abort_event.is_set():
             return 
@@ -359,6 +364,9 @@ class Mission(DataManagerContext, ModelTrainerContext):
         self.log_file.close()
         self.stats_file.close()
         sys.exit(0)
+
+    def get_example_directory(self, example_set: DatasetSplit): 
+        return self._data_manager.get_example_directory(example_set) 
 
     def _objects_for_model_version(self) -> Iterable[Optional[ObjectProvider]]:
         if self._abort_event.is_set(): 
@@ -488,13 +496,8 @@ class Mission(DataManagerContext, ModelTrainerContext):
             return
 
         with self._data_manager.get_examples(DatasetSplit.TRAIN) as train_dir:
-            example_counts = {}
             logger.info("Train dir {}".format(train_dir))
-            for label in train_dir.iterdir():
-                example_counts[label] = len(list(label.iterdir()))
-
-
-            self.selector.add_easy_negatives(self._data_manager.get_example_directory(DatasetSplit.TRAIN))
+            # self.selector.add_easy_negatives(self._data_manager.get_example_directory(DatasetSplit.TRAIN))
             model = self.trainer.train_model(train_dir)
 
         eval_start = time.time()
@@ -587,7 +590,7 @@ class Mission(DataManagerContext, ModelTrainerContext):
 
         with self._data_manager.get_examples(DatasetSplit.TRAIN) as train_dir:
             train_start = time.time()
-            self.selector.add_easy_negatives(self._data_manager.get_example_directory(DatasetSplit.TRAIN))
+            # self.selector.add_easy_negatives(self._data_manager.get_example_directory(DatasetSplit.TRAIN))
             model = self.trainer.train_model(train_dir)
             logger.info('Trained model in {:.3f} seconds'.format(time.time() - train_start))
 
@@ -622,3 +625,4 @@ class Mission(DataManagerContext, ModelTrainerContext):
                 logger.warn('Failed to start Tensorboard on port {} (port already in use)'.format(tb_port))
 
         logger.error('Failed to start Tensorboard')
+

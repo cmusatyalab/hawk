@@ -28,6 +28,7 @@ message ScoutConfiguration {
   ModelArchive initialModel = 12;
   bytes bootstrapZip = 13;
   map<int32, string> bandwidthFunc = 14;
+  bool validate = 15;
 }
 
 message MissionStats {

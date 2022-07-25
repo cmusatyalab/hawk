@@ -36,6 +36,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
         self.args['unfreeze'] = int(self.args.get('unfreeze_layers', 0))
         self.args['initial_model_epochs'] = int(self.args.get('initial_model_epochs', 15))
         self.train_initial_model = False 
+        self.testpath = self.args['test_dir']
 
         self.context = context
 
@@ -113,6 +114,23 @@ class DNNClassifierTrainer(ModelTrainerBase):
                 for path in train_samples[l]:
                     f.write("{} {}\n".format(path, l))
 
+        if self.context.create_validation():
+            valpath = self._model_dir / "val-{}.txt".format(str(new_version).zfill(M_ZFILL)) 
+            val_dir = train_dir.parent / 'test' 
+            val_samples = {l:glob.glob(str(val_dir / l / '*')) for l in labels}
+            val_len = {l:len(val_samples[l]) for l in labels}
+            if val_len['1'] == 0:
+                logger.error(val_len)
+                logger.error([str(val_dir / l / '*') for l in labels])
+                raise Exception
+
+            with open(valpath, 'w') as f:
+                for l in labels:
+                    for path in val_samples[l]:
+                        f.write("{} {}\n".format(path, l))            
+
+            self.args['test_dir'] = valpath
+
         if new_version <= 0:
             self.train_initial_model = True
             num_epochs = self.args['initial_model_epochs']
@@ -144,6 +162,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
                       num_epochs,
                       self.args['batch-size'],
                    )
+            self.train_initial_model = False
         else:
             cmd = "{} {}/train_model.py --trainpath {} \
                    --arch {} --savepath {} --num-unfreeze {} \

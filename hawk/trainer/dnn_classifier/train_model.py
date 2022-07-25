@@ -30,21 +30,23 @@ model_names = sorted(name for name in models.__dict__
     and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('--trainpath', type=str, required=True,
+parser.add_argument('--trainpath', type=str, default='',
                     help='path to tain file')
 parser.add_argument('--valpath', type=str, default='',
-                    help='path to tain file')
-parser.add_argument('--savepath', type=str, required=True,
+                    help='path to val file')
+parser.add_argument('--savepath', type=str, default='model.pth',
                     help='path to save trained model')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
+parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names) +
                         ' (default: resnet18)')
+parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
+                    help='evaluate model on validation set')                        
 parser.add_argument('--num-classes', default=2, type=int, 
-                    help='number of total epochs to run')
+                    help='number of classes to train')
 parser.add_argument('--num-unfreeze', default=0, type=int, 
-                    help='number of total epochs to run')
+                    help='number of layers to train')
 parser.add_argument('-j', '--workers', default=4, type=int,
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', default=10000, type=int, metavar='N',
@@ -92,9 +94,82 @@ def main():
                       'from checkpoints.')
 
     ngpus_per_node = torch.cuda.device_count()
-    main_worker(args.gpu, ngpus_per_node, args)
 
-def main_worker(gpu, ngpus_per_node, args):
+    if args.evaluate:
+        assert os.path.exists(args.valpath)
+        eval_worker(args.gpu, ngpus_per_node, args)
+    else:
+        assert os.path.exists(args.trainpath)
+        train_worker(args.gpu, ngpus_per_node, args)
+
+def eval_worker(gpu, ngpus_per_node, args):
+    global best_acc1
+    args.gpu = gpu
+    start_time = time.time()
+
+    if args.gpu is not None:
+        print("Use GPU: {} for training".format(args.gpu))
+
+    print("=> using pre-trained model '{}'".format(args.arch))
+    model = models.__dict__[args.arch](pretrained=True)
+    model, input_size = initialize_model(args.arch, args.num_classes, args.num_unfreeze)
+
+    if not torch.cuda.is_available():
+        print('using CPU, this will be slow')
+    else:
+        print('using GPU')
+        model = model.cuda()
+
+    criterion = nn.CrossEntropyLoss().cuda(args.gpu)
+    
+    # load model from checkpoint
+    if args.resume:
+        if os.path.isfile(args.resume):
+            print("=> loading checkpoint '{}'".format(args.resume))
+            checkpoint = torch.load(args.resume)
+
+            args.start_epoch = checkpoint['epoch']
+            model.load_state_dict(checkpoint['state_dict'])
+            print("=> loaded checkpoint {}".format(args.resume))
+        else:
+            print("=> no checkpoint found at '{}'".format(args.resume))
+    
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+
+    val_path = args.valpath
+    logger.info("Test path {}".format(val_path))
+    val_list = []
+    val_labels = []
+
+    with open(val_path, "r") as f:
+        contents = f.read().splitlines()
+        for content in contents:
+            path, label = content.split()
+            val_list.append(path)
+            val_labels.append(int(label))
+
+    val_dataset = ImageFromList(
+        val_list,
+        transforms.Compose([
+            transforms.Resize(input_size + 32),
+            transforms.CenterCrop(input_size),
+            transforms.ToTensor(),
+            normalize,
+        ]),
+        label_list=val_labels)
+
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset, batch_size=args.batch_size, shuffle=False,
+        num_workers=args.workers, pin_memory=True)
+    
+    auc = validate_model(val_loader, model, criterion, args)
+    
+    logger.info("Model AUC {}".format(auc))
+    return 
+
+
+def train_worker(gpu, ngpus_per_node, args):
     global best_acc1
     args.gpu = gpu
     start_time = time.time()
