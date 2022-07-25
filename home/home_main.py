@@ -65,8 +65,8 @@ def main():
 
     # Setting up helpers
     scout_ips = config['scouts']
+    processes = [] 
     stop_event = mp.Event()
-    processes = []
     meta_q = mp.Queue()
     label_q = mp.Queue()
     stats_q = mp.Queue()
@@ -146,17 +146,14 @@ def main():
             time.sleep(10)
 
         logger.info("Stop event is set")
-        stop_event.set()
-        home_admin.stop_mission()
     except KeyboardInterrupt as e:
-        # raise e
+        logger.error(e)
+    finally:
         stop_event.set()
         home_admin.stop_mission()
-        logger.error(e)
+        time.sleep(10)
         for p in processes:
             p.terminate()
-    finally:
-        time.sleep(10)
         pid = os.getpid()
         os.kill(pid, signal.SIGKILL)
 

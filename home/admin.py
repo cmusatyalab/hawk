@@ -216,6 +216,8 @@ class Admin:
         bandwidth_func = {}
         for i, _b in enumerate(bandwidth_config):
             bandwidth_func[int(i)] = str(_b)  
+
+        train_validate = train_config.get('validate', True)
          
         self.scout_stubs = {}
         for i, scout in enumerate(scouts):
@@ -246,12 +248,15 @@ class Admin:
                 initialModel=initial_model, 
                 bootstrapZip=bootstrap_zip,
                 bandwidthFunc=bandwidth_func,
+                validate=train_validate,
             )
             msg = {
                 "method": "a2s_configure_scout",
                 "msg": scout_config.SerializeToString()
             }
             stub.send_pyobj(msg)
+        
+        for index, stub in self.scout_stubs.items():
             reply = stub.recv()
             return_msgs.append(reply.decode())
        
@@ -278,6 +283,8 @@ class Admin:
                 "msg": b"",
             }
             stub.send_pyobj(msg)
+
+        for index, stub in self.scout_stubs.items():
             stub.recv()
         
         self.start_time = time.time()
@@ -292,9 +299,11 @@ class Admin:
                 "msg": b"",
             }
             stub.send_pyobj(msg)
+
+        for index, stub in self.scout_stubs.items():
             stub.recv()
         return         
-        
+
     def _get_mission_stats(self):
         time.sleep(10)
         count = 1
@@ -345,8 +354,8 @@ class Admin:
                 time.sleep(LOG_INTERVAL)
         except (Exception, KeyboardInterrupt) as e:
             raise e
-        self.stop_mission()
         self.stop_event.set()
+        self.stop_mission()
         return 
     
     def _send_new_model(self):
@@ -373,6 +382,8 @@ class Admin:
                 "msg": b"",
             }
             stub.send_pyobj(msg)
+
+        for index, stub in self.scout_stubs.items():
             reply = stub.recv()
             mission_stat = MissionStats()
             mission_stat.ParseFromString(reply)
