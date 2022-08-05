@@ -50,11 +50,11 @@ class DNNClassifierTrainer(ModelTrainerBase):
 
        
         
-        if self.args['mode'] == "notional":
-            assert "notional_model_path" in self.args, "Missing keyword {}".format("notional_model_path")
-            notional_model_path = Path(self.args['notional_model_path'])
-            msg = "Notional Model Path {} provided does not exist".format(notional_model_path)
-            assert notional_model_path.exists(), msg
+        # if self.args['mode'] == "notional":
+        #     assert "notional_model_path" in self.args, "Missing keyword {}".format("notional_model_path")
+        #     notional_model_path = Path(self.args['notional_model_path'])
+        #     msg = "Notional Model Path {} provided does not exist".format(notional_model_path)
+        #     assert notional_model_path.exists(), msg
 
         logger.info("DNN CLASSIFIER TRAINER CALLED")
             
@@ -86,7 +86,8 @@ class DNNClassifierTrainer(ModelTrainerBase):
         if self.args['mode'] == "oracle":
             return self.load_model(Path(""))
         elif self.args['mode'] == "notional":
-            notional_path = self.args['notional_model_path']
+            # notional_path = self.args['notional_model_path']
+            notional_path = self.prev_path
             # sleep for training time
             time_sleep = self.args.get('notional_train_time', 0)
             time_now = time.time()
