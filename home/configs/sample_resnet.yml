@@ -24,14 +24,15 @@ retrain_policy:
   only_positives: true # if only positives are counted
   threshold: 0.33 # percentage of increment
 train_strategy:
-  mode: hawk # hawk / oracale/ notional
   type: dnn_classifier # type of model training
-  arch: resnet50 # DNN model architecture
   initial_model_path: /home/model0.pth # path to intial model on home
   bootstrap_path: /home/bootstrap.zip # path to compressed bootstrap zipfile @ home (0/* and 1/*)
-  unfreeze_layers: 3
-  batch-size: 64
-  online_epochs: "[[10,0],[15,100]]"
+  args:
+    mode: hawk # hawk / oracale/ notional
+    arch: resnet50 # DNN model architecture
+    unfreeze_layers: 3
+    batch-size: 64
+    online_epochs: "[[10,0],[15,100]]"
 selector:
   type: topk # type of selective transmission
   topk:
