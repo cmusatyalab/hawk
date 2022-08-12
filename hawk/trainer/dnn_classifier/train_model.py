@@ -302,7 +302,7 @@ def train_worker(gpu, ngpus_per_node, args):
             # evaluate on validation set
             acc1 = validate_model(val_loader, model, criterion, args)
             # remember best acc@1 and save checkpoint
-            is_best = acc1 > best_acc1
+            is_best = acc1 >= best_acc1
             best_acc1 = max(acc1, best_acc1)
             if is_best:
                 logger.info("Saving model AUC: {}".format(best_acc1))

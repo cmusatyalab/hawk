@@ -29,6 +29,13 @@ class TopKSelector(SelectorBase):
         assert k < batch_size
         super().__init__()
 
+        self.last_result_time = None
+        self.timeout = 1000
+        self.add_negatives = add_negatives
+        self.easy_negatives = defaultdict(list)
+        self.version = 0
+        self.model_train_time = 0
+
         self._k = k
         self._batch_size = batch_size
         self._reexamination_strategy = reexamination_strategy
@@ -37,11 +44,7 @@ class TopKSelector(SelectorBase):
         self._priority_queues = [queue.PriorityQueue()]
         self._batch_added = 0
         self._insert_lock = threading.Lock()
-        self.last_result_time = None
-        self.timeout = 1000
-        self.add_negatives = add_negatives
-        self.easy_negatives = defaultdict(list)
-        self.version = 0
+        self._mode = "hawk"
         self._en = 0  # 0.1
         
         self.log_counter = [int(i/3.*self._batch_size) for i in range(1, 4)]
@@ -60,12 +63,17 @@ class TopKSelector(SelectorBase):
 
         for i in range(self._k):
             result = self._priority_queues[-1].get()[-1]
-            logger.info("[Result] Id {} Score {}".format(result.id, result.score))
             if self._mission.enable_logfile:
                 self._mission.log_file.write("{:.3f} {}_{} {}_{} SEL: FILE SELECTED {}\n".format(
                     time.time() - self._mission.start_time, self._mission.host_name,
                     self.version, i, self._k, result.id))
-            self.result_queue.put(result)
+            if self._mode == "oracle":
+                if int(result.score) == 1:
+                    self.result_queue.put(result)    
+                    logger.info("[Result] Id {} Score {}".format(result.id, result.score))
+            else:
+                self.result_queue.put(result)
+                logger.info("[Result] Id {} Score {}".format(result.id, result.score))
         self._batch_added -= self._batch_size
          
     @log_exceptions
@@ -146,7 +154,11 @@ class TopKSelector(SelectorBase):
             if model is not None:
                 version = self.version
                 self.version = model.version
+                self._mode = model.mode
                 self.model_examples = model.train_examples.get('1', 0)
+                self.model_train_time = model.train_time
+                if self._mode != "hawk":
+                    return 
                 if version != self.version:
                     versions = [v for v in self.easy_negatives.keys() if v <= version]
                     for v in versions:
@@ -177,6 +189,7 @@ class TopKSelector(SelectorBase):
                      'negatives_added': self.num_negatives_added,
                      'positive_in_stream': self.num_positives,
                      'train_positives': self.model_examples,
+                     'train_time': "{:.3f}".format(self.model_train_time),
                      }
 
         return SelectorStats(stats)

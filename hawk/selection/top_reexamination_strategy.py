@@ -24,7 +24,8 @@ class TopReexaminationStrategy(ReexaminationStrategy):
 
     def get_new_queues(self, model: Model, old_queues: List[queue.PriorityQueue],
                        start_time: float = 0) -> Tuple[List[queue.PriorityQueue], int]:
-        new_queue = queue.PriorityQueue()
+        # new_queue =  queue.PriorityQueue() # To start a new priority queue
+        new_queue =  old_queues[-1] # Reuse the same queue
 
         to_reexamine = []
         num_queues = len(old_queues)
@@ -50,6 +51,7 @@ class TopReexaminationStrategy(ReexaminationStrategy):
         if not len(to_reexamine):
             return old_queues, 0
 
+        new_queue =  old_queues[-1] # queue.PriorityQueue()
         reexamine = [item[-1].obj for item in to_reexamine]
 
         results = model.infer(reexamine)
@@ -62,4 +64,5 @@ class TopReexaminationStrategy(ReexaminationStrategy):
             logger.info(f"Reexamine score id: {obj_id} prev_score{prev_score} curr_score {score}")
             new_queue.put((-score, time_result, result))
 
-        return old_queues + [new_queue], len(reexamine)
+        # return old_queues + [new_queue], len(reexamine)
+        return [new_queue], len(reexamine)

@@ -179,10 +179,15 @@ class Mission(DataManagerContext, ModelTrainerContext):
 
         return TestResults(version=self._model.version)
 
-    def import_model(self, model_version: int, content: bytes, model_path: str) -> None:
+    def load_model(self, model_path: str = "", content: bytes = b"", model_version: int = -1):
+        logger.info("Loading model")
         model_path = Path(model_path)
         assert model_path.exists() or len(content)
-        model = self.trainer.load_model(content=content, path=model_path)
+        model = self.trainer.load_model(model_path, content, model_version)
+        return model
+
+    def import_model(self, model_path: str, content: bytes, model_version: int) -> None:
+        model = self.load_model(model_path, content, model_version)
         self._set_model(model, False)
         return 
 
@@ -204,7 +209,8 @@ class Mission(DataManagerContext, ModelTrainerContext):
                     zf.write(file, arcname=os.path.join('tensorboard', file.name))
 
         memory_file.seek(0)
-        return ModelArchive(content=memory_file.getvalue())
+        return ModelArchive(content=memory_file.getvalue(),
+                            version=model_version)
 
     def train_model(self, trainer_index: int=0) -> None:
         assert self._scout_index != 0 
@@ -493,6 +499,9 @@ class Mission(DataManagerContext, ModelTrainerContext):
             if self.enable_logfile:
                 self.log_file.write("{:.3f} {}_{} Initial Model SET\n".format(time.time() - self.start_time,
                                                                               self.host_name, model.version))
+            return
+        
+        if model.mode != "hawk":
             return
 
         with self._data_manager.get_examples(DatasetSplit.TRAIN) as train_dir:

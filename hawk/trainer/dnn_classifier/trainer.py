@@ -59,18 +59,25 @@ class DNNClassifierTrainer(ModelTrainerBase):
         logger.info("DNN CLASSIFIER TRAINER CALLED")
             
 
-    def load_model(self, path:Path = "", content:bytes = b''):
+    def load_model(self, path:Path = "", content:bytes = b'', version: int = -1):
         if isinstance(path, str):
             path = Path(path)
 
-        if self.args['mode'] != "oracle":
-            assert path.is_file() or len(content)
+        if self.args['mode'] != "hawk":
+            version = self.get_version()
+            if version < 0:
+                new_version = self.get_new_version()
+            else:
+                new_version = version
+        else:
             new_version = self.get_new_version()
-            if not path.is_file():
-                path = self._model_dir / "model-{}.pth".format(
-                    str(new_version).zfill(M_ZFILL))  
-                with open(path, "wb") as f:
-                    f.write(content)     
+
+        assert path.is_file() or len(content)
+        if not path.is_file():
+            path = self._model_dir / "model-{}.pth".format(
+                str(new_version).zfill(M_ZFILL))  
+            with open(path, "wb") as f:
+                f.write(content)     
             
         version = self.get_version()
         logger.info("Loading from path {}".format(path))
@@ -84,7 +91,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
         # check mode if not hawk return model
         # EXPERIMENTAL
         if self.args['mode'] == "oracle":
-            return self.load_model(Path(""))
+            return self.load_model(self.prev_path, version=0)
         elif self.args['mode'] == "notional":
             # notional_path = self.args['notional_model_path']
             notional_path = self.prev_path
@@ -94,7 +101,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
             while (time.time() - time_now) < time_sleep:
                 time.sleep(1) 
                          
-            return self.load_model(Path(notional_path))
+            return self.load_model(Path(notional_path), version=0)
              
         new_version = self.get_new_version()
 
@@ -185,11 +192,14 @@ class DNNClassifierTrainer(ModelTrainerBase):
         proc = subprocess.Popen(shlex.split(cmd))
         proc.communicate()
 
+        # train completed time 
+        train_time = time.time() - self.context.start_time
         
         self.prev_path = model_savepath
 
         model_args = self.args.copy()
         model_args['train_examples'] = train_len
+        model_args['train_time'] = train_time
         
         return DNNClassifierModel(model_args, 
                                   model_savepath,

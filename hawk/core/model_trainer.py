@@ -16,7 +16,7 @@ from hawk.core.model import Model
 class ModelTrainer(metaclass=ABCMeta):
 
     @abstractmethod
-    def load_model(self, path: str, content: bytes) -> Model:
+    def load_model(self, path: str, content: bytes, version: int) -> Model:
         pass
 
     @abstractmethod

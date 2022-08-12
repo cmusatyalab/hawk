@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import logging
+import os
+import signal
 import sys
 import threading
 import traceback
@@ -59,9 +61,14 @@ def main():
             else:
                 reply = a2s_methods[method]()
             socket.send(reply)
+    except KeyboardInterrupt:
+        pass 
     except Exception as e:
         logger.exception(e)
         raise e
+    finally:
+        pid = os.getpid()
+        os.kill(pid, signal.SIGKILL)
 
 if __name__ == '__main__':
     main()

@@ -56,19 +56,20 @@ class YOLOTrainer(ModelTrainerBase):
         logger.info("YOLO TRAINER CALLED")
 
     @log_exceptions
-    def load_model(self, path:Path = "", content:bytes = b''):
+    def load_model(self, path:Path = "", content:bytes = b'', version:int = -1):
         if isinstance(path, str):
             path = Path(path)
 
+        if version == -1:
+            version = self.get_new_version()
+
         if self.args['mode'] != "oracle":
             assert path.is_file() or len(content)
-            new_version = self.get_new_version()
             if not path.is_file():
-                path = self._model_dir / "model-{}.pt".format(str(new_version).zfill(M_ZFILL))  
+                path = self._model_dir / "model-{}.pt".format(str(version).zfill(M_ZFILL))  
                 with open(path, "wb") as f:
                     f.write(content)     
             
-        version = self.get_version()
         self.prev_path = path
         self.context.stop_model()
         logger.info(" Trainer Loading from path {}".format(path))
@@ -82,7 +83,7 @@ class YOLOTrainer(ModelTrainerBase):
         # check mode if not hawk return model
         # EXPERIMENTAL
         if self.args['mode'] == "oracle":
-            return self.load_model(Path(""))
+            return self.load_model(Path(""), version=0)
         elif self.args['mode'] == "notional":
             notional_path = self.args['notional_model_path']
             # sleep for training time
@@ -91,7 +92,7 @@ class YOLOTrainer(ModelTrainerBase):
             while (time.time() - time_now) < time_sleep:
                 time.sleep(1) 
                          
-            return self.load_model(Path(notional_path))
+            return self.load_model(Path(notional_path), version=0)
              
         new_version = self.get_new_version()
 

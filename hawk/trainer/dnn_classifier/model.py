@@ -21,7 +21,9 @@ from hawk.context.model_trainer_context import ModelTrainerContext
 from hawk.core.model import ModelBase
 from hawk.core.object_provider import ObjectProvider
 from hawk.core.result_provider import ResultProvider
-from hawk.core.utils import log_exceptions
+from hawk.core.utils import log_exceptions, ImageFromList
+from hawk.proto.messages_pb2 import TestResults
+
 
 torch.multiprocessing.set_sharing_strategy('file_system')
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -206,7 +208,7 @@ class DNNClassifierModel(ModelBase):
 
         return output
 
-    def infer_dir(self, directory: Path, callback_fn: Callable[[int, float], None]) -> None:
+    def infer_dir(self, directory: Path, callback_fn: Callable[[int, float], None]) -> TestResults:
         dataset = datasets.ImageFolder(str(directory), transform=self._test_transforms)
         data_loader = DataLoader(dataset, batch_size=self._batch_size, 
                                  shuffle=False, num_workers=mp.cpu_count())
@@ -222,15 +224,50 @@ class DNNClassifierModel(ModelBase):
                     targets.append(target[i])
                     predictions.append(prediction[i])
         
-        callback_fn(targets, predictions)
-        
-    def evaluate_model(self, directory: Path) -> None:
-        # call infer_dir
+        return callback_fn(self.version, targets, predictions)
 
-        def calculate_performance(y_true, y_pred):
-            return average_precision_score(y_true, y_pred, average=None)
+    def infer_path(self, test_file: Path, callback_fn: Callable[[int, float], None]) -> TestResults:
         
-        return self.infer_dir(directory, calculate_performance)
+        image_list = []
+        label_list = []
+        with open(test_file) as f:
+            contents = f.read().splitlines()
+            for line in contents:
+                path, label = line.split()
+                image_list.append(path)
+                label_list.append(int(label))
+                
+        dataset = ImageFromList(image_list, transform=self._test_transforms,
+                                label_list=label_list)
+        data_loader = DataLoader(dataset, batch_size=self._batch_size, 
+                                 shuffle=False, num_workers=mp.cpu_count())
+
+        targets = []
+        predictions = []
+        with torch.no_grad():
+            for inputs, target in data_loader:
+                prediction = self.get_predictions(inputs)
+                del inputs
+
+                for i in range(len(prediction)):
+                    targets.append(target[i])
+                    predictions.append(prediction[i])
+        
+        return callback_fn(self.version, targets, predictions)
+        
+    def evaluate_model(self, test_path: Path) -> None:
+        # call infer_dir
+        self._device = torch.device('cuda')
+        self._model.to(self._device)
+        self._model.eval()
+
+        if test_path.is_dir(): 
+            return self.infer_dir(test_path, self.calculate_performance)
+        elif test_path.is_file():
+            logger.info("Evaluating model")
+            return self.infer_path(test_path, self.calculate_performance)
+        else:
+            raise Exception(f'ERROR: {test_path} does not exist')
 
     def _process_batch(self, batch: List[Tuple[ObjectProvider, torch.Tensor]]) -> Iterable[ResultProvider]:
         if self._model is None:

@@ -171,12 +171,12 @@ class YOLOModel(ModelBase):
         
         callback_fn(targets, predictions)
         
-    def evaluate_model(self, directory: Path) -> None:
+    def evaluate_model(self, test_path: Path) -> None:
 
         def calculate_performance(y_true, y_pred):
             return average_precision_score(y_true, y_pred, average=None)
         
-        return self.infer_dir(directory, calculate_performance)
+        return self.infer_dir(test_path, calculate_performance)
 
     def _process_batch(self, batch) -> Iterable[ResultProvider]:
         if self._model is None:
