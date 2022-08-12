@@ -4,6 +4,9 @@
 
 import copy
 import gc
+import glob
+import io
+import os
 import time
 from pathlib import Path
 import torch
@@ -11,6 +14,7 @@ from logzero import logger
 import json
 import shlex
 import subprocess
+import zipfile
 
 from google.protobuf import json_format
 
@@ -36,8 +40,9 @@ from hawk.selection.reexamination_strategy import ReexaminationStrategy
 from hawk.trainer.dnn_classifier.trainer import DNNClassifierTrainer 
 from hawk.trainer.yolo.trainer import YOLOTrainer 
 from hawk.proto.messages_pb2 import Dataset, ScoutConfiguration, MissionId, ImportModel, \
-    RetrainPolicyConfig,  SelectiveConfig, ReexaminationStrategyConfig, MissionStats  
+    RetrainPolicyConfig,  SelectiveConfig, ReexaminationStrategyConfig, MissionResults, MissionStats  
     
+MODEL_FORMATS = ['pt', 'pth']
 
 class A2SAPI(object):
 
@@ -78,6 +83,15 @@ class A2SAPI(object):
             raise e
 
     @log_exceptions
+    def a2s_get_mission_stats(self):
+        try:
+            reply = self._a2s_get_mission_stats()
+            return reply
+        except Exception as e:
+            logger.exception(e)
+            raise e
+
+    @log_exceptions
     def a2s_new_model(self, msg):
         try:
             request = ImportModel()
@@ -89,13 +103,27 @@ class A2SAPI(object):
             raise e
 
     @log_exceptions
-    def a2s_get_session_stats(self):
+    def a2s_get_test_results(self, msg):
         try:
-            reply = self._a2s_get_session_stats()
-            return reply
+            test_path = msg
+            logger.info("Testing {}".format(test_path))
+            assert os.path.exists(test_path)
+            reply = self._a2s_get_test_results(test_path)  
+            return reply 
         except Exception as e:
             logger.exception(e)
             raise e
+
+    @log_exceptions 
+    def a2s_get_post_mission_archive(self):
+        try:
+            reply = self._a2s_get_post_mission_archive()
+        except Exception as e:
+            logger.exception(e)
+            reply = b""
+            raise e
+        finally:
+            return reply 
 
     @log_exceptions
     def _a2s_configure_scout(self, request: ScoutConfiguration):
@@ -130,6 +158,7 @@ class A2SAPI(object):
                 raise NotImplementedError('unknown model: {}'.format(
                     json_format.MessageToJson(model)))
 
+            self.trainer = trainer
             mission.setup_trainer(trainer)
             logger.info('Create mission with id {}'.format(
                 request.missionId))
@@ -207,24 +236,8 @@ class A2SAPI(object):
             self._mission = None
 
         return reply
-            
-    def _a2s_new_model(self, request: ImportModel):
-        try:
-            mission = self._mission
-            model = request.model
-            path = request.path
-            mission.import_model(model.content, path)
-            logger.info("[IMPORT] FINISHED Model Import")
-            if mission.enable_logfile:
-                mission.log_file.write("{:.3f} {} IMPORT MODEL\n".format(
-                    time.time() - mission.start_time, mission.host_name))
 
-            reply = b"SUCCESS"
-        except Exception as e:
-            reply = ("ERROR: {}".format(e)).encode()
-        return reply
-
-    def _a2s_get_session_stats(self):
+    def _a2s_get_mission_stats(self):
         try:
             mission = self._mission
             if not mission:
@@ -277,6 +290,85 @@ class A2SAPI(object):
             reply = ("ERROR: {}".format(e)).encode()
         return reply
 
+            
+    def _a2s_new_model(self, request: ImportModel):
+        try:
+            mission = self._mission
+            model = request.model
+            path = request.path
+            version = model.version
+            mission.import_model(model.content, path, version)
+            logger.info("[IMPORT] FINISHED Model Import")
+            if mission.enable_logfile:
+                mission.log_file.write("{:.3f} {} IMPORT MODEL\n".format(
+                    time.time() - mission.start_time, mission.host_name))
+
+            reply = b"SUCCESS"
+        except Exception as e:
+            reply = ("ERROR: {}".format(e)).encode()
+        return reply
+
+    def _a2s_get_test_results(self, request: str):
+        try:
+            test_path = Path(request)
+            
+            if not test_path.is_file():
+                raise Exception 
+            
+            mission = self._mission
+            model_dir = str(mission.model_dir)
+            files = sorted(glob.glob(os.path.join(model_dir, '*.*'))) 
+            model_paths = [x for x in files if x.split('.')[-1].lower() in MODEL_FORMATS]
+            logger.info(model_paths)
+            
+            def get_version(path, idx):
+                name = path.name
+                try:
+                    version = int(name.split('model-')[-1].split('.')[0])
+                except:
+                    version = idx
+                
+                return version     
+            
+            results = {}
+            for idx, path in enumerate(model_paths):
+                path = Path(path)
+                version = get_version(path, idx)
+                logger.info("model {} version {}".format(path, version))
+                # create trainer and check
+                # model = mission.load_model(path, version=version)
+                model = self.trainer.load_model(path, version=version)
+                result = model.evaluate_model(test_path)
+                results[version] = result
+                
+            reply = MissionResults(results=results)
+            reply = reply.SerializeToString()            
+        except Exception as e:
+            reply = ("ERROR: {}".format(e)).encode()
+        return reply
+
+
+    def _a2s_get_post_mission_archive(self):
+        try:
+            mission = self._mission
+            data_dir = mission.data_dir
+            model_dir = mission.model_dir
+           
+            mission_archive = io.BytesIO() 
+            with zipfile.ZipFile(mission_archive, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+                for dirname, subdirs, files in os.walk(model_dir):
+                    zf.write(dirname)
+                    for filename in files:
+                        zf.write(os.path.join(dirname, filename))
+
+            logger.info("[IMPORT] FINISHED Archiving Mission models")
+
+            mission_archive.seek(0)
+            reply = mission_archive
+        except Exception as e:
+            reply = b""
+        return reply
+    
     def _get_retrain_policy(self, retrain_policy: RetrainPolicyConfig, model_dir: Path) -> RetrainPolicy:
         if retrain_policy.HasField('absolute'):
             return AbsoluteThresholdPolicy(retrain_policy.absolute.threshold,

@@ -26,10 +26,10 @@ class HawkStats(object):
         
     def accumulate_mission_stats(self):
         stats = defaultdict(lambda: 0)
-        str_ignore = ['server_time', 'ctime', 
+        str_ignore = ['server_time', 'train_time', 'ctime', 
                       'train_positives', 'server_positives', 
                       'msg']
-        single = ['server_time', 'train_positives', 'version']
+        single = ['server_time', 'train_time', 'train_positives', 'version']
         for i, stub in enumerate(self.stubs):
             try:
                 mission_stat = stub.GetMissionStats(self.mission_id)

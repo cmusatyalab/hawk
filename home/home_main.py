@@ -40,13 +40,16 @@ def main():
                                datetime.now().strftime('%Y%m%d-%H%M%S')])
    
     bandwidth = config.get('bandwidth', "100")
+    assert int(bandwidth) in [100, 30, 12], "Fireqos script may not exist for {}".format(bandwidth)
     config['bandwidth'] = ["[[-1, \"{}k\"]]".format(bandwidth) for _ in config['scouts']] 
+
     # create local directories 
     mission_dir = Path(config['home-params']['mission_dir'])
     mission_dir = mission_dir / mission_id
     print(mission_dir)
 
-    log_dir = mission_dir / mission_id
+    log_dir = mission_dir / 'logs'
+    config['home-params']['log_dir'] = str(log_dir)
     end_file = log_dir / 'end'
 
     image_dir = mission_dir / 'images'

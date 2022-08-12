@@ -33,6 +33,7 @@ class Admin:
         self.last_stats = (0,0,0)
         self._mission_id = mission_id
         self.scout_stubs = {}
+        self.test_path = ""
 
     def receive_from_home(self, stop_event, stats_q):
 
@@ -68,10 +69,11 @@ class Admin:
     def _setup_mission(self, config):
 
         self._mission_name = config['mission-name']    
-        self.log_dir = Path(config['home-params']['mission_dir']) / self._mission_id
+        self.log_dir = Path(config['home-params']['log_dir'])
         self.end_file = self.log_dir / 'end'
-        self.end_time = config.get('end-time', 5000)
+        self.end_time = int(config.get('end-time', 5000))
         scouts = config['scouts']
+        self.scouts = scouts
         
         # homeIP 
         home_ip = self._home_ip
@@ -81,6 +83,7 @@ class Admin:
 
         # missionDirectory
         mission_directory = config['scout-params']['mission_dir']
+        self.test_path = config['scout-params'].get('test_path', "")
         
         # trainStrategy
         train_config = config['train_strategy']
@@ -277,6 +280,7 @@ class Admin:
         logger.info("Starting mission")
         self.log_files = [open(os.path.join(str(self.log_dir), 'get-stats-{}.txt'.format(i)), "a") 
                           for i, stub in enumerate(self.scout_stubs)]
+        self.start_time = time.time()
         for index, stub in self.scout_stubs.items():
             msg = {
                 "method": "a2s_start_mission",
@@ -287,7 +291,6 @@ class Admin:
         for index, stub in self.scout_stubs.items():
             stub.recv()
         
-        self.start_time = time.time()
         threading.Thread(target=self._get_mission_stats, name='get-stats').start()
         return         
 
@@ -331,7 +334,7 @@ class Admin:
                 log_path = self.log_dir / "stats-{}.json".format(str(count).zfill(ZFILL))
                 with open(log_path, "w") as f:
                     stats['home_time'] = time.time() - self.start_time
-                    json.dump(stats, f)
+                    json.dump(stats, f, indent=4, sort_keys=True)
 
                 if stats['home_time'] > self.end_time:
                     logger.info("End mission")
@@ -361,24 +364,63 @@ class Admin:
     def _send_new_model(self):
         return 
     
-    def _get_test_results(self):
-        return 
-    
     def _get_post_mission_archive(self):
-        return 
-
-    def run(args):
-        pass 
-    
-    def _accumulate_mission_stats(self):
-        stats = defaultdict(lambda: 0)
-        str_ignore = ['server_time', 'ctime',
-                      'train_positives', 'server_positives',
-                      'msg']
-        single = ['server_time', 'train_positives', 'version']
         for index, stub in self.scout_stubs.items():
             msg = {
-                "method": "a2s_get_session_stats",
+                "method": "a2s_get_post_mission_archive",
+                "msg": b"",
+            }
+            stub.send_pyobj(msg)
+            reply = stub.recv()
+
+            if len(reply):
+                with open("mission_{}.zip".format(index), "wb") as f:
+                    f.write(reply)
+        return 
+    
+            
+    def _get_test_results(self):
+        assert len(self.test_path), "Test path not provided"
+        for index, stub in self.scout_stubs.items():
+            msg = {
+                "method": "a2s_get_test_results",
+                "msg": self.test_path,
+            }
+            stub.send_pyobj(msg)
+
+        for index, stub in self.scout_stubs.items():
+            reply = stub.recv()
+            hostname = self.scouts[index].split('.')[0]
+            results_dir = (Path(self.log_dir.parent)/ 
+                           "results" / 
+                           "{}".format(hostname)) 
+            results_dir.mkdir(parents=True, exist_ok=True)            
+            if len(reply):
+                try:
+                    mission_stat = MissionResults()
+                    mission_stat.ParseFromString(reply)
+                    mission_stat = mission_stat.results
+                
+                    for version, result in mission_stat.items():
+                        model_stat = MessageToDict(result)
+                        stat_path = (results_dir / 
+                                     "model-result-{}.json".format(str(version).zfill(ZFILL)))
+                        with open(stat_path, "w") as f:
+                            json.dump(model_stat, f, indent=4, sort_keys=True)
+                except Exception as e:
+                    msg = reply.decode()
+                    logger.error(f"ERROR during Testing from Scout {index} \n {msg}")
+        return 
+
+    def _accumulate_mission_stats(self):
+        stats = defaultdict(lambda: 0)
+        str_ignore = ['server_time', 'train_time', 'ctime',
+                      'train_positives', 'server_positives',
+                      'msg']
+        single = ['server_time', 'train_time', 'train_positives', 'version']
+        for index, stub in self.scout_stubs.items():
+            msg = {
+                "method": "a2s_get_mission_stats",
                 "msg": b"",
             }
             stub.send_pyobj(msg)
