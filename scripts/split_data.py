@@ -25,6 +25,7 @@ def shuffle_and_generate_index_files(config):
     stream_file = Path(data_config['stream_path'])
     index_file = data_config['index_path']
     hosts = config['scouts']
+    seed = config.get('seed', None)
     assert stream_file.exists(), "Stream file does not exist"
 
     contents = sorted(open(stream_file).read().splitlines())
@@ -33,7 +34,7 @@ def shuffle_and_generate_index_files(config):
     img_label_map = defaultdict(list)
 
     # Shuffle and split tiles
-
+    random.seed(seed)
     random.shuffle(contents)
     total_tiles = len(contents)
 
@@ -93,7 +94,11 @@ def shuffle_and_generate_index_files(config):
 if __name__ == "__main__": 
     config_path = sys.argv[1] if len(sys.argv) > 1 \
                 else (Path.cwd() / 'configs/config.yml')
+    random_seed = int(sys.argv[2]) if len(sys.argv) > 2 \
+                else None
+
     with open(config_path) as f:
         config = yaml.safe_load(f)
+    config['seed'] = random_seed
 
     shuffle_and_generate_index_files(config)
