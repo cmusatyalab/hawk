@@ -67,13 +67,9 @@ class TopKSelector(SelectorBase):
                 self._mission.log_file.write("{:.3f} {}_{} {}_{} SEL: FILE SELECTED {}\n".format(
                     time.time() - self._mission.start_time, self._mission.host_name,
                     self.version, i, self._k, result.id))
-            if self._mode == "oracle":
-                if int(result.score) == 1:
-                    self.result_queue.put(result)    
+                if self._mode != "oracle":
+                    self.result_queue.put(result)
                     logger.info("[Result] Id {} Score {}".format(result.id, result.score))
-            else:
-                self.result_queue.put(result)
-                logger.info("[Result] Id {} Score {}".format(result.id, result.score))
         self._batch_added -= self._batch_size
          
     @log_exceptions
@@ -92,13 +88,18 @@ class TopKSelector(SelectorBase):
                         time_result, self._mission.host_name,
                         self.version, self._batch_added, self._batch_size, result.id))
 
+            if self._mode == "oracle":
+                if int(result.score) == 1:
+                    self.result_queue.put(result)    
+                    logger.info("[Result] Id {} Score {}".format(result.id, result.score))
+
             self._priority_queues[-1].put((-result.score, time_result, result))
             self._batch_added += 1
             if self._batch_added in self.log_counter:
                 logger.info("ADDED {}/{}".format(self._batch_added, self._batch_size))
             if self._batch_added > self._batch_size:
                 logger.info("ERROR ADDED {}/{}".format(self._batch_added, self._batch_size))
-                
+
             condition_1 = self._batch_added >= self._batch_size
             condition_2 = self.result_timeout(self.timeout)
             condition_3 = self._finish_event.is_set() and self._batch_added != 0
@@ -157,8 +158,6 @@ class TopKSelector(SelectorBase):
                 self._mode = model.mode
                 self.model_examples = model.train_examples.get('1', 0)
                 self.model_train_time = model.train_time
-                if self._mode != "hawk":
-                    return 
                 if version != self.version:
                     versions = [v for v in self.easy_negatives.keys() if v <= version]
                     for v in versions:
@@ -167,7 +166,7 @@ class TopKSelector(SelectorBase):
                 self._priority_queues, num_revisited = self._reexamination_strategy.get_new_queues(
                     model, self._priority_queues, self._mission.start_time)
 
-                self._batch_added = num_revisited
+                self._batch_added += num_revisited
                 logger.info("ADDING  Reexamined to result Queue {}".format(num_revisited))
 
                 self.num_revisited += num_revisited

@@ -48,14 +48,6 @@ class DNNClassifierTrainer(ModelTrainerBase):
             msg = "Test Path {} provided does not exist".format(self.test_dir)
             assert self.test_dir.exists(), msg 
 
-       
-        
-        # if self.args['mode'] == "notional":
-        #     assert "notional_model_path" in self.args, "Missing keyword {}".format("notional_model_path")
-        #     notional_model_path = Path(self.args['notional_model_path'])
-        #     msg = "Notional Model Path {} provided does not exist".format(notional_model_path)
-        #     assert notional_model_path.exists(), msg
-
         logger.info("DNN CLASSIFIER TRAINER CALLED")
             
 
@@ -63,14 +55,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
         if isinstance(path, str):
             path = Path(path)
 
-        if self.args['mode'] != "hawk":
-            version = self.get_version()
-            if version < 0:
-                new_version = self.get_new_version()
-            else:
-                new_version = version
-        else:
-            new_version = self.get_new_version()
+        new_version = self.get_new_version()
 
         assert path.is_file() or len(content)
         if not path.is_file():

@@ -501,9 +501,6 @@ class Mission(DataManagerContext, ModelTrainerContext):
                                                                               self.host_name, model.version))
             return
         
-        if model.mode != "hawk":
-            return
-
         with self._data_manager.get_examples(DatasetSplit.TRAIN) as train_dir:
             logger.info("Train dir {}".format(train_dir))
             # self.selector.add_easy_negatives(self._data_manager.get_example_directory(DatasetSplit.TRAIN))
