@@ -82,8 +82,18 @@ class RandomRetriever(Retriever):
             # logger.info(key)
             for tile in tiles:
                 content = io.BytesIO()
-                image_path, label = tile.split()
-                image = Image.open(image_path).convert('RGB')
+                parts = tile.split()
+                if len(parts) == 1:
+                    image_path = parts[0]
+                    label = 0
+                else:
+                    image_path = parts[0]
+                    label = parts[1]
+                # image_path, label = tile.split()
+                try:
+                    image = Image.open(image_path).convert('RGB')
+                except FileNotFoundError:
+                    image_path = "/srv/diamond/"+image_path
                 image.save(content, format='JPEG', quality=85)
                 content = content.getvalue()
 

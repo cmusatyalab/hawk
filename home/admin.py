@@ -233,8 +233,8 @@ class Admin:
         # setup ScoutConfiguration
         # Call a2s_configure_scout and wait for success message 
         return_msgs = []
-        print(self._mission_id)
-        print(scouts)
+        logger.info(self._mission_id)
+        logger.info(scouts)
         for index, stub in self.scout_stubs.items():
             scout_config = ScoutConfiguration(
                 missionId=self._mission_id, 

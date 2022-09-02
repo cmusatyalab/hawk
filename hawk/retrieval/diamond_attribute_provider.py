@@ -21,8 +21,9 @@ class DiamondAttributeProvider(AttributeProvider):
             if attribute in self._attributes:
                 del self._attributes[attribute]
 
-        self.thumbnail_size = (200, 150)
-        self.resize = resize
+        self.thumbnail_size = (256, 256)
+        # self.resize = resize
+        self.resize = True
         self._image_provider = image_provider
         self.thumbnail = None
         self.set_thumbnail()

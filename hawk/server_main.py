@@ -66,9 +66,6 @@ def main():
     except Exception as e:
         logger.exception(e)
         raise e
-    finally:
-        pid = os.getpid()
-        os.kill(pid, signal.SIGKILL)
 
 if __name__ == '__main__':
     main()

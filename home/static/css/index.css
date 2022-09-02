@@ -1,0 +1,54 @@
+html {
+    height:100%;
+}
+
+body {
+    height: 100%;
+}
+
+.panel-default {
+    height: 100%;
+}
+
+#sidebar {
+    width: 25%;
+    height: 100%;
+    float: left;
+    z-index: 8000;
+    margin-bottom: 0px;
+}
+
+#content.container {
+    width: 75%;
+    height: 100%;
+    float: right;
+    z-index: 8000;
+    margin-bottom: 0px;
+}
+
+#canvas {
+    width: 100%;
+    height: 80%;
+    margin: 0;
+    padding: 0;
+}
+
+#boxText {
+    font-weight: bold;
+}
+
+.box {
+    display: inline-block;
+    width: 20px;
+    height: 20px; 
+    border: 1px solid rgba(0, 0, 0, .2);
+    background: #ffffff;
+}
+
+.green {
+    background: #006400;
+}
+
+.red {
+    background: #ae163e;
+}

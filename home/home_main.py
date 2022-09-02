@@ -15,6 +15,7 @@ from datetime import datetime
 from admin import Admin 
 from home import *
 from script_labeler import ScriptLabeler
+from ui_labeler import UILabeler
 from inbound import InboundProcess
 from outbound import OutboundProcess
 from logzero import logger
@@ -46,7 +47,7 @@ def main():
     # create local directories 
     mission_dir = Path(config['home-params']['mission_dir'])
     mission_dir = mission_dir / mission_id
-    print(mission_dir)
+    logger.info(mission_dir)
 
     log_dir = mission_dir / 'logs'
     config['home-params']['log_dir'] = str(log_dir)
@@ -105,7 +106,7 @@ def main():
         
         # Start labeler process 
         logger.info("Starting Labeler Process")
-        labeler =  config.get('labeler', 'script')
+        labeler =  config.get('label-mode', 'ui')
         gt_dir = config['home-params'].get('label_dir', "")
         trainer = (config['train_strategy']['type']).lower()
         logger.info("Trainer {}".format(trainer))
@@ -118,6 +119,8 @@ def main():
             home_labeler = ScriptLabeler(label_dir, 
                                          gt_dir,
                                          label_mode)
+        elif labeler == 'ui' or labeler == 'browser':
+            home_labeler = UILabeler(mission_dir)
         else:
             raise NotImplementedError("Labeler {} not implemented".format(labeler))
 
