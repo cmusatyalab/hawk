@@ -49,17 +49,15 @@ class FileSystemRetriever(Retriever):
         self.images = []
         for content in contents:
             # content = "<path>"
-            key = os.path.basename(content).split('_')[0]
-            self.images.append(key)
+            self.images.append(content)
 
         self._stats['total_objects'] = len(self.images)
         self._stats['total_images'] = len(self.images)
         
     def save_tile(self, img, imagename, subimgname, left, up):
         dirname = os.path.dirname(imagename)
-        ext = os.path.basename(imagename).split['.'][-1]
         subimg = copy.deepcopy(img[up: (up + self.tilesize), left: (left + self.tilesize)])
-        outdir = os.path.join(dirname, subimgname + ext)
+        outdir = os.path.join(dirname, subimgname)
         h, w, c = np.shape(subimg)
         if (self.padding):
             outimg = np.zeros((self.tilesize, self.tilesize, 3))
@@ -71,7 +69,7 @@ class FileSystemRetriever(Retriever):
         return outdir
 
     def split_frame(self, frame):
-        name = os.path.basename(frame)
+        name, ext = os.path.basename(frame).split('.')
        
         image = cv2.imread(frame)
          
@@ -90,8 +88,7 @@ class FileSystemRetriever(Retriever):
                     up = max(height - self.tilesize, 0)
                 right = min(left + self.tilesize, weight - 1)
                 down = min(up + self.tilesize, height - 1)
-                subimgname = outbasename + str(left) + '___' + str(up)
-                # self.f_sub.write(name + ' ' + subimgname + ' ' + str(left) + ' ' + str(up) + '\n')
+                subimgname = outbasename + str(left) + '___' + str(up) + '.' + ext
                 tile = self.save_tile(image, frame, subimgname, left, up)
                 tiles.append(tile)
                 if (up + self.tilesize >= height):
