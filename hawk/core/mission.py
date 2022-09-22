@@ -391,7 +391,10 @@ class Mission(DataManagerContext, ModelContext):
     def _get_labels(self, pipe) -> None:
         try:
             while not self._abort_event.is_set():
-                msg = pipe.recv()
+                try:
+                    msg = pipe.recv()
+                except EOFError as e:
+                    continue
                 request = LabelWrapper()
                 request.ParseFromString(msg)
                 self.distribute_label(request)

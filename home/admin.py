@@ -22,11 +22,12 @@ from PIL import Image
 
 from home import ZFILL
 from hawk.api import H2A_PORT, A2S_PORT 
-from hawk.proto.messages_pb2 import *                                                                    
+from hawk.proto.messages_pb2 import *
+
 
 import yaml 
 
-LOG_INTERVAL = 60
+LOG_INTERVAL = 240
 
 class Admin:
 
@@ -147,42 +148,66 @@ class Admin:
         # dataset
         dataset_config = config['dataset']
         dataset_type = dataset_config['type']
+        if dataset_type == "video":
+            video_file_list = dataset_config["video_list"]
         logger.info("Index {}".format(dataset_config['index_path']))
         timeout = dataset_config.get('timeout', 20)
 
-        if dataset_type == "tile":
-            dataset = Dataset(
-                tile=FileDataset(
-                    dataPath=dataset_config['index_path'],
-                    timeout=timeout,
-                )
-            ) 
-        elif dataset_type == "frame":
-            dataset = Dataset(
-                frame=FileDataset(
-                    dataPath=dataset_config['index_path'],
-                    tileSize=dataset_config['tile_size'],
-                    timeout=timeout,
-                )
-            ) 
-        elif dataset_type == "random":
-            dataset = Dataset(
-                random=FileDataset(
-                    dataPath=dataset_config['index_path'],
-                    numTiles= int(dataset_config.get('tiles_per_frame', 200)),
-                    timeout=timeout,
-                )
-            )
-        elif dataset_type == "cookie":                                                               
-            dataset = Dataset(                                                                       
-                random=FileDataset(                                                                    
-                    dataPath=dataset_config['index_path'],                                           
-                    numTiles=int(dataset_config.get('tiles_per_frame', 200)),                         
-                    timeout=timeout,
-                )                                                                                    
-            )  
-        else:
-            raise NotImplementedError("Unknown dataset {}".format(dataset_type))
+        dataset = []
+        for i, scout in enumerate(scouts):
+            if dataset_type == "tile":
+                dataset.append(Dataset(
+                    tile=FileDataset(
+                        dataPath=dataset_config['index_path'],
+                        timeout=timeout,
+                    )
+                ))
+            elif dataset_type == "filesystem":
+                dataset.append(Dataset(
+                    filesystem=FileDataset(
+                        dataPath=dataset_config['index_path'],
+                        tileSize=dataset_config['tile_size'],
+                        timeout=timeout,
+                    )
+                ))
+            elif dataset_type == "frame":
+                dataset.append(Dataset(
+                    frame=FileDataset(
+                        dataPath=dataset_config['index_path'],
+                        tileSize=dataset_config['tile_size'],
+                        timeout=timeout,
+                    )
+                )) 
+            elif dataset_type == "random":
+                dataset.append(Dataset(
+                    random=FileDataset(
+                        dataPath=dataset_config['index_path'],
+                        numTiles= int(dataset_config.get('tiles_per_frame', 200))
+                        timeout=timeout,
+                    )
+                ))
+            elif dataset_type == "cookie":                                                               
+                dataset.append(Dataset(
+                    random=FileDataset(
+                        dataPath=dataset_config['index_path'],
+                        numTiles=int(dataset_config.get('tiles_per_frame', 200)),
+                        timeout=timeout,
+                    )
+                ))
+            elif dataset_type == "video":
+                dataset.append(Dataset(
+                    video=Streaming_Video(
+                        video_path=video_file_list[i],
+                        sampling_rate_fps=1,
+                        width=4000,
+                        height=3000,
+                        tile_width=250,
+                        tile_height=250,
+                        timeout=timeout,
+                    )
+                ))
+            else:
+                raise NotImplementedError("Unknown dataset {}".format(dataset_type))
 
         # reexamination
         reexamination_config = config['reexamination']
@@ -284,7 +309,7 @@ class Admin:
                 missionDirectory=mission_directory,
                 trainStrategy=train_strategy,
                 retrainPolicy=retrain_policy,
-                dataset=dataset, 
+                dataset=dataset[index],
                 selector=selector, 
                 reexamination=reexamination,
                 initialModel=initial_model, 
@@ -396,6 +421,7 @@ class Admin:
                         with open(self.end_file, "w") as f:
                             f.write("\n")
                         break
+
                 prev_bytes = stats['bytes']
                 prev_processed = stats['processedObjects']
                 count += 1            

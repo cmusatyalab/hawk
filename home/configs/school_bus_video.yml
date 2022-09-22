@@ -1,0 +1,53 @@
+mission-name: "test-hawk-school_bus_tiles_video" # Mission identifier 
+train-location: scout 
+label-mode: ui # type of labeling interface
+scouts: # list of addresses of scouts
+- agra.diamond.cs.cmu.edu
+#- briolette.diamond.cs.cmu.edu
+#- cullinan.diamond.cs.cmu.edu
+#- dresden.diamond.cs.cmu.edu
+#- indore.diamond.cs.cmu.edu
+#- kimberly.diamond.cs.cmu.edu
+#- patiala.diamond.cs.cmu.edu
+#- transvaal.diamond.cs.cmu.edu
+scout-params: # directory on scouts where data, models and logs of mission are saved
+  mission_dir: /srv/diamond/school_bus_tiles/delphi
+home-params:
+  mission_dir: /home/eric/School_Bus_Hawk/Hawk_Mission_Data # directory where inbound and outbound data stored @ home
+  label_dir: /home/eric/School_Bus_Hawk/src/ # directory where labels present
+dataset:
+  type: video # type of input data
+  video_list: 
+  - /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-09-14-23-29.mp4
+  #- /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-10-14-53-28.mp4
+  #- /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-04-17-53-25.mp4
+  #- /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-09-17-23-29.mp4
+  #- /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-09-14-23-29.mp4 
+  #- /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-09-15-23-29.mp4
+  #- /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-09-16-23-29.mp4
+  stream_path: /home/eric/School_Bus_Hawk/src/bus_stream.txt # path on home of stream path
+  index_path: /srv/diamond/INDEXES/GIDIDXHAWK # path on scout of index file
+  tiles_per_frame: 192 # number of tiles per frame if random sampling (default 200)
+retrain_policy:
+  type: percentage # type of retrain condition 
+  only_positives: true # if only positives are counted
+  threshold: 0.33 # percentage of increment (default 0.33)
+train_strategy:  
+  type: dnn_classifier # type of model training
+  args:
+    arch: resnet50 # DNN model architecture
+    mode: hawk # hawk / oracale/ notional
+    unfreeze_layers: '3'
+    batch-size: '64'
+    online_epochs: "15"
+  initial_model_path: /home/eric/School_Bus_Hawk/src/bus_model_21Sep.pth # path to intial model on home
+  bootstrap_path: /home/eric/School_Bus_Hawk/src/bus_bootstrap_video.zip # path to compressed bootstrap zipfile @ home (0/* and 1/*)
+selector:
+  type: topk # type of selective transmission
+  topk:
+    k: 4
+    batchSize: 1000 #default 1000
+reexamination:
+  type: top # type of reexamination strategy
+  k: 100 
+bandwidth: 12

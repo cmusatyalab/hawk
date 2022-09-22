@@ -1,0 +1,45 @@
+mission-name: "test-hawk-gascola_ui_test" # Mission identifier 
+train-location: scout 
+label-mode: ui # type of labeling interface
+scouts: # list of addresses of scouts
+- agra.diamond.cs.cmu.edu
+- briolette.diamond.cs.cmu.edu
+- cullinan.diamond.cs.cmu.edu
+#- dresden.diamond.cs.cmu.edu
+- indore.diamond.cs.cmu.edu
+- kimberly.diamond.cs.cmu.edu
+- patiala.diamond.cs.cmu.edu
+- transvaal.diamond.cs.cmu.edu
+scout-params: # directory on scouts where data, models and logs of mission are saved
+  mission_dir: /srv/diamond/gascola_3/delphi
+home-params:
+  mission_dir: /home/esturzin/Hawk_admin_data/Hawk_mission_dir/Resized_14_Aug/ # directory where inbound and outbound data stored @ home
+  label_dir: /home/esturzin/Hawk_admin_data/src/ # directory where labels present
+dataset:
+  type: random # type of input data
+  stream_path: /home/esturzin/Hawk_admin_data/src/Resized_Runs/resized_stream_15Aug.txt # path on home of stream path
+  index_path: /srv/diamond/INDEXES/GIDIDXHAWK # path on scout of index file
+  tiles_per_frame: 200 # number of tiles per frame if random sampling
+retrain_policy:
+  type: percentage # type of retrain condition 
+  only_positives: true # if only positives are counted
+  threshold: 0.33 # percentage of increment (default 0.33)
+train_strategy:  
+  type: dnn_classifier # type of model training
+  args:
+    arch: resnet50 # DNN model architecture
+    mode: hawk # hawk / oracale/ notional
+    unfreeze_layers: '3'
+    batch-size: '64'
+    online_epochs: "15"
+  initial_model_path: /home/esturzin/Hawk_admin_data/src/initial_model_12Aug.pth # path to intial model on home
+  #bootstrap_path: /home/esturzin/Hawk_admin_data/src/Resized_Runs/Resized_bootstrap.zip # path to compressed bootstrap zipfile @ home (0/* and 1/*)
+selector:
+  type: topk # type of selective transmission
+  topk:
+    k: 4
+    batchSize: 1000
+reexamination:
+  type: top # type of reexamination strategy
+  k: 100 
+bandwidth: 12
