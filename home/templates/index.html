@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Tagger</title>
+    <title>Hawk UI</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet"></link>
     <link href="https://maxcdn.bootstrapcdn.com/bootswatch/3.3.7/cerulean/bootstrap.min.css" rel="stylesheet"></link>
@@ -16,28 +16,75 @@
                 <h3 class="panel-title">Labels</h3>
             </div>
             <div class="panel-body">
-                <div class="row">
-                <div class="box" id="labelSquare"></div>
-                <text id="labelText"></text>
+                <h3>Labeling Instructions:</h3>
+                <div class="instruction">
+                    <ul>
+                        <li>Key P: Positive</li>
+                        <li>Key N: Negative</li>
+                    </ul>
+                
+                <p>To draw bounding boxes click on two 
+                    diagonal corners of the box</p>
                 </div>
-             </div>
+                <!-- <div class="gap-10"></div> -->
+                <h3>Image Label:</h3>
+                <div class="row">
+                    <div class="box" id="labelSquare"></div>
+                    <text id="labelText"></text>
+                </div>
+                <div class="gap-30"></div>
+                <div class="list-group">
+                    {% if boxes|length > 0 %}
+                        <h3>Bounding Boxes:</h3>
+                    {% endif %}
+                    {% for box in boxes %}
+                      <div class="list-group-item">
+                          <div class="input-group">
+                              <span class="input-group-addon" id="id">{{ box.id }}</span>
+                                <text style="background-color:#E5E7E9;" class="form-control custom-control" style="resize:none">POSITIVE</text>
+                              <span class="input-group-btn">
+                                  <button id= "{{ box.id }}" class="btn btn-danger" onclick="window.location.replace('/remove/' + this.id)" type="button">-</button> 
+                              </span>
+                          </div>
+                      </div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
     </nav>
 
     <div id="content" class="container">
         <div class="row">
-            <text> {{ head }} / {{ len }} </text> 
+            <text> {{ head }} / {{ files }} </text> 
             {% if head <= 1 %}
-            <a href="/next" class="btn btn-primary" style="float:right;" type="button">
+            <a id="next" class="btn btn-primary btn-space" style="float:right;" type="button" onclick="myFunction(this.id);">
                 <span class="glyphicon glyphicon-chevron-right"></span>
             </a>
-            {% elif not_end %}
-            <a href="/prev" class="btn btn-primary" style="float:left;" type="button">
+            <a href="/save" class="btn btn-success btn-space "  type="button" style="float:right;">
+                <span class="glyphicon glyphicon-ok	"></span>
+                <u>S</u>AVE 
+            </a>
+            <a href="/undo" class="btn btn-danger btn-space "  type="button" style="float:right;">
+                <span class="glyphicon glyphicon-remove	"></span>
+                <u>U</u>NDO 
+            </a>
+            {% else %}
+            <a href="/prev" class="btn btn-primary btn-space" style="float:left;" type="button" onbeforeunload="return myFunction()">
                 <span class="glyphicon glyphicon-chevron-left"></span>
             </a>
-            <a href="/next" class="btn btn-primary" style="float:right;" type="button">
+            <a id="next" class="btn btn-primary btn-space" style="float:right;" type="button" onbeforeunload="return myFunction()">
                 <span class="glyphicon glyphicon-chevron-right"></span>
             </a>
+
+            <a href="/save" class="btn btn-success btn-space "  type="button" style="float:right;">
+                <span class="glyphicon glyphicon-ok	"></span>
+                <u>S</u>AVE 
+            </a>
+            <a href="/undo" class="btn btn-danger btn-space "  type="button" style="float:right;">
+                <span class="glyphicon glyphicon-remove	"></span>
+                <u>U</u>NDO 
+            </a>
+
             {% endif %}
         </div>
         <div style="overflow: scroll">
@@ -46,7 +93,23 @@
         <script type="text/javascript">
             var image_path = "{{ image }}";
             var color = "{{ color }}";
-            var label_text = "{{ label_text}}";
+            var label_text = "{{ label_text }}";
+            var boxes = {{ boxes|tojson|safe }};
+            var changed = {{label_changed}};
+            var save_auto = {{save}}
+            var unsaved = false;
+            function myFunction(button_id) {
+                console.log(`Unsaved ${button_id} ${changed}`);
+                if (changed === 1 && save_auto === 0){
+                    unsaved = true
+                }
+                if (button_id === "next"){
+                    window.location.replace("/next")
+                }
+                if (button_id === "prev"){
+                    window.location.replace("/prev")
+                }
+            }
         </script>
         {% if head == 0 %}
         <p> WAITING FOR RESULTS ... </p>

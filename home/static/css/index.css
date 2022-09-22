@@ -10,6 +10,13 @@ body {
     height: 100%;
 }
 
+.instruction {
+    font-weight: normal;
+    font-style: italic;
+    font-size: 18px;
+}
+
+
 #sidebar {
     width: 25%;
     height: 100%;
@@ -27,16 +34,21 @@ body {
 }
 
 #canvas {
-    width: 100%;
-    height: 80%;
+    width: 50%;
+    height: 50%;
     margin: 0;
     padding: 0;
 }
 
-#boxText {
+#labelText {
+    margin-left: 10px;
     font-weight: bold;
+    font-size: 20px;
 }
 
+.row {
+    margin-left: 30px;
+}
 .box {
     display: inline-block;
     width: 20px;
@@ -51,4 +63,14 @@ body {
 
 .red {
     background: #ae163e;
+}
+
+.gap-10 { 
+    width:100%; 
+    height:10px; 
+} 
+
+.btn-space {
+    margin-left: 5px;
+    margin-right: 5px;
 }
