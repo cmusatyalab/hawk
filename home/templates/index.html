@@ -69,10 +69,10 @@
                 <u>U</u>NDO 
             </a>
             {% else %}
-            <a href="/prev" class="btn btn-primary btn-space" style="float:left;" type="button" onbeforeunload="return myFunction()">
+            <a href="/prev" class="btn btn-primary btn-space" style="float:left;" type="button" onclick="return myFunction(this.id)">
                 <span class="glyphicon glyphicon-chevron-left"></span>
             </a>
-            <a id="next" class="btn btn-primary btn-space" style="float:right;" type="button" onbeforeunload="return myFunction()">
+            <a id="next" class="btn btn-primary btn-space" style="float:right;" type="button" onclick="return myFunction(this.id)">
                 <span class="glyphicon glyphicon-chevron-right"></span>
             </a>
 
