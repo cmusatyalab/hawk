@@ -559,6 +559,11 @@ class A2SAPI(object):
                     json_format.MessageToJson(reexamination_strategy)))
 
     def _get_retriever(self, dataset: Dataset) -> Retriever:
+        '''
+        if dataset.HasField('tile'):
+            return TileRetriever(dataset.tile)
+        if dataset.HasField('filesystem'):
+            return FileSystemRetriever(dataset.filesystem)
         if dataset.HasField('frame'):
             return FrameRetriever(dataset.frame)
         elif dataset.HasField('random'):
@@ -568,3 +573,5 @@ class A2SAPI(object):
         else:
             raise NotImplementedError('unknown dataset: {}'.format(
                 json_format.MessageToJson(dataset)))
+        '''
+        return VideoRetriever(dataset.video)

@@ -27,7 +27,7 @@ from hawk.proto.messages_pb2 import *
 
 import yaml 
 
-LOG_INTERVAL = 240
+LOG_INTERVAL = 60
 
 class Admin:
 

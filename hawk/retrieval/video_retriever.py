@@ -62,19 +62,23 @@ class VideoRetriever(Retriever):
         #if not os.path.exists(self.temp_image_dir):
          #   os.mkdir(self.temp_image_dir)
         if not os.path.exists(self.temp_tile_dir):
-            os.mkdir(self.temp_tile_dir)  ## create temp directoy on scout to store carved tiles
+            os.mkdir(self.temp_tile_dir)  ## create temp directory on scout to store carved tiles
 
         self._stats['total_objects'] = 0
         self._stats['total_images'] = 0
-        self.total_tiles = 192 * len(os.listdir(self.temp_image_dir))
-        
+        #self.total_tiles = 192 * len(os.listdir(self.temp_image_dir))
+        self.total_tiles = 192 * 600 # hardcoded for now, but needs to be # tiles per image x total expected images in video
     def save_tile(self, img, subimgname, left, up):
         dirname = self.temp_tile_dir
         subimg = copy.deepcopy(img[up: (up + self.tilesize), left: (left + self.tilesize)])
         outdir = os.path.join(dirname, self.video_file_path.split("/")[-1].split(".")[0] + subimgname + ".jpeg")
         h, w, c = np.shape(subimg)
         outimg = cv2.resize(subimg, (256, 256))
-        cv2.imwrite(outdir, outimg)
+        logger.info("About to write tile...")
+        try:
+            cv2.imwrite(outdir, outimg)
+        except Exception as e:
+            logger.info(e)
         return outdir
 
     def split_frame(self, frame_name, frame):
@@ -147,7 +151,7 @@ class VideoRetriever(Retriever):
                     ObjectProvider(object_id, content,
                                    DiamondAttributeProvider(attributes, tile_path, resize=False),
                                    int(label)))
-            time.sleep(10)
+            time.sleep(8)
             logger.info("{} / {} RETRIEVED".format(self._stats['retrieved_tiles'], self.total_tiles))
             time_passed = (time.time() - self._start_time)
             # if time_passed < self.timeout:

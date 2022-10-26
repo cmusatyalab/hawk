@@ -54,6 +54,11 @@
                 <h3>Search Statistics:</h3>
                 <ul class="no-bullets" id="searchStats">
                 </ul>
+                <h3>Model Version:</h3>
+                <div class="instruction">
+                    <ul>
+                        <li>Currently inferencing with model: Gen-<text>{{ model_version }}</text></li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -61,7 +66,7 @@
 
     <div id="content" class="container">
         <div class="row">
-            <text> {{ head }} / {{ files }} </text> 
+            <text> {{ head }} / {{ files }} </text>      Positives Labeled: <text> {{ positives }}</text>, Negatives Labeled: <text> {{ negatives }} </text>
             {% if head <= 1 %}
             <a id="next" class="btn btn-primary btn-space" style="float:right;" type="button" onclick="return buttonClick(this.id);">
                 <span class="glyphicon glyphicon-chevron-right"></span>

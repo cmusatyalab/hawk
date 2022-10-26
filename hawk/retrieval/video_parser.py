@@ -38,7 +38,9 @@ def produce_video_frames(producer_queue, video_source):
     logger.info("About to load the video file...")
     capture = cv2.VideoCapture(video_source)
     logger.info("Finished loading video file...")
+    logger.info(type(capture))
     status, frame = capture.read()
+    logger.info(status)
     logger.info("Pushed first frame into queue...")
     frame_num = 0
     sample_num = 0
@@ -50,7 +52,7 @@ def produce_video_frames(producer_queue, video_source):
                 frame = np.array(frame)
                 producer_queue.put(("scout_1_" + str(sample_num) + ".jpeg", frame))
                 logger.info(f"Put frame {sample_num} in the queue...")
-                time.sleep(5) # artificial delay
+                time.sleep(10) # artificial delay
             except Exception as e:
                 logger.info(e)
         status, frame = capture.read()
