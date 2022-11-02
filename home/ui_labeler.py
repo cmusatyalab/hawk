@@ -1,5 +1,6 @@
 import argparse
 import csv
+import glob
 import json 
 import queue
 import imghdr
@@ -43,6 +44,7 @@ class UILabeler(object):
         self._image_dir = os.path.join(mission_dir, 'images')
         self._meta_dir = os.path.join(mission_dir, 'meta')
         self._label_dir = os.path.join(mission_dir, 'labels')
+        self._stats_dir = os.path.join(mission_dir, 'logs')
         self._label_map = {
             '-1': {'color': '#ffffff', 
                     'text': 'UNLABELED'},
@@ -51,6 +53,12 @@ class UILabeler(object):
             '1': {'color': 'green',
                   'text': 'POSITIVE'}
         }
+        self._stats_keys = {
+            'version' : "Model Version : ",
+            'totalObjects': "Total Tiles : ", 
+            'processedObjects': "Tiles Processed : ",
+            'positives': "Positives Labeled : ",
+            'negatives': "Negatives Labeled : "}
         
         directory = self._image_dir
         if directory[len(directory) - 1] != "/":
@@ -66,7 +74,7 @@ class UILabeler(object):
             files = sorted(filenames)
             break
         if files == None:
-            print("No files")
+            logger.error("No files")
             exit()
         else:
             self.app.config["LABELS"] = ['-1'] * len(files)
@@ -74,6 +82,7 @@ class UILabeler(object):
         self.not_end = True 
         
         self.image_boxes = []
+        self.num_thumbnails = 4
         self.add_all_endpoints()
 
     def start_labeling(self, input_q, result_q, stats_q, stop_event):
@@ -105,6 +114,8 @@ class UILabeler(object):
         self.add_endpoint(endpoint='/', endpoint_name='index', handler=self.index)
         self.add_endpoint(endpoint='/next', endpoint_name='next', handler=self.next)
         self.add_endpoint(endpoint='/prev', endpoint_name='prev', handler=self.prev)
+        self.add_endpoint(endpoint='/backward', endpoint_name='backward', handler=self.backward)
+        self.add_endpoint(endpoint='/forward', endpoint_name='forward', handler=self.forward)
         self.add_endpoint(endpoint='/save', endpoint_name='save', handler=self.save)
         self.add_endpoint(endpoint='/undo', endpoint_name='undo', handler=self.undo)
         self.add_endpoint(endpoint='/add/<id>', endpoint_name='add', handler=self.add)
@@ -123,15 +134,26 @@ class UILabeler(object):
             self.not_end = False
             self.app.config["HEAD"] = -1 
             return render_template('index.html', 
-                                   directory="", image="", 
+                                   directory="", images=[""], 
                                    head=0, 
                                    len=len(self.app.config["FILES"]),
                                    color='#ffffff', label_text="", 
                                    boxes=self.image_boxes,
+                                   stats={},
                                    label_changed= 1 if self.label_changed else 0)
         
         directory = self.app.config['IMAGES']
-        image_path = self.app.config["FILES"][self.app.config["HEAD"]]
+
+        index_num = self.app.config["HEAD"]
+        length_files = len(self.app.config["FILES"])
+        
+        # main image and thumbnails
+        image_paths = []
+        for i in range(self.num_thumbnails+1):
+            idx = index_num + i
+            if idx >= length_files:
+                break
+            image_paths.append(self.app.config["FILES"][idx])
 
         if (self.app.config["HEAD"] == 0 and not self.label_changed):
             label, boxes = self.read_labels()
@@ -142,15 +164,17 @@ class UILabeler(object):
             
         color = self._label_map[label]['color']
         label_text = self._label_map[label]['text']
-        self.not_end = not(self.app.config["HEAD"] == len(self.app.config["FILES"]) - 1)
+        self.not_end = not(self.app.config["HEAD"] == length_files - 1)
         condition_changed = self.label_changed and not self.save_auto
+        search_stats = self.get_latest_stats()
 
         return render_template('index.html', 
-                               directory=directory, image=image_path, 
+                               directory=directory, images=image_paths, 
                                head=self.app.config["HEAD"] + 1, 
                                files=len(self.app.config["FILES"]),
                                color=color, label_text=label_text,
                                boxes=self.image_boxes,
+                               stats=search_stats,
                                label_changed=int(condition_changed == True),
                                save=int(self.save_auto == True))
 
@@ -160,7 +184,7 @@ class UILabeler(object):
             files = sorted(filenames)
             break
         if files == None:
-            print("No files")
+            logger.error("No files")
             exit()
         self.app.config["FILES"] = files
         new_files = len(self.app.config["FILES"]) - old_length
@@ -170,8 +194,10 @@ class UILabeler(object):
             self.app.config["HEAD"] = 0
         return
 
-    def read_labels(self):
-        path = self.app.config["FILES"][self.app.config["HEAD"]]
+    def read_labels(self, head_id=-1):
+        if head_id == -1:
+            head_id = self.app.config["HEAD"]
+        path = self.app.config["FILES"][head_id]
         data_name = os.path.splitext(path)[0]
         label_path = os.path.join(self._label_dir, f"{data_name}.json")
 
@@ -277,6 +303,56 @@ class UILabeler(object):
         self.label_changed = False
         return redirect(url_for('index'))
 
+    def backward(self, *args, **kwargs):
+        if self.save_auto:
+            self.write_labels()
+
+        found_positive = False
+        curr_id = self.app.config["HEAD"]
+        new_id = curr_id
+        length_files = len(self.app.config["FILES"])
+
+        while (not found_positive and new_id - 1 >= 0):
+            new_id -= 1
+            label, boxes = self.read_labels(new_id)
+            if label == '1':
+                found_positive = True
+            
+        if found_positive:
+            self.app.config["HEAD"] = new_id
+        
+        label, boxes = self.read_labels()
+        self.app.config["LABELS"][self.app.config["HEAD"]] = label
+        self.image_boxes = boxes
+        self.label_changed = False
+
+        return redirect(url_for('index'))
+
+    def forward(self, *args, **kwargs):
+        if self.save_auto:
+            self.write_labels()
+
+        found_positive = False
+        curr_id = self.app.config["HEAD"]
+        new_id = curr_id
+        length_files = len(self.app.config["FILES"])
+
+        while (not found_positive and new_id + 1 < length_files):
+            new_id += 1
+            label, boxes = self.read_labels(new_id)
+            if label == '1':
+                found_positive = True
+            
+        if found_positive:
+            self.app.config["HEAD"] = new_id
+        
+        label, boxes = self.read_labels()
+        self.app.config["LABELS"][self.app.config["HEAD"]] = label
+        self.image_boxes = boxes
+        self.label_changed = False
+
+        return redirect(url_for('index'))
+
     def prev(self, *args, **kwargs):
         if (self.app.config["HEAD"] == 0):
             return redirect(url_for('index'))
@@ -306,7 +382,6 @@ class UILabeler(object):
         self.label_changed = True
         id = kwargs['id']
         index = int(id) - 1
-        print(self.image_boxes)
         del self.image_boxes[index]
         for label in self.image_boxes[index:]:
             label["id"] = str(int(label["id"]) - 1)
@@ -329,7 +404,25 @@ class UILabeler(object):
             self.undo()
         
         return redirect(url_for('index'))
+
+    def get_latest_stats(self):
+        list_of_files = glob.glob(self._stats_dir+'/stats-*') # * means all if need specific format then *.csv
+        latest_stats = max(list_of_files, key=os.path.getctime)
+        search_stats = {}
+        with open(latest_stats, "r") as f:
+            search_stats = json.load(f)
+        stats = []
+        for k, v in self._stats_keys.items():
+            stats_item = search_stats[k]
+            if k == "positives":
+                stats_item = max(stats_item, self.positives)
+            elif k == "negatives":
+                stats_item = max(stats_item, self.negatives)
+            stats_text = v + str(int(stats_item))
+            stats.append(stats_text)
+        return stats
+
     
-# mission = "/home/shilpag/Documents/hawk-data/dota-tennis_20220919-080839"
+# mission = "/home/shilpag/Documents/label_ui/dota-20-30k_swimming-pool_30_20221031-121302"
 # a = UILabeler(mission)
 # a.run()

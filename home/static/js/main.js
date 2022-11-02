@@ -1,8 +1,9 @@
+var parent = document.getElementById("content");
 var c = document.getElementById("canvas");
 var ctx = c.getContext("2d");
 var image = new Image();
 var dimension = 256;
-console.log(`Label changed ${changed}`)
+// console.log(`Label changed ${changed} ${image_paths.length}`)
 
 var drawBoxes = function(id, xMin, xMax, yMin, yMax) {
     ctx.strokeStyle = "red";
@@ -14,30 +15,71 @@ var drawBoxes = function(id, xMin, xMax, yMin, yMax) {
     ctx.fillText("Box:" + id, xMin,yMin-2);
 };
 
+var imageDisplay = function(path, idx) {
+    var obj_id = "col" + idx
+    var colImg = document.getElementById("col" + idx);
+    var imgText = document.getElementById("imgtext"+idx);
+    colImg.src = "image/" + path;
+    imgText.innerHTML = path;
+    colImg.parentElement.style.display = "block";
+};
+
 image.onload = function(e) {
     ctx.canvas.width = dimension;
     ctx.canvas.height = dimension;
     c.width = dimension;
     c.height = dimension;
     ctx.drawImage(image, 0, 0, dimension, dimension);
-    console.log(`Box add ${boxes.length} ${boxes}`)
     for (i = 0; i < boxes.length; i++){
         drawBoxes(boxes[i].id, boxes[i].xMin, boxes[i].xMax, boxes[i].yMin, boxes[i].yMax);
     } 
 };
 
 image.style.display = "block";
-image.src = "image/" + image_path;
+image.src = "image/" + image_paths[0];
+
+// Show thumbnails
+for (i = 1; i < image_paths.length; i++){
+    imageDisplay(image_paths[i], i);
+} 
+
+function arrToUl(root, arr) {
+    var ul = document.createElement('ul');
+    var li;
+    
+    root.appendChild(ul); // append the created ul to the root
+  
+    arr.forEach(function(item) {
+      if (Array.isArray(item)) { // if it's an array
+        arrToUl(li, item); // call arrToUl with the li as the root
+        return;
+      }
+      
+      li = document.createElement('li'); // create a new list item
+      li.appendChild(document.createTextNode(item)); // append the text to the li
+      ul.appendChild(li); // append the list item to the ul
+    });
+  }
+
+// Show stats
+if (stats.length > 0) {
+    var ul = document.getElementById('searchStats');
+    stats.forEach(function(item) {
+        li = document.createElement('li'); // create a new list item
+        li.appendChild(document.createTextNode(item)); // append the text to the li
+        ul.appendChild(li); // append the list item to the ul
+    });
+}
+
+
 var label = 0; 
 
 var clicked = false;
 var fPoint = {};
 c.onclick = function(e) {
-    console.log(clicked);
     if (!clicked) {
         var x = (dimension / c.scrollWidth) * e.offsetX;
         var y = (dimension / c.scrollHeight) * e.offsetY;
-        console.log(e);
         ctx.strokeStyle = "red";
         ctx.fillStyle = "red";
         ctx.beginPath();
@@ -69,7 +111,6 @@ c.onclick = function(e) {
             yMin = y;
         }
         fPoint = {};
-        console.log(`Box add`)
         window.location.replace("/add/" + (boxes.length + 1) +
         "?xMin=" + xMin +
         "&xMax=" + xMax +
@@ -114,8 +155,6 @@ document.getElementById("labelText").innerHTML = label_text;
 document.getElementById("demo").addEventListener("keydown", (event) => {
     var name = event.key;
     var code = event.code;
-    console.log(`Key pressed ${name} \n Key code Value: ${code}`);
-    console.log(`Label ${changed} `);
 
     if (code === 'ArrowLeft') {
         if (changed === 1 && save_auto === 0) {
@@ -147,11 +186,6 @@ window.addEventListener('beforeunload', (event) => {
   timer = window.setTimeout( function () {
     unsaved = false;
   }, 50);
-  // if (unsaved === true) {
-  //   var confirmationMessage = 'Are you sure to leave the page?';  // a space
-  //   (event || window.event).returnValue = confirmationMessage;
-  //   return confirmationMessage;
-  // }
 });
 
 window.addEventListener('beforeunload', (event) => {

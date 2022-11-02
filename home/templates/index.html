@@ -49,6 +49,17 @@
                       </div>
                     {% endfor %}
                 </div>
+                <div class="gap-30"></div>
+                <div class="stats-group">
+                <h3>Search Statistics:</h3>
+                <ul class="no-bullets" id="searchStats">
+                </ul>
+                    <!-- <text id="version">Model Version</text>
+                    <text id="processed">Tiles Processed</text>
+                    <text id="total">Total Tiles</text>
+                    <text id="positives">Positives Labeled</text>
+                    <text id="negatives">Negatives Labeled</text> -->
+                </div>
             </div>
         </div>
     </nav>
@@ -57,7 +68,7 @@
         <div class="row">
             <text> {{ head }} / {{ files }} </text> 
             {% if head <= 1 %}
-            <a id="next" class="btn btn-primary btn-space" style="float:right;" type="button" onclick="myFunction(this.id);">
+            <a id="next" class="btn btn-primary btn-space" style="float:right;" type="button" onclick="return buttonClick(this.id);">
                 <span class="glyphicon glyphicon-chevron-right"></span>
             </a>
             <a href="/save" class="btn btn-success btn-space "  type="button" style="float:right;">
@@ -69,13 +80,18 @@
                 <u>U</u>NDO 
             </a>
             {% else %}
-            <a href="/prev" class="btn btn-primary btn-space" style="float:left;" type="button" onclick="return myFunction(this.id)">
+            <a id="backward" class="btn btn-primary btn-space" style="float:left;" type="button" onclick="return buttonClick(this.id)">
+                <span class="glyphicon glyphicon-backward"></span>
+            </a>
+            <a id="prev" class="btn btn-primary btn-space" style="float:left;" type="button" onclick="return buttonClick(this.id)">
                 <span class="glyphicon glyphicon-chevron-left"></span>
             </a>
-            <a id="next" class="btn btn-primary btn-space" style="float:right;" type="button" onclick="return myFunction(this.id)">
+            <a id="forward" class="btn btn-primary btn-space" style="float:right;" type="button" onclick="return buttonClick(this.id)">
+                <span class="glyphicon glyphicon-forward"></span>
+            </a>
+            <a id="next" class="btn btn-primary btn-space" style="float:right;" type="button" onclick="return buttonClick(this.id)">
                 <span class="glyphicon glyphicon-chevron-right"></span>
             </a>
-
             <a href="/save" class="btn btn-success btn-space "  type="button" style="float:right;">
                 <span class="glyphicon glyphicon-ok	"></span>
                 <u>S</u>AVE 
@@ -87,19 +103,38 @@
 
             {% endif %}
         </div>
+        <div class="row">
+            <div class="column">
+                <div id="imgtext1"></div>
+                <img id="col1"  onclick="imageDisplay(this)">
+            </div>
+            <div class="column">
+                <div id="imgtext2"></div>
+                <img id="col2"  onclick="imageDisplay(this)">
+            </div>
+            <div class="column">
+                <div id="imgtext3"></div>
+                <img id="col3"  onclick="imageDisplay(this)">
+            </div>
+            <div class="column">
+                <div id="imgtext4"></div>
+                <img id="col4"  onclick="imageDisplay(this)">
+            </div>
+        </div>
         <div style="overflow: scroll">
             <canvas id="canvas"></canvas>
         </div>
         <script type="text/javascript">
-            var image_path = "{{ image }}";
+            var image_paths = {{ images|tojson|safe }};
             var color = "{{ color }}";
             var label_text = "{{ label_text }}";
             var boxes = {{ boxes|tojson|safe }};
+            var stats = {{ stats|tojson|safe }};
             var changed = {{label_changed}};
             var save_auto = {{save}}
             var unsaved = false;
-            function myFunction(button_id) {
-                console.log(`Unsaved ${button_id} ${changed}`);
+            function buttonClick(button_id) {
+                console.log(`Unsaved ${button_id}`);
                 if (changed === 1 && save_auto === 0){
                     unsaved = true
                 }
@@ -109,6 +144,12 @@
                 if (button_id === "prev"){
                     window.location.replace("/prev")
                 }
+                if (button_id === "forward"){
+                    window.location.replace("/forward")
+                }
+                if (button_id === "backward"){
+                    window.location.replace("/backward")
+                }
             }
         </script>
         {% if head == 0 %}
@@ -117,6 +158,8 @@
         <script type="text/javascript" src="../static/js/main.js"></script>
         {% endif %}
     </div>
+
+
 </body>
 
 </html>
