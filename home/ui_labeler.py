@@ -45,7 +45,6 @@ class UILabeler(object):
         self._meta_dir = os.path.join(mission_dir, 'meta')
         self._label_dir = os.path.join(mission_dir, 'labels')
         self._stats_dir = os.path.join(mission_dir, 'logs')
-        self.model_version = 0
         self._label_map = {
             '-1': {'color': '#ffffff', 
                     'text': 'UNLABELED'},
@@ -143,9 +142,7 @@ class UILabeler(object):
                                    boxes=self.image_boxes,
                                    stats={},
                                    label_changed= 1 if self.label_changed else 0,
-                                   model_version=self.model_version,
-                                   positives=self.positives,
-                                   negatives=self.negatives)
+            )
         
         directory = self.app.config['IMAGES']
 
@@ -181,11 +178,7 @@ class UILabeler(object):
                                boxes=self.image_boxes,
                                stats=search_stats,
                                label_changed=int(condition_changed == True),
-                               save=int(self.save_auto == True),
-                               model_version=self.model_version,
-                               positives=self.positives,
-                               negatives=self.negatives
-                               )
+                               save=int(self.save_auto == True))
 
     def reload_directory(self):
         old_length = len(self.app.config["FILES"])
@@ -201,19 +194,6 @@ class UILabeler(object):
         self.not_end = not(self.app.config["HEAD"] == len(self.app.config["FILES"]) - 1)
         if new_files and self.app.config["HEAD"] < 0:
             self.app.config["HEAD"] = 0
-        ### Determine model version...
-        json_logs = []
-        for log_file in os.listdir(self.app.config["LOGS"]):
-            if ".json" in log_file:
-                json_logs.append(log_file)
-        #logger.info(self.app.config["LOGS"])
-        #logger.info(json_logs)
-        if len(json_logs) > 0:
-            latest_log = max(json_logs)
-            with open(os.path.join(self.app.config["LOGS"], latest_log), "r") as f:
-                json_data = json.load(f)
-                self.model_version = int(json_data["version"])
-            #logger.info(self.model_version)
         return
 
     def read_labels(self, head_id=-1):
