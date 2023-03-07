@@ -2,6 +2,10 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+
+"""Abstract class for model context
+"""
+
 from abc import abstractmethod
 from pathlib import Path
 import multiprocessing as mp
@@ -10,7 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 from hawk.context.context_base import ContextBase
 
 
-class ModelTrainerContext(ContextBase):
+class ModelContext(ContextBase):
 
     def __init__(self):
         self.result_queue = mp.Queue()

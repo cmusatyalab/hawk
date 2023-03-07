@@ -17,7 +17,7 @@ import shlex
 import subprocess
 
 from hawk import M_ZFILL
-from hawk.context.model_trainer_context import ModelTrainerContext
+from hawk.context.model_trainer_context import ModelContext
 from hawk.core.model_trainer import ModelTrainerBase
 from hawk.core.model import Model
 from hawk.trainer.yolo import PYTHON_EXEC
@@ -28,7 +28,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 
 class YOLOTrainer(ModelTrainerBase):
-    def __init__(self, context: ModelTrainerContext, args: Dict[str, str]):
+    def __init__(self, context: ModelContext, args: Dict[str, str]):
         super().__init__(args)
         
         self.args['test_dir'] = self.args.get('test_dir', '')

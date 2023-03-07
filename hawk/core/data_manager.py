@@ -36,7 +36,7 @@ class DataManager(object):
         self._tmp_dir = self._examples_dir / TMP_DIR
         self._tmp_dir.mkdir(parents=True, exist_ok=True)
         self._example_counts = defaultdict(int)
-        self._validate = self._context.create_validation()
+        self._validate = self._context.check_create_test()
         bootstrap_zip = self._context.bootstrap_zip
         if bootstrap_zip is not None and len(bootstrap_zip):
             self.add_initial_examples(bootstrap_zip)
@@ -168,7 +168,7 @@ class DataManager(object):
         if self._context.check_initial_model():
             retrain = False
         logger.info("Initial model {} retrain {}".format(self._context.check_initial_model(), retrain))
-        self._context.new_examples_callback(new_positives, new_negatives, retrain=retrain)
+        self._context.new_labels_callback(new_positives, new_negatives, retrain=retrain)
 
 
     @contextmanager
@@ -295,7 +295,7 @@ class DataManager(object):
                                 new_negatives += dir_negatives
 
                 if not self._context._abort_event.is_set():
-                    self._context.new_examples_callback(new_positives, new_negatives)
+                    self._context.new_labels_callback(new_positives, new_negatives)
             except Exception as e:
                 logger.exception(e)
 

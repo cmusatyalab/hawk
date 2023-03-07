@@ -19,7 +19,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torchvision import datasets
 
-from hawk.context.model_trainer_context import ModelTrainerContext
+from hawk.context.model_trainer_context import ModelContext
 from hawk.core.model import ModelBase
 from hawk.core.object_provider import ObjectProvider
 from hawk.core.result_provider import ResultProvider
@@ -34,7 +34,7 @@ class YOLOModel(ModelBase):
                  model_path: Path, 
                  version: int,
                  mode: str, 
-                 context: ModelTrainerContext):
+                 context: ModelContext):
 
         logger.info("Loading DNN Model from {}".format(model_path))
         assert model_path.is_file()

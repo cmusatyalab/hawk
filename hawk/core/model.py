@@ -13,7 +13,7 @@ from pathlib import Path
 from sklearn.metrics import average_precision_score, classification_report, precision_recall_curve
 from typing import Iterable, Dict, List
 
-from hawk.context.model_trainer_context import ModelTrainerContext
+from hawk.context.model_trainer_context import ModelContext
 from hawk.core.object_provider import ObjectProvider
 from hawk.core.result_provider import ResultProvider
 from hawk.core.utils import log_exceptions
@@ -70,7 +70,7 @@ class ModelBase(Model):
     def __init__(self, 
                  args: Dict, 
                  model_path: Path,
-                 context: ModelTrainerContext = None):
+                 context: ModelContext = None):
 
         self.context = context
         self.request_count = 0

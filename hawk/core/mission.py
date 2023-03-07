@@ -23,7 +23,7 @@ from torch.utils.tensorboard import SummaryWriter
 from hawk.api.s2s_api import S2SServicer
 
 from hawk.context.data_manager_context import DataManagerContext
-from hawk.context.model_trainer_context import ModelTrainerContext
+from hawk.context.model_trainer_context import ModelContext
 from hawk.core.data_manager import DataManager
 from hawk.core.hawk_stub import HawkStub
 from hawk.core.model import Model
@@ -38,7 +38,7 @@ from hawk.core.utils import log_exceptions, get_server_ids, get_ip
 from hawk.proto.messages_pb2 import *
 
 
-class Mission(DataManagerContext, ModelTrainerContext):
+class Mission(DataManagerContext, ModelContext):
 
     def __init__(self, mission_id: MissionId, scout_index: int, scouts: List[HawkStub],
                  home_ip: str, retrain_policy: RetrainPolicy,
@@ -304,10 +304,10 @@ class Mission(DataManagerContext, ModelTrainerContext):
     def model_dir(self) -> Path:
         return self._model_dir
 
-    def create_validation(self):
+    def check_create_test(self):
         return self._validate
 
-    def new_examples_callback(self, new_positives: int, new_negatives: int, retrain=True) -> None:
+    def new_labels_callback(self, new_positives: int, new_negatives: int, retrain=True) -> None:
         if self._abort_event.is_set():
             return 
         
