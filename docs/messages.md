@@ -23,8 +23,8 @@ List of protobuf messages used in Hawk RPC calls.
 *   [FinetuneConfig](#FinetuneConfig)
 *   [YOLOConfig](#YOLOConfig)
 *   [RetrainPolicyConfig](#RetrainPolicyConfig)
-*   [AbsoluteThresholdPolicyConfig](#AbsoluteThresholdPolicyConfig)
-*   [PercentageThresholdPolicyConfig](#PercentageThresholdPolicyConfig)
+*   [AbsolutePolicyConfig](#AbsolutePolicyConfig)
+*   [PercentagePolicyConfig](#PercentagePolicyConfig)
 *   [ModelPolicyConfig](#ModelPolicyConfig)
 *   [Dataset](#Dataset)
 *   [SelectiveConfig](#SelectiveConfig)
@@ -173,19 +173,19 @@ Choice of SVM Training
 ### **RetrainPolicyConfig**
 
 One of 
-1. AbsoluteThresholdPolicyConfig
-2. PercentageThresholdPolicyConfig
+1. AbsolutePolicyConfig
+2. PercentagePolicyConfig
 3. ModelPolicyConfig
 
 
-### **AbsoluteThresholdPolicyConfig**
+### **AbsolutePolicyConfig**
 
 | Fields  | Type  | Required | Description |
 | ---------|--- |---------------| -----|
 | threshold| int32| True | Number of examples to retrain|
 | onlyPositives| bool| False | Only positive examples included|
 
-### **PercentageThresholdPolicyConfig**
+### **PercentagePolicyConfig**
 
 | Fields  | Type | Required | Description |
 | --------|---- |---------------| -----|

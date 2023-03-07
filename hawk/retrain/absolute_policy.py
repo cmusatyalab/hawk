@@ -2,19 +2,22 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-from hawk.retrain.retrain_policy import RetrainPolicy
+"""Retrain policy based on absolute #labels increment
+"""
+
+from hawk.retrain.retrain_policy_base import RetrainPolicyBase
 
 
-class AbsoluteThresholdPolicy(RetrainPolicy):
+class AbsolutePolicy(RetrainPolicyBase):
 
     def __init__(self, threshold: int, only_positives: bool):
+        super().__init__()
         self.new_examples = 0
-        self.positives = 0
-        self.negatives = 0
         self._threshold = threshold
         self._only_positives = only_positives
 
     def update(self, new_positives: int, new_negatives: int) -> None:
+        super().update(new_positives, new_negatives)
         self.new_examples += new_positives
 
         if not self._only_positives:

@@ -2,19 +2,21 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-from hawk.retrain.retrain_policy import RetrainPolicy
+"""Retrain policy based on availability of new model
+"""
+
+from hawk.retrain.retrain_policy_base import RetrainPolicyBase
 import shutil
 import os
 
 FILENAME = "new_model"
 
 
-class ModelPolicy(RetrainPolicy):
+class ModelPolicy(RetrainPolicyBase):
 
     def __init__(self, directory: str):
+        super().__init__()
         self.new_examples = 0
-        self.positives = 0
-        self.negatives = 0
         self._new_model_present = os.path.join(directory, FILENAME)
         self.model_path = os.path.join(directory, "model.pth")
 

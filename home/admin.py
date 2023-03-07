@@ -116,12 +116,12 @@ class Admin:
         retrain_type = retrain_config['type']
         if  retrain_type == "percentage":
             retrain_policy = RetrainPolicyConfig(
-                                percentage=PercentageThresholdPolicyConfig(
+                                percentage=PercentagePolicyConfig(
                                     threshold=retrain_config['threshold'],
                                     onlyPositives=retrain_config['only_positives'],))
         elif retrain_type == "absolute":
             retrain_policy = RetrainPolicyConfig(
-                                absolute=AbsoluteThresholdPolicyConfig(
+                                absolute=AbsolutePolicyConfig(
                                     threshold=retrain_config['threshold'],
                                     onlyPositives=retrain_config['only_positives'],))
         else:

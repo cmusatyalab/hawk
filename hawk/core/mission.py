@@ -28,7 +28,7 @@ from hawk.core.data_manager import DataManager
 from hawk.core.hawk_stub import HawkStub
 from hawk.core.model import Model
 from hawk.core.object_provider import ObjectProvider
-from hawk.retrain.retrain_policy import RetrainPolicy
+from hawk.retrain.retrain_policy_base import RetrainPolicyBase
 from hawk.retrieval.retriever import Retriever
 from hawk.selection.selector import Selector
 from hawk.api.s2s_api import S2SServicer, s2s_receive_request
@@ -41,7 +41,7 @@ from hawk.proto.messages_pb2 import *
 class Mission(DataManagerContext, ModelContext):
 
     def __init__(self, mission_id: MissionId, scout_index: int, scouts: List[HawkStub],
-                 home_ip: str, retrain_policy: RetrainPolicy,
+                 home_ip: str, retrain_policy: RetrainPolicyBase,
                  root_dir: Path, port: int, retriever: Retriever, selector: Selector, 
                  bootstrap_zip: bytes, initial_model: ModelArchive, 
                  validate: bool = False):

@@ -90,18 +90,18 @@ message YOLOConfig {
 
 message RetrainPolicyConfig {
   oneof value {
-    AbsoluteThresholdPolicyConfig absolute = 1;
-    PercentageThresholdPolicyConfig percentage = 2;
+    AbsolutePolicyConfig absolute = 1;
+    PercentagePolicyConfig percentage = 2;
     ModelPolicyConfig model = 3;
   }
 }
 
-message AbsoluteThresholdPolicyConfig {
+message AbsolutePolicyConfig {
   int32 threshold = 1;
   bool onlyPositives = 2;
 }
 
-message PercentageThresholdPolicyConfig {
+message PercentagePolicyConfig {
   double threshold = 1;
   bool onlyPositives = 2;
 }

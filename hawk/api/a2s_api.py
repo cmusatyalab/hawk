@@ -25,10 +25,10 @@ from hawk import api
 from hawk.core.hawk_stub import HawkStub
 from hawk.core.mission import Mission
 from hawk.core.utils import log_exceptions
-from hawk.retrain.absolute_threshold_policy import AbsoluteThresholdPolicy                          
-from hawk.retrain.percentage_threshold_policy import PercentageThresholdPolicy                      
+from hawk.retrain.absolute_policy import AbsolutePolicy                          
+from hawk.retrain.percentage_policy import PercentagePolicy                      
 from hawk.retrain.model_policy import ModelPolicy 
-from hawk.retrain.retrain_policy import RetrainPolicy
+from hawk.retrain.retrain_policy_base import RetrainPolicyBase
 from hawk.retrieval.filesystem_retriever import FileSystemRetriever                                          
 from hawk.retrieval.random_retriever import RandomRetriever                                             
 from hawk.retrieval.retriever import Retriever   
@@ -41,7 +41,7 @@ from hawk.selection.reexamination_strategy import ReexaminationStrategy
 from hawk.trainer.dnn_classifier.trainer import DNNClassifierTrainer 
 from hawk.trainer.yolo.trainer import YOLOTrainer 
 from hawk.proto.messages_pb2 import Dataset, ScoutConfiguration, MissionId, ImportModel, \
-    RetrainPolicyConfig,  SelectiveConfig, ReexaminationStrategyConfig, MissionResults, MissionStats  
+    RetrainPolicyBaseConfig,  SelectiveConfig, ReexaminationStrategyConfig, MissionResults, MissionStats  
     
 MODEL_FORMATS = ['pt', 'pth']
 
@@ -478,13 +478,13 @@ class A2SAPI(object):
             reply = b""
         return reply
     
-    def _get_retrain_policy(self, retrain_policy: RetrainPolicyConfig, 
-                            model_dir: Path) -> RetrainPolicy:
+    def _get_retrain_policy(self, retrain_policy: RetrainPolicyBaseConfig, 
+                            model_dir: Path) -> RetrainPolicyBase:
         if retrain_policy.HasField('absolute'):
-            return AbsoluteThresholdPolicy(retrain_policy.absolute.threshold,
+            return AbsolutePolicy(retrain_policy.absolute.threshold,
                                            retrain_policy.absolute.onlyPositives)
         elif retrain_policy.HasField('percentage'):
-            return PercentageThresholdPolicy(retrain_policy.percentage.threshold,
+            return PercentagePolicy(retrain_policy.percentage.threshold,
                                              retrain_policy.percentage.onlyPositives)
         elif retrain_policy.HasField('model'):
             logger.info("Model Policy")
