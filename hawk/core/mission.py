@@ -123,7 +123,7 @@ class Mission(DataManagerContext, ModelTrainerContext):
         self._label_thread = None
         logger.info("SETTING UP H2C API")
         h2c_output, h2c_input = mp.Pipe(False)
-        p = mp.Process(target=H2CSubscriber.h2c_receive_labels, args=(self.host_ip, h2c_input))
+        p = mp.Process(target=H2CSubscriber.h2c_receive_labels, args=(h2c_input))
         self._label_thread = threading.Thread(target=self._get_labels, args=(h2c_output,), name='get-labels')
         p.start()
         logger.info("SETTING UP S2S Server {}".format(self._scout_index))

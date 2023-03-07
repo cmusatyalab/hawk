@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+"""Home to Scouts internal api calls
+"""
+
 import zmq
 from logzero import logger
 
@@ -11,9 +14,17 @@ from hawk.proto.messages_pb2 import SendLabels
     
 class H2CSubscriber(object):
     @staticmethod
-    def h2c_receive_labels(host_ip, label_conn):
-        """Received labels from home 
-        Subscribe: SendLabels
+    def h2c_receive_labels(label_conn):
+        """API call to receives labels from HOME
+    
+        Uses ZeroMQ PUSH/PULL protocol for async label transfer
+        Network is bandwidth constricted using FireQOS.
+
+        Args:
+            label_conn: mp.Pipe connection object 
+
+        Returns:
+            str: serializes LabelWrapper message
         """
         context = zmq.Context()
         socket = context.socket(zmq.PULL)

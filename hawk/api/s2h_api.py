@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+"""Scout to Home internal api calls
+"""
+
 import zmq
 from logzero import logger
 
@@ -10,9 +13,17 @@ from hawk import api
 class S2HPublisher(object):
     @staticmethod
     def s2h_send_tiles(home_ip, result_conn): 
-        """To send or publish tiles (thumbnail + metadata) to home
+        """API call to send results to HOME
+    
+        Uses ZeroMQ PUSH/PULL protocol for async result transfer
+        Network is bandwidth constricted using FireQOS.
 
-        Publish: SendTiles
+        Args:
+            home_ip: IP address of HOME
+            result_conn: mp.Pipe connection object 
+
+        Returns:
+            str: transmits serialized SendTiles message
         """
         context = zmq.Context()
         socket = context.socket(zmq.PUSH)

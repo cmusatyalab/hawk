@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+"""Admin to Scouts internal api calls
+"""
+
 import copy
 import gc
 import glob
@@ -26,16 +29,14 @@ from hawk.retrain.absolute_threshold_policy import AbsoluteThresholdPolicy
 from hawk.retrain.percentage_threshold_policy import PercentageThresholdPolicy                      
 from hawk.retrain.model_policy import ModelPolicy 
 from hawk.retrain.retrain_policy import RetrainPolicy
-from hawk.retrieval.tile_retriever import TileRetriever                                             
-from hawk.retrieval.filesystem_retriever import FileSystemRetriever                                             
+from hawk.retrieval.filesystem_retriever import FileSystemRetriever                                          
 from hawk.retrieval.random_retriever import RandomRetriever                                             
 from hawk.retrieval.retriever import Retriever   
 from hawk.selection.selector import Selector                                                        
 from hawk.selection.threshold_selector import ThresholdSelector                                     
 from hawk.selection.topk_selector import TopKSelector
 from hawk.selection.top_reexamination_strategy import TopReexaminationStrategy                      
-from hawk.selection.full_reexamination_strategy import FullReexaminationStrategy                    
-from hawk.selection.no_reexamination_strategy import NoReexaminationStrategy                        
+from hawk.selection.full_reexamination_strategy import FullReexaminationStrategy                    from hawk.selection.no_reexamination_strategy import NoReexaminationStrategy                        
 from hawk.selection.reexamination_strategy import ReexaminationStrategy    
 from hawk.trainer.dnn_classifier.trainer import DNNClassifierTrainer 
 from hawk.trainer.yolo.trainer import YOLOTrainer 
@@ -45,13 +46,36 @@ from hawk.proto.messages_pb2 import Dataset, ScoutConfiguration, MissionId, Impo
 MODEL_FORMATS = ['pt', 'pth']
 
 class A2SAPI(object):
+    """Admin to Scouts API Calls
+
+    API calls from admin to scouts to configure missions, explicitly start / stop mission, 
+    and other control calls. Uses Request-Response messaging. The network is not constricted.
+
+    Attributes
+    ----------
+    _port : int
+        TCP port number
+    _mission : Mission
+        associated Mission class instance
+    _trainer : ModelTrainerBase
+        TrainingStrategy used in mission
+    """
 
     def __init__(self, port: int):  
         self._port = port
         self._mission = None
+        self._trainer = None
     
     @log_exceptions 
-    def a2s_configure_scout(self, msg):
+    def a2s_configure_scout(self, msg: str):
+        """API call to configure scouts before mission
+
+        Args:
+            msg (str): Serialized ScoutConfiguration message from home
+
+        Returns:
+            bytes: SUCESS or ERROR message
+        """
         try:
             request =  ScoutConfiguration()
             request.ParseFromString(msg)
@@ -66,6 +90,11 @@ class A2SAPI(object):
 
     @log_exceptions
     def a2s_start_mission(self):
+        """API call to start mission
+
+        Returns:
+            bytes: SUCESS or ERROR message
+        """
         try:
             reply = self._a2s_start_mission()  
             return reply 
@@ -75,6 +104,11 @@ class A2SAPI(object):
     
     @log_exceptions
     def a2s_stop_mission(self):
+       """API call to stop mission
+
+        Returns:
+            bytes: SUCESS or ERROR message
+        """
         try:
             reply = self._a2s_stop_mission()  
             return reply 
@@ -84,6 +118,11 @@ class A2SAPI(object):
 
     @log_exceptions
     def a2s_get_mission_stats(self):
+       """API call to send mission stats to HOME
+
+        Returns:
+            str: serialized MissionStats message
+        """
         try:
             reply = self._a2s_get_mission_stats()
             return reply
@@ -92,7 +131,15 @@ class A2SAPI(object):
             raise e
 
     @log_exceptions
-    def a2s_new_model(self, msg):
+    def a2s_new_model(self, msg: str):
+       """API call to import new model from HOME
+
+        Args:
+            request (str): serialized ImportModel message 
+
+        Returns:
+            bytes: SUCESS or ERROR message
+        """
         try:
             request = ImportModel()
             request.ParseFromString(msg)
@@ -103,7 +150,15 @@ class A2SAPI(object):
             raise e
 
     @log_exceptions
-    def a2s_get_test_results(self, msg):
+    def a2s_get_test_results(self, msg: str):
+       """API call to test the model on the TEST dataset
+
+        Args:
+            request (str): path to the TEST dataset on the scouts
+
+        Returns:
+            str: serialized MissionResults message
+        """
         try:
             test_path = msg
             logger.info("Testing {}".format(test_path))
@@ -116,6 +171,11 @@ class A2SAPI(object):
 
     @log_exceptions 
     def a2s_get_post_mission_archive(self):
+       """API call to send mission models and logs archive
+
+        Returns:
+            bytes: mission archive zip file as a byte array
+        """
         try:
             reply = self._a2s_get_post_mission_archive()
         except Exception as e:
@@ -127,25 +187,35 @@ class A2SAPI(object):
 
     @log_exceptions
     def _a2s_configure_scout(self, request: ScoutConfiguration):
-        try:
-            self._root_dir = Path(request.missionDirectory) / 'data'
-            self._model_dir = Path(request.missionDirectory) / 'pretrained'
-            assert self._root_dir.is_dir(), "Root directory does not exist"
-            model_dir = self._root_dir / request.missionId / 'model'
+        """Function to parse config message and setup for mission
 
+        Args:
+            request (ScoutConfiguration): configuration message 
+
+        Returns:
+            bytes: SUCESS or ERROR message
+
+        """
+        try:
+            root_dir = Path(request.missionDirectory) / 'data'
+            assert root_dir.is_dir(), "Root directory does not exist"
+            model_dir = root_dir / request.missionId / 'model'
 
             mission_id = MissionId(value=request.missionId)
             retrain_policy = self._get_retrain_policy(request.retrainPolicy, model_dir)
             host_ip = request.scouts[request.scoutIndex]
             scouts = [HawkStub(scout, api.S2S_PORT, host_ip) for scout in request.scouts]
+
+            # Setting up Mission with config params
             mission = Mission(mission_id, request.scoutIndex, scouts, 
                             request.homeIP, retrain_policy, 
-                            self._root_dir / mission_id.value,
+                            root_dir / mission_id.value,
                             self._port, self._get_retriever(request.dataset),
                             self._get_selector(request.selector, request.reexamination),
                             request.bootstrapZip, request.initialModel, request.validate)
             self._mission = mission
 
+            # Setting up mission trainer
             model = request.trainStrategy
             trainer = None
             if model.HasField('dnn_classifier'):
@@ -158,11 +228,12 @@ class A2SAPI(object):
                 raise NotImplementedError('unknown model: {}'.format(
                     json_format.MessageToJson(model)))
 
-            self.trainer = trainer
+            self._trainer = trainer
             mission.setup_trainer(trainer)
             logger.info('Create mission with id {}'.format(
                 request.missionId))
             
+            # Constricting bandwidth
             # Only supports one bandwidth
             logger.info(request.bandwidthFunc)
             self._setup_bandwidth(request.bandwidthFunc[request.scoutIndex])
@@ -172,10 +243,11 @@ class A2SAPI(object):
 
             reply = b"SUCCESS"
         except Exception as e:
-            reply = ("ERROR: {}".format(e)).encode()
+            reply = ("EROR: {}".format(e)).encode()
         return reply
     
     def _setup_bandwidth(self, bandwidth_func : str) -> None:
+        """ Function for FireQos Bandwidth limiting"""
         bandwidth_map = {
             '100k': '/root/fireqos/scenario-100k.conf', 
             '30k': '/root/fireqos/scenario-30k.conf',
@@ -195,6 +267,11 @@ class A2SAPI(object):
         return 
 
     def _a2s_start_mission(self):
+       """Function to start mission
+
+        Returns:
+            bytes: SUCESS or ERROR message
+        """
         try:
             mission = self._mission
             mission_id = mission.mission_id.value
@@ -210,6 +287,11 @@ class A2SAPI(object):
         return reply
     
     def _a2s_stop_mission(self):
+        """Function to stop mission
+
+        Returns:
+            bytes: SUCESS or ERROR message
+        """
         try:
             mission = self._mission
 
@@ -238,6 +320,11 @@ class A2SAPI(object):
         return reply
 
     def _a2s_get_mission_stats(self):
+        """Function to send mission stats to home
+
+        Returns:
+            str: serialized MissionStats message
+        """
         try:
             mission = self._mission
             if not mission:
@@ -277,8 +364,8 @@ class A2SAPI(object):
 
             reply = MissionStats(totalObjects=int(retriever_stats.total_objects),
                               processedObjects=processed_objects,
-                              droppedObjects=retriever_stats.dropped_objects + selector_stats.dropped_objects,
-                              falseNegatives=retriever_stats.false_negatives + selector_stats.false_negatives,
+                              droppedObjects=(retriever_stats.dropped_objects + selector_stats.dropped_objects),
+                              falseNegatives=(retriever_stats.false_negatives + selector_stats.false_negatives),
                               others=mission_stats)
 
             if mission.enable_logfile:
@@ -287,11 +374,20 @@ class A2SAPI(object):
             
             reply = reply.SerializeToString()            
         except Exception as e:
-            reply = ("ERROR: {}".format(e)).encode()
+            reply = "ERROR: {}".format(e)
         return reply
 
             
     def _a2s_new_model(self, request: ImportModel):
+        """Function to import new model from HOME
+
+        Args:
+            request (ImportModel) ImportModel message 
+
+        Returns:
+            bytes: SUCESS or ERROR message
+
+        """
         try:
             mission = self._mission
             model = request.model
@@ -309,6 +405,14 @@ class A2SAPI(object):
         return reply
 
     def _a2s_get_test_results(self, request: str):
+        """Function to test the model on the TEST dataset
+
+        Args:
+            request (str): path to the TEST dataset on the scouts
+
+        Returns:
+            str: serialized MissionResults message
+        """
         try:
             test_path = Path(request)
             
@@ -337,18 +441,23 @@ class A2SAPI(object):
                 logger.info("model {} version {}".format(path, version))
                 # create trainer and check
                 # model = mission.load_model(path, version=version)
-                model = self.trainer.load_model(path, version=version)
+                model = self._trainer.load_model(path, version=version)
                 result = model.evaluate_model(test_path)
                 results[version] = result
                 
             reply = MissionResults(results=results)
             reply = reply.SerializeToString()            
         except Exception as e:
-            reply = ("ERROR: {}".format(e)).encode()
+            reply = "ERROR: {}".format(e)
         return reply
 
 
     def _a2s_get_post_mission_archive(self):
+        """Function to send mission models and logs archive
+
+        Returns:
+            bytes: mission archive zip file as a byte array
+        """
         try:
             mission = self._mission
             data_dir = mission.data_dir
@@ -369,7 +478,8 @@ class A2SAPI(object):
             reply = b""
         return reply
     
-    def _get_retrain_policy(self, retrain_policy: RetrainPolicyConfig, model_dir: Path) -> RetrainPolicy:
+    def _get_retrain_policy(self, retrain_policy: RetrainPolicyConfig, 
+                            model_dir: Path) -> RetrainPolicy:
         if retrain_policy.HasField('absolute'):
             return AbsoluteThresholdPolicy(retrain_policy.absolute.threshold,
                                            retrain_policy.absolute.onlyPositives)
@@ -384,7 +494,8 @@ class A2SAPI(object):
             raise NotImplementedError('unknown retrain policy: {}'.format(
                 json_format.MessageToJson(retrain_policy)))
 
-    def _get_selector(self, selector: SelectiveConfig, reexamination_strategy: ReexaminationStrategyConfig) -> Selector:
+    def _get_selector(self, selector: SelectiveConfig, 
+                      reexamination_strategy: ReexaminationStrategyConfig) -> Selector:
         
         if selector.HasField('topk'):
             top_k_param = json_format.MessageToDict(selector.topk)
@@ -400,7 +511,8 @@ class A2SAPI(object):
             raise NotImplementedError('unknown selector: {}'.format(
                 json_format.MessageToJson(selector)))
 
-    def _get_reexamination_strategy(self, reexamination_strategy: ReexaminationStrategyConfig) -> ReexaminationStrategy:
+    def _get_reexamination_strategy(self, 
+                                    reexamination_strategy: ReexaminationStrategyConfig) -> ReexaminationStrategy:
         reexamination_type = reexamination_strategy.type
         if reexamination_type == 'none':
             return NoReexaminationStrategy()
@@ -414,8 +526,6 @@ class A2SAPI(object):
                     json_format.MessageToJson(reexamination_strategy)))
 
     def _get_retriever(self, dataset: Dataset) -> Retriever:
-        if dataset.HasField('tile'):
-            return TileRetriever(dataset.tile)
         if dataset.HasField('filesystem'):
             return FileSystemRetriever(dataset.filesystem)
         elif dataset.HasField('random'):
