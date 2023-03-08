@@ -44,7 +44,7 @@ class S2SServicer(object):
     def __init__(self, mission):
         self._mission = mission
 
-    def s2s_get_tile(self, msg: st):
+    def s2s_get_tile(self, msg: str):
         """API call to fetch contents of requested tile ids
     
         Call made by COORDINATOR to (PARENT) scout where image is present 

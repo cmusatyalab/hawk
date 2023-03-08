@@ -29,19 +29,20 @@ from hawk.retrain.absolute_policy import AbsolutePolicy
 from hawk.retrain.percentage_policy import PercentagePolicy                      
 from hawk.retrain.model_policy import ModelPolicy 
 from hawk.retrain.retrain_policy_base import RetrainPolicyBase
-from hawk.retrieval.filesystem_retriever import FileSystemRetriever                                          
+from hawk.retrieval.frame_retriever import FrameRetriever                                          
 from hawk.retrieval.random_retriever import RandomRetriever                                             
 from hawk.retrieval.retriever import Retriever   
 from hawk.selection.selector_base import Selector                                                        
 from hawk.selection.threshold_selector import ThresholdSelector                                     
 from hawk.selection.topk_selector import TopKSelector
 from hawk.reexamination.top_reexamination_strategy import TopReexaminationStrategy                      
-from hawk.reexamination.full_reexamination_strategy import FullReexaminationStrategy                    from hawk.selection.no_reexamination_strategy import NoReexaminationStrategy                        
+from hawk.reexamination.full_reexamination_strategy import FullReexaminationStrategy
+from hawk.selection.no_reexamination_strategy import NoReexaminationStrategy                        
 from hawk.reexamination.reexamination_strategy import ReexaminationStrategy    
 from hawk.trainer.dnn_classifier.trainer import DNNClassifierTrainer 
 from hawk.trainer.yolo.trainer import YOLOTrainer 
 from hawk.proto.messages_pb2 import Dataset, ScoutConfiguration, MissionId, ImportModel, \
-    RetrainPolicyBaseConfig,  SelectiveConfig, ReexaminationStrategyConfig, MissionResults, MissionStats  
+    RetrainPolicyConfig,  SelectiveConfig, ReexaminationStrategyConfig, MissionResults, MissionStats  
     
 MODEL_FORMATS = ['pt', 'pth']
 
@@ -104,7 +105,7 @@ class A2SAPI(object):
     
     @log_exceptions
     def a2s_stop_mission(self):
-       """API call to stop mission
+        """API call to stop mission
 
         Returns:
             bytes: SUCESS or ERROR message
@@ -118,7 +119,7 @@ class A2SAPI(object):
 
     @log_exceptions
     def a2s_get_mission_stats(self):
-       """API call to send mission stats to HOME
+        """API call to send mission stats to HOME
 
         Returns:
             str: serialized MissionStats message
@@ -132,7 +133,7 @@ class A2SAPI(object):
 
     @log_exceptions
     def a2s_new_model(self, msg: str):
-       """API call to import new model from HOME
+        """API call to import new model from HOME
 
         Args:
             request (str): serialized ImportModel message 
@@ -151,7 +152,7 @@ class A2SAPI(object):
 
     @log_exceptions
     def a2s_get_test_results(self, msg: str):
-       """API call to test the model on the TEST dataset
+        """API call to test the model on the TEST dataset
 
         Args:
             request (str): path to the TEST dataset on the scouts
@@ -171,7 +172,7 @@ class A2SAPI(object):
 
     @log_exceptions 
     def a2s_get_post_mission_archive(self):
-       """API call to send mission models and logs archive
+        """API call to send mission models and logs archive
 
         Returns:
             bytes: mission archive zip file as a byte array
@@ -267,7 +268,7 @@ class A2SAPI(object):
         return 
 
     def _a2s_start_mission(self):
-       """Function to start mission
+        """Function to start mission
 
         Returns:
             bytes: SUCESS or ERROR message
@@ -336,11 +337,11 @@ class A2SAPI(object):
                 mission.log_file.write("{:.3f} {} SEARCH STATS\n".format(
                     time.time() - mission.start_time, mission.host_name))
 
-            retriever_stats = mission.retriever.get_stats()
+            retriever = mission.retriever.get_stats()
             selector_stats = mission.selector.get_stats()
-            processed_objects = retriever_stats.dropped_objects + selector_stats.processed_objects
+            processed_objects = retriever.dropped_objects + selector_stats.processed_objects
 
-            mission_stats = vars(copy.deepcopy(retriever_stats))
+            mission_stats = vars(copy.deepcopy(retriever))
             mission_stats.update(vars(copy.deepcopy(selector_stats)))
             keys_to_remove = ['total_objects', 'processed_objects', 'dropped_objects',
                               'passed_objects', 'false_negatives']
@@ -362,10 +363,10 @@ class A2SAPI(object):
             mission.stats_file.write("{}\n".format(json.dumps(mission_stats)))
             mission.stats_file.flush()
 
-            reply = MissionStats(totalObjects=int(retriever_stats.total_objects),
+            reply = MissionStats(totalObjects=int(retriever.total_objects),
                               processedObjects=processed_objects,
-                              droppedObjects=(retriever_stats.dropped_objects + selector_stats.dropped_objects),
-                              falseNegatives=(retriever_stats.false_negatives + selector_stats.false_negatives),
+                              droppedObjects=(retriever.dropped_objects + selector_stats.dropped_objects),
+                              falseNegatives=(retriever.false_negatives + selector_stats.false_negatives),
                               others=mission_stats)
 
             if mission.enable_logfile:
@@ -478,7 +479,7 @@ class A2SAPI(object):
             reply = b""
         return reply
     
-    def _get_retrain_policy(self, retrain_policy: RetrainPolicyBaseConfig, 
+    def _get_retrain_policy(self, retrain_policy: RetrainPolicyConfig, 
                             model_dir: Path) -> RetrainPolicyBase:
         if retrain_policy.HasField('absolute'):
             return AbsolutePolicy(retrain_policy.absolute.threshold,
@@ -526,8 +527,8 @@ class A2SAPI(object):
                     json_format.MessageToJson(reexamination_strategy)))
 
     def _get_retriever(self, dataset: Dataset) -> Retriever:
-        if dataset.HasField('filesystem'):
-            return FileSystemRetriever(dataset.filesystem)
+        if dataset.HasField('frame'):
+            return FrameRetriever(dataset.frame)
         elif dataset.HasField('random'):
             return RandomRetriever(dataset.random)
         else:

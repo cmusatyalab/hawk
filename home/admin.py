@@ -58,15 +58,13 @@ class Admin:
                 with open(config_path) as f:
                     config = yaml.safe_load(f)
 
-                self._setup_mission(config)
+                self.setup_mission(config)
 
-            elif header == "model":
-                pass
             else:
                 raise NotImplementedError("Unknown header {}".format(header))
         
     
-    def _setup_mission(self, config):
+    def setup_mission(self, config):
 
         self._mission_name = config['mission-name']    
         self.log_dir = Path(config['home-params']['log_dir'])
@@ -131,18 +129,21 @@ class Admin:
         dataset_config = config['dataset']
         dataset_type = dataset_config['type']
         logger.info("Index {}".format(dataset_config['index_path']))
+        timeout = dataset_config.get('timeout', 20)
 
         if dataset_type == "tile":
             dataset = Dataset(
                 tile=FileDataset(
                     dataPath=dataset_config['index_path'],
+                    timeout=timeout,
                 )
             ) 
-        elif dataset_type == "filesystem":
+        elif dataset_type == "frame":
             dataset = Dataset(
-                filesystem=FileDataset(
+                frame=FileDataset(
                     dataPath=dataset_config['index_path'],
                     tileSize=dataset_config['tile_size'],
+                    timeout=timeout,
                 )
             ) 
         elif dataset_type == "random":
@@ -150,8 +151,17 @@ class Admin:
                 random=FileDataset(
                     dataPath=dataset_config['index_path'],
                     numTiles= int(dataset_config.get('tiles_per_frame', 200))
+                    timeout=timeout,
                 )
-            ) 
+            )
+        elif dataset_type == "cookie":                                                               
+            dataset = Dataset(                                                                       
+                random=FileDataset(                                                                    
+                    dataPath=dataset_config['index_path'],                                           
+                    numTiles=int(dataset_config.get('tiles_per_frame', 200))                         
+                    timeout=timeout,
+                )                                                                                    
+            )  
         else:
             raise NotImplementedError("Unknown dataset {}".format(dataset_type))
 
@@ -270,11 +280,12 @@ class Admin:
                 logger.error(f"ERROR during Configuration from Scout {i} \n {msg}")
                 del self.scout_stubs[i]
         
-        self._start_mission()        
+        self.start_mission()        
         return "SUCCESS"
         
         
-    def _start_mission(self):
+    def start_mission(self):
+        """Explicit start Mission command""" 
         # Start Mission  
 
         logger.info("Starting mission")
@@ -291,11 +302,12 @@ class Admin:
         for index, stub in self.scout_stubs.items():
             stub.recv()
         
-        threading.Thread(target=self._get_mission_stats, name='get-stats').start()
+        threading.Thread(target=self.get_mission_stats, name='get-stats').start()
         return         
 
     def stop_mission(self):
-        # stop Mission  
+        """Explicit stop Mission command""" 
+
         for index, stub in self.scout_stubs.items():
             msg = {
                 "method": "a2s_stop_mission",
@@ -307,7 +319,7 @@ class Admin:
             stub.recv()
         return         
 
-    def _get_mission_stats(self):
+    def get_mission_stats(self):
         time.sleep(10)
         count = 1
         break_count = 0
@@ -315,7 +327,7 @@ class Admin:
         prev_processed = 0
         try:
             while not self.stop_event.is_set():
-                stats = self._accumulate_mission_stats()
+                stats = self.accumulate_mission_stats()
                 last_stats = None
                 while True:
                     try:
@@ -361,10 +373,7 @@ class Admin:
         self.stop_mission()
         return 
     
-    def _send_new_model(self):
-        return 
-    
-    def _get_post_mission_archive(self):
+    def get_post_mission_archive(self):
         for index, stub in self.scout_stubs.items():
             msg = {
                 "method": "a2s_get_post_mission_archive",
@@ -379,7 +388,7 @@ class Admin:
         return 
     
             
-    def _get_test_results(self):
+    def get_test_results(self):
         assert len(self.test_path), "Test path not provided"
         for index, stub in self.scout_stubs.items():
             msg = {
@@ -412,7 +421,7 @@ class Admin:
                     logger.error(f"ERROR during Testing from Scout {index} \n {msg}")
         return 
 
-    def _accumulate_mission_stats(self):
+    def accumulate_mission_stats(self):
         stats = defaultdict(lambda: 0)
         str_ignore = ['server_time', 'ctime',
                       'train_positives', 'server_positives',

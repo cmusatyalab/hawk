@@ -112,9 +112,10 @@ message ModelPolicyConfig {
 
 message Dataset {
   oneof value {
-    FileDataset filesystem = 1; // ultra high-def images
+    FileDataset frame = 1; // ultra high-def images
     FileDataset random = 2; // random sampling
     FileDataset tile = 3; // tile sampling
+    FileDataset scope = 4; // scopecookie
   }
 }
 
@@ -122,6 +123,8 @@ message FileDataset {
   string dataPath = 1; // path to index file or directory on scout
   int32 tileSize = 2; 
   int32 numTiles = 3; // optional param for random sampling
+  int32 timeout = 4; // optional param for random sampling
+  bool resizeTile = 5;
 }
 
 message SelectiveConfig {

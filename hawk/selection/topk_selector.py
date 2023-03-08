@@ -9,16 +9,14 @@ import time
 import threading
 from collections import defaultdict
 from logzero import logger
-from typing import Optional
+from typing import Optional, List
 from pathlib import Path
 
 from hawk.core.model import Model
 from hawk.core.result_provider import ResultProvider
 from hawk.reexamination.reexamination_strategy import ReexaminationStrategy
-from hawk.selection.selector_base import SelectorBase
-from hawk.selection.selector_base import SelectorStats
+from hawk.selection.selector_base import SelectorBase, SelectorStats 
 from hawk.core.utils import get_example_key, log_exceptions
-from hawk.core.utils import ATTR_DATA
 
 
 class TopKSelector(SelectorBase):
@@ -117,7 +115,7 @@ class TopKSelector(SelectorBase):
 
         for result in auto_negative_list:
             object_id = result.id
-            example = self._mission.retriever.get_object(object_id, [ATTR_DATA])
+            example = self._mission.retriever.get_object(object_id, [''])
             if example is None:
                 break
             example_file = get_example_key(example.content)

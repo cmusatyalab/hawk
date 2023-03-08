@@ -15,10 +15,6 @@ import numpy as np
 from logzero import logger
 from PIL import Image
 
-ATTR_FILTER_SCORE = '_filter.%s_score'  # arg: filter name
-ATTR_GT_LABEL = '_gt_label'
-ATTR_DATA = ''
-
 
 class StringAttributeCodec(object):
     '''Codec for a null-terminated string.'''
@@ -162,7 +158,6 @@ def get_server_ids():
     return list(names)
     
 
-
 def get_example_key(content) -> str:
     return hashlib.sha1(content).hexdigest() + '.jpg'
 
@@ -182,26 +177,6 @@ def get_weights(targets: List[int], num_classes=2) -> List[int]:
     return weight
 
 
-T = TypeVar('T')
-
-
-def bounded_iter(iterable: Iterable[T], semaphore: threading.Semaphore) -> Iterable[T]:
-    for item in iterable:
-        semaphore.acquire()
-        yield item
-
-
-def to_iter(queue: Union[Queue, mp.Queue]) -> Iterable[Any]:
-    def iterate():
-        while True:
-            example = queue.get()
-            if example is None:
-                break
-            yield example
-
-    return iterate()
-
-
 def log_exceptions(func):
     @wraps(func)
     def func_wrapper(*args, **kwargs):
@@ -212,6 +187,7 @@ def log_exceptions(func):
             raise e
 
     return func_wrapper
+
 
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

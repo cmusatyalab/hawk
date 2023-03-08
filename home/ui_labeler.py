@@ -406,7 +406,7 @@ class UILabeler(object):
         return redirect(url_for('index'))
 
     def get_latest_stats(self):
-        list_of_files = glob.glob(self._stats_dir+'/stats-*') # * means all if need specific format then *.csv
+        list_of_files = glob.glob(self._stats_dir+'/stats-*') 
         latest_stats = max(list_of_files, key=os.path.getctime)
         search_stats = {}
         with open(latest_stats, "r") as f:

@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+"""Home Inbound process: receiving result from SCOUTS
+"""
+
 import json
 import zmq
 
@@ -14,6 +17,11 @@ from hawk.proto.messages_pb2 import SendTiles
 
 
 class InboundProcess:
+    """Inbound messages to HOME from SCOUT
+
+    API calls from home to scouts to to send tile labels from home to coordinator scout. 
+    Uses PUSH/PULL messaging protocol. The network is bandwidth constricted using FireQos.
+    """
     def __init__(self, 
                  tile_dir: Path, 
                  meta_dir: Path,

@@ -35,10 +35,6 @@ class ModelTrainerBase(ModelTrainer):
         self.args['mode'] = self.args.get('mode', "hawk")
 
     def parse_args(self):
-        # mode = args.get('mode', 'hawk') 
-        # # Only applicable for baseline and oracle mode
-        # wait_time = args.get('time', 0) 
-        # model_dir = args.get('model_dir', "") 
         raise NotImplementedError("Parse Args") 
         pass    
     
