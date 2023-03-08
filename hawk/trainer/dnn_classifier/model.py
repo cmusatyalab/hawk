@@ -283,15 +283,15 @@ class DNNClassifierModel(ModelBase):
             del tensors
             for i in range(len(batch)):
                 score = predictions[i]
+                result_object = batch[i][0]
                 if self._mode == "oracle":
-                    if '/0/' in batch[i][0].id:
+                    if '/0/' in result_object.id:
                         score = 0
                     else:
                         score = 1
-                batch[i][0].attributes.add({'score': str.encode(str(score))})
+                result_object.attributes.add({'score': str.encode(str(score))})
                 yield ResultProvider(batch[i][0].id, '1' if score >= 0.5 else '0',
-                                     score, self.version,
-                                     batch[i][0])
+                                     score,  result_object.content, self.version)
 
     def stop(self):
         logger.info("Stopping model of version {}".format(self.version))

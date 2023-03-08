@@ -13,10 +13,12 @@ class ReexaminationStrategy(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def revisits_old_results(self) -> bool:
+    def reexamines_old_results(self) -> bool:
+        """Returns True if old results are reexamined by strategy"""
         pass
 
     @abstractmethod
     def get_new_queues(self, model: Model, 
                        old_queues: List[queue.PriorityQueue]) -> Tuple[List[queue.PriorityQueue], int]:
+        """Generates a new queue with reexamined results"""
         pass

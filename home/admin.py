@@ -414,10 +414,10 @@ class Admin:
 
     def _accumulate_mission_stats(self):
         stats = defaultdict(lambda: 0)
-        str_ignore = ['server_time', 'train_time', 'ctime',
+        str_ignore = ['server_time', 'ctime',
                       'train_positives', 'server_positives',
                       'msg']
-        single = ['server_time', 'train_time', 'train_positives', 'version']
+        single = ['server_time', 'train_positives', 'version']
         for index, stub in self.scout_stubs.items():
             msg = {
                 "method": "a2s_get_mission_stats",

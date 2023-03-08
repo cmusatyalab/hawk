@@ -32,12 +32,12 @@ from hawk.retrain.retrain_policy_base import RetrainPolicyBase
 from hawk.retrieval.filesystem_retriever import FileSystemRetriever                                          
 from hawk.retrieval.random_retriever import RandomRetriever                                             
 from hawk.retrieval.retriever import Retriever   
-from hawk.selection.selector import Selector                                                        
+from hawk.selection.selector_base import Selector                                                        
 from hawk.selection.threshold_selector import ThresholdSelector                                     
 from hawk.selection.topk_selector import TopKSelector
-from hawk.selection.top_reexamination_strategy import TopReexaminationStrategy                      
-from hawk.selection.full_reexamination_strategy import FullReexaminationStrategy                    from hawk.selection.no_reexamination_strategy import NoReexaminationStrategy                        
-from hawk.selection.reexamination_strategy import ReexaminationStrategy    
+from hawk.reexamination.top_reexamination_strategy import TopReexaminationStrategy                      
+from hawk.reexamination.full_reexamination_strategy import FullReexaminationStrategy                    from hawk.selection.no_reexamination_strategy import NoReexaminationStrategy                        
+from hawk.reexamination.reexamination_strategy import ReexaminationStrategy    
 from hawk.trainer.dnn_classifier.trainer import DNNClassifierTrainer 
 from hawk.trainer.yolo.trainer import YOLOTrainer 
 from hawk.proto.messages_pb2 import Dataset, ScoutConfiguration, MissionId, ImportModel, \

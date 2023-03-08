@@ -4,14 +4,59 @@
 
 import queue
 import threading
-from abc import abstractmethod
-from typing import Optional, List
 
+from abc import ABCMeta, abstractmethod
+from typing import Optional, List
+from pathlib import Path
+
+from hawk.context.data_manager_context import DataManagerContext
 from hawk.core.model import Model
 from hawk.core.result_provider import ResultProvider
-from hawk.selection.selector import Selector
-from hawk.context.data_manager_context import DataManagerContext
-from hawk.selection.selector_stats import SelectorStats
+
+
+class SelectorStats(object):
+
+    def __init__(self, dictionary):
+        assert 'processed_objects' in dictionary, "Missing processed_objects attribute"
+        self.dropped_objects = 0
+        self.passed_objects = 0
+        self.false_negatives = 0
+
+        for key in dictionary:
+            setattr(self, key, dictionary[key])
+
+
+class Selector(metaclass=ABCMeta):
+
+    @abstractmethod
+    def add_result(self, result: ResultProvider) -> None:
+        """Add processed results from model to selector"""
+        pass
+
+    @abstractmethod
+    def clear(self) -> None:
+        """Clean up on end of mission"""
+        pass
+
+    @abstractmethod
+    def add_context(self, context: DataManagerContext) -> None:
+        """Add data manager context"""
+        pass
+
+    @abstractmethod
+    def get_result(self) -> Optional[ResultProvider]:
+        """Transmit selected results"""
+        pass
+
+    @abstractmethod
+    def new_model(self, model: Optional[Model]) -> None:
+        """Triggered when a new model is available"""
+        pass
+
+    @abstractmethod
+    def get_stats(self) -> SelectorStats:
+        """Returns current mission stats"""
+        pass
 
 
 class SelectorBase(Selector):
@@ -22,7 +67,6 @@ class SelectorBase(Selector):
         self.items_processed = 0
         self.num_revisited = 0
         self.num_positives = 0
-        self.num_negatives_added = 0
         self.model_train_time = 0
         self.model_examples = 0
 
@@ -31,69 +75,59 @@ class SelectorBase(Selector):
         self._mission = None
         self.transmit_queue = None
 
-        self._finish_event = threading.Event()
+        self._clear_event = threading.Event()
 
     @abstractmethod
-    def add_result_inner(self, result: ResultProvider) -> None:
+    def _add_result(self, result: ResultProvider) -> None:
+        """Helper function specific to selection strategy"""
         pass
 
     @abstractmethod
-    def new_model_inner(self, model: Optional[Model]) -> None:
-        pass
-
-    def add_easy_negatives(self, path):
+    def _new_model(self, model: Optional[Model]) -> None:
+        """Helper function specific to selection strategy"""
         pass
 
     def add_context(self, context: DataManagerContext):
         self._mission = context
 
     def add_result(self, result: ResultProvider) -> None:
+        """Add processed results from model to selection strategy"""
         with self._model_lock:
             model_present = self._model_present
 
         if not model_present:
-            self.result_queue.put(result)
+            self.result_queue.put(result) # pass through
         else:
-            self.add_result_inner(result)
+            self._add_result(result)
 
         with self.stats_lock:
             self.items_processed += 1
 
     def new_model(self, model: Optional[Model]) -> None:
+        """New model generation is available from trainer""" 
         with self._model_lock:
             self._model_present = model is not None
 
-        self.new_model_inner(model)
+        self._new_model(model)
 
-    def select_tiles(self):
-        pass 
-    
-    def finish(self) -> None:
-        self.select_tiles()
-        self._finish_event.set()
+    def clear(self) -> None:
+        self._clear_event.set()
         self.result_queue.put(None)
 
     def get_result(self) -> Optional[ResultProvider]:
+        """Returns result for transmission when available"""
         while True:
             try:
                 return self.result_queue.get(timeout=10)
             except queue.Empty:
                 pass
 
-    def delete_examples(self, examples: List) -> None:
-        for path in examples:
-            if path.exists():
-                path.unlink()
-
     def get_stats(self) -> SelectorStats:
         with self.stats_lock:
             stats = {'processed_objects': self.items_processed,
                      'items_revisited': self.num_revisited,
-                     'negatives_added': self.num_negatives_added,
                      'positive_in_stream': self.num_positives,
-                     'train_time': "{:.3f}".format(self.model_train_time),
                      'train_positives': self.model_examples,
                      }
 
         return SelectorStats(stats)
-

@@ -9,9 +9,9 @@ from typing import Optional
 
 from hawk.core.model import Model
 from hawk.core.result_provider import ResultProvider
-from hawk.selection.reexamination_strategy import ReexaminationStrategy
+from hawk.reexamination.reexamination_strategy import ReexaminationStrategy
 from hawk.selection.selector_base import SelectorBase
-from hawk.selection.selector_stats import SelectorStats
+from hawk.selection.selector_base import SelectorStats
 
 
 class ThresholdSelector(SelectorBase):
@@ -27,39 +27,29 @@ class ThresholdSelector(SelectorBase):
         self._items_dropped = 0
         self._false_negatives = 0
 
-    def add_result_inner(self, result: ResultProvider) -> None:
-        if result.obj.gt:
+    def _add_result(self, result: ResultProvider) -> None:
+        if result.gt:
+           self.num_positives += 1
            logger.info("{} Score {}".format(result.id, result.score))
 
         if result.score > self._threshold:
             self.result_queue.put(result)
-        elif self._reexamination_strategy.revisits_old_results:
+        elif self._reexamination_strategy.reexamines_old_results:
             with self._insert_lock:
                 self._discard_queue[-1].put((-result.score, result.id, result))
         else:
             with self.stats_lock:
                 self._items_dropped += 1
-                if result.obj.gt:
+                if result.gt:
                     self._false_negatives += 1
 
-    def new_model_inner(self, model: Optional[Model]) -> None:
-        if not self._reexamination_strategy.revisits_old_results:
-            return
-
+    def _new_model(self, model: Optional[Model]) -> None:
         with self._insert_lock:
             if model is not None:
-                self._discard_queue = self._reexamination_strategy.get_new_queues(model, self._discard_queue)
-            else:
-                # this is a reset, discard everything
-                self._discard_queue = [queue.PriorityQueue()]
+                version = self.version
+                self.version = model.version
+                self.model_examples = model.train_examples.get('1', 0)
+                self._priority_queues, num_revisited = self._reexamination_strategy.get_new_queues(
+                    model, self._priority_queues, self._mission.start_time)
 
-    def get_stats(self) -> SelectorStats:
-        with self.stats_lock:
-            items_processed = self.items_processed
-            items_dropped = self._items_dropped
-            false_negatives = self._false_negatives
-
-        return SelectorStats(items_processed,
-                             items_dropped,
-                             items_processed - items_dropped if not self._reexamination_strategy.revisits_old_results else None,
-                             false_negatives)
+                self.num_revisited += num_revisited

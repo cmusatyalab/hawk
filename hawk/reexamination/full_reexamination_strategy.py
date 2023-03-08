@@ -6,26 +6,41 @@ import queue
 from typing import List, Tuple
 
 from hawk.core.model import Model
-from hawk.selection.reexamination_strategy import ReexaminationStrategy
+from hawk.reexamination.reexamination_strategy import ReexaminationStrategy
 
 
 class FullReexaminationStrategy(ReexaminationStrategy):
 
     @property
-    def revisits_old_results(self) -> bool:
+    def reexamines_old_results(self) -> bool:
         return True
 
     def get_new_queues(self, model: Model, old_queues: List[queue.PriorityQueue], 
                        start_time: float = 0) -> Tuple[List[queue.PriorityQueue], int]:
+        
         new_queue = queue.PriorityQueue()
 
         to_reexamine = []
         for priority_queue in old_queues:
             while True:
                 try:
-                    to_reexamine.append(priority_queue.get_nowait()[1])
+                    score, time_result, result = priority_queue.get_nowait()
+                    to_reexamine.append((score, time_result, result))
                 except queue.Empty:
                     break
+
+        reexamine = [ObjectProvider(item[-1].id, item[-1].content, item[-1].attributes) 
+            for item in to_reexamine]
+        
+        results = model.infer(reexamine)
+
+        for result, prev_result in zip(results, to_reexamine):
+            time_result = time.time() - start_time
+            obj_id = result.id
+            prev_score = prev_result[0]
+            score = result.score
+            logger.info(f"Reexamine score id: {obj_id} prev_score{prev_score} curr_score {score}")
+            new_queue.put((-score, time_result, result))
 
         for result in model.infer(to_reexamine):
             new_queue.put((-result.score, result.id, result))

@@ -30,7 +30,7 @@ from hawk.core.model import Model
 from hawk.core.object_provider import ObjectProvider
 from hawk.retrain.retrain_policy_base import RetrainPolicyBase
 from hawk.retrieval.retriever import Retriever
-from hawk.selection.selector import Selector
+from hawk.selection.selector_base import Selector
 from hawk.api.s2s_api import S2SServicer, s2s_receive_request
 from hawk.api.s2h_api import S2HPublisher 
 from hawk.api.h2c_api import H2CSubscriber
@@ -57,16 +57,15 @@ class Mission(DataManagerContext, ModelContext):
 
         self._retrain_policy = retrain_policy
         self._data_dir = root_dir / 'data'
-        self._tb_dir = root_dir / 'tb'
+        self._log_dir = root_dir / 'tb'
         self._model_dir = root_dir / 'model'
-        os.makedirs(self._tb_dir, exist_ok=True)
+        os.makedirs(self._log_dir, exist_ok=True)
         os.makedirs(self._model_dir, exist_ok=True)
         self.host_name = (get_server_ids()[0]).split('.')[0]
         self.host_ip = get_ip()
         self.home_ip = home_ip
-        self.log_file = open(self._tb_dir / 'log-{}.txt'.format(self.host_name), "a")
-        self.stats_file = open(self._tb_dir / 'stats-{}.txt'.format(self.host_name), "a")
-        self.result_path = str(self._tb_dir / 'sent-{}.txt'.format(self.host_name))
+        self.log_file = open(self._log_dir / 'log-{}.txt'.format(self.host_name), "a")
+        self.result_path = str(self._log_dir / 'sent-{}.txt'.format(self.host_name))
         self.enable_logfile = True
         self.trainer = None
         self.trainer_type = None
@@ -86,7 +85,6 @@ class Mission(DataManagerContext, ModelContext):
         self._has_initial_examples = True 
 
         self._model: Optional[Model] = None
-        self._tb_writer: Optional[SummaryWriter] = None
 
         self._model_stats = TestResults(version=-1)
         self._model_lock = threading.Lock()
@@ -204,9 +202,6 @@ class Mission(DataManagerContext, ModelContext):
 
         with zipfile.ZipFile(memory_file, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
             zf.writestr('model', model_dump)
-            if self._tb_writer is not None:
-                for file in self._tb_dir.iterdir():
-                    zf.write(file, arcname=os.path.join('tensorboard', file.name))
 
         memory_file.seek(0)
         return ModelArchive(content=memory_file.getvalue(),
@@ -215,48 +210,6 @@ class Mission(DataManagerContext, ModelContext):
     def train_model(self, trainer_index: int=0) -> None:
         assert self._scout_index != 0 
         threading.Thread(target=self._train_model_slave_thread, name='train-model').start()
-
-    def dump_stats(self, msg:str):
-        time_now = time.time() - self.start_time
-        retriever_stats = self.retriever.get_stats()
-        selector_stats = self.selector.get_stats()
-        passed_objects = selector_stats.passed_objects
-        processed_objects = retriever_stats.dropped_objects + selector_stats.processed_objects 
-
-        mission_stats = vars(copy.deepcopy(retriever_stats))
-        mission_stats.update(vars(copy.deepcopy(selector_stats)))
-        keys_to_remove = ['total_objects', 
-                          'processed_objects', 
-                          'dropped_objects', 
-                          'passed_objects', 
-                          'false_negatives']
-        for k in list(mission_stats):
-            v = mission_stats[k]
-            mission_stats[k] = str(v)
-            if k in keys_to_remove:
-                del mission_stats[k]
-
-        with self._model_lock:
-            model = self._model
-            version = model.version
-
-        mission_stats.update({
-            'version': str(version),
-            'server_time': time_now, 
-            'server_positives': str(self.positives),
-            'server_negatives': str(self.negatives),
-            'totalObjects': str(retriever_stats.total_objects),
-            'processedObjects': str(processed_objects),
-            'passedObjects': passed_objects if passed_objects is not None else 0,
-            'falseNegatives': selector_stats.false_negatives,
-            'msg': msg,
-            })
-
-        self.stats_file.write("{}\n".format(json.dumps(mission_stats)))
-        self.stats_file.flush()
-
-    def message_internal(self, request: Any) -> Any:
-        return self.trainer.message_internal(request)
 
     def reset(self, train_only: bool) -> None:
         self._data_manager.reset(train_only)
@@ -283,14 +236,6 @@ class Mission(DataManagerContext, ModelContext):
     @property
     def port(self) -> int:
         return self._port
-
-    @property
-    def tb_writer(self) -> SummaryWriter:
-        if self._tb_writer is None:
-            self._start_tensorboard()
-            self._tb_writer = SummaryWriter(str(self._tb_dir))
-
-        return self._tb_writer
 
     @property
     def mission_id(self) -> MissionId:
@@ -353,7 +298,7 @@ class Mission(DataManagerContext, ModelContext):
             self.start_time = time.time()
         except Exception as e:
             self.retriever.stop()
-            self.selector.finish()
+            self.selector.clear()
             self.stop()
 
     def stop(self) -> None:
@@ -366,9 +311,8 @@ class Mission(DataManagerContext, ModelContext):
         self.enable_logfile = False
         self._abort_event.set()
         self.retriever.stop()
-        self.selector.finish()
+        self.selector.clear()
         self.log_file.close()
-        self.stats_file.close()
         sys.exit(0)
 
     def get_example_directory(self, example_set: DatasetSplit): 
@@ -434,7 +378,7 @@ class Mission(DataManagerContext, ModelContext):
                     scoutIndex=self._scout_index,
                     score=result.score,
                     version=result.model_version,
-                    attributes=result.obj.attributes.get(),
+                    attributes=result.attributes.get(),
                 )
                 pipe.send(tile.SerializeToString()) 
         except Exception as e:
@@ -503,7 +447,6 @@ class Mission(DataManagerContext, ModelContext):
         
         with self._data_manager.get_examples(DatasetSplit.TRAIN) as train_dir:
             logger.info("Train dir {}".format(train_dir))
-            # self.selector.add_easy_negatives(self._data_manager.get_example_directory(DatasetSplit.TRAIN))
             model = self.trainer.train_model(train_dir)
 
         eval_start = time.time()
@@ -512,7 +455,6 @@ class Mission(DataManagerContext, ModelContext):
             self.log_file.write("{:.3f} {}_{} TRAIN NEW MODEL in {} seconds\n".format( \
                     time.time() - self.start_time, self.host_name, model.version, eval_start - train_start))
         self._set_model(model, False)
-        self.dump_stats("new_model")
         logger.info('Evaluated model in {:.3f} seconds'.format(time.time() - eval_start))
 
     def _set_model(self, model: Model, should_stage: bool) -> None:
@@ -544,8 +486,6 @@ class Mission(DataManagerContext, ModelContext):
             self._model_stats = model_stats
             self._last_trained_version = model.version
         
-        self.dump_stats("promoted")
-
         self.selector.new_model(model)
 
         if should_notify:
@@ -573,7 +513,6 @@ class Mission(DataManagerContext, ModelContext):
             if self._model and self._model.is_running():
                 self._model.stop()    
             self._model = model
-            self.dump_stats("promoted")
             logger.info("Promoted New Model Version {}".format(self._model.version))
             self._model_stats = model_stats
 
@@ -596,7 +535,6 @@ class Mission(DataManagerContext, ModelContext):
 
         with self._data_manager.get_examples(DatasetSplit.TRAIN) as train_dir:
             train_start = time.time()
-            # self.selector.add_easy_negatives(self._data_manager.get_example_directory(DatasetSplit.TRAIN))
             model = self.trainer.train_model(train_dir)
             logger.info('Trained model in {:.3f} seconds'.format(time.time() - train_start))
 
@@ -615,20 +553,4 @@ class Mission(DataManagerContext, ModelContext):
                     logger.info('Waiting for model version {}'.format(model_version))
                 self._staged_model_condition.wait()
         return model
-
-    def _start_tensorboard(self) -> None:
-        tb = tensorboard.program.TensorBoard()
-        tb_port = self._port + 1
-        for i in range(10):
-            tb.configure(argv=[None, '--logdir', self._tb_dir, '--host', '0.0.0.0', '--port', str(tb_port)])
-            logger.info('Trying to launch Tensorboard on port {}'.format(tb_port))
-            try:
-                tb.launch()
-                logger.info('Started Tensorboard on port {}'.format(tb_port))
-                return
-            except tensorboard.program.TensorBoardPortInUseError:
-                tb_port += 1
-                logger.warn('Failed to start Tensorboard on port {} (port already in use)'.format(tb_port))
-
-        logger.error('Failed to start Tensorboard')
 

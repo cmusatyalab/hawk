@@ -6,15 +6,15 @@ import queue
 from typing import List, Tuple
 
 from hawk.core.model import Model
-from hawk.selection.reexamination_strategy import ReexaminationStrategy
+from hawk.reexamination.reexamination_strategy import ReexaminationStrategy
 
 
 class NoReexaminationStrategy(ReexaminationStrategy):
 
     @property
-    def revisits_old_results(self) -> bool:
+    def reexamines_old_results(self) -> bool:
         return False
 
     def get_new_queues(self, model: Model, old_queues: List[queue.PriorityQueue], 
                        start_time: float = 0) -> Tuple[List[queue.PriorityQueue], int]:
-        return [queue.PriorityQueue()], 0
+        return old_queues + [queue.PriorityQueue()], 0

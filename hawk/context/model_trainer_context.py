@@ -28,11 +28,6 @@ class ModelContext(ContextBase):
 
     @property
     @abstractmethod
-    def tb_writer(self) -> SummaryWriter:
-        pass
-
-    @property
-    @abstractmethod
     def model_dir(self) -> Path:
         pass
 

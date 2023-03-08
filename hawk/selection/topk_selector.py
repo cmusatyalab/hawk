@@ -14,9 +14,9 @@ from pathlib import Path
 
 from hawk.core.model import Model
 from hawk.core.result_provider import ResultProvider
-from hawk.selection.reexamination_strategy import ReexaminationStrategy
+from hawk.reexamination.reexamination_strategy import ReexaminationStrategy
 from hawk.selection.selector_base import SelectorBase
-from hawk.selection.selector_stats import SelectorStats
+from hawk.selection.selector_base import SelectorStats
 from hawk.core.utils import get_example_key, log_exceptions
 from hawk.core.utils import ATTR_DATA
 
@@ -29,38 +29,23 @@ class TopKSelector(SelectorBase):
         assert k < batch_size
         super().__init__()
 
-        self.last_result_time = None
-        self.timeout = 1000
+        self.version = 0
         self.add_negatives = add_negatives
         self.easy_negatives = defaultdict(list)
-        self.version = 0
-        self.model_train_time = 0
 
         self._k = k
         self._batch_size = batch_size
         self._reexamination_strategy = reexamination_strategy
-        self._number_excess_batch = 2
 
         self._priority_queues = [queue.PriorityQueue()]
         self._batch_added = 0
         self._insert_lock = threading.Lock()
         self._mode = "hawk"
-        self._en = 0  # 0.1
         
         self.log_counter = [int(i/3.*self._batch_size) for i in range(1, 4)]
 
-    def result_timeout(self, interval=0):
-        if interval == 0 or self.last_result_time is None:
-            return False
-        return (time.time() - self.last_result_time) >= interval
-
     @log_exceptions
     def select_tiles(self):
-        if self._mission.enable_logfile:
-            self._mission.log_file.write("{:.3f} {}_{} {}_{} SEL: SELECTION START\n".format(
-                time.time() - self._mission.start_time, self._mission.host_name,
-                self.version, self._batch_added, self._batch_size))
-
         for i in range(self._k):
             result = self._priority_queues[-1].get()[-1]
             if self._mission.enable_logfile:
@@ -73,20 +58,18 @@ class TopKSelector(SelectorBase):
         self._batch_added -= self._batch_size
          
     @log_exceptions
-    def add_result_inner(self, result: ResultProvider) -> None:
+    def _add_result(self, result: ResultProvider) -> None:
         with self._insert_lock:
 
             time_result = time.time() - self._mission.start_time
             self._mission.log_file.write("{:.3f} {}_{} CLASSIFICATION: {} GT {} Score {:.4f}\n".format(
                 time_result, self._mission.host_name,
-                self.version, result.id, result.obj.gt, result.score))
-            if result.obj.gt:
+                self.version, result.id, result.gt, result.score))
+            
+            # Incrementing positives in stream
+            if result.gt:
                 self.num_positives += 1
                 logger.info("Queueing {} Score {}".format(result.id, result.score))
-                if self._mission.enable_logfile:
-                    self._mission.log_file.write("{:.3f} {}_{} {}_{} INFER: Queue POSITIVE FILE {}\n".format(
-                        time_result, self._mission.host_name,
-                        self.version, self._batch_added, self._batch_size, result.id))
 
             if self._mode == "oracle":
                 if int(result.score) == 1:
@@ -95,19 +78,13 @@ class TopKSelector(SelectorBase):
 
             self._priority_queues[-1].put((-result.score, time_result, result))
             self._batch_added += 1
+            
+            # Logging for debugging
             if self._batch_added in self.log_counter:
                 logger.info("ADDED {}/{}".format(self._batch_added, self._batch_size))
-            if self._batch_added > self._batch_size:
-                logger.info("ERROR ADDED {}/{}".format(self._batch_added, self._batch_size))
 
-            condition_1 = self._batch_added >= self._batch_size
-            condition_2 = self.result_timeout(self.timeout)
-            condition_3 = self._finish_event.is_set() and self._batch_added != 0
-            if ( condition_1 or condition_2 or condition_3) :
-                
-                logger.info(f"Sending Results on meeting condition \
-                    Buffer full: {condition_1} or Time: {condition_2} or Finish {condition_3}")
-                self.last_result_time = time.time()
+            if (self._batch_added >= self._batch_size or 
+                self._clear_event.is_set() and self._batch_added != 0) :
                 self.select_tiles()                    
 
     @log_exceptions
@@ -150,14 +127,18 @@ class TopKSelector(SelectorBase):
             with self._insert_lock:
                 self.easy_negatives[self.version].append(example_path)
 
-    def new_model_inner(self, model: Optional[Model]) -> None:
+    def delete_examples(self, examples: List) -> None:
+        for path in examples:
+            if path.exists():
+                path.unlink()
+
+    def _new_model(self, model: Optional[Model]) -> None:
         with self._insert_lock:
             if model is not None:
                 version = self.version
                 self.version = model.version
                 self._mode = model.mode
                 self.model_examples = model.train_examples.get('1', 0)
-                self.model_train_time = model.train_time
                 if version != self.version:
                     versions = [v for v in self.easy_negatives.keys() if v <= version]
                     for v in versions:
@@ -173,22 +154,7 @@ class TopKSelector(SelectorBase):
                 self.num_negatives_added = 0
             else:
                 # this is a reset, discard everything
-                if self._mission.enable_logfile:
-                    self._mission.log_file.write("{:.3f} {}_{} ERROR RESET CALLED\n".format(
-                        time.time() - self._mission.start_time, self._mission.host_name, self.version))
                 self._priority_queues = [queue.PriorityQueue()]
                 self._batch_added = 0
 
             self._mission.log_file.flush()
-
-    def get_stats(self) -> SelectorStats:
-        with self.stats_lock:
-            stats = {'processed_objects': self.items_processed,
-                     'items_revisited': self.num_revisited,
-                     'negatives_added': self.num_negatives_added,
-                     'positive_in_stream': self.num_positives,
-                     'train_positives': self.model_examples,
-                     'train_time': "{:.3f}".format(self.model_train_time),
-                     }
-
-        return SelectorStats(stats)
