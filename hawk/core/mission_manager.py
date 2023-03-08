@@ -17,6 +17,10 @@ class MissionManager(object):
     def set_mission(self, mission: Mission) -> None:
         with self._lock:
             assert self._mission is None
+            if self._mission is not None:
+                old_mission = self._mission
+                old_mission.stop()
+                self.remove_mission()
             self._mission = mission
 
     def get_mission(self) -> Mission:
@@ -26,5 +30,4 @@ class MissionManager(object):
     def remove_mission(self) -> None:
         with self._lock:
             self._mission = None
-
         return None

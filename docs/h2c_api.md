@@ -10,7 +10,7 @@ SPDX-License-Identifier: GPL-2.0-only
 ## Introduction
 
 API calls to send tile labels from home to coordinator scout.  
-Uses Publisher-Subscriber messaging. The network is bandwidth constricted using FireQos.
+Uses PUSH/PULL messaging. The network is bandwidth constricted using FireQos.
 
 List of calls in H2C API:
 *   [h2c_send_labels](#h2c_send_labels)

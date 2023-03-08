@@ -106,6 +106,12 @@ class Admin:
                     args=train_config.get('args', default_args),
                 )
             )
+        elif train_type == "fsl":
+            train_strategy = TrainConfig(
+                fsl=ModelConfig(
+                    args=train_config['args'],
+                )
+            )
         else:
             raise NotImplementedError("Unknown train strategy {}".format(train_type))
         

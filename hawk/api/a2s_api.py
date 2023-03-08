@@ -24,6 +24,7 @@ from google.protobuf import json_format
 from hawk import api 
 from hawk.core.hawk_stub import HawkStub
 from hawk.core.mission import Mission
+from hawk.core.mission_manager import MissionManager
 from hawk.core.utils import log_exceptions
 from hawk.retrain.absolute_policy import AbsolutePolicy                          
 from hawk.retrain.percentage_policy import PercentagePolicy                      
@@ -34,6 +35,7 @@ from hawk.retrieval.random_retriever import RandomRetriever
 from hawk.retrieval.retriever import Retriever   
 from hawk.selection.selector_base import Selector                                                        
 from hawk.selection.threshold_selector import ThresholdSelector                                     
+from hawk.selection.diversity_selector import DiversitySelector
 from hawk.selection.topk_selector import TopKSelector
 from hawk.reexamination.top_reexamination_strategy import TopReexaminationStrategy                      
 from hawk.reexamination.full_reexamination_strategy import FullReexaminationStrategy
@@ -41,6 +43,7 @@ from hawk.selection.no_reexamination_strategy import NoReexaminationStrategy
 from hawk.reexamination.reexamination_strategy import ReexaminationStrategy    
 from hawk.trainer.dnn_classifier.trainer import DNNClassifierTrainer 
 from hawk.trainer.yolo.trainer import YOLOTrainer 
+from hawk.trainer.few_shot.trainer import FewShotTrainer 
 from hawk.proto.messages_pb2 import Dataset, ScoutConfiguration, MissionId, ImportModel, \
     RetrainPolicyConfig,  SelectiveConfig, ReexaminationStrategyConfig, MissionResults, MissionStats  
     
@@ -56,15 +59,15 @@ class A2SAPI(object):
     ----------
     _port : int
         TCP port number
-    _mission : Mission
-        associated Mission class instance
+    _manager : MissionManager
+        manages hawk mission (sets and clears) 
     _trainer : ModelTrainerBase
         TrainingStrategy used in mission
     """
 
     def __init__(self, port: int):  
         self._port = port
-        self._mission = None
+        self._manager = MissionManager()
         self._trainer = None
     
     @log_exceptions 
@@ -214,7 +217,7 @@ class A2SAPI(object):
                             self._port, self._get_retriever(request.dataset),
                             self._get_selector(request.selector, request.reexamination),
                             request.bootstrapZip, request.initialModel, request.validate)
-            self._mission = mission
+            self._manager.set_mission(mission)
 
             # Setting up mission trainer
             model = request.trainStrategy
@@ -225,6 +228,9 @@ class A2SAPI(object):
             elif model.HasField('yolo'):
                 config = model.yolo
                 trainer = YOLOTrainer(mission, config.args)
+            elif model.HasField('fsl'):
+                config = model.fsl
+                trainer = FewShotTrainer(mission, config.args)
             else:
                 raise NotImplementedError('unknown model: {}'.format(
                     json_format.MessageToJson(model)))
@@ -274,7 +280,7 @@ class A2SAPI(object):
             bytes: SUCESS or ERROR message
         """
         try:
-            mission = self._mission
+            mission = self._manager.get_mission()
             mission_id = mission.mission_id.value
             logger.info('Starting mission with id {}'.format(mission_id))
             mission.start()
@@ -294,7 +300,7 @@ class A2SAPI(object):
             bytes: SUCESS or ERROR message
         """
         try:
-            mission = self._mission
+            mission = self._manager.get_mission()
 
             if mission is None:
                 return b"ERROR: Mission does not exist"
@@ -305,7 +311,7 @@ class A2SAPI(object):
                 mission.log_file.write("{:.3f} {} SEARCH STOPPED\n".format(
                     time.time() - mission.start_time, mission.host_name))
             mission.stop()
-
+            self._manager.remove_mission()
             reply = b"SUCCESS"
         except Exception as e:
             reply = ("ERROR: {}".format(e)).encode()
@@ -316,8 +322,6 @@ class A2SAPI(object):
             b.communicate()
             torch.cuda.empty_cache()
             gc.collect()
-            self._mission = None
-
         return reply
 
     def _a2s_get_mission_stats(self):
@@ -327,7 +331,7 @@ class A2SAPI(object):
             str: serialized MissionStats message
         """
         try:
-            mission = self._mission
+            mission = self._manager.get_mission()
             if not mission:
                 return api.Empty
 
@@ -390,7 +394,7 @@ class A2SAPI(object):
 
         """
         try:
-            mission = self._mission
+            mission = self._manager.get_mission()
             model = request.model
             path = request.path
             version = model.version
@@ -420,7 +424,7 @@ class A2SAPI(object):
             if not test_path.is_file():
                 raise Exception 
             
-            mission = self._mission
+            mission = self._manager.get_mission()
             model_dir = str(mission.model_dir)
             files = sorted(glob.glob(os.path.join(model_dir, '*.*'))) 
             model_paths = [x for x in files if x.split('.')[-1].lower() in MODEL_FORMATS]
@@ -460,7 +464,7 @@ class A2SAPI(object):
             bytes: mission archive zip file as a byte array
         """
         try:
-            mission = self._mission
+            mission = self._manager.get_mission()
             data_dir = mission.data_dir
             model_dir = mission.model_dir
            
@@ -506,6 +510,12 @@ class A2SAPI(object):
                                     reexamination_strategy))
         elif selector.HasField('threshold'):
             return ThresholdSelector(selector.threshold.threshold,
+                                self._get_reexamination_strategy(
+                                    reexamination_strategy))
+        elif selector.HasField('diversity'):
+            top_k_param = json_format.MessageToDict(selector.diversity)
+            logger.info("TopK Params {}".format(top_k_param))
+            return DiversitySelector(selector.topk.k, selector.topk.batchSize,
                                 self._get_reexamination_strategy(
                                     reexamination_strategy))
         else:

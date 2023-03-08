@@ -1,0 +1,42 @@
+mission-name: "dota" # Mission identifier 
+train-location: scout 
+label-mode: script # type of labeling interface
+scouts: # list of addresses of scouts
+- briolette.diamond.cs.cmu.edu
+- cullinan.diamond.cs.cmu.edu
+- dresden.diamond.cs.cmu.edu
+- indore.diamond.cs.cmu.edu
+- kimberly.diamond.cs.cmu.edu
+- patiala.diamond.cs.cmu.edu
+- transvaal.diamond.cs.cmu.edu
+scout-params: # directory on scouts where data, models and logs of mission are saved
+  mission_dir: /srv/diamond/dota/delphi/
+  test_path: /root/test.txt
+home-params:
+  mission_dir: /home/shilpag/Documents/hawk-data # directory where inbound and outbound data stored @ home
+  gt_dir: /srv/diamond/dota/roundabout/labels # directory where labels present
+  log_dir: ../../logs
+dataset:
+  type: random # type of input data
+  stream_path: /home/shilpag/working_dir/dota-classifier-split/43/roundabout-43/stream.txt 
+  index_path: /srv/diamond/INDEXES/GIDIDXDELPHI # path on scout of index file
+  tiles_per_frame: 200 # number of tiles per frame if random sampling
+retrain_policy:
+  type: absolute # type of retrain condition 
+  only_positives: true # if only positives are counted
+  threshold: 1000 # percentage of increment
+train_strategy:
+  type: fsl # type of model training
+  args:
+    batch-size: "64"
+    mode: hawk
+  initial_model_path: /path/to/checkpoints/mini-feat-5-shot.pth
+bandwidth: 30
+selector:
+  type: topk # type of selective transmission
+  topk:
+    k: 10
+    batchSize: 1000
+reexamination:
+  type: top # type of reexamination strategy
+  k: 100 
