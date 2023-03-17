@@ -131,7 +131,7 @@ message SelectiveConfig {
   oneof value {
     TopKConfig topk = 1;
     ThresholdConfig threshold = 2;
-    PushPullConfig pipe = 3;
+    TokenConfig token = 3;
   }
 }
 
@@ -144,10 +144,9 @@ message ThresholdConfig {
   double threshold = 1;
 }
 
-message PushPullConfig {
-  int32 k = 1;
-  int32 batchSize = 2;
-  int32 bandwidth = 3;
+message TokenConfig {
+  int32 initial_samples = 1;
+  int32 batch_size = 2;
 }
 
 message ReexaminationStrategyConfig {
@@ -173,6 +172,10 @@ message TileMetadata {
 message LabeledTile {
   HawkObject object = 1;
   LabelWrapper label = 2;
+}
+
+message TokenMessage {
+  LabelWrapper label = 1;
 }
 
 message LabelWrapper {

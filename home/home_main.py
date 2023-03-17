@@ -31,7 +31,7 @@ def main():
     with open(config_path) as f:
         config = yaml.safe_load(f)
 
-    # Setting up mission 
+    # Setting up mission
     mission_name = config.get('mission-name', "test")
     
     assert (Path(config['train_strategy'].get('initial_model_path', '')).exists() or 
@@ -97,7 +97,8 @@ def main():
         logger.info("Starting Inbound Process")
         train_location = config['train-location']
         home_inbound = InboundProcess(image_dir, 
-                                      meta_dir, 
+                                      meta_dir,
+                                      config,
                                       train_location)
         p = mp.Process(target=home_inbound.receive_data, kwargs={'result_q': meta_q,
                                                                  'stop_event': stop_event})
@@ -117,6 +118,7 @@ def main():
             
         if labeler == 'script':
             home_labeler = ScriptLabeler(label_dir, 
+                                         config,
                                          gt_dir,
                                          label_mode)
         elif labeler == 'ui' or labeler == 'browser':

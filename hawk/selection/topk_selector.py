@@ -43,8 +43,8 @@ class TopKSelector(SelectorBase):
         self.log_counter = [int(i/3.*self._batch_size) for i in range(1, 4)]
 
     @log_exceptions
-    def select_tiles(self):
-        for i in range(self._k):
+    def select_tiles(self, num_tiles):
+        for i in range(num_tiles):
             result = self._priority_queues[-1].get()[-1]
             if self._mission.enable_logfile:
                 self._mission.log_file.write("{:.3f} {}_{} {}_{} SEL: FILE SELECTED {}\n".format(
@@ -83,7 +83,7 @@ class TopKSelector(SelectorBase):
 
             if (self._batch_added >= self._batch_size or 
                 self._clear_event.is_set() and self._batch_added != 0) :
-                self.select_tiles()                    
+                self.select_tiles(self._k)                    
 
     @log_exceptions
     def add_easy_negatives(self, path: Path) -> None:

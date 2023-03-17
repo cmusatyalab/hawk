@@ -32,4 +32,4 @@ class MaxEntropySelector(TopKSelector):
             
             if (self._batch_added >= self._batch_size or 
                 self._clear_event.is_set() and self._batch_added != 0) :
-                self.select_tiles() 
+                self.select_tiles(self._k) 

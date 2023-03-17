@@ -31,6 +31,7 @@ from hawk.core.object_provider import ObjectProvider
 from hawk.retrain.retrain_policy_base import RetrainPolicyBase
 from hawk.retrieval.retriever import Retriever
 from hawk.selection.selector_base import Selector
+from hawk.selection.token_selector import TokenSelector
 from hawk.api.s2s_api import S2SServicer, s2s_receive_request
 from hawk.api.s2h_api import S2HPublisher 
 from hawk.api.h2c_api import H2CSubscriber
@@ -394,6 +395,8 @@ class Mission(DataManagerContext, ModelContext):
                 request = LabelWrapper()
                 request.ParseFromString(msg)
                 self.distribute_label(request)
+                if isinstance(self.selector, TokenSelector):
+                    self.selector.receive_token_message(request)
         except Exception as e:
             logger.error(e)
             self.stop()

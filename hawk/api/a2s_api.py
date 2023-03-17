@@ -34,12 +34,13 @@ from hawk.retrieval.frame_retriever import FrameRetriever
 from hawk.retrieval.random_retriever import RandomRetriever                                             
 from hawk.retrieval.retriever import Retriever   
 from hawk.selection.selector_base import Selector                                                        
-from hawk.selection.threshold_selector import ThresholdSelector                                     
 from hawk.selection.diversity_selector import DiversitySelector
+from hawk.selection.threshold_selector import ThresholdSelector                                     
+from hawk.selection.token_selector import TokenSelector
 from hawk.selection.topk_selector import TopKSelector
 from hawk.reexamination.top_reexamination_strategy import TopReexaminationStrategy                      
 from hawk.reexamination.full_reexamination_strategy import FullReexaminationStrategy
-from hawk.selection.no_reexamination_strategy import NoReexaminationStrategy                        
+from hawk.reexamination.no_reexamination_strategy import NoReexaminationStrategy                        
 from hawk.reexamination.reexamination_strategy import ReexaminationStrategy    
 from hawk.trainer.dnn_classifier.trainer import DNNClassifierTrainer 
 from hawk.trainer.yolo.trainer import YOLOTrainer 
@@ -193,7 +194,7 @@ class A2SAPI(object):
     def _a2s_configure_scout(self, request: ScoutConfiguration):
         """Function to parse config message and setup for mission
 
-        Args:
+        Args:from hawk.selection.token_selector import TokenSelector
             request (ScoutConfiguration): configuration message 
 
         Returns:
@@ -264,6 +265,9 @@ class A2SAPI(object):
         bandwidth_list = json.loads(bandwidth_func)    
         default_file = bandwidth_map['100k']
         # bandwidth_file = default_file
+        if bandwidth_list[0] == '0k':
+            return
+        
         for time_stamp, bandwidth in bandwidth_list:
             bandwidth_file = bandwidth_map.get(bandwidth.lower(), default_file)
 
@@ -507,6 +511,10 @@ class A2SAPI(object):
             logger.info("TopK Params {}".format(top_k_param))
             return TopKSelector(selector.topk.k, selector.topk.batchSize,
                                 self._get_reexamination_strategy(
+                                    reexamination_strategy))
+        elif selector.HasField('token'):
+            return TokenSelector(selector.token.initial_samples, selector.token.batch_size,
+                                 self._get_reexamination_strategy(
                                     reexamination_strategy))
         elif selector.HasField('threshold'):
             return ThresholdSelector(selector.threshold.threshold,

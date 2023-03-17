@@ -2,22 +2,38 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import json 
+import json
+import time 
 import queue
 
 from home import *
 from logzero import logger
 from pathlib import Path
+from typing import Dict
 
 
 class ScriptLabeler:
     def __init__(self, 
                  label_dir: Path, 
+                 configuration: Dict, 
                  gt_path: str = "",
                  label_mode: str = "classify") -> None:
         
         self._label_dir = label_dir
         self._gt_path = Path(gt_path)
+        self.ordered_queue = queue.PriorityQueue()
+        self._token = False
+        self._label_time = 0
+        # Token selector code to modify labeling process.
+        self.configuration = configuration
+        selector_field = self.configuration['selector']
+        if selector_field['type'] == 'token':
+            self._token = True
+            init_samples = selector_field['token']['initial_samples']
+            num_scouts = len(self.configuration['scouts'])
+            self.total_init_samples = int(init_samples * int(num_scouts))
+            self._label_time = int(selector_field['token']['label_time'])
+        ##########
 
         if label_mode == "classify":
             self.labeling_func = self.classify
@@ -35,6 +51,8 @@ class ScriptLabeler:
         self.positives = 0 
         self.negatives = 0 
         self.bytes = 0
+        self.received_samples = 0
+
 
         try:
             self.labeling_func()
@@ -49,13 +67,12 @@ class ScriptLabeler:
             while not self.stop_event.is_set():
                 try:
                     meta_path = self.input_q.get()
+                    self.received_samples += 1
                 except queue.Empty:
                     continue 
 
                 data_name = meta_path.name
-
                 logger.info(data_name)
-
 
                 label_path = self._label_dir / f"{data_name}"
 
@@ -69,6 +86,7 @@ class ScriptLabeler:
                     self.positives += 1
                 else:
                     self.negatives += 1
+                time.sleep(self._label_time)
                     
                 self.bytes += data['size']
 

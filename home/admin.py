@@ -204,6 +204,16 @@ class Admin:
                     batchSize=batch_size, 
                 )
             )
+        elif selector_type == "token":
+            token_config = selector_config.get('token', {})
+            init_samples = token_config.get('initial_samples')
+            batch_size = token_config.get('batch_size')
+            selector = SelectiveConfig(
+                token=TokenConfig(
+                    initial_samples=init_samples,
+                    batch_size=batch_size
+                )
+            )
         else:
             raise NotImplementedError("Unknown selector {}".format(selector_type))
         
