@@ -22,6 +22,7 @@ from hawk.core.model import Model
 from hawk.core.result_provider import ResultProvider
 from hawk.reexamination.reexamination_strategy import ReexaminationStrategy
 from hawk.selection.selector_base import SelectorBase, SelectorStats 
+from hawk.selection.topk_selector import TopKSelector
 from hawk.core.utils import get_example_key, log_exceptions
 
 

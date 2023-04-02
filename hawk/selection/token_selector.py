@@ -14,10 +14,11 @@ from hawk.core.result_provider import ResultProvider
 from hawk.reexamination.reexamination_strategy import ReexaminationStrategy
 from hawk.selection.selector_base import SelectorBase
 from hawk.selection.selector_base import SelectorStats
+from hawk.selection.topk_selector import TopKSelector
 from hawk.core.utils import log_exceptions
 
 
-class MaxEntropySelector(TopKSelector):
+class TokenSelector(TopKSelector):
 
     def __init__(self, k: int, batch_size: int, reexamination_strategy: ReexaminationStrategy):
         super().__init__(k, batch_size, reexamination_strategy)

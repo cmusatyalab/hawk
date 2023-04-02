@@ -194,7 +194,7 @@ class A2SAPI(object):
     def _a2s_configure_scout(self, request: ScoutConfiguration):
         """Function to parse config message and setup for mission
 
-        Args:from hawk.selection.token_selector import TokenSelector
+        Args:
             request (ScoutConfiguration): configuration message 
 
         Returns:

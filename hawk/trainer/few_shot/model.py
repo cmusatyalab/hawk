@@ -18,7 +18,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torchvision import datasets, models
 
-from hawk.context.model_trainer_context import ModelTrainerContext
+from hawk.context.model_trainer_context import ModelContext
 from hawk.core.model import ModelBase
 from hawk.core.object_provider import ObjectProvider
 from hawk.core.result_provider import ResultProvider
@@ -38,7 +38,7 @@ class FewShotModel(ModelBase):
                  model_path: Path, 
                  version: int,
                  mode: str, 
-                 context: ModelTrainerContext):
+                 context: ModelContext):
 
         # model_path is None for few-shot
         # Hardcoding model architecture to resnet-50 
@@ -69,9 +69,9 @@ class FewShotModel(ModelBase):
         self.load_supports()
         self._running = True
 
-     def unzip_support(self):
+    def unzip_support(self):
         self.train_dir = "/tmp/supports"
-       labels = set()
+        labels = set()
         with zipfile.ZipFile(io.BytesIO(self.args['support_data']), "r") as zf:
             example_files = zf.namelist()
             for filename in example_files:

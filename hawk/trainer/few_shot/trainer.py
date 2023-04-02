@@ -10,14 +10,14 @@ from pathlib import Path
 from typing import Dict
 
 import torch
-import torchvisio
+import torchvision
 from logzero import logger
 
 import shlex
 import subprocess
 
 from hawk import M_ZFILL
-from hawk.context.model_trainer_context import ModelTrainerContext
+from hawk.context.model_trainer_context import ModelContext
 from hawk.core.model_trainer import ModelTrainerBase
 from hawk.core.model import Model
 from hawk.trainer.dnn_classifier import PYTHON_EXEC
@@ -28,7 +28,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 class FewShotTrainer(ModelTrainerBase):
 
-    def __init__(self, context: ModelTrainerContext, args: Dict[str, str]):
+    def __init__(self, context: ModelContext, args: Dict[str, str]):
         assert 'support_data' in args
         super().__init__(args)
         

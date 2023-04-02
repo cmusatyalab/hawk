@@ -13,6 +13,7 @@ from hawk.core.result_provider import ResultProvider
 from hawk.reexamination.reexamination_strategy import ReexaminationStrategy
 from hawk.selection.selector_base import SelectorBase
 from hawk.selection.selector_base import SelectorStats
+from hawk.selection.topk_selector import TopKSelector
 
 
 class MaxEntropySelector(TopKSelector):
