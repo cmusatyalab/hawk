@@ -156,7 +156,7 @@ class Admin:
             dataset = Dataset(
                 random=FileDataset(
                     dataPath=dataset_config['index_path'],
-                    numTiles= int(dataset_config.get('tiles_per_frame', 200))
+                    numTiles= int(dataset_config.get('tiles_per_frame', 200)),
                     timeout=timeout,
                 )
             )
@@ -164,7 +164,7 @@ class Admin:
             dataset = Dataset(                                                                       
                 random=FileDataset(                                                                    
                     dataPath=dataset_config['index_path'],                                           
-                    numTiles=int(dataset_config.get('tiles_per_frame', 200))                         
+                    numTiles=int(dataset_config.get('tiles_per_frame', 200)),                         
                     timeout=timeout,
                 )                                                                                    
             )  
@@ -317,6 +317,8 @@ class Admin:
 
         for index, stub in self.scout_stubs.items():
             stub.recv()
+
+        logger.info("Start msg received")
         
         threading.Thread(target=self.get_mission_stats, name='get-stats').start()
         return         
@@ -370,15 +372,15 @@ class Admin:
                         f.write("\n")
                     break
 
-                
-                if (stats['processedObjects'] == stats['totalObjects'] or
-                    (stats['retrieved_tiles'] == stats['totalObjects'] and
-                    prev_bytes == stats['bytes'] and prev_processed == stats['processedObjects'])):
-                    self.stop_event.set()
-                    logger.info("End mission")
-                    with open(self.end_file, "w") as f:
-                        f.write("\n")
-                    break
+                if stats['processedObjects'] != 0: 
+                    if (stats['processedObjects'] == stats['totalObjects'] or
+                        (stats['retrieved_tiles'] == stats['totalObjects'] and
+                        prev_bytes == stats['bytes'] and prev_processed == stats['processedObjects'])):
+                        self.stop_event.set()
+                        logger.info("End mission")
+                        with open(self.end_file, "w") as f:
+                            f.write("\n")
+                        break
                 prev_bytes = stats['bytes']
                 prev_processed = stats['processedObjects']
                 count += 1            

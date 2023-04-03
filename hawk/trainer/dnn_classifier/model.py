@@ -290,8 +290,7 @@ class DNNClassifierModel(ModelBase):
                     else:
                         score = 1
                 result_object.attributes.add({'score': str.encode(str(score))})
-                yield ResultProvider(batch[i][0].id, '1' if score >= 0.5 else '0',
-                                     score,  result_object.content, self.version)
+                yield ResultProvider(batch[i][0].id, score,  self.version, result_object)
 
     def stop(self):
         logger.info("Stopping model of version {}".format(self.version))

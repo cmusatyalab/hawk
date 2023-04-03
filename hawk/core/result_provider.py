@@ -8,12 +8,10 @@ from hawk.core.object_provider import ObjectProvider
 
 class ResultProvider(object):
 
-    def __init__(self, obj_id: str, label: str, score: float, model_version: Optional[int], 
-                 obj: ObjectProvider):
-        self.id = obj_id
-        self.label = label
-        self.score = score
+    def __init__(self, obj: ObjectProvider, score: float, model_version: Optional[int]): 
+        self.id = obj.id
         self.content = obj.content
         self.attributes = obj.attributes
         self.gt = obj.gt
+        self.score = score
         self.model_version = model_version

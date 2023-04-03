@@ -226,9 +226,7 @@ class FewShotModel(ModelBase):
             for i in range(len(batch)):
                 score = predictions[i]
                 batch[i][0].attributes.add({'score': str.encode(str(score))})
-                yield ResultProvider(batch[i][0].id, '1' if score >= 0.5 else '0',
-                                     score, self.version,
-                                     batch[i][0])
+                yield ResultProvider(batch[i][0], score, self.version)
 
     def stop(self):
         logger.info("Stopping model of version {}".format(self.version))

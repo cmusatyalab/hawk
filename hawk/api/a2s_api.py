@@ -86,6 +86,7 @@ class A2SAPI(object):
             request.ParseFromString(msg)
 
             reply = self._a2s_configure_scout(request)
+            logger.info("Configured Successfully")
         except Exception as e:
             logger.exception(e)
             reply = ("ERROR: {}".format(e)).encode()
@@ -284,6 +285,7 @@ class A2SAPI(object):
             bytes: SUCESS or ERROR message
         """
         try:
+            logger.info('Starting mission calling mission')
             mission = self._manager.get_mission()
             mission_id = mission.mission_id.value
             logger.info('Starting mission with id {}'.format(mission_id))

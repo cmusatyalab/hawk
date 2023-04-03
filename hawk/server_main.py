@@ -22,6 +22,9 @@ from hawk.core.utils import log_exceptions
 logzero.loglevel(logging.INFO)
 torchvision.set_image_backend('accimage')
 
+def handler_signals(signum, frame):
+    sys.exit(0)
+
 
 def dumpstacks(_, __):
     traceback.print_stack()
@@ -68,4 +71,6 @@ def main():
         raise e
 
 if __name__ == '__main__':
+    signal.signal(signal.SIGINT, handler_signals)
+    signal.signal(signal.SIGTERM, handler_signals)
     main()
