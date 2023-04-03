@@ -181,5 +181,8 @@ class ModelBase(Model):
             # recalls=[item.item() for item in recall],
             version=version
         )
+
+    def evaluate_model(self, test_path: Path) -> None:
+        pass
     
             

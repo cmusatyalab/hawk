@@ -76,6 +76,7 @@ message TrainConfig {
   oneof value {
     ModelConfig dnn_classifier = 1;
     ModelConfig yolo = 2;
+    ModelConfig fsl = 3;
   }
 }
 

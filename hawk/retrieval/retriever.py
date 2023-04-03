@@ -2,9 +2,12 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+import queue
+import threading
+import time
+
 from abc import ABCMeta, abstractmethod
-from collections import Sized
-from typing import Iterable
+from typing import Iterable, Sized
 
 from hawk.core.object_provider import ObjectProvider
 from hawk.proto.messages_pb2 import HawkObject
@@ -111,6 +114,3 @@ class Retriever(RetrieverBase):
             stats = self._stats.copy()
 
         return RetrieverStats(stats)
-
-
-

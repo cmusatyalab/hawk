@@ -5,6 +5,7 @@
 """Admin to Scouts internal api calls
 """
 
+import base64
 import copy
 import gc
 import glob
@@ -20,6 +21,7 @@ import subprocess
 import zipfile
 
 from google.protobuf import json_format
+from PIL import Image
 
 from hawk import api 
 from hawk.core.hawk_stub import HawkStub
@@ -43,8 +45,9 @@ from hawk.reexamination.full_reexamination_strategy import FullReexaminationStra
 from hawk.reexamination.no_reexamination_strategy import NoReexaminationStrategy                        
 from hawk.reexamination.reexamination_strategy import ReexaminationStrategy    
 from hawk.trainer.dnn_classifier.trainer import DNNClassifierTrainer 
-from hawk.trainer.yolo.trainer import YOLOTrainer 
 from hawk.trainer.few_shot.trainer import FewShotTrainer 
+from hawk.trainer.fsl.trainer import FSLTrainer 
+from hawk.trainer.yolo.trainer import YOLOTrainer 
 from hawk.proto.messages_pb2 import Dataset, ScoutConfiguration, MissionId, ImportModel, \
     RetrainPolicyConfig,  SelectiveConfig, ReexaminationStrategyConfig, MissionResults, MissionStats  
     
@@ -213,12 +216,14 @@ class A2SAPI(object):
             scouts = [HawkStub(scout, api.S2S_PORT, host_ip) for scout in request.scouts]
 
             # Setting up Mission with config params
+            logger.info("Start setting up mission")
             mission = Mission(mission_id, request.scoutIndex, scouts, 
                             request.homeIP, retrain_policy, 
                             root_dir / mission_id.value,
                             self._port, self._get_retriever(request.dataset),
                             self._get_selector(request.selector, request.reexamination),
                             request.bootstrapZip, request.initialModel, request.validate)
+            logger.info("Finished setting up mission")
             self._manager.set_mission(mission)
 
             # Setting up mission trainer
@@ -232,7 +237,15 @@ class A2SAPI(object):
                 trainer = YOLOTrainer(mission, config.args)
             elif model.HasField('fsl'):
                 config = model.fsl
-                trainer = FewShotTrainer(mission, config.args)
+                support_path = config.args['support_path']
+
+                # Saving support image 
+                support_data = config.args['support_data']
+                data = base64.b64decode(support_data.encode('utf8'))
+                image = Image.open(io.BytesIO(data))
+                image.save(support_path)
+
+                trainer = FSLTrainer(mission, config.args)
             else:
                 raise NotImplementedError('unknown model: {}'.format(
                     json_format.MessageToJson(model)))
@@ -347,11 +360,11 @@ class A2SAPI(object):
                 mission.log_file.write("{:.3f} {} SEARCH STATS\n".format(
                     time.time() - mission.start_time, mission.host_name))
 
-            retriever = mission.retriever.get_stats()
+            retriever_stats = mission.retriever.get_stats()
             selector_stats = mission.selector.get_stats()
-            processed_objects = retriever.dropped_objects + selector_stats.processed_objects
+            processed_objects = retriever_stats.dropped_objects + selector_stats.processed_objects
 
-            mission_stats = vars(copy.deepcopy(retriever))
+            mission_stats = vars(copy.deepcopy(retriever_stats))
             mission_stats.update(vars(copy.deepcopy(selector_stats)))
             keys_to_remove = ['total_objects', 'processed_objects', 'dropped_objects',
                               'passed_objects', 'false_negatives']
@@ -370,13 +383,10 @@ class A2SAPI(object):
                 'server_negatives': str(mission.negatives),
                 })
 
-            mission.stats_file.write("{}\n".format(json.dumps(mission_stats)))
-            mission.stats_file.flush()
-
-            reply = MissionStats(totalObjects=int(retriever.total_objects),
-                              processedObjects=processed_objects,
-                              droppedObjects=(retriever.dropped_objects + selector_stats.dropped_objects),
-                              falseNegatives=(retriever.false_negatives + selector_stats.false_negatives),
+            reply = MissionStats(totalObjects=int(retriever_stats.total_objects),
+                              processedObjects=int(processed_objects),
+                              droppedObjects=int(retriever_stats.dropped_objects + selector_stats.dropped_objects),
+                              falseNegatives=int(retriever_stats.false_negatives + selector_stats.false_negatives),
                               others=mission_stats)
 
             if mission.enable_logfile:
@@ -385,7 +395,7 @@ class A2SAPI(object):
             
             reply = reply.SerializeToString()            
         except Exception as e:
-            reply = "ERROR: {}".format(e)
+            reply = ("ERROR: {}".format(e)).encode()
         return reply
 
             
@@ -459,7 +469,7 @@ class A2SAPI(object):
             reply = MissionResults(results=results)
             reply = reply.SerializeToString()            
         except Exception as e:
-            reply = "ERROR: {}".format(e)
+            reply = ("ERROR: {}".format(e)).encode()
         return reply
 
 

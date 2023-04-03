@@ -22,6 +22,7 @@ from logzero import logger
 from pathlib import Path
 from hawk.core.utils import get_ip
 from hawk.api import  H2A_PORT
+from utils import define_scope, write_config
 
 # Usage: python home_main.py config/config.yml
 def main():
@@ -40,6 +41,11 @@ def main():
     mission_id = "_".join([mission_name, 
                                datetime.now().strftime('%Y%m%d-%H%M%S')])
    
+    if config['dataset']['type'] == 'cookie':
+        logger.info("Reading Scope Cookie")
+        logger.info(f"Participating scouts \n{config['scouts']}")
+        config = define_scope(config)
+
     bandwidth = config.get('bandwidth', "100")
     assert int(bandwidth) in [100, 30, 12], "Fireqos script may not exist for {}".format(bandwidth)
     config['bandwidth'] = ["[[-1, \"{}k\"]]".format(bandwidth) for _ in config['scouts']] 
@@ -64,8 +70,7 @@ def main():
 
     # Save config file to log_dir
     config_path = log_dir / 'hawk.yml'
-    with open(config_path, 'w') as f:
-        yaml.dump(config, f)
+    write_config(config, config_path)
 
     # Setting up helpers
     scout_ips = config['scouts']

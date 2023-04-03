@@ -55,8 +55,6 @@ class YOLOModel(ModelBase):
         self.args = args 
         self.yolo_repo = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
                                       'yolov5')
-        print(args['train_examples'])
-        # self.context = context
 
         super().__init__(self.args, model_path, context)
         

@@ -2,8 +2,10 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+import base64
 import os
 import queue
+import io
 import json
 import socket
 import sys
@@ -16,6 +18,7 @@ from collections import defaultdict
 from logzero import logger
 from google.protobuf.json_format import MessageToDict                                                             
 from pathlib import Path
+from PIL import Image
 
 from home import ZFILL
 from hawk.api import H2A_PORT, A2S_PORT 
@@ -27,11 +30,12 @@ LOG_INTERVAL = 60
 
 class Admin:
 
-    def __init__(self, home_ip, mission_id) -> None:
+    def __init__(self, home_ip, mission_id, explicit_start=False) -> None:
         self._home_ip = home_ip
         self._start_event = threading.Event()
         self.last_stats = (0,0,0)
         self._mission_id = mission_id
+        self.explicit_start = explicit_start
         self.scout_stubs = {}
         self.test_path = ""
 
@@ -58,13 +62,13 @@ class Admin:
                 with open(config_path) as f:
                     config = yaml.safe_load(f)
 
-                self.setup_mission(config)
+                self._setup_mission(config)
 
             else:
                 raise NotImplementedError("Unknown header {}".format(header))
         
     
-    def setup_mission(self, config):
+    def _setup_mission(self, config):
 
         self._mission_name = config['mission-name']    
         self.log_dir = Path(config['home-params']['log_dir'])
@@ -107,9 +111,24 @@ class Admin:
                 )
             )
         elif train_type == "fsl":
+            support_path = train_config['example_path']
+            image = Image.open(support_path).convert('RGB')
+            content = io.BytesIO()
+            image.save(content, format='JPEG', quality=75)
+            content = content.getvalue()
+            print(support_path)
+            print(content[:10])
+            support_data = base64.b64encode(content).decode('utf8')
+            print(support_data[:10])
+            default_args = {'mode': "hawk",
+                    "support_path": "/srv/diamond/dota/support.jpg", 
+                    "fsl_traindir": "/srv/diamond/dota/fsl_traindir",
+                    "support_data": support_data}
+
             train_strategy = TrainConfig(
                 fsl=ModelConfig(
-                    args=train_config['args'],
+                    args=default_args,
+                    # args=train_config.get('args', default_args),
                 )
             )
         else:
@@ -296,7 +315,9 @@ class Admin:
                 logger.error(f"ERROR during Configuration from Scout {i} \n {msg}")
                 del self.scout_stubs[i]
         
-        self.start_mission()        
+        if not self.explicit_start: 
+            self.start_mission()        
+
         return "SUCCESS"
         
         

@@ -1,7 +1,8 @@
 mission-name: "dota" # Mission identifier 
 train-location: scout 
-label-mode: script # type of labeling interface
+label-mode: ui # type of labeling interface
 scouts: # list of addresses of scouts
+- agra.diamond.cs.cmu.edu
 - briolette.diamond.cs.cmu.edu
 - cullinan.diamond.cs.cmu.edu
 - dresden.diamond.cs.cmu.edu
@@ -17,9 +18,8 @@ home-params:
   gt_dir: /srv/diamond/dota/roundabout/labels # directory where labels present
   log_dir: ../../logs
 dataset:
-  type: random # type of input data
-  stream_path: /home/shilpag/working_dir/dota-classifier-split/43/roundabout-43/stream.txt 
-  index_path: /srv/diamond/INDEXES/GIDIDXDELPHI # path on scout of index file
+  type: cookie # type of input data
+  path: /home/shilpag/.diamond/NEWSCOPE
   tiles_per_frame: 200 # number of tiles per frame if random sampling
 retrain_policy:
   type: absolute # type of retrain condition 
@@ -27,11 +27,8 @@ retrain_policy:
   threshold: 1000 # percentage of increment
 train_strategy:
   type: fsl # type of model training
-  args:
-    batch-size: "64"
-    mode: hawk
-  initial_model_path: /path/to/checkpoints/mini-feat-5-shot.pth
-bandwidth: 30
+  example_path: /home/shilpag/.diamond/yellowthroat.jpeg 
+bandwidth: 100
 selector:
   type: topk # type of selective transmission
   topk:

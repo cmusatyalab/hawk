@@ -53,7 +53,6 @@ class DNNClassifierModel(ModelBase):
         args['train_examples'] = args.get('train_examples', {'1':0, '0':0})
         args['mode'] = mode
         self.args = args 
-        print(args['train_examples'])
 
         super().__init__(self.args, model_path, context)
         
@@ -151,7 +150,7 @@ class DNNClassifierModel(ModelBase):
             model_ft.classifier[1] = torch.nn.Linear(num_ftrs,num_classes)
 
         else:
-            print("Invalid model name, exiting...")
+            logger.error("Invalid model name, exiting...")
             exit()
 
         return model_ft
@@ -290,7 +289,7 @@ class DNNClassifierModel(ModelBase):
                     else:
                         score = 1
                 result_object.attributes.add({'score': str.encode(str(score))})
-                yield ResultProvider(batch[i][0].id, score,  self.version, result_object)
+                yield ResultProvider(result_object, score,  self.version)
 
     def stop(self):
         logger.info("Stopping model of version {}".format(self.version))
