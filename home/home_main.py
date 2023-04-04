@@ -100,11 +100,9 @@ def main():
     
         # Start inbound process
         logger.info("Starting Inbound Process")
-        train_location = config['train-location']
         home_inbound = InboundProcess(image_dir, 
                                       meta_dir,
-                                      config,
-                                      train_location)
+                                      config)
         p = mp.Process(target=home_inbound.receive_data, kwargs={'result_q': meta_q,
                                                                  'stop_event': stop_event})
         processes.append(p)

@@ -41,7 +41,6 @@ class OutboundProcess:
             for i, domain_name in enumerate(self.scout_ips):
                 ip = socket.gethostbyname(domain_name)
                 endpoint = "tcp://{}:{}".format(ip, H2C_PORT)
-                logger.info(endpoint)
                 context = zmq.Context()
                 h2c_socket = context.socket(zmq.PUSH)
                 h2c_socket.connect(endpoint)

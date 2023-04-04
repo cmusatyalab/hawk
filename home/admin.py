@@ -51,10 +51,7 @@ class Admin:
 
         while not stop_event.is_set():
             msg_string = socket.recv_string()
-            print(msg_string)
             header, body = msg_string.split()
-            print("received {}".format(header))
-            sys.stdout.flush()
             socket.send_string("RECEIVED")
         
             if header == "config":
@@ -116,10 +113,7 @@ class Admin:
             content = io.BytesIO()
             image.save(content, format='JPEG', quality=75)
             content = content.getvalue()
-            print(support_path)
-            print(content[:10])
             support_data = base64.b64encode(content).decode('utf8')
-            print(support_data[:10])
             default_args = {'mode': "hawk",
                     "support_path": "/srv/diamond/dota/support.jpg", 
                     "fsl_traindir": "/srv/diamond/dota/fsl_traindir",

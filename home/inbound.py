@@ -20,22 +20,13 @@ class InboundProcess:
     def __init__(self, 
                  tile_dir: Path, 
                  meta_dir: Path,
-                 configuration: dict,
-                 train_location: str = "scout") -> None:
+                 configuration: dict) -> None:
+
         self._tile_dir = tile_dir
         self._meta_dir = meta_dir
         self._token = False
-
         self._running = False 
-        
-        train_location = train_location.lower()
-        
-        self._save_attribute = "tile.jpeg"
-        if train_location == "scout":
-            self._save_attribute = "thumbnail.jpeg"
-        else:
-            raise NotImplementedError(f"Training Location {train_location} Not Implemented")
-    
+        self._save_attribute = "thumbnail.jpeg"
         self._count = 1
 
         ### Extra token selector code to modify labeling process.
@@ -55,7 +46,6 @@ class InboundProcess:
             for i in range(self._num_scouts):
                 self._per_scout_priority_queues.append(queue.PriorityQueue())
         ##########
-        logger.info("Reaches end of init")
     
     def receive_data(self, result_q, stop_event):
         context = zmq.Context()

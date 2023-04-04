@@ -67,7 +67,7 @@ def parse_cookie(data):
 
 
 def define_scope(config):
-    cookie_path = Path.home() / ".diamond/NEWSCOPE"
+    cookie_path = Path.home() / ".hawk/NEWSCOPE"
     cookie_data = open(cookie_path).read()
     index_path, scouts = parse_cookie(cookie_data)
     config['scouts'] = scouts
