@@ -58,6 +58,40 @@ python server_main.py
 cd ~/hawk/home
 python home_main.py configs/config.yml
 ```
+## Running Hawk UI
+Hawk UI is developed using [Flutter SDK](https://docs.flutter.dev/get-started/install) and has been tested using Chrome browser.
+The backend uses Flask REST API (Port:8000) to start and stop missions. The results are streamed to the front-end using websockets (Port:5000). 
+
+### Step 1. Setting up Environment
+```bash
+cd ~/hawk
+export PYTHONPATH=$PWD
+conda env create -n <VIRTUAL_ENV_NAME> -f environment.yml
+conda activate <VIRTUAL_ENV_NAME>
+python scripts/generate_proto.py
+```
+### Step 2. ScopeCookie and Config
+
+Assumes scope cookie (NEWSCOPE) and config file (config.yml) are present in ~/.hawk
+
+```bash
+cp ~/hawk/home/configs/flutter.yml ~/.hawk/config.yml
+```
+### Step 3. Start Home process
+```bash
+cd ~/hawk/home/
+python home/home_flutter.py
+```
+
+### Step 4. Start Flutter app
+```bash
+cd ~/hawk/home/hawk_ui
+export PYTHONPATH=$PWD
+flutter run -d chrome
+# if port forwarding use cmd below
+# flutter run -d web-server --web-port=35415
+```
+Configure the filter using the UI and then click 'Start' to begin mission. The results can be viewed on 'Results' panel.
 
 # Licensing
 
