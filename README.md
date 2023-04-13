@@ -10,7 +10,7 @@ SPDX-License-Identifier: GPL-2.0-only
 *Hawk* is a bandwidth-frugal learning system for discovering instances of rare
 targets from weakly connected distributed data source called "scouts." The mission 
 starts with a machine learning (ML) model trained on very few labeled data. 
-The incoming data is inferred using the model. Hawk uses acctive learning techniques 
+The incoming data is inferred using the model. Hawk uses active learning techniques
 to choose a small subset of data to query the labeler for annotations.
 The obtained labels are added to the labeled training set to periodically improve the quality of 
 models present in the scouts.
@@ -95,7 +95,7 @@ Configure the filter using the UI and then click 'Start' to begin mission. The r
 
 # Licensing
 
-Unless otherwise stated, the source code copyright Carnegie Mellon University and licensed under the GNU General Public License, version 2. Portions from the following third party sources have been modified and are included in this repository. These portions are noted in the source files and are copyright their respective authors with the licenses listed.
+Unless otherwise stated, the source code is copyright Carnegie Mellon University and licensed under the GNU General Public License, version 2. Portions from the following third party sources have been modified and are included in this repository. These portions are noted in the source files and are copyrighted by their respective authors with the licenses listed.
 
 Project | Modified | License
 ---|---|---|
