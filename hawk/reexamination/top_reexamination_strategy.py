@@ -9,6 +9,7 @@ from logzero import logger
 import multiprocessing as mp
 
 from hawk.core.model import Model
+from hawk.core.object_provider import ObjectProvider
 from hawk.reexamination.reexamination_strategy import ReexaminationStrategy
 
 
