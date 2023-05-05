@@ -24,7 +24,7 @@ from hawk.retrieval.diamond_attribute_provider import DiamondAttributeProvider
 from hawk.retrieval.retriever import Retriever
 from hawk.retrieval.retriever_stats import RetrieverStats
 from hawk.core.utils import get_server_ids
-from hawk.core.utils import ATTR_GT_LABEL
+#from hawk.core.utils import ATTR_GT_LABEL
 '''
 class VideoFrameProducer:
     def __init__(self, video_source):

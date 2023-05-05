@@ -182,7 +182,7 @@ class Admin:
                 dataset.append(Dataset(
                     random=FileDataset(
                         dataPath=dataset_config['index_path'],
-                        numTiles= int(dataset_config.get('tiles_per_frame', 200))
+                        numTiles= int(dataset_config.get('tiles_per_frame', 200)),
                         timeout=timeout,
                     )
                 ))
@@ -203,7 +203,7 @@ class Admin:
                         height=3000,
                         tile_width=250,
                         tile_height=250,
-                        timeout=timeout,
+                        #timeout=timeout,
                     )
                 ))
             else:

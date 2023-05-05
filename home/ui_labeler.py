@@ -415,7 +415,7 @@ class UILabeler(object):
             search_stats = json.load(f)
         stats = []
         for k, v in self._stats_keys.items():
-            stats_item = search_stats[k]
+            stats_item = search_stats.get(k,0)
             if k == "positives":
                 stats_item = max(stats_item, self.positives)
             elif k == "negatives":

@@ -33,8 +33,9 @@ from hawk.retrain.percentage_policy import PercentagePolicy
 from hawk.retrain.model_policy import ModelPolicy 
 from hawk.retrain.retrain_policy_base import RetrainPolicyBase
 from hawk.retrieval.frame_retriever import FrameRetriever                                          
-from hawk.retrieval.video_retriever import VideoRetriever
 from hawk.retrieval.random_retriever import RandomRetriever                                             
+from hawk.retrieval.tile_retriever import TileRetriever
+from hawk.retrieval.video_retriever import VideoRetriever
 from hawk.retrieval.retriever import Retriever   
 from hawk.selection.selector_base import Selector                                                        
 from hawk.selection.diversity_selector import DiversitySelector
@@ -46,7 +47,6 @@ from hawk.reexamination.full_reexamination_strategy import FullReexaminationStra
 from hawk.reexamination.no_reexamination_strategy import NoReexaminationStrategy                        
 from hawk.reexamination.reexamination_strategy import ReexaminationStrategy    
 from hawk.trainer.dnn_classifier.trainer import DNNClassifierTrainer 
-from hawk.trainer.few_shot.trainer import FewShotTrainer 
 from hawk.trainer.fsl.trainer import FSLTrainer 
 from hawk.trainer.yolo.trainer import YOLOTrainer 
 from hawk.proto.messages_pb2 import Dataset, ScoutConfiguration, MissionId, ImportModel, \
@@ -559,12 +559,9 @@ class A2SAPI(object):
                     json_format.MessageToJson(reexamination_strategy)))
 
     def _get_retriever(self, dataset: Dataset) -> Retriever:
-        '''
         if dataset.HasField('tile'):
             return TileRetriever(dataset.tile)
-        if dataset.HasField('filesystem'):
-            return FileSystemRetriever(dataset.filesystem)
-        if dataset.HasField('frame'):
+        elif dataset.HasField('frame'):
             return FrameRetriever(dataset.frame)
         elif dataset.HasField('random'):
             return RandomRetriever(dataset.random)
@@ -573,5 +570,3 @@ class A2SAPI(object):
         else:
             raise NotImplementedError('unknown dataset: {}'.format(
                 json_format.MessageToJson(dataset)))
-        '''
-        return VideoRetriever(dataset.video)
