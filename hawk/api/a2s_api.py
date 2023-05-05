@@ -258,7 +258,8 @@ class A2SAPI(object):
             # Constricting bandwidth
             # Only supports one bandwidth
             logger.info(request.bandwidthFunc)
-            self._setup_bandwidth(request.bandwidthFunc[request.scoutIndex])
+            if not request.selector.HasField('token'):
+                self._setup_bandwidth(request.bandwidthFunc[request.scoutIndex])
             if mission.enable_logfile:
                 mission.log_file.write("{:.3f} {} SEARCH CREATED\n".format(
                     time.time() - mission.start_time, mission.host_name))
