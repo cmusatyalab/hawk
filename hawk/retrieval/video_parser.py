@@ -20,7 +20,6 @@ from logzero import logger
 
 from hawk.core.object_provider import ObjectProvider
 from hawk.proto.messages_pb2 import HawkObject, FileDataset, Streaming_Video
-from hawk.retrieval.diamond_attribute_provider import DiamondAttributeProvider
 from hawk.retrieval.retriever import Retriever
 from hawk.retrieval.retriever_stats import RetrieverStats
 from hawk.core.utils import get_server_ids
