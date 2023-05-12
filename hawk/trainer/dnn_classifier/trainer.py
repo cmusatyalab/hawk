@@ -15,7 +15,6 @@ from logzero import logger
 import shlex
 import subprocess
 
-from hawk import M_ZFILL
 from hawk.context.model_trainer_context import ModelContext
 from hawk.core.model_trainer import ModelTrainerBase
 from hawk.core.model import Model
@@ -40,8 +39,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
 
         self.context = context
 
-        self._model_dir = self.context.model_dir
-        logger.info("Model_dir {}".format(self._model_dir))
+        logger.info(f"Model_dir {self.context.model_dir}")
 
         if self.args['test_dir']:
             self.test_dir = Path(self.args['test_dir'])
@@ -50,7 +48,6 @@ class DNNClassifierTrainer(ModelTrainerBase):
 
         logger.info("DNN CLASSIFIER TRAINER CALLED")
             
-
     def load_model(self, path:Path = "", content:bytes = b'', version: int = -1):
         if isinstance(path, str):
             path = Path(path)
@@ -59,13 +56,11 @@ class DNNClassifierTrainer(ModelTrainerBase):
 
         assert path.is_file() or len(content)
         if not path.is_file():
-            path = self._model_dir / "model-{}.pth".format(
-                str(new_version).zfill(M_ZFILL))  
-            with open(path, "wb") as f:
-                f.write(content)     
+            path = self.context.model_path(new_version)
+            path.write_bytes(content)
             
         version = self.get_version()
-        logger.info("Loading from path {}".format(path))
+        logger.info(f"Loading from path {path}")
         self.prev_path = path
         return DNNClassifierModel(self.args, path, version,  
                                   mode=self.args['mode'],
@@ -90,8 +85,8 @@ class DNNClassifierTrainer(ModelTrainerBase):
              
         new_version = self.get_new_version()
 
-        model_savepath = self._model_dir / "model-{}.pth".format(str(new_version).zfill(M_ZFILL))        
-        trainpath = self._model_dir / "train-{}.txt".format(str(new_version).zfill(M_ZFILL)) 
+        model_savepath = self.context.model_path(new_version)
+        trainpath = self.context.model_path(new_version, template="train-{}.txt")
                
         # labels = [subdir.name for subdir in self._train_dir.iterdir()]
         labels = ['0', '1']
@@ -108,7 +103,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
                     f.write("{} {}\n".format(path, l))
 
         if self.context.check_create_test():
-            valpath = self._model_dir / "val-{}.txt".format(str(new_version).zfill(M_ZFILL)) 
+            valpath = self.context.model_path(new_version, template="val-{}.txt")
             val_dir = train_dir.parent / 'test' 
             val_samples = {l:glob.glob(str(val_dir / l / '*')) for l in labels}
             val_len = {l:len(val_samples[l]) for l in labels}

@@ -13,7 +13,6 @@ import torch
 import torchvision
 from logzero import logger
 
-from hawk import M_ZFILL
 from hawk.context.model_trainer_context import ModelContext
 from hawk.core.model_trainer import ModelTrainerBase
 from hawk.core.model import Model
@@ -30,7 +29,6 @@ class FewShotTrainer(ModelTrainerBase):
         super().__init__(args)
         
         self.context = context
-        self._model_dir = self.context.model_dir
         self._model_path = None
         self.version = 0
         
@@ -42,10 +40,8 @@ class FewShotTrainer(ModelTrainerBase):
             path = Path(path)
         assert path.is_file() or len(content)
         if not path.is_file():
-            path = self._model_dir / "model-{}.pth".format(
-                str(new_version).zfill(M_ZFILL))  
-            with open(path, "wb") as f:
-                f.write(content)     
+            path = self.context.model_path(new_version)
+            path.write_bytes(content)
             
         logger.info("Loading from path {}".format(path))
         self._model_path = path

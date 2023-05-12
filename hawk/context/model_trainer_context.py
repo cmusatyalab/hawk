@@ -34,3 +34,6 @@ class ModelContext(ContextBase):
     @abstractmethod
     def stop_model(self) -> None:
         pass
+
+    def model_path(self, version: int, template: str = "model-{}.pth") -> Path:
+        return self.model_dir / template.format(str(version).zfill(3))

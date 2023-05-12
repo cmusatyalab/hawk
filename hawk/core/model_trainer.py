@@ -53,4 +53,3 @@ class ModelTrainerBase(ModelTrainer):
         with self._version_lock:
             self._latest_version = version
         return version
-

@@ -16,7 +16,6 @@ from logzero import logger
 import shlex
 import subprocess
 
-from hawk import M_ZFILL
 from hawk.context.model_trainer_context import ModelContext
 from hawk.core.model_trainer import ModelTrainerBase
 from hawk.core.model import Model
@@ -39,8 +38,7 @@ class YOLOTrainer(ModelTrainerBase):
 
         self.context = context
 
-        self._model_dir = self.context.model_dir
-        logger.info("Model_dir {}".format(self._model_dir))
+        logger.info(f"Model_dir {self.context.model_dir}")
         
         if self.args['test_dir']:
             self.test_dir = Path(self.args['test_dir'])
@@ -66,9 +64,8 @@ class YOLOTrainer(ModelTrainerBase):
         if self.args['mode'] != "oracle":
             assert path.is_file() or len(content)
             if not path.is_file():
-                path = self._model_dir / "model-{}.pt".format(str(version).zfill(M_ZFILL))  
-                with open(path, "wb") as f:
-                    f.write(content)     
+                path = self.context.model_path(version, template="model-{}.pt")
+                path.write_bytes(content)
             
         self.prev_path = path
         self.context.stop_model()
@@ -96,8 +93,8 @@ class YOLOTrainer(ModelTrainerBase):
              
         new_version = self.get_new_version()
 
-        model_savepath = self._model_dir / "model-{}.pt".format(str(new_version).zfill(M_ZFILL))        
-        trainpath = self._model_dir / "train-{}.txt".format(str(new_version).zfill(M_ZFILL)) 
+        model_savepath = self.context.model_path(new_version, template="model-{}.pt")
+        trainpath = self.context.model_path(new_version, template="train-{}.txt")
                
         labels = ['1']
         train_samples = {l:glob.glob(str(train_dir / l / '*')) for l in labels}
@@ -116,7 +113,7 @@ class YOLOTrainer(ModelTrainerBase):
         noval = True                    
         if self.args['test_dir']:
             noval = False
-            valpath = self._model_dir / "val-{}.txt".format(str(new_version).zfill(M_ZFILL)) 
+            valpath = self.context.model_path(new_version, template="val-{}.txt")
             with open(valpath, 'w') as f:
                 for path in glob.glob(self.args['test_dir']+"/*/*"):
                     f.write("{}\n".format(path))
@@ -141,7 +138,7 @@ class YOLOTrainer(ModelTrainerBase):
         file_path = os.path.dirname(os.path.abspath(__file__))
         
         data_dict = {
-            'path': str(self._model_dir),
+            'path': str(self.context.model_dir),
             'train': str(trainpath),
             'nc': 1,
             'names': ['positive']
@@ -150,7 +147,7 @@ class YOLOTrainer(ModelTrainerBase):
         if not noval:
             data_dict['val'] = valpath
 
-        data_file = os.path.join(self._model_dir, 'data.yaml')
+        data_file = self.context.model_dir / 'data.yaml'
         with open(data_file, 'w') as outfile:
             yaml.dump(data_dict, outfile, default_flow_style=False)
 
@@ -175,7 +172,7 @@ class YOLOTrainer(ModelTrainerBase):
         logger.info("TRAIN CMD \n {}".format(shlex.join(cmd)))
         proc = subprocess.Popen(cmd)
         proc.communicate()
-        if not os.path.exists(model_savepath):
+        if not model_savepath.exists():
             raise FileNotFoundError
         logger.info("Training completed")
 
@@ -190,4 +187,3 @@ class YOLOTrainer(ModelTrainerBase):
                          new_version,
                          self.args['mode'], 
                          context=self.context) 
-    

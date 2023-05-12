@@ -23,7 +23,6 @@ from torch_snippets import *
 import glob
 import subprocess
 
-from hawk import M_ZFILL
 from hawk.context.model_trainer_context import ModelContext
 from hawk.core.model_trainer import ModelTrainerBase
 from hawk.core.model import Model
@@ -51,8 +50,7 @@ class FSLTrainer(ModelTrainerBase):
 
         self.context = context
 
-        self._model_dir = self.context.model_dir
-        logger.info("Model_dir {}".format(self._model_dir))
+        logger.info(f"Model_dir {self.context.model_dir}")
 
         logger.info("FSL TRAINER CALLED")
         
@@ -64,10 +62,8 @@ class FSLTrainer(ModelTrainerBase):
 
         assert path.is_file() or len(content)
         if not path.is_file():
-            path = self._model_dir / "model-{}.pth".format(
-                str(new_version).zfill(M_ZFILL))  
-            with open(path, "wb") as f:
-                f.write(content)     
+            path = self.context.model_path(new_version)
+            path.write_bytes(content)
             
         version = self.get_version()
         logger.info("Loading from path {}".format(path))
@@ -91,7 +87,7 @@ class FSLTrainer(ModelTrainerBase):
         
         new_version = self.get_new_version()
 
-        model_savepath = self._model_dir / "model-{}.pth".format(str(new_version).zfill(M_ZFILL))
+        model_savepath = self.context.model_path(new_version)
        
         file_path = os.path.dirname(os.path.abspath(__file__))
         train_dataset = self.args['fsl_traindir']
@@ -167,4 +163,4 @@ class FSLTrainer(ModelTrainerBase):
                         new_version,
                         self.args['mode'], 
                         context=self.context, 
-                        support_path=self.args['support_path']) 
+                        support_path=self.args['support_path'])
