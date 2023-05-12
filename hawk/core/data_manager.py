@@ -75,7 +75,7 @@ class DataManager(object):
             else:
                 object = HawkObject()
                 object.ParseFromString(reply)
-        else:
+        else: ##Local scout contains image of respective label received.
             object = self._context.retriever.get_object(
                 object_id=label.objectId 
             )

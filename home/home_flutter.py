@@ -91,6 +91,7 @@ def configure_mission(filter_config):
     config_path = CONFIG 
     with open(config_path) as f:
         config = yaml.safe_load(f)
+        logger.info(config)
 
     # Setting up mission 
     mission_name = config.get('mission-name', "test")
@@ -121,7 +122,7 @@ def configure_mission(filter_config):
         # Resize to 256 x 256
         dim = (256, 256)
         image = image.resize(dim, Image.LANCZOS)
-        image_path = "/home/shilpag/.hawk/example.jpg"
+        image_path = "/home/eric/.hawk/example.jpg"
         image.save(image_path)
         config['train_strategy']['example_path'] = image_path
     else:
