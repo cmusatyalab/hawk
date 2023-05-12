@@ -62,7 +62,7 @@ def parse_cookie(data):
                  if s != '']
     scopeurl = "/srv/diamond/INDEXES/GIDIDX"+scopeurls[0].split('/')[-1]
     print(scopeurl)
-    print(servers)
+    logger.info(servers)
     return scopeurl, servers 
 
 
