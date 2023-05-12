@@ -159,24 +159,21 @@ class YOLOTrainer(ModelTrainerBase):
         else:
             weights= self.prev_path
 
-        cmd = "{} {}/yolov5/train.py --savepath {} \
-               --epochs {} --batch-size {} \
-               --weights {} --imgsz {} --data {}".format(
-                  PYTHON_EXEC,
-                  file_path,
-                  model_savepath,
-                  num_epochs,
-                  self.args['batch-size'],
-                  weights,
-                  self.args['image-size'],
-                  data_file
-               )
-        
+        cmd = [
+            PYTHON_EXEC,
+            f"{file_path}/yolov5/train.py",
+            "--savepath", str(model_savepath),
+            "--epochs", str(num_epochs),
+            "--batch-size", str(self.args['batch-size']),
+            "--weights", str(weights),
+            "--imgsz", str(self.args['image-size']),
+            "--data", str(data_file),
+        ]
         if self.args['test_dir']:
-            cmd += " --noval False"
+            cmd.extend(["--noval", "False"])
 
-        logger.info("TRAIN CMD \n {}".format(cmd))
-        proc = subprocess.Popen(shlex.split(cmd))
+        logger.info("TRAIN CMD \n {}".format(shlex.join(cmd)))
+        proc = subprocess.Popen(cmd)
         proc.communicate()
         if not os.path.exists(model_savepath):
             raise FileNotFoundError

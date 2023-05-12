@@ -16,7 +16,6 @@ from pathlib import Path
 import torch
 from logzero import logger
 import json
-import shlex
 import subprocess
 import zipfile
 
@@ -292,8 +291,8 @@ class A2SAPI(object):
             bandwidth_file = bandwidth_map.get(bandwidth.lower(), default_file)
 
         # start fireqos
-        bandwidth_cmd = "fireqos start {}".format(bandwidth_file)
-        b = subprocess.Popen(shlex.split(bandwidth_cmd))
+        bandwidth_cmd = ["fireqos", "start", str(bandwidth_file)]
+        b = subprocess.Popen(bandwidth_cmd)
         b.communicate()
         return 
 
@@ -342,8 +341,8 @@ class A2SAPI(object):
             reply = ("ERROR: {}".format(e)).encode()
         finally:
             # Stop fireqos
-            bandwidth_cmd = "fireqos stop"
-            b = subprocess.Popen(shlex.split(bandwidth_cmd))
+            bandwidth_cmd = ["fireqos", "stop"]
+            b = subprocess.Popen(bandwidth_cmd)
             b.communicate()
             torch.cuda.empty_cache()
             gc.collect()

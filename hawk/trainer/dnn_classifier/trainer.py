@@ -142,39 +142,27 @@ class DNNClassifierTrainer(ModelTrainerBase):
             
         file_path = os.path.dirname(os.path.abspath(__file__))
         
+        cmd = [
+            PYTHON_EXEC,
+            f"{file_path}/train_model.py",
+            "--trainpath", str(trainpath),
+            "--arch", self.args['arch'],
+            "--savepath", str(model_savepath),
+            "--num-unfreeze", str(self.args['unfreeze']),
+            "--break-epoch", str(num_epochs),
+            "--batch-size", str(self.args['batch-size']),
+        ]
+
         if self.train_initial_model:
-            cmd = "{} {}/train_model.py --trainpath {} \
-                   --arch {} --savepath {} --num-unfreeze {} \
-                   --break-epoch {} --batch-size {}".format(
-                      PYTHON_EXEC,
-                      file_path,
-                      trainpath,
-                      self.args['arch'],
-                      model_savepath,
-                      self.args['unfreeze'],
-                      num_epochs,
-                      self.args['batch-size'],
-                   )
             self.train_initial_model = False
         else:
-            cmd = "{} {}/train_model.py --trainpath {} \
-                   --arch {} --savepath {} --num-unfreeze {} \
-                   --break-epoch {} --batch-size {} --resume {}".format(
-                      PYTHON_EXEC,
-                      file_path,
-                      trainpath,
-                      self.args['arch'],
-                      model_savepath,
-                      self.args['unfreeze'],
-                      num_epochs,
-                      self.args['batch-size'],
-                      self.prev_path
-                   )
-        
+            cmd.extend(["--resume", str(self.prev_path)])
+
         if self.args['test_dir']:
-            cmd += " --valpath {}".format(self.args['test_dir'])
-        logger.info("TRAIN CMD \n {}".format(cmd))
-        proc = subprocess.Popen(shlex.split(cmd))
+            cmd.extend(["--valpath", self.args['test_dir']])
+
+        logger.info("TRAIN CMD \n {}".format(shlex.join(cmd)))
+        proc = subprocess.Popen(cmd)
         proc.communicate()
 
         # train completed time 

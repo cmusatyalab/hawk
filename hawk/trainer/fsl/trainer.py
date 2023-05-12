@@ -21,7 +21,6 @@ from torch_snippets import *
 
 
 import glob
-import shlex
 import subprocess
 
 from hawk import M_ZFILL
@@ -98,14 +97,13 @@ class FSLTrainer(ModelTrainerBase):
         train_dataset = self.args['fsl_traindir']
         support_path = self.args['support_path']
         
-        cmd = "{} {}/augment.py {} {}".format(
-                  PYTHON_EXEC,
-                  file_path,
-                  train_dataset,
-                  support_path,
-               )
-         
-        proc = subprocess.Popen(shlex.split(cmd))
+        cmd = [
+            PYTHON_EXEC,
+            f"{file_path}/augment.py",
+            train_dataset,
+            support_path,
+        ]
+        proc = subprocess.Popen(cmd)
         proc.communicate()
 
         train_transforms = transforms.Compose([

@@ -13,9 +13,6 @@ import torch
 import torchvision
 from logzero import logger
 
-import shlex
-import subprocess
-
 from hawk import M_ZFILL
 from hawk.context.model_trainer_context import ModelContext
 from hawk.core.model_trainer import ModelTrainerBase
