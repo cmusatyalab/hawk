@@ -94,9 +94,9 @@ class A2SAPI(object):
         except Exception as e:
             logger.exception(e)
             reply = ("ERROR: {}".format(e)).encode()
-            raise e
-        finally:
-            return reply 
+            #raise e
+
+        return reply
 
     @log_exceptions
     def a2s_start_mission(self):
