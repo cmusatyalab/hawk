@@ -64,11 +64,11 @@ class DataManager(object):
         if  int(scout_index) != int(self._context.scout_index):
             logger.info("Fetch {} from {}".format(label.objectId, scout_index))
             stub = self._context.scouts[scout_index]
-            msg = {
-                "method": "s2s_get_tile",
-                "msg": label.SerializeToString(),
-            }
-            stub.internal.send_pyobj(msg)
+            msg = [
+                b"s2s_get_tile",
+                label.SerializeToString(),
+            ]
+            stub.internal.send_multipart(msg)
             reply = stub.internal.recv()
             if not len(reply):
                 object = None
@@ -94,11 +94,11 @@ class DataManager(object):
         for i, stub in enumerate(self._context.scouts):
             if i in [self._context.scout_index, scout_index]:
                 continue 
-            msg = {
-                "method": "s2s_add_tile_and_label",
-                "msg": labeled_tile.SerializeToString(),
-            }
-            stub.internal.send_pyobj(msg)
+            msg = [
+                b"s2s_add_tile_and_label",
+                labeled_tile.SerializeToString(),
+            ]
+            stub.internal.send_multipart(msg)
             stub.internal.recv()
         
         return 

@@ -100,7 +100,7 @@ class A2SAPI(object):
         return reply
 
     @log_exceptions
-    def a2s_start_mission(self):
+    def a2s_start_mission(self, _arg):
         """API call to start mission
 
         Returns:
@@ -114,7 +114,7 @@ class A2SAPI(object):
             raise e
     
     @log_exceptions
-    def a2s_stop_mission(self):
+    def a2s_stop_mission(self, _arg):
         """API call to stop mission
 
         Returns:
@@ -128,7 +128,7 @@ class A2SAPI(object):
             raise e
 
     @log_exceptions
-    def a2s_get_mission_stats(self):
+    def a2s_get_mission_stats(self, _arg):
         """API call to send mission stats to HOME
 
         Returns:
@@ -171,7 +171,7 @@ class A2SAPI(object):
             str: serialized MissionResults message
         """
         try:
-            test_path = msg
+            test_path = msg.decode("utf-8")
             logger.info("Testing {}".format(test_path))
             assert os.path.exists(test_path)
             reply = self._a2s_get_test_results(test_path)  
@@ -181,7 +181,7 @@ class A2SAPI(object):
             raise e
 
     @log_exceptions 
-    def a2s_get_post_mission_archive(self):
+    def a2s_get_post_mission_archive(self, _arg):
         """API call to send mission models and logs archive
 
         Returns:

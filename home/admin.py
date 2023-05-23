@@ -322,11 +322,11 @@ class Admin:
                 bandwidthFunc=bandwidth_func,
                 validate=train_validate,
             )
-            msg = {
-                "method": "a2s_configure_scout",
-                "msg": scout_config.SerializeToString()
-            }
-            stub.send_pyobj(msg)
+            msg = [
+                b"a2s_configure_scout",
+                scout_config.SerializeToString(),
+            ]
+            stub.send_multipart(msg)
         
         for index, stub in self.scout_stubs.items():
 
@@ -355,11 +355,11 @@ class Admin:
                           for i, stub in enumerate(self.scout_stubs)]
         self.start_time = time.time()
         for index, stub in self.scout_stubs.items():
-            msg = {
-                "method": "a2s_start_mission",
-                "msg": b"",
-            }
-            stub.send_pyobj(msg)
+            msg = [
+                b"a2s_start_mission",
+                b"",
+            ]
+            stub.send_multipart(msg)
 
         for index, stub in self.scout_stubs.items():
             stub.recv()
@@ -373,11 +373,11 @@ class Admin:
         """Explicit stop Mission command""" 
 
         for index, stub in self.scout_stubs.items():
-            msg = {
-                "method": "a2s_stop_mission",
-                "msg": b"",
-            }
-            stub.send_pyobj(msg)
+            msg = [
+                b"a2s_stop_mission",
+                b"",
+            ]
+            stub.send_multipart(msg)
 
         for index, stub in self.scout_stubs.items():
             stub.recv()
@@ -442,11 +442,11 @@ class Admin:
     
     def get_post_mission_archive(self):
         for index, stub in self.scout_stubs.items():
-            msg = {
-                "method": "a2s_get_post_mission_archive",
-                "msg": b"",
-            }
-            stub.send_pyobj(msg)
+            msg = [
+                b"a2s_get_post_mission_archive",
+                b"",
+            ]
+            stub.send_multipart(msg)
             reply = stub.recv()
 
             if len(reply):
@@ -458,11 +458,11 @@ class Admin:
     def get_test_results(self):
         assert len(self.test_path), "Test path not provided"
         for index, stub in self.scout_stubs.items():
-            msg = {
-                "method": "a2s_get_test_results",
-                "msg": self.test_path,
-            }
-            stub.send_pyobj(msg)
+            msg = [
+                b"a2s_get_test_results",
+                self.test_path.encode("utf-8"),
+            ]
+            stub.send_multipart(msg)
 
         for index, stub in self.scout_stubs.items():
             reply = stub.recv()
@@ -495,11 +495,11 @@ class Admin:
                       'msg']
         single = ['server_time', 'train_positives', 'version']
         for index, stub in self.scout_stubs.items():
-            msg = {
-                "method": "a2s_get_mission_stats",
-                "msg": b"",
-            }
-            stub.send_pyobj(msg)
+            msg = [
+                b"a2s_get_mission_stats",
+                b"",
+            ]
+            stub.send_multipart(msg)
 
         for index, stub in self.scout_stubs.items():
             reply = stub.recv()

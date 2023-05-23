@@ -44,10 +44,10 @@ def main():
     multiprocessing_logging.install_mp_handler()
 
     learning_module_api = A2SAPI(A2S_PORT)
-    a2s_methods = dict((k, getattr(learning_module_api, k))
+    a2s_methods = dict((k.encode("utf-8"), getattr(learning_module_api, k))
         for k in dir(learning_module_api)
         if callable(getattr(learning_module_api, k)) and
-        not k.startswith('_'))
+        k.startswith('a2s_'))
 
     context = zmq.Context()
     socket = context.socket(zmq.REP)
@@ -55,19 +55,14 @@ def main():
     logger.info("Starting Hawk server")
     try:
         while True:
-            msg = socket.recv_pyobj()
-            method = msg.get('method')
-            req = msg.get('msg')
+            method, req = socket.recv_multipart()
             logger.info("Received A2S call {} {}".format(method, len(req)))
-            if len(req):
-                reply = a2s_methods[method](req)
-            else:
-                reply = a2s_methods[method]()
+            reply = a2s_methods[method](req)
             socket.send(reply)
     except KeyboardInterrupt:
         pass 
     except Exception as e:
-        logger.exception(e)
+        logger.exception()
         raise e
 
 if __name__ == '__main__':

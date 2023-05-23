@@ -28,15 +28,13 @@ def s2s_receive_request(s2s_input, s2s_output):
     socket.bind(f'tcp://0.0.0.0:{api.S2S_PORT}')
     try:
         while True:
-            msg = socket.recv_pyobj()
-            method = msg.get('method')
-            req = msg.get('msg')
+            method, req = socket.recv_multipart()
             logger.info("Received S2S call")
             s2s_input.put((method, req))
             reply = s2s_output.get()
             socket.send(reply)
     except Exception as e:
-        logger.exception(e)
+        logger.exception()
         raise e
 
 class S2SServicer(object):

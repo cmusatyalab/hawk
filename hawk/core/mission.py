@@ -138,10 +138,10 @@ class Mission(DataManagerContext, ModelContext):
         
         self.start_time = time.time()
         s2s_object = S2SServicer(self)
-        self.s2s_methods = dict((k, getattr(s2s_object, k))
+        self.s2s_methods = dict((k.encode("utf-8"), getattr(s2s_object, k))
                     for k in dir(s2s_object)
                     if callable(getattr(s2s_object, k)) and
-                    not k.startswith('_'))
+                    k.startswith('s2s_'))
 
 
     def setup_trainer(self, trainer):
