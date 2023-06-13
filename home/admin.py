@@ -71,8 +71,8 @@ class Admin:
         self.log_dir = Path(config['home-params']['log_dir'])
         self.end_file = self.log_dir / 'end'
         self.end_time = int(config.get('end-time', 5000))
-        scouts = config['scouts']
-        self.scouts = scouts
+
+        self.scouts = config['scouts']
         
         # homeIP 
         home_ip = self._home_ip
@@ -157,51 +157,51 @@ class Admin:
         logger.info("Index {}".format(dataset_config['index_path']))
         timeout = dataset_config.get('timeout', 20)
 
-        dataset = []
-        for i, scout in enumerate(scouts):
+        datasets = {}
+        for index, _scout in enumerate(self.scouts):
             if dataset_type == "tile":
-                dataset.append(Dataset(
+                dataset = Dataset(
                     tile=FileDataset(
                         dataPath=dataset_config['index_path'],
                         timeout=timeout,
                     )
-                ))
+                )
             elif dataset_type == "filesystem":
-                dataset.append(Dataset(
+                dataset = Dataset(
                     filesystem=FileDataset(
                         dataPath=dataset_config['index_path'],
                         tileSize=dataset_config['tile_size'],
                         timeout=timeout,
                     )
-                ))
+                )
             elif dataset_type == "frame":
-                dataset.append(Dataset(
+                dataset = Dataset(
                     frame=FileDataset(
                         dataPath=dataset_config['index_path'],
                         tileSize=dataset_config['tile_size'],
                         timeout=timeout,
                     )
-                )) 
+                )
             elif dataset_type == "random":
-                dataset.append(Dataset(
+                dataset = Dataset(
                     random=FileDataset(
                         dataPath=dataset_config['index_path'],
                         numTiles= int(dataset_config.get('tiles_per_frame', 200)),
                         timeout=timeout,
                     )
-                ))
+                )
             elif dataset_type == "cookie":                                                               
-                dataset.append(Dataset(
+                dataset = Dataset(
                     random=FileDataset(
                         dataPath=dataset_config['index_path'],
                         numTiles=int(dataset_config.get('tiles_per_frame', 200)),
                         timeout=timeout,
                     )
-                ))
+                )
             elif dataset_type == "video":
-                dataset.append(Dataset(
+                dataset = Dataset(
                     video=Streaming_Video(
-                        video_path=video_file_list[i],
+                        video_path=video_file_list[index],
                         sampling_rate_fps=1,
                         width=4000,
                         height=3000,
@@ -209,9 +209,10 @@ class Admin:
                         tile_height=250,
                         #timeout=timeout,
                     )
-                ))
+                )
             else:
-                raise NotImplementedError("Unknown dataset {}".format(dataset_type))
+                raise NotImplementedError(f"Unknown dataset {dataset_type}")
+            datasets[index] = dataset
 
         # reexamination
         reexamination_config = config['reexamination']
@@ -229,7 +230,7 @@ class Admin:
                 type=reexamination_type,
                 )
         else:
-            raise NotImplementedError("Unknown reexamination {}".format(reexamination_type))
+            raise NotImplementedError(f"Unknown reexamination {reexamination_type}")
         
         
         # selector
@@ -281,8 +282,8 @@ class Admin:
        
         # bandwidthFunc
         bandwidth_config = config['bandwidth']
-        assert len(scouts) == len(bandwidth_config), "Length Bandwidth {} does not match {}".format(
-            len(bandwidth_config), len(scouts)
+        assert len(self.scouts) == len(bandwidth_config), "Length Bandwidth {} does not match {}".format(
+            len(bandwidth_config), len(self.scouts)
         )
         bandwidth_func = {}
         for i, _b in enumerate(bandwidth_config):
@@ -301,10 +302,10 @@ class Admin:
         # setup ScoutConfiguration
         # Call a2s_configure_scout and wait for success message 
 
-        return_msgs = []
         # inform scouts on which address/port they can find each other
         s2s_port = config.get('s2s_port', S2S_PORT)
         s2s_scouts = [f"{host}:{s2s_port}" for host in self.scouts]
+
         logger.info(self._mission_id)
         logger.info(s2s_scouts)
         for index, stub in self.scout_stubs.items():
@@ -317,7 +318,7 @@ class Admin:
                 missionDirectory=mission_directory,
                 trainStrategy=train_strategy,
                 retrainPolicy=retrain_policy,
-                dataset=dataset[index],
+                dataset=datasets[index],
                 selector=selector, 
                 reexamination=reexamination,
                 initialModel=initial_model, 
@@ -330,18 +331,20 @@ class Admin:
                 scout_config.SerializeToString(),
             ]
             stub.send_multipart(msg)
-        
+
+        return_msgs = {}
         for index, stub in self.scout_stubs.items():
 
             reply = stub.recv()
-            return_msgs.append(reply.decode())
+            return_msgs[index] = reply.decode()
        
-        # Remove scouts that failed
-         
-        for i, msg in enumerate(return_msgs):
-            if "ERROR" in msg:
-                logger.error(f"ERROR during Configuration from Scout {i} \n {msg}")
-                del self.scout_stubs[i]
+        # Remove scouts that failed, create a list to make sure we can safely delete
+        known_scouts = list(self.scout_stubs.keys())
+        for index in known_scouts:
+            if index not in return_msgs or "ERROR" in return_msgs[index]:
+                errormsg = return_msgs.get(index, "No response")
+                logger.error(f"ERROR during Configuration from Scout {self.scouts[index]}: {errormsg}")
+                del self.scout_stubs[index]
         
         if not self.explicit_start: 
             self.start_mission()        
@@ -354,8 +357,11 @@ class Admin:
         # Start Mission  
 
         logger.info("Starting mission")
-        self.log_files = [open(os.path.join(str(self.log_dir), 'get-stats-{}.txt'.format(i)), "a") 
-                          for i, stub in enumerate(self.scout_stubs)]
+        self.log_files = dict([
+            (index, self.log_dir.joinpath(f"get-stats-{index}.txt").open("a"))
+            for index in self.scout_stubs.keys()
+        ])
+
         self.start_time = time.time()
         for index, stub in self.scout_stubs.items():
             msg = [
@@ -508,7 +514,7 @@ class Admin:
             mission_stat = MissionStats()
             mission_stat.ParseFromString(reply)
             mission_stat = MessageToDict(mission_stat)
-            self.log_files[index].write("{}\n".format(json.dumps(mission_stat)))
+            self.log_files[index].write(json.dumps(mission_stat) + "\n")
             for k, v in mission_stat.items():
                 if isinstance(v, dict):
                     others = v
