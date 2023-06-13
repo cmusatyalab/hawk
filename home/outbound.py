@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
+# SPDX-FileCopyrightText: 2022,2023 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -12,7 +12,7 @@ import socket
 
 from logzero import logger
 
-from hawk.ports import H2C_PORT
+from hawk.proto import Empty
 from hawk.proto.messages_pb2 import SendLabels, LabelWrapper
 
 
@@ -30,21 +30,19 @@ class OutboundProcess:
         else:
             raise NotImplementedError(f"Training Location {train_location} Not Implemented")
 
-    def send_labels(self, scout_ips, result_q, stop_event):
+    def send_labels(self, scout_ips, h2c_port, result_q, stop_event):
         """API call to send messages from Home to Scouts"""
 
         self.scout_ips = scout_ips
         self.result_q = result_q
         self.stop_event = stop_event
+        self.zmq_context = zmq.Context()
         try:
-            self.stubs = []
-            for i, domain_name in enumerate(self.scout_ips):
-                ip = socket.gethostbyname(domain_name)
-                endpoint = f"tcp://{ip}:{H2C_PORT}"
-                context = zmq.Context()
-                h2c_socket = context.socket(zmq.PUSH)
-                h2c_socket.connect(endpoint)
-                self.stubs.append(h2c_socket)
+            self.stubs = {}
+            for index, ip in enumerate(self.scout_ips):
+                h2c_socket = self.zmq_context.socket(zmq.PUSH)
+                h2c_socket.connect(f"tcp://{ip}:{h2c_port}")
+                self.stubs[index] = h2c_socket
 
             self.transmit_func()
 
@@ -53,7 +51,7 @@ class OutboundProcess:
     
     def scout_send_labels(self):
         """Function to serialize labels for transmission"""
-        msg = ""
+        msg = Empty
         scout_index = None
         try:
             while not self.stop_event.is_set():
@@ -86,4 +84,3 @@ class OutboundProcess:
             logger.error(e)
 
         return msg, [scout_index]
-

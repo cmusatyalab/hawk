@@ -5,6 +5,7 @@
 import os
 import shutil
 import signal
+import socket
 import sys
 import time
 import yaml
@@ -19,7 +20,7 @@ from inbound import InboundProcess
 from outbound import OutboundProcess
 from logzero import logger
 from pathlib import Path
-from hawk.ports import H2A_PORT
+from hawk.ports import H2A_PORT, H2C_PORT
 from utils import define_scope, write_config, get_ip
 
 # Usage: python home_main.py config/config.yml
@@ -71,7 +72,8 @@ def main():
     write_config(config, config_path)
 
     # Setting up helpers
-    scout_ips = config['scouts']
+    scout_ips = [socket.gethostbyname(scout) for scout in config['scouts']]
+
     processes = [] 
     stop_event = mp.Event()
     meta_q = mp.Queue()
@@ -80,7 +82,6 @@ def main():
     stats_q.put((0,0,0))
     
     try:
-
         # Starting home to admin conn 
         context = zmq.Context()
         h2a_socket = context.socket(zmq.REQ)
@@ -136,8 +137,10 @@ def main():
     
         # start outbound process  
         logger.info("Starting Outbound Process")
+        h2c_port = config.get('h2c_port', H2C_PORT)
         home_outbound = OutboundProcess()
         p = mp.Process(target=home_outbound.send_labels, kwargs={'scout_ips': scout_ips,
+                                                                 'h2c_port': h2c_port,
                                                                  'result_q': label_q,
                                                                  'stop_event': stop_event})
         p.start()

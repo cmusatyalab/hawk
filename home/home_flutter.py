@@ -10,17 +10,19 @@ import json
 import multiprocessing as mp
 import os
 import signal
+import socket
 import sys
 import threading
 import time
 import yaml
 import zmq
+from pathlib import Path
 from pprint import pprint
 
 from admin import Admin 
 from datetime import datetime
 from flask import Flask, request, make_response, jsonify
-from hawk.ports import H2A_PORT
+from hawk.ports import H2A_PORT, H2C_PORT
 from home import *
 from inbound import InboundProcess
 from logzero import logger
@@ -34,16 +36,16 @@ from utils import define_scope, write_config, get_ip
 
 REMOTE_USER = 'root'
 CONFIG = os.getenv('HOME')+"/.hawk/config.yml" # PUT this in .hawk
-home_path = os.path.dirname(os.path.realpath(__file__))
+home_path = Path(__file__).resolve().parent
 app_data = {}
 app = Flask(__name__)
 
 
 def restart_scouts(scouts: Iterable[str]):
-    host_file = os.path.join(home_path, 'hosts')
-    restart_file = os.path.join(home_path, 'scout-restart.sh')
-    with open(host_file, 'w') as f:
-        f.write("\n".join(scouts))
+    host_file = home_path / 'hosts'
+    host_file.write_text("\n".join(scouts))
+    restart_file = home_path / 'scout-restart.sh'
+
     scout_startup_cmd = f"parallel-ssh -t 0 -h {host_file} \
         -l {REMOTE_USER} -P -I<{restart_file} > /dev/null"
     os.system(scout_startup_cmd)
@@ -169,9 +171,12 @@ def configure_mission(filter_config):
     write_config(config, config_path)
 
     # Setting up helpers
-    scout_ips = config['scouts']
-    app_data['scouts'] = config['scouts']
-    restart_scouts(scout_ips)
+    scouts = config['scouts']
+    scout_ips = [socket.gethostbyname(scout) for scout in scouts]
+
+    app_data['scouts'] = scouts
+    restart_scouts(scouts)
+
     processes = [] 
     stop_event = mp.Event()
     
@@ -214,8 +219,10 @@ def configure_mission(filter_config):
         
         # start outbound process  
         logger.info("Starting Outbound Process")
+        h2c_port = config.get('h2c_port', H2C_PORT)
         home_outbound = OutboundProcess()
         p = mp.Process(target=home_outbound.send_labels, kwargs={'scout_ips': scout_ips,
+                                                                 'h2c_port': h2c_port,
                                                                  'result_q': label_q,
                                                                  'stop_event': stop_event})
         p.start()
