@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
+# SPDX-FileCopyrightText: 2022,2023 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -20,7 +20,7 @@ from google.protobuf.json_format import MessageToDict
 from pathlib import Path
 from PIL import Image
 
-from hawk.ports import A2S_PORT, H2A_PORT
+from hawk.ports import A2S_PORT, H2A_PORT, S2S_PORT
 from hawk.proto.messages_pb2 import *
 
 
@@ -300,13 +300,17 @@ class Admin:
        
         # setup ScoutConfiguration
         # Call a2s_configure_scout and wait for success message 
+
         return_msgs = []
+        # inform scouts on which address/port they can find each other
+        s2s_port = config.get('s2s_port', S2S_PORT)
+        s2s_scouts = [f"{host}:{s2s_port}" for host in self.scouts]
         logger.info(self._mission_id)
-        logger.info(scouts)
+        logger.info(s2s_scouts)
         for index, stub in self.scout_stubs.items():
             scout_config = ScoutConfiguration(
                 missionId=self._mission_id, 
-                scouts=scouts, 
+                scouts=s2s_scouts,
                 scoutIndex=index, 
                 homeIP=home_ip, 
                 trainLocation=train_location, 

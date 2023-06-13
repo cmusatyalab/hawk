@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
+# SPDX-FileCopyrightText: 2022,2023 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -209,7 +209,7 @@ class A2SAPI(object):
         """
         try:
             root_dir = Path(request.missionDirectory) / 'data'
-            assert root_dir.is_dir(), "Root directory does not exist"
+            assert root_dir.is_dir(), f"Root directory {root_dir} does not exist"
             model_dir = root_dir / request.missionId / 'model'
 
             mission_id = MissionId(value=request.missionId)
@@ -217,8 +217,8 @@ class A2SAPI(object):
             retriever = self._get_retriever(request.dataset)
             if request.retrainPolicy.HasField("sample"):
                 retrain_policy.num_interval_sample(retriever.total_tiles)
-            host_ip = request.scouts[request.scoutIndex]
-            scouts = [HawkStub(scout, S2S_PORT, host_ip) for scout in request.scouts]
+            this_host = request.scouts[request.scoutIndex]
+            scouts = [HawkStub(scout, S2S_PORT, this_host) for scout in request.scouts]
 
             # Setting up Mission with config params
             logger.info("Start setting up mission")

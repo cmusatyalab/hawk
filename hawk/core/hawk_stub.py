@@ -1,21 +1,22 @@
-# SPDX-FileCopyrightText: 2022 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
+# SPDX-FileCopyrightText: 2022,2023 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
 import zmq
 import socket 
 
+from hawk.ports import S2S_PORT
+
 class HawkStub(object):
 
-    def __init__(self, ip, port, host_ip):
+    def __init__(self, host, this_host):
         
-        if ip == host_ip:
+        if host == this_host:
             # open server connection 
             self.internal = None
         else:
-            domain_name = ip 
-            ip = socket.gethostbyname(domain_name)
-            context = zmq.Context()
-            client = context.socket(zmq.REQ)
-            self.internal = client
-            self.internal.connect("tcp://{}:{}".format(ip, port))
+            hostname, port = (host.rsplit(':', 1) + [S2S_PORT])[:2]
+            ip = socket.gethostbyname(hostname)
+            self.zmq_context = zmq.Context()
+            self.internal = self.zmq_context.socket(zmq.REQ)
+            self.internal.connect(f"tcp://{ip}:{port}")
