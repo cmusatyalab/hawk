@@ -36,6 +36,7 @@ class Admin:
         self.last_stats = (0,0,0)
         self._mission_id = mission_id
         self.explicit_start = explicit_start
+        self.zmq_context = None
         self.scout_stubs = {}
         self.test_path = ""
 
@@ -290,14 +291,17 @@ class Admin:
             bandwidth_func[int(i)] = str(_b)  
 
         train_validate = train_config.get('validate', True)
+
+        self.zmq_context = zmq.Context()
+
+        a2s_port = config.get('a2s_port', A2S_PORT)
          
         self.scout_stubs = {}
-        for i, scout in enumerate(scouts):
-            ip = socket.gethostbyname(scout)
-            context = zmq.Context()
-            stub = context.socket(zmq.REQ)
-            stub.connect(f"tcp://{ip}:{A2S_PORT}")
-            self.scout_stubs[i] = stub
+        for index, host in enumerate(self.scouts):
+            ip = socket.gethostbyname(host)
+            stub = self.zmq_context.socket(zmq.REQ)
+            stub.connect(f"tcp://{ip}:{a2s_port}")
+            self.scout_stubs[index] = stub
        
         # setup ScoutConfiguration
         # Call a2s_configure_scout and wait for success message 
@@ -308,6 +312,7 @@ class Admin:
 
         logger.info(self._mission_id)
         logger.info(s2s_scouts)
+
         for index, stub in self.scout_stubs.items():
             scout_config = ScoutConfiguration(
                 missionId=self._mission_id, 
