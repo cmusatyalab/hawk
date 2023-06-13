@@ -1,15 +1,17 @@
-# SPDX-FileCopyrightText: 2022 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
+# SPDX-FileCopyrightText: 2022,2023 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
 import io
-import queue
 import math
-import numpy as np 
+import queue
 import time
 import threading
-from typing import Iterable, Sized
 from collections import defaultdict
+from pathlib import Path
+from typing import Iterable, Sized
+
+import numpy as np
 from PIL import Image
 from logzero import logger
 
@@ -30,6 +32,7 @@ class RandomRetriever(Retriever):
         self.img_tile_map = defaultdict(list)
 
         index_file = self._dataset.dataPath
+        self._data_root = Path(index_file).parent.parent
         contents = open(index_file).read().splitlines()
         self.total_tiles = len(contents)
         
@@ -72,16 +75,14 @@ class RandomRetriever(Retriever):
                 else:
                     image_path = parts[0]
                     label = parts[1]
-                try:
-                    image = Image.open(image_path).convert('RGB')
-                except FileNotFoundError:
-                    image_path = "/srv/diamond/"+image_path
-                    image = Image.open(image_path).convert('RGB')
 
+                object_id = f"/{label}/collection/id/" + str(image_path)
+
+                image_path = self._data_root / image_path
+                image = Image.open(image_path).convert('RGB')
                 image.save(content, format='JPEG', quality=85)
                 content = content.getvalue()
 
-                object_id = "/{}/collection/id/".format(label)+image_path
                 attributes = self.set_tile_attributes(object_id, label)
                 self._stats['retrieved_tiles'] += 1
 
