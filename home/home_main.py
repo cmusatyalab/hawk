@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
+# SPDX-FileCopyrightText: 2022,2023 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -19,9 +19,8 @@ from inbound import InboundProcess
 from outbound import OutboundProcess
 from logzero import logger
 from pathlib import Path
-from hawk.core.utils import get_ip
 from hawk.api import  H2A_PORT
-from utils import define_scope, write_config
+from utils import define_scope, write_config, get_ip
 
 # Usage: python home_main.py config/config.yml
 def main():

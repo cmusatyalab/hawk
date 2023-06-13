@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
+# SPDX-FileCopyrightText: 2022,2023 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -36,7 +36,7 @@ from hawk.selection.token_selector import TokenSelector
 from hawk.api.s2s_api import S2SServicer, s2s_receive_request
 from hawk.api.s2h_api import S2HPublisher 
 from hawk.api.h2c_api import H2CSubscriber
-from hawk.core.utils import log_exceptions, get_server_ids, get_ip
+from hawk.core.utils import log_exceptions, get_server_ids
 from hawk.proto.messages_pb2 import *
 
 
@@ -66,7 +66,6 @@ class Mission(DataManagerContext, ModelContext):
         os.makedirs(self._log_dir, exist_ok=True)
         os.makedirs(self._model_dir, exist_ok=True)
         self.host_name = (get_server_ids()[0]).split('.')[0]
-        self.host_ip = get_ip()
         self.home_ip = home_ip
         self.log_file = open(self._log_dir / 'log-{}.txt'.format(self.host_name), "a")
         self.result_path = str(self._log_dir / 'sent-{}.txt'.format(self.host_name))

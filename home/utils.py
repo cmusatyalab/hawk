@@ -1,7 +1,12 @@
+# SPDX-FileCopyrightText: 2022,2023 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
+#
+# SPDX-License-Identifier: GPL-2.0-only
+
 import base64
 import binascii
 import os
 import re
+import socket
 import textwrap
 import uuid
 import yaml
@@ -78,3 +83,17 @@ def write_config(config, config_path):
     with open(config_path, 'w') as f:
         yaml.dump(config, f)
     return 
+
+
+def get_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.settimeout(0)
+    try:
+        # doesn't even have to be reachable
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except Exception:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    return IP

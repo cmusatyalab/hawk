@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
+# SPDX-FileCopyrightText: 2022,2023 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -15,11 +15,11 @@ import threading
 import time
 import yaml
 import zmq
+from pprint import pprint
 
 from admin import Admin 
 from datetime import datetime
 from flask import Flask, request, make_response, jsonify
-from hawk.core.utils import get_ip
 from hawk.api import  H2A_PORT
 from home import *
 from inbound import InboundProcess
@@ -30,8 +30,7 @@ from PIL import Image
 from script_labeler import ScriptLabeler
 from typing import Iterable
 from ui_labeler import UILabeler
-from utils import define_scope, write_config
-from pprint import pprint
+from utils import define_scope, write_config, get_ip
 
 REMOTE_USER = 'root'
 CONFIG = os.getenv('HOME')+"/.hawk/config.yml" # PUT this in .hawk
