@@ -8,7 +8,6 @@ import threading
 
 import zmq
 
-from home import ZFILL
 from logzero import logger
 from pathlib import Path 
 
@@ -62,7 +61,7 @@ class InboundProcess:
                 parent_scout = request.scoutIndex
                 score = request.score
                 print(object_id, parent_scout)
-                data_name = (str(self._count)).zfill(ZFILL)
+                data_name = f"{self._count:06}"
 
                 data = request.attributes
                 byte_size = request.ByteSize()
@@ -105,7 +104,7 @@ class InboundProcess:
 
     def write_push(self, result_queue, temp_meta_data, data_name, data, local_counter):
                 if self._token:
-                    data_name = (str(local_counter)).zfill(ZFILL)
+                    data_name = f"{local_counter:06}"
                 meta_path = self._meta_dir/ f"{data_name}.json"
                 #logger.info("Meta path top of write push: {}".format(meta_path))
 

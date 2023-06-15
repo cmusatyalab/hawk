@@ -6,7 +6,6 @@ import json
 import time 
 import queue
 
-from home import *
 from logzero import logger
 from pathlib import Path
 from typing import Dict

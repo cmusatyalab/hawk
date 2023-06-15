@@ -16,8 +16,6 @@ from flask import send_file
 from logzero import logger
 from pathlib import Path
 
-from home import *
-
 
 class EndpointAction(object):
 

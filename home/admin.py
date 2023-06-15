@@ -20,7 +20,6 @@ from google.protobuf.json_format import MessageToDict
 from pathlib import Path
 from PIL import Image
 
-from home import ZFILL
 from hawk.api import H2A_PORT, A2S_PORT 
 from hawk.proto.messages_pb2 import *
 
@@ -407,7 +406,7 @@ class Admin:
                 for key, value in zip(keys, last_stats):
                     stats[key] = value
 
-                log_path = self.log_dir / "stats-{}.json".format(str(count).zfill(ZFILL))
+                log_path = self.log_dir / f"stats-{count:06}.json"
                 with open(log_path, "w") as f:
                     stats['home_time'] = time.time() - self.start_time
                     json.dump(stats, f, indent=4, sort_keys=True)
@@ -479,8 +478,7 @@ class Admin:
                 
                     for version, result in mission_stat.items():
                         model_stat = MessageToDict(result)
-                        stat_path = (results_dir / 
-                                     "model-result-{}.json".format(str(version).zfill(ZFILL)))
+                        stat_path = results_dir / f"model-result-{version:06}.json"
                         with open(stat_path, "w") as f:
                             json.dump(model_stat, f, indent=4, sort_keys=True)
                 except Exception as e:

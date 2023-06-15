@@ -13,7 +13,6 @@ import multiprocessing as mp
 from datetime import datetime
 
 from admin import Admin 
-from home import *
 from script_labeler import ScriptLabeler
 from ui_labeler import UILabeler
 from inbound import InboundProcess
