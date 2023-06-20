@@ -3,13 +3,13 @@ train-location: scout
 label-mode: ui # type of labeling interface
 scouts: # list of addresses of scouts
 - agra.diamond.cs.cmu.edu
-- briolette.diamond.cs.cmu.edu
-- cullinan.diamond.cs.cmu.edu
+#- briolette.diamond.cs.cmu.edu
+#- cullinan.diamond.cs.cmu.edu
 #- dresden.diamond.cs.cmu.edu
-- indore.diamond.cs.cmu.edu
-- kimberly.diamond.cs.cmu.edu
-- patiala.diamond.cs.cmu.edu
-- transvaal.diamond.cs.cmu.edu
+#- indore.diamond.cs.cmu.edu
+#- kimberly.diamond.cs.cmu.edu
+#- patiala.diamond.cs.cmu.edu
+#- transvaal.diamond.cs.cmu.edu
 #- cloudlet027.elijah.cs.cmu.edu
 scout-params: # directory on scouts where data, models and logs of mission are saved
   mission_dir: /srv/diamond/school_bus_tiles/delphi
@@ -20,12 +20,12 @@ dataset:
   type: video # type of input data, set to "video"
   video_list: 
   - /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-09-14-23-29.mp4
-  - /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-10-14-08-03.mp4
-  - /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-16-14-53-30.mp4
-  - /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-13-07-53-29.mp4
-  - /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-10-14-53-28.mp4
-  - /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-10-15-08-03.mp4
-  - /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-13-15-53-29.mp4
+ #- /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-10-14-08-03.mp4
+ #- /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-16-14-53-30.mp4
+ #- /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-13-07-53-29.mp4
+ #- /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-10-14-53-28.mp4
+ #- /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-10-15-08-03.mp4
+ #- /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-13-15-53-29.mp4
   stream_path: /home/eric/School_Bus_Hawk/src/bus_stream.txt # path on home of stream path
   index_path: /srv/diamond/stream_list.txt # path on scout of index file
   tiles_per_frame: 192 # number of tiles per frame if random sampling (default 200)
@@ -44,10 +44,12 @@ train_strategy:
   initial_model_path: /home/eric/School_Bus_Hawk/src/bus_model_21Sep.pth # path to intial model on home
   bootstrap_path: /home/eric/School_Bus_Hawk/src/bus_bootstrap_video.zip # path to compressed bootstrap zipfile @ home (0/* and 1/*)
 selector:
-  type: topk # type of selective transmission
-  topk:
-    k: 5
-    batchSize: 1000 #default 1000
+  type: token # type of selective transmission
+  token:
+    initial_samples: 4 # per scout (number of samples send immediately to home prior to start of labeling)
+    batch_size: 300
+    label_time: 1
+    rotation: round-robin # or top
 reexamination:
   type: top # type of reexamination strategy
   k: 100 

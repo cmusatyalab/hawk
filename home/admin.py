@@ -324,6 +324,7 @@ class Admin:
             stub.send_pyobj(msg)
         
         for index, stub in self.scout_stubs.items():
+
             reply = stub.recv()
             return_msgs.append(reply.decode())
        
