@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +20,7 @@ class FSLSetup extends StatefulWidget {
 
 class _FSLSetupState extends State<FSLSetup> {
   Uint8List? imageFile;
+  String? filePath;
   
   uploadImage() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -26,17 +28,23 @@ class _FSLSetupState extends State<FSLSetup> {
         allowedExtensions: ['png', 'jpg', 'svg', 'jpeg', 'ppm', 'bmp']);
 
     if (result != null) {
-      PlatformFile file = result.files.first;
+      PlatformFile file = result.files.first!;
       Uint8List newFile = file.bytes!;
-      setState(() => imageFile = newFile);
-    } else {
+
+      setState(() {
+        imageFile = newFile;
+      });
+      
+      
+      } else {
       // User canceled the picker
     }
+  
 
     String image_string = base64.encode(imageFile!);
     widget.config.name = 'fsl';
     widget.config.args = {'support': image_string};
-  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +60,7 @@ class _FSLSetupState extends State<FSLSetup> {
                     children: <Widget>[
                       const Icon(Icons.file_upload),
                       const SizedBox(width: 10),
-                      const Text('Upload Image')
+                      const Text('Upload Image',style:TextStyle(fontSize:20))
                     ],
                   ),
                   onPressed: () => uploadImage(),
@@ -60,8 +68,8 @@ class _FSLSetupState extends State<FSLSetup> {
                 const SizedBox(width: 30),
                 Expanded(
                 child: imageFile == null
-                  ? const Center(child: Text('No Image Uploaded'))
-                  : Image.memory(imageFile!),
+                  ? Center(child: Text('No Image Uploaded'))
+                  : Center(child: Row(mainAxisAlignment: MainAxisAlignment.center,children: [SizedBox(width:500,height:200, child:Text("You have chosen the support image to the right.  Hawk will use Few Shot Learning mode to use a feature extractor and distance to find the most similar images from the selected data source.", overflow:TextOverflow.ellipsis,maxLines:10),),Image.memory(imageFile!),],),),
                 ),
                 const SizedBox(width: 30),
           ],

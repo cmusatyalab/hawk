@@ -68,13 +68,7 @@ class _ResultDisplayState extends State<ResultDisplay> {
   Color neg_color = Color.fromARGB(255, 168, 15, 4);
   Color pos_color = Color.fromARGB(255, 8, 112, 11);
   int old_length =  0;
-  ResultItem? unique_result;
   //print('After vars');
-  int elapsed_time = 0;
-  String time_string = '00:00';
-  int counter = 0;
-  StreamController<ValueNotifier<int>> timerStreamController = StreamController<ValueNotifier<int>>();
-  ValueNotifier<int> counterValueNotifier = ValueNotifier<int>(0);
 
   
 
@@ -84,19 +78,8 @@ class _ResultDisplayState extends State<ResultDisplay> {
   void initState() {
     super.initState();
     _connectToWebSocket();
- 
-    timerStreamController.stream.listen((valueNotifier) {
-        counterValueNotifier.value = valueNotifier.value;
     
-    });
-    _startTimer();
       }
-      void _startTimer() {
-    Timer.periodic(Duration(seconds: 1), (timer) {
-      counterValueNotifier.value = timer.tick;
-      timerStreamController.add(counterValueNotifier);
-    });
-  }
 
   
 
@@ -109,19 +92,12 @@ class _ResultDisplayState extends State<ResultDisplay> {
     setState((){
       _isConnected = true;
     });
-    listener();
 
   }
   void listener(){
-    _channel.stream.listen((var newdata){
-      var data = json.decode(newdata.toString());
-        //var newData = snapshot.data;                    
-        ResultItem result = ResultItem.fromJson(data);
-        results.add(result);
-        total_samples_received += 1;
+    _channel.stream.listen((message){
       setState((){
-        
-        //received_ratio = total_samples_received/total_samples_inferenced;
+        results.add(message);
       });
     });
   }
@@ -142,14 +118,7 @@ void dispose() {
   _stopListening();
   super.dispose();
 }*/
-String time_elapsed(int elapsed_time){
-  var duration = Duration(seconds:elapsed_time);
-                        var minutes = duration.inMinutes;
-                        var seconds = elapsed_time % 60;
-                        var minutesString = '$minutes'.padLeft(1, '0');
-                        var secondsString = '$seconds'.padLeft(2, '0');
-                        return '$minutesString:$secondsString';
-}
+
 
  void pos_select_sample(ResultItem res){
     if (res.pos_sel == true) {
@@ -262,7 +231,7 @@ Map<String, String> label_list(List<ResultItem> result_objects){
                   ? SizedBox(
                       width: MediaQuery.of(context).size.width*0.6,
                       height: MediaQuery.of(context).size.height - 100,
-                      /*child: StreamBuilder(
+                      child: StreamBuilder(
                         stream: _channel.stream!,
                         builder: (context, AsyncSnapshot snapshot) {
                           if (!snapshot.hasData)  {
@@ -284,9 +253,9 @@ Map<String, String> label_list(List<ResultItem> result_objects){
 
                           results.add(result);
                           old_length += 1;
-                          }*/
+                          }
 
-                          child: results.length > 0 ? Row(
+                          return Row(
                             children: <Widget>[
                               Expanded(
                                 child: GridView.builder(
@@ -331,7 +300,7 @@ Map<String, String> label_list(List<ResultItem> result_objects){
                                               ),
                                               Container(
                           padding: EdgeInsets.all(2.0),
-                          color: Colors.black.withOpacity(0.1), 
+                          color: index > 1 ? Colors.black.withOpacity(0.1) : Colors.red.withOpacity(0.1), 
                           child: Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                             IconButton(icon: Icon(getPosIconType(this_result), color: Color.fromARGB(255, 8, 112, 11)),
                             onPressed: () {
@@ -367,9 +336,9 @@ Map<String, String> label_list(List<ResultItem> result_objects){
                                 ),
                               ),
                             ],
-                          ) : CircularProgressIndicator(),
-  //},// builder
-                      //), // streambuilder
+                          );
+  },
+                      ),
                     )
      : const Text("Initiate Connection")
      ],
@@ -402,14 +371,12 @@ Expanded(
                       Text("Positive Label Sample Ratio:", style: TextStyle
                         (fontSize:16)),
                       Text("Current Model Version:", style: TextStyle(fontSize:16)),
-                      //Text("Elapsed Mission Time:", style: TextStyle(fontSize:16)),
-                      Text("Elapsed Mission Time: ", style: TextStyle(fontSize:16)),
                   ],),),
                   Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
                       Text("${total_positive_labels}", style: TextStyle(fontSize:16)),
                       Text("${total_negative_labels}", style: TextStyle(fontSize:16)),
                       Text("${total_positive_labels + total_negative_labels}", style: TextStyle(fontSize:16)),
-                      Text("${results.length}", style: TextStyle(fontSize:16)),
+                      Text("${total_samples_received}", style: TextStyle(fontSize:16)),
                        Text("${total_samples_inferenced}", style: TextStyle
                          (fontSize:16)),
                       Text("${(received_ratio*100).toStringAsFixed(2)}%", style:
@@ -419,13 +386,6 @@ Expanded(
                       }%", style: TextStyle
                          (fontSize:16)),
                       Text("${current_model_version}", style: TextStyle(fontSize:16)),
-                      //Text("$time_string", style: TextStyle(fontSize:16)),
-                      ValueListenableBuilder(
-                        valueListenable: counterValueNotifier,
-                        builder: (context, value, child){
-                            return Text("${time_elapsed(value)}", style: TextStyle(fontSize:16));},
-                      )
-                      
                   ],),  
                   ] ,
                   ),
@@ -451,8 +411,6 @@ Expanded(
                         current_model_version = json_data['version'].toInt();
                         total_samples_inferenced =
                         json_data['processedObjects'];
-                        elapsed_time = json_data['home_time'].toInt();
-                        time_string = time_elapsed(elapsed_time);                        
                         received_ratio =
                             total_samples_received/total_samples_inferenced;
                         positive_label_ratio = total_positive_labels/(total_positive_labels +

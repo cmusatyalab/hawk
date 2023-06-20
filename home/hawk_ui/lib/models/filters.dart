@@ -16,3 +16,19 @@ class FilterConfig {
       );
 
 }
+
+class HawkConfig {
+  HawkConfig({
+    required this.name,
+    required this.args,
+  });
+
+  String name;
+  Map<String, String> args;
+
+  factory HawkConfig.fromJson(Map<String, dynamic> json) => HawkConfig(
+        name: json['name'],
+        args: json['args'],
+      );
+
+}

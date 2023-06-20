@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:hawk_ui/widgets/color_filter.dart';
 import 'package:hawk_ui/widgets/fsl_filter.dart';
 import 'package:hawk_ui/models/filters.dart';
+import 'package:hawk_ui/widgets/hawk_mode.dart';
 
-const List<String> list = <String>['Texture', 'Few-Shot'];
+const List<String> list = <String>['Texture', 'Few-Shot', 'Hawk'];
 
 class DropDownWidget extends StatefulWidget {
 
   FilterConfig config;
-
+  //HawkConfig hconfig;
 
 DropDownWidget({
     Key? key,
@@ -45,10 +46,14 @@ class _DropDownWidgetState extends State<DropDownWidget> {
       case 'Few-Shot':
         page = FSLSetup(config: widget.config);
         break;
+        case 'Hawk':
+        page = HawkSetup(config: widget.config);
+        break;
       case null:
         page = Center(child: Text("NO FILTER CHOSEN"));
         break;
       default:
+        //page = FSLSetup(config: widget.config);
         throw UnimplementedError('no widget for $_chosenValue');
     }
 
@@ -64,10 +69,10 @@ class _DropDownWidgetState extends State<DropDownWidget> {
 
                 items:_createList(),
                 hint: Text(
-                  "Please choose a filter",
+                  "Please select a Mission Mode",
                   style: TextStyle(
                       color: Colors.black,
-                      fontSize: 16,
+                      fontSize: 24,
                       fontWeight: FontWeight.w600),
                 ),
                 onChanged: (String? value) {

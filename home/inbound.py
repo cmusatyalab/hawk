@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import json
+import json, time
 import queue
 import threading
 
@@ -61,6 +61,7 @@ class InboundProcess:
                 object_id = request.objectId
                 parent_scout = request.scoutIndex
                 score = request.score
+                print(object_id, parent_scout)
                 data_name = (str(self._count)).zfill(ZFILL)
 
                 data = request.attributes

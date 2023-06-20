@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
       create: (context) => MyAppState(),
       child: MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'Hawk App',
+          title: 'Hawk App v2',
           theme: ThemeData(
             useMaterial3: true,
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal[600]!),
@@ -82,7 +82,7 @@ class _MyHomePageState extends State<MyHomePage> {
             SafeArea(
               child: NavigationRail(
                 backgroundColor: theme.colorScheme.primary,
-                extended: constraints.maxWidth >= 600,
+                extended: constraints.maxWidth >= 250,
                 destinations: [
                   NavigationRailDestination(
                     icon: Icon(
@@ -90,7 +90,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       color: Colors.white,
                     ),
                     label: Text(
-                      'Filter',
+                      'Mission Config',
                       style: TextStyle(
                         color: Colors.white,
                       ),
@@ -103,6 +103,18 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                     label: Text(
                       'Results',
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(
+                      Icons.favorite,
+                      color: Colors.white,
+                    ),
+                    label: Text(
+                      'Other Options',
                       style: TextStyle(
                         color: Colors.white,
                       ),

@@ -9,6 +9,7 @@ class WebSocket {
   WebSocketChannel? _channel;
   StreamController<bool> streamController = StreamController<bool>.broadcast();
 
+
   // ---------------------- Getter Setters --------------------- //
   String get getUrl {
     return url;
@@ -38,7 +39,14 @@ class WebSocket {
   /// Connects the current application to a websocket
   void connect() async {
     _channel = WebSocketChannel.connect(Uri.parse(url));
+    //_channel!.stream.listen((message){
+  //streamController.add(message);});
   }
+
+void cont_listen() async{
+    _channel!.stream.listen((message){
+    streamController.add(message);});
+}
 
   /// Disconnects the current application from a websocket
   void disconnect() {
