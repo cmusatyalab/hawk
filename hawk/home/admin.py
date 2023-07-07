@@ -20,11 +20,22 @@ from google.protobuf.json_format import MessageToDict
 from pathlib import Path
 from PIL import Image
 
-from hawk.ports import A2S_PORT, H2A_PORT, S2S_PORT
-from hawk.proto.messages_pb2 import *
-
-
-import yaml 
+from ..ports import A2S_PORT, H2A_PORT, S2S_PORT
+from ..proto.messages_pb2 import (
+    Dataset,
+    FileDataset,
+    MissionStats,
+    ModelArchive,
+    ModelConfig,
+    PercentagePolicyConfig,
+    ReexaminationStrategyConfig,
+    RetrainPolicyConfig,
+    SampleIntervalPolicyConfig,
+    ScoutConfiguration,
+    SelectiveConfig,
+    TopKConfig,
+    TrainConfig,
+)
 
 LOG_INTERVAL = 60
 

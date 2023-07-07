@@ -1,8 +1,6 @@
-# SPDX-FileCopyrightText: 2022,2023 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
+# SPDX-FileCopyrightText: 2022-2023 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
-
-# Usage: python home_flutter.py 
 
 import base64
 import io
@@ -18,21 +16,18 @@ import yaml
 import zmq
 from pathlib import Path
 from pprint import pprint
+from typing import Iterable
 
-from admin import Admin 
 from datetime import datetime
 from flask import Flask, request, make_response, jsonify
-from hawk.ports import H2A_PORT, H2C_PORT
-from home import *
-from inbound import InboundProcess
 from logzero import logger
-from outbound import OutboundProcess
-from pathlib import Path
 from PIL import Image
-from script_labeler import ScriptLabeler
-from typing import Iterable
-from ui_labeler import UILabeler
-from utils import define_scope, write_config, get_ip
+
+from ..ports import H2A_PORT, H2C_PORT
+from .admin import Admin
+from .inbound import InboundProcess
+from .outbound import OutboundProcess
+from .utils import define_scope, get_ip, write_config
 
 REMOTE_USER = 'root'
 CONFIG = os.getenv('HOME')+"/.hawk/config.yml" # PUT this in .hawk
@@ -150,7 +145,6 @@ def configure_mission(filter_config):
     global log_dir
     log_dir = mission_dir / 'logs'
     config['home-params']['log_dir'] = str(log_dir)
-    end_file = log_dir / 'end'
 
     global meta_dir, label_dir
     image_dir = mission_dir / 'images'
@@ -327,7 +321,8 @@ def startMission():
 # def startMission():
 
 #     request_data = request.data #getting the response data
-#     request_data = json.loads(request_data.decode('utf-8')) #converting it from json to key value pair
+#     # convert from json to key value pair
+#     request_data = json.loads(request_data.decode('utf-8'))
 #     name = request_data['name'] #assigning it to name
 #     response = f'{name}' #re-assigning response with the name we got from the user
 #     # logger.info(response)
@@ -346,7 +341,7 @@ def stopMission():
     request_data = request.data
     request_data = json.loads(request_data.decode('utf-8')) 
     name = request_data['name'] 
-    response = f'{name}' 
+    logger.info(f"stop mission {name}")
     if 'home-admin' in app_data:
         logger.info("Stopping Mission")
         stop_mission()

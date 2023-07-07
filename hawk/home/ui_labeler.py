@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022,2023 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
+#
+# SPDX-License-Identifier: GPL-2.0-only
+
 import argparse
 import csv
 import glob

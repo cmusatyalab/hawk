@@ -11,8 +11,8 @@ import zmq
 from logzero import logger
 from pathlib import Path 
 
-from hawk.ports import S2H_PORT
-from hawk.proto.messages_pb2 import SendTiles
+from ..ports import S2H_PORT
+from ..proto.messages_pb2 import SendTiles
 
 
 class InboundProcess:

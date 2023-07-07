@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022,2023 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
+# SPDX-FileCopyrightText: 2022-2023 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -12,18 +12,19 @@ import yaml
 import zmq
 import multiprocessing as mp
 from datetime import datetime
-
-from admin import Admin 
-from script_labeler import ScriptLabeler
-from ui_labeler import UILabeler
-from inbound import InboundProcess
-from outbound import OutboundProcess
 from logzero import logger
 from pathlib import Path
-from hawk.ports import H2A_PORT, H2C_PORT
-from utils import define_scope, write_config, get_ip
 
-# Usage: python home_main.py config/config.yml
+from ..ports import H2A_PORT, H2C_PORT
+from .admin import Admin
+from .inbound import InboundProcess
+from .outbound import OutboundProcess
+from .script_labeler import ScriptLabeler
+from .ui_labeler import UILabeler
+from .utils import define_scope, get_ip, write_config
+
+
+# Usage: python -m hawk.home.home_main config/config.yml
 def main():
     config_path = sys.argv[1] if len(sys.argv) > 1 \
                     else (Path.cwd() / 'configs/config.yml')

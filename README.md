@@ -54,8 +54,7 @@ python -m hawk.scout.server_main
 ### Step 5. Start Hawk at Home 
 
 ```bash
-cd ~/hawk/home
-python home_main.py configs/config.yml
+python -m hawk.home.home_main configs/config.yml
 ```
 ## Running Hawk UI
 Hawk UI is developed using [Flutter SDK](https://docs.flutter.dev/get-started/install) and has been tested using Chrome browser.
@@ -74,17 +73,16 @@ python scripts/generate_proto.py
 Assumes scope cookie (NEWSCOPE) and config file (config.yml) are present in ~/.hawk
 
 ```bash
-cp ~/hawk/home/configs/flutter.yml ~/.hawk/config.yml
+cp ~/hawk/configs/flutter.yml ~/.hawk/config.yml
 ```
 ### Step 3. Start Home process
 ```bash
-cd ~/hawk/home/
-python home/home_flutter.py
+python -m hawk.home.home_flutter
 ```
 
 ### Step 4. Start Flutter app
 ```bash
-cd ~/hawk/home/hawk_ui
+cd ~/hawk/hawk_ui
 export PYTHONPATH=$PWD
 flutter run -d chrome
 # if port forwarding use cmd below

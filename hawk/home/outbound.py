@@ -12,8 +12,8 @@ import socket
 
 from logzero import logger
 
-from hawk.proto import Empty
-from hawk.proto.messages_pb2 import SendLabels, LabelWrapper
+from ..proto import Empty
+from ..proto.messages_pb2 import LabelWrapper, SendLabels
 
 
 class OutboundProcess:
