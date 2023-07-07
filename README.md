@@ -25,10 +25,12 @@ This is a developing project.
 
 ```bash
 cd ~/hawk
-export PYTHONPATH=$PWD
-conda env create -n <VIRTUAL_ENV_NAME> -f environment.yml
-conda activate <VIRTUAL_ENV_NAME>
-python setup.py install
+# use extras to specify if you want dependencies for only home, scout, or both.
+poetry install --extras home --extras scout
+poetry run poe protoc  # to generate the protobuf stubs.
+
+# you can run `poetry shell` to get a shell in the new environment and then you
+# will not have to prefix commands with 'poetry run' to execute in the environment.
 ```
 
 ### Step 2. Modify mission configuration 
@@ -41,20 +43,20 @@ The index file provided in [config file.](/home/configs/config.yml) contains lis
 Run the following cmd to split the dataset across participating scouts
 ```bash
 cd ~/hawk
-python scripts/split_data.py configs/config.yml
+poetry run python scripts/split_data.py configs/config.yml
 ```
 
 
 ### Step 4. Start Hawk on the Scout Servers 
 
 ```bash
-python -m hawk.scout.server_main
+poetry run hawk_scout
 ```
 
 ### Step 5. Start Hawk at Home 
 
 ```bash
-python -m hawk.home.home_main configs/config.yml
+poetry run hawk_home configs/config.yml
 ```
 ## Running Hawk UI
 Hawk UI is developed using [Flutter SDK](https://docs.flutter.dev/get-started/install) and has been tested using Chrome browser.
@@ -63,27 +65,24 @@ The backend uses Flask REST API (Port:8000) to start and stop missions. The resu
 ### Step 1. Setting up Environment
 ```bash
 cd ~/hawk
-export PYTHONPATH=$PWD
-conda env create -n <VIRTUAL_ENV_NAME> -f environment.yml
-conda activate <VIRTUAL_ENV_NAME>
-python scripts/generate_proto.py
+poetry install
 ```
 ### Step 2. ScopeCookie and Config
 
 Assumes scope cookie (NEWSCOPE) and config file (config.yml) are present in ~/.hawk
 
 ```bash
+mkdir -p ~/.hawk
 cp ~/hawk/configs/flutter.yml ~/.hawk/config.yml
 ```
 ### Step 3. Start Home process
 ```bash
-python -m hawk.home.home_flutter
+poetry run hawk_flutter
 ```
 
 ### Step 4. Start Flutter app
 ```bash
 cd ~/hawk/hawk_ui
-export PYTHONPATH=$PWD
 flutter run -d chrome
 # if port forwarding use cmd below
 # flutter run -d web-server --web-port=35415

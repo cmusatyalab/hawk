@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2023 Carnegie Mellon University
+# SPDX-License-Identifier: 0BSD
+
+[tool.poe.tasks.build]
+help = "Build sdist and wheel"
+cmd = "poetry build"
+
+[tool.poe.tasks.check]
+help = "Manually run some pre-commit jobs"
+sequence = [
+    "poetry run isort hawk",
+    #"poetry run black hawk",
+    #"poetry run flake8 hawk",
+    #"poetry run mypy",
+]
+default_item_type = "cmd"
+
+[tool.poe.tasks.protoc]
+help = "Regenerate protocol buffer files"
+cmd = "poetry run python -m grpc_tools.protoc -I protos --python_out=hawk/proto --mypy_out=hawk/proto messages.proto"
