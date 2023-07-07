@@ -48,8 +48,7 @@ python scripts/split_data.py configs/config.yml
 ### Step 4. Start Hawk on the Scout Servers 
 
 ```bash
-cd ~/hawk/hawk
-python server_main.py
+python -m hawk.scout.server_main
 ```
 
 ### Step 5. Start Hawk at Home 

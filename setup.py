@@ -60,7 +60,7 @@ setup(
     include_package_data=True,
     entry_points={
         'console_scripts': [
-            'hawk = hawk.server_main:main',
+            'hawk = hawk.scout.server_main:main',
         ]
     },
 )
