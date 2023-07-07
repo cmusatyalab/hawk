@@ -22,7 +22,6 @@ import zipfile
 from google.protobuf import json_format
 from PIL import Image
 
-from hawk import api 
 from hawk.core.hawk_stub import HawkStub
 from hawk.core.mission import Mission
 from hawk.core.mission_manager import MissionManager
@@ -49,6 +48,7 @@ from hawk.reexamination.reexamination_strategy import ReexaminationStrategy
 from hawk.trainer.dnn_classifier.trainer import DNNClassifierTrainer 
 from hawk.trainer.fsl.trainer import FSLTrainer 
 from hawk.trainer.yolo.trainer import YOLOTrainer 
+from hawk.ports import S2S_PORT
 from hawk.proto import Empty
 from hawk.proto.messages_pb2 import Dataset, ScoutConfiguration, MissionId, ImportModel, \
     RetrainPolicyConfig,  SelectiveConfig, ReexaminationStrategyConfig, MissionResults, MissionStats  
@@ -218,7 +218,7 @@ class A2SAPI(object):
             if request.retrainPolicy.HasField("sample"):
                 retrain_policy.num_interval_sample(retriever.total_tiles)
             host_ip = request.scouts[request.scoutIndex]
-            scouts = [HawkStub(scout, api.S2S_PORT, host_ip) for scout in request.scouts]
+            scouts = [HawkStub(scout, S2S_PORT, host_ip) for scout in request.scouts]
 
             # Setting up Mission with config params
             logger.info("Start setting up mission")

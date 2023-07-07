@@ -20,7 +20,7 @@ from google.protobuf.json_format import MessageToDict
 from pathlib import Path
 from PIL import Image
 
-from hawk.api import H2A_PORT, A2S_PORT 
+from hawk.ports import A2S_PORT, H2A_PORT
 from hawk.proto.messages_pb2 import *
 
 
@@ -47,7 +47,7 @@ class Admin:
         # Bind H2A Server
         context = zmq.Context()
         socket = context.socket(zmq.REP)
-        socket.bind(f'tcp://127.0.0.1:{H2A_PORT}')
+        socket.bind(f"tcp://127.0.0.1:{H2A_PORT}")
 
         while not stop_event.is_set():
             msg_string = socket.recv_string()
@@ -295,7 +295,7 @@ class Admin:
             ip = socket.gethostbyname(scout)
             context = zmq.Context()
             stub = context.socket(zmq.REQ)
-            stub.connect("tcp://{}:{}".format(ip, A2S_PORT))
+            stub.connect(f"tcp://{ip}:{A2S_PORT}")
             self.scout_stubs[i] = stub
        
         # setup ScoutConfiguration

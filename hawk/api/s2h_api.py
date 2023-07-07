@@ -8,7 +8,7 @@
 import zmq
 from logzero import logger
 
-from hawk import api 
+from hawk.ports import S2H_PORT
 
 class S2HPublisher(object):
     @staticmethod
@@ -27,7 +27,7 @@ class S2HPublisher(object):
         """
         context = zmq.Context()
         socket = context.socket(zmq.PUSH)
-        socket.connect("tcp://{}:{}".format(home_ip, api.S2H_PORT))
+        socket.connect(f"tcp://{home_ip}:{S2H_PORT}")
 
         try:
             while True:

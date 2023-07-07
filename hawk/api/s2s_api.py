@@ -8,7 +8,7 @@
 import zmq
 from logzero import logger
 
-from hawk import api
+from hawk.ports import S2S_PORT
 from hawk.proto import Empty
 from hawk.proto.messages_pb2 import * 
 
@@ -26,7 +26,7 @@ def s2s_receive_request(s2s_input, s2s_output):
     """
     context = zmq.Context()
     socket = context.socket(zmq.REP)
-    socket.bind(f'tcp://0.0.0.0:{api.S2S_PORT}')
+    socket.bind(f"tcp://0.0.0.0:{S2S_PORT}")
     try:
         while True:
             method, req = socket.recv_multipart()

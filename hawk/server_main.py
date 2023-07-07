@@ -15,7 +15,7 @@ import torchvision
 import zmq
 from logzero import logger
 
-from hawk.api import A2S_PORT
+from hawk.ports import A2S_PORT
 from hawk.api.a2s_api import A2SAPI 
 from hawk.core.utils import log_exceptions
 
@@ -51,7 +51,7 @@ def main():
 
     context = zmq.Context()
     socket = context.socket(zmq.REP)
-    socket.bind(f'tcp://0.0.0.0:{A2S_PORT}')
+    socket.bind(f"tcp://0.0.0.0:{A2S_PORT}")
     logger.info("Starting Hawk server")
     try:
         while True:

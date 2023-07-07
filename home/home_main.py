@@ -19,7 +19,7 @@ from inbound import InboundProcess
 from outbound import OutboundProcess
 from logzero import logger
 from pathlib import Path
-from hawk.api import  H2A_PORT
+from hawk.ports import H2A_PORT
 from utils import define_scope, write_config, get_ip
 
 # Usage: python home_main.py config/config.yml
@@ -84,7 +84,7 @@ def main():
         # Starting home to admin conn 
         context = zmq.Context()
         h2a_socket = context.socket(zmq.REQ)
-        h2a_socket.connect(f'tcp://127.0.0.1:{H2A_PORT}')
+        h2a_socket.connect(f"tcp://127.0.0.1:{H2A_PORT}")
 
         # Setup admin 
         home_ip = get_ip()

@@ -11,7 +11,7 @@ import zmq
 from logzero import logger
 from pathlib import Path 
 
-from hawk.api import S2H_PORT
+from hawk.ports import S2H_PORT
 from hawk.proto.messages_pb2 import SendTiles
 
 
@@ -49,7 +49,7 @@ class InboundProcess:
     def receive_data(self, result_q, stop_event):
         context = zmq.Context()
         socket = context.socket(zmq.PULL)
-        socket.bind('tcp://*:{}'.format(S2H_PORT))
+        socket.bind(f"tcp://*:{S2H_PORT}")
         logger.info("Inbound Receive data started")
 
         try:

@@ -20,7 +20,7 @@ from pprint import pprint
 from admin import Admin 
 from datetime import datetime
 from flask import Flask, request, make_response, jsonify
-from hawk.api import  H2A_PORT
+from hawk.ports import H2A_PORT
 from home import *
 from inbound import InboundProcess
 from logzero import logger
@@ -189,7 +189,7 @@ def configure_mission(filter_config):
         # Starting home to admin conn 
         context = zmq.Context()
         h2a_socket = context.socket(zmq.REQ)
-        h2a_socket.connect(f'tcp://127.0.0.1:{H2A_PORT}')
+        h2a_socket.connect(f"tcp://127.0.0.1:{H2A_PORT}")
 
         # Setup admin 
         home_ip = get_ip()

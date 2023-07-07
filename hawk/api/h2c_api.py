@@ -8,7 +8,7 @@
 import zmq
 from logzero import logger
 
-from hawk import api
+from hawk.ports import H2C_PORT
 from hawk.proto.messages_pb2 import SendLabels
 
     
@@ -28,7 +28,7 @@ class H2CSubscriber(object):
         """
         context = zmq.Context()
         socket = context.socket(zmq.PULL)
-        socket.bind("tcp://*:{}".format(api.H2C_PORT))
+        socket.bind(f"tcp://*:{H2C_PORT}")
         try:
             while True:
                 msg = socket.recv()

@@ -12,7 +12,7 @@ import socket
 
 from logzero import logger
 
-from hawk.api import H2C_PORT
+from hawk.ports import H2C_PORT
 from hawk.proto.messages_pb2 import SendLabels, LabelWrapper
 
 
@@ -40,7 +40,7 @@ class OutboundProcess:
             self.stubs = []
             for i, domain_name in enumerate(self.scout_ips):
                 ip = socket.gethostbyname(domain_name)
-                endpoint = "tcp://{}:{}".format(ip, H2C_PORT)
+                endpoint = f"tcp://{ip}:{H2C_PORT}"
                 context = zmq.Context()
                 h2c_socket = context.socket(zmq.PUSH)
                 h2c_socket.connect(endpoint)
