@@ -23,3 +23,13 @@ poetry run python -m grpc_tools.protoc -I protos
         --mypy_out=src/hawk/proto
         messages.proto
 """
+
+[tool.poe.tasks.resolve]
+help = "Resolve conflicts on generated code (poetry.lock, *_pb2.py)"
+sequence = [
+    # make sure pyproject.toml and messages.proto are merged
+    { cmd = "git diff --check pyproject.toml protos/messages.proto" },
+    { cmd = "poetry lock" },
+    { ref = "protoc" },
+    { cmd = "git add poetry.lock src/hawk/proto/*_pb2.py*" },
+]

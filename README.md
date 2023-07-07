@@ -27,7 +27,6 @@ This is a developing project.
 cd ~/hawk
 # use extras to specify if you want dependencies for only home, scout, or both.
 poetry install --extras home --extras scout
-poetry run poe protoc  # to generate the protobuf stubs.
 
 # you can run `poetry shell` to get a shell in the new environment and then you
 # will not have to prefix commands with 'poetry run' to execute in the environment.
