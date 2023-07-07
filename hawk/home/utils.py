@@ -9,11 +9,9 @@ import re
 import socket
 import textwrap
 import uuid
-from datetime import datetime, timedelta
 from pathlib import Path
 
 import dateutil.parser
-import yaml
 from logzero import logger
 
 BOUNDARY_START = '-----BEGIN OPENDIAMOND SCOPECOOKIE-----\n'
@@ -72,17 +70,12 @@ def parse_cookie(data):
 
 
 def define_scope(config):
-    cookie_path = Path.home() / ".hawk/NEWSCOPE"
-    cookie_data = open(cookie_path).read()
+    cookie_path = Path.home().joinpath(".hawk", "NEWSCOPE")
+    cookie_data = cookie_path.read_text()
     index_path, scouts = parse_cookie(cookie_data)
     config['scouts'] = scouts
     config['dataset']['index_path'] = index_path
     return config
-
-def write_config(config, config_path):
-    with open(config_path, 'w') as f:
-        yaml.dump(config, f)
-    return 
 
 
 def get_ip():

@@ -2,36 +2,35 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+import argparse
 import multiprocessing as mp
 import os
-import shutil
 import signal
 import socket
-import sys
 import time
 from datetime import datetime
 from pathlib import Path
 
-import yaml
 import zmq
 from logzero import logger
 
-from ..ports import H2A_PORT, H2C_PORT
+from ..mission_config import load_config, write_config
+from ..ports import H2A_PORT
 from .admin import Admin
 from .inbound import InboundProcess
 from .outbound import OutboundProcess
 from .script_labeler import ScriptLabeler
 from .ui_labeler import UILabeler
-from .utils import define_scope, get_ip, write_config
+from .utils import define_scope, get_ip
 
 
 # Usage: python -m hawk.home.home_main config/config.yml
 def main():
-    config_path = sys.argv[1] if len(sys.argv) > 1 \
-                    else (Path.cwd() / 'configs/config.yml')
+    parser = argparse.ArgumentParser()
+    parser.add_argument("config", type=Path, default=Path.cwd().joinpath("configs", "config.yml"))
+    args = parser.parse_args()
 
-    with open(config_path) as f:
-        config = yaml.safe_load(f)
+    config = load_config(args.config)
 
     # Setting up mission
     mission_name = config.get('mission-name', "test")
@@ -41,15 +40,16 @@ def main():
 
     mission_id = "_".join([mission_name, 
                                datetime.now().strftime('%Y%m%d-%H%M%S')])
+    scouts = config.scouts
    
     if config['dataset']['type'] == 'cookie':
         logger.info("Reading Scope Cookie")
-        logger.info(f"Participating scouts \n{config['scouts']}")
+        logger.info(f"Participating scouts \n{scouts}")
         config = define_scope(config)
 
     bandwidth = config.get('bandwidth', "100")
     assert int(bandwidth) in [100, 30, 12], "Fireqos script may not exist for {}".format(bandwidth)
-    config['bandwidth'] = ["[[-1, \"{}k\"]]".format(bandwidth) for _ in config['scouts']] 
+    config['bandwidth'] = ["[[-1, \"{}k\"]]".format(bandwidth) for _ in scouts]
 
     # create local directories 
     mission_dir = Path(config['home-params']['mission_dir'])
@@ -74,7 +74,7 @@ def main():
     write_config(config, config_path)
 
     # Setting up helpers
-    scout_ips = [socket.gethostbyname(scout) for scout in config['scouts']]
+    scout_ips = [socket.gethostbyname(scout) for scout in scouts]
 
     processes = [] 
     stop_event = mp.Event()
@@ -101,9 +101,7 @@ def main():
     
         # Start inbound process
         logger.info("Starting Inbound Process")
-        home_inbound = InboundProcess(image_dir, 
-                                      meta_dir,
-                                      config)
+        home_inbound = InboundProcess(image_dir, meta_dir, config)
         p = mp.Process(target=home_inbound.receive_data, kwargs={'result_q': meta_q,
                                                                  'stop_event': stop_event})
         processes.append(p)
@@ -121,10 +119,7 @@ def main():
             label_mode = "detect"
             
         if labeler == 'script':
-            home_labeler = ScriptLabeler(label_dir, 
-                                         config,
-                                         gt_dir,
-                                         label_mode)
+            home_labeler = ScriptLabeler(label_dir, config, gt_dir, label_mode)
         elif labeler == 'ui' or labeler == 'browser':
             home_labeler = UILabeler(mission_dir)
         else:
@@ -139,7 +134,7 @@ def main():
     
         # start outbound process  
         logger.info("Starting Outbound Process")
-        h2c_port = config.get('h2c_port', H2C_PORT)
+        h2c_port = config.deploy.h2c_port
         home_outbound = OutboundProcess()
         p = mp.Process(target=home_outbound.send_labels, kwargs={'scout_ips': scout_ips,
                                                                  'h2c_port': h2c_port,

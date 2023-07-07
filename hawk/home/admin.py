@@ -14,13 +14,13 @@ import time
 from collections import defaultdict
 from pathlib import Path
 
-import yaml
 import zmq
 from google.protobuf.json_format import MessageToDict
 from logzero import logger
 from PIL import Image
 
-from ..ports import A2S_PORT, H2A_PORT, S2S_PORT
+from ..mission_config import load_config
+from ..ports import H2A_PORT
 from ..proto.messages_pb2 import (
     Dataset,
     FileDataset,
@@ -67,12 +67,9 @@ class Admin:
             socket.send_string("RECEIVED")
         
             if header == "config":
-                config_path = body 
-                with open(config_path) as f:
-                    config = yaml.safe_load(f)
-
+                config_path = Path(body)
+                config = load_config(config_path)
                 self._setup_mission(config)
-
             else:
                 raise NotImplementedError("Unknown header {}".format(header))
         
@@ -84,7 +81,7 @@ class Admin:
         self.end_file = self.log_dir / 'end'
         self.end_time = int(config.get('end-time', 5000))
 
-        self.scouts = config['scouts']
+        self.scouts = config.scouts
         
         # homeIP 
         home_ip = self._home_ip
@@ -305,7 +302,7 @@ class Admin:
 
         self.zmq_context = zmq.Context()
 
-        a2s_port = config.get('a2s_port', A2S_PORT)
+        a2s_port = config.deploy.a2s_port
          
         self.scout_stubs = {}
         for index, host in enumerate(self.scouts):
@@ -318,7 +315,7 @@ class Admin:
         # Call a2s_configure_scout and wait for success message 
 
         # inform scouts on which address/port they can find each other
-        s2s_port = config.get('s2s_port', S2S_PORT)
+        s2s_port = config.deploy.s2s_port
         s2s_scouts = [f"{host}:{s2s_port}" for host in self.scouts]
 
         logger.info(self._mission_id)

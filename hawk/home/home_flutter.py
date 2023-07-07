@@ -7,6 +7,7 @@ import io
 import json
 import multiprocessing as mp
 import os
+import shlex
 import signal
 import socket
 import sys
@@ -17,20 +18,20 @@ from pathlib import Path
 from pprint import pprint
 from typing import Iterable
 
-import yaml
 import zmq
 from flask import Flask, jsonify, make_response, request
 from logzero import logger
 from PIL import Image
 
-from ..ports import H2A_PORT, H2C_PORT
+from ..mission_config import load_config, write_config
+from ..ports import H2A_PORT
 from .admin import Admin
 from .inbound import InboundProcess
 from .outbound import OutboundProcess
-from .utils import define_scope, get_ip, write_config
+from .utils import define_scope, get_ip
 
 REMOTE_USER = 'root'
-CONFIG = os.getenv('HOME')+"/.hawk/config.yml" # PUT this in .hawk
+CONFIG = Path.home().joinpath(".hawk", "config.yml")  # PUT this in ~/.hawk
 home_path = Path(__file__).resolve().parent
 app_data = {}
 app = Flask(__name__)
@@ -73,10 +74,12 @@ def handler_signals(signum, frame):
 
 
 def get_results():
-    image_root = os.path.dirname(app_data['image-dir'])
-    #result_cmd = f"python {home_path}/result_stream.py {image_root} > /dev/null"
-   #result_cmd = f"python {home_path}/result_stream.py {image_root}"
-    result_cmd = f"python {home_path}/result_stream_new.py {image_root}"
+    result_cmd = shlex.join([
+        sys.executable,
+        "-m",
+        "hawk.home.result_stream_new",
+        app_data['image-dir'].parent,
+    ])
     logger.info(result_cmd)
     os.system(result_cmd)
     return
@@ -85,14 +88,11 @@ def get_results():
 def configure_mission(filter_config):
     # Stop previous missions
     stop_mission()
-
-    config_path = sys.argv[1] if len(sys.argv) > 1 \
-        else (Path.cwd() / 'configs/config.yml')
-    with open(config_path) as f:
-        config = yaml.safe_load(f)
-        #logger.info(config)
-        #pprint(config)
-        pprint(config['train_strategy'])
+    
+    config = load_config(CONFIG)
+    #logger.info(config)
+    #pprint(config)
+    pprint(config['train_strategy'])
 
     # Setting up mission 
     mission_name = config.get('mission-name', "test")
@@ -103,18 +103,17 @@ def configure_mission(filter_config):
 
     mission_id = "_".join([mission_name, 
                                datetime.now().strftime('%Y%m%d-%H%M%S')])
+    scouts = config.scouts
     
     if config['dataset']['type'] == 'cookie':
         logger.info("Reading Scope Cookie")
-        logger.info(f"Participating scouts \n{config['scouts']}")
+        logger.info(f"Participating scouts \n{scouts}")
         config = define_scope(config)
 
-   ### Removing all bandwidth restrictions
-    
     bandwidth = config.get('bandwidth', "100")
     assert int(bandwidth) in [100, 30, 12], "Fireqos script may not exist for {}".format(bandwidth)
-    config['bandwidth'] = ["[[-1, \"{}k\"]]".format(bandwidth) for _ in config['scouts']] 
-
+    config['bandwidth'] = ["[[-1, \"{}k\"]]".format(bandwidth) for _ in scouts]
+    
     config['train_strategy']['type'] = filter_config['name']
     logger.info(f"Train strategy is: {config['train_strategy']}")
 
@@ -165,7 +164,6 @@ def configure_mission(filter_config):
     write_config(config, config_path)
 
     # Setting up helpers
-    scouts = config['scouts']
     scout_ips = [socket.gethostbyname(scout) for scout in scouts]
 
     app_data['scouts'] = scouts
@@ -213,7 +211,7 @@ def configure_mission(filter_config):
         
         # start outbound process  
         logger.info("Starting Outbound Process")
-        h2c_port = config.get('h2c_port', H2C_PORT)
+        h2c_port = config.deploy.h2c_port
         home_outbound = OutboundProcess()
         p = mp.Process(target=home_outbound.send_labels, kwargs={'scout_ips': scout_ips,
                                                                  'h2c_port': h2c_port,
