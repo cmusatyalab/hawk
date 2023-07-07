@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import json
-import time 
 import queue
-
-from logzero import logger
+import time
 from pathlib import Path
 from typing import Dict
+
+from logzero import logger
 
 
 class ScriptLabeler:

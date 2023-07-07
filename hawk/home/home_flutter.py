@@ -12,14 +12,14 @@ import socket
 import sys
 import threading
 import time
-import yaml
-import zmq
+from datetime import datetime
 from pathlib import Path
 from pprint import pprint
 from typing import Iterable
 
-from datetime import datetime
-from flask import Flask, request, make_response, jsonify
+import yaml
+import zmq
+from flask import Flask, jsonify, make_response, request
 from logzero import logger
 from PIL import Image
 

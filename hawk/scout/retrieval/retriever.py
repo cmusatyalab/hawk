@@ -5,7 +5,6 @@
 import queue
 import threading
 import time
-
 from abc import ABCMeta, abstractmethod
 from typing import Iterable, Sized
 

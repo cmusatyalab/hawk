@@ -4,8 +4,8 @@
 
 import math
 import queue
-import time
 import threading
+import time
 from typing import Optional
 
 from ..core.model import Model

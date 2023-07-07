@@ -4,9 +4,10 @@
 
 import math
 import queue
-import time
 import threading
+import time
 from typing import Optional
+
 from logzero import logger
 
 from ..core.model import Model

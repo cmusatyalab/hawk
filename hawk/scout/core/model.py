@@ -2,16 +2,21 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-from abc import ABCMeta, abstractmethod
 import errno
-import numpy as np
 import os
 import threading
 import time
-from logzero import logger
+from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from sklearn.metrics import average_precision_score, classification_report, precision_recall_curve
-from typing import Iterable, Dict, List
+from typing import Dict, Iterable, List
+
+import numpy as np
+from logzero import logger
+from sklearn.metrics import (
+    average_precision_score,
+    classification_report,
+    precision_recall_curve,
+)
 
 from ...proto.messages_pb2 import ModelMetrics, TestResults
 from ..context.model_trainer_context import ModelContext

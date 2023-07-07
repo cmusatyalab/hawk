@@ -1,9 +1,10 @@
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-from sklearn.svm import LinearSVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV
+from sklearn.svm import LinearSVC
+
 
 class FewShotModel(nn.Module):
     def __init__(self, args):

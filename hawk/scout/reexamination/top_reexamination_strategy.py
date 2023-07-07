@@ -2,11 +2,12 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import queue
-from typing import List, Tuple
-import time
-from logzero import logger
 import multiprocessing as mp
+import queue
+import time
+from typing import List, Tuple
+
+from logzero import logger
 
 from ..core.model import Model
 from ..core.object_provider import ObjectProvider

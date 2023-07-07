@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+import socket
+
 import zmq
-import socket 
 
 from ...ports import S2S_PORT
 

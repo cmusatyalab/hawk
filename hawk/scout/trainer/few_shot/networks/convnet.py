@@ -1,5 +1,6 @@
 import torch.nn as nn
 
+
 # Basic ConvNet with Pooling layer
 def conv_block(in_channels, out_channels):
     return nn.Sequential(

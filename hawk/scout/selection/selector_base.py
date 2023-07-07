@@ -4,10 +4,10 @@
 
 import queue
 import threading
-
 from abc import ABCMeta, abstractmethod
-from typing import Optional, List
 from pathlib import Path
+from typing import List, Optional
+
 from logzero import logger
 
 from ..context.data_manager_context import DataManagerContext

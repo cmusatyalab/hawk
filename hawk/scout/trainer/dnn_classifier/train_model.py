@@ -7,22 +7,27 @@ import os
 import random
 import time
 import warnings
-import numpy as np
 from enum import Enum
-from logzero import logger
-from sklearn.metrics import average_precision_score, roc_auc_score, auc, precision_recall_curve
-from tqdm import tqdm
 
+import numpy as np
 import torch
+import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.nn.parallel
-import torch.backends.cudnn as cudnn
 import torch.optim
-from torch.optim.lr_scheduler import StepLR
 import torch.utils.data
 import torch.utils.data.distributed
-import torchvision.transforms as transforms
 import torchvision.models as models
+import torchvision.transforms as transforms
+from logzero import logger
+from sklearn.metrics import (
+    auc,
+    average_precision_score,
+    precision_recall_curve,
+    roc_auc_score,
+)
+from torch.optim.lr_scheduler import StepLR
+from tqdm import tqdm
 
 from ...core.utils import ImageFromList
 

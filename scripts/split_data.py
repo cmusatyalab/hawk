@@ -2,16 +2,17 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import math 
-import numpy as np
+import math
 import os
 import random
 import sys
-import yaml
-from pathlib import Path
 from collections import defaultdict
-from logzero import logger
+from pathlib import Path
 from subprocess import call
+
+import numpy as np
+import yaml
+from logzero import logger
 
 SPLIT="RANDOM"
 

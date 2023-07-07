@@ -4,21 +4,18 @@
 
 import asyncio
 import base64
-import json 
-import io 
+import io
+import json
 import os
 import sys
 import time
-import websockets
-
-from logzero import logger
 from os import walk
-from PIL import Image
 
-import asyncio
-import os
 #import aiofiles
 import websockets
+from logzero import logger
+from PIL import Image
+
 
 class UILabeler:
 

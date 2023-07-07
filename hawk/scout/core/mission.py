@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import io
 import copy
+import io
+import json
 import multiprocessing as mp
 import os
 import sys
@@ -12,8 +13,7 @@ import time
 import zipfile
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, Iterable, Tuple
-import json
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 import tensorboard

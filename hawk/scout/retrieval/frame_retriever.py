@@ -3,18 +3,19 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import copy
-import cv2
 import io
-import queue
 import os
+import queue
 import random
-import numpy as np 
-import time
 import threading
-from typing import Iterable, Sized
+import time
 from collections import defaultdict
-from PIL import Image
+from typing import Iterable, Sized
+
+import cv2
+import numpy as np
 from logzero import logger
+from PIL import Image
 
 from ...proto.messages_pb2 import FileDataset, HawkObject
 from ..core.attribute_provider import HawkAttributeProvider

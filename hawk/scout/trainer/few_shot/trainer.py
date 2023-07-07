@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+import glob
 import json
 import os
-import glob
 import time
 from pathlib import Path
 from typing import Dict

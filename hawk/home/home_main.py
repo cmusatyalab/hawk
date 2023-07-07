@@ -2,18 +2,19 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+import multiprocessing as mp
 import os
 import shutil
 import signal
 import socket
 import sys
 import time
+from datetime import datetime
+from pathlib import Path
+
 import yaml
 import zmq
-import multiprocessing as mp
-from datetime import datetime
 from logzero import logger
-from pathlib import Path
 
 from ..ports import H2A_PORT, H2C_PORT
 from .admin import Admin

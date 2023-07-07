@@ -5,15 +5,15 @@
 import io
 import math
 import queue
-import time
 import threading
+import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Iterable, Sized
 
 import numpy as np
-from PIL import Image
 from logzero import logger
+from PIL import Image
 
 from ...proto.messages_pb2 import FileDataset, HawkObject
 from ..core.attribute_provider import HawkAttributeProvider

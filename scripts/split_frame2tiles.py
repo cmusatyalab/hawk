@@ -1,14 +1,16 @@
 # Source https://github.com/CAPTAIN-WHU/DOTA_devkit/blob/master/ImgSplit_multi_process.py
 
 import copy
-import cv2
-import numpy as np 
-import os 
+import os
 import sys
-import yaml
 from functools import partial
-from pathlib import Path
 from multiprocessing import Pool
+from pathlib import Path
+
+import cv2
+import numpy as np
+import yaml
+
 
 def split_single_warp(name, split_base, extent):
     split_base.split_frame(name, extent)

@@ -10,16 +10,16 @@ import copy
 import gc
 import glob
 import io
-import os
-import time
-from pathlib import Path
-import torch
-from logzero import logger
 import json
+import os
 import subprocess
+import time
 import zipfile
+from pathlib import Path
 
+import torch
 from google.protobuf import json_format
+from logzero import logger
 from PIL import Image
 
 from ...ports import S2S_PORT

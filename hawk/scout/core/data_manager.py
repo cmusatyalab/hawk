@@ -9,7 +9,7 @@ import zipfile
 from collections import defaultdict
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, List, Iterable, Callable, Optional, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 from logzero import logger
 

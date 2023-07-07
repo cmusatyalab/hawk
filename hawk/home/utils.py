@@ -9,11 +9,11 @@ import re
 import socket
 import textwrap
 import uuid
-import yaml
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import dateutil.parser
-from datetime import datetime, timedelta
+import yaml
 from logzero import logger
 
 BOUNDARY_START = '-----BEGIN OPENDIAMOND SCOPECOOKIE-----\n'

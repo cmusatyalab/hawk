@@ -2,19 +2,18 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+import glob
 import json
 import os
-import glob
+import shlex
+import subprocess
 import time
-import yaml
 from pathlib import Path
 from typing import Dict
 
 import torch
+import yaml
 from logzero import logger
-
-import shlex
-import subprocess
 
 from ...context.model_trainer_context import ModelContext
 from ...core.model import Model

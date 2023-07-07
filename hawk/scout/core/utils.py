@@ -9,9 +9,10 @@ import struct
 import threading
 from functools import wraps
 from queue import Queue
-from typing import List, Union, Iterable, Any, TypeVar
-import torch
+from typing import Any, Iterable, List, TypeVar, Union
+
 import numpy as np
+import torch
 from logzero import logger
 from PIL import Image
 

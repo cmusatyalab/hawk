@@ -5,28 +5,28 @@
 """Augments the single input image provided by user to a set of five
 """
 
-import torch
-import torch.nn as nn
-import uuid
-import numpy as np
-import torchvision
-from torchvision import datasets, models, transforms
-from torch.utils.data import Dataset, DataLoader
-
-import io
-import time
-import os
 import copy
-from glob import glob
-from tqdm import tqdm
-import warnings
-import sys
+import io
+import os
 import shutil
+import sys
+import time
+import uuid
+import warnings
+from glob import glob
 
 import albumentations as A
-from PIL import Image
 import cv2
+import numpy as np
+import torch
+import torch.nn as nn
+import torchvision
 from albumentations.pytorch import ToTensorV2
+from PIL import Image
+from torch.utils.data import DataLoader, Dataset
+from torchvision import datasets, models, transforms
+from tqdm import tqdm
+
 warnings.simplefilter('ignore')
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

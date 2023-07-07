@@ -3,21 +3,19 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import io
-import time
 import multiprocessing as mp
+import time
 from pathlib import Path
-from logzero import logger
-from pathlib import Path
-from PIL import Image, ImageFile
-from sklearn.metrics import average_precision_score
-from typing import Callable, List, Iterable, Tuple, Dict
-from torch_snippets import *
-from sklearn.metrics.pairwise import cosine_similarity
-
+from typing import Callable, Dict, Iterable, List, Tuple
 
 import torch
 import torchvision.transforms as transforms
+from logzero import logger
+from PIL import Image, ImageFile
+from sklearn.metrics import average_precision_score
+from sklearn.metrics.pairwise import cosine_similarity
 from torch.utils.data import DataLoader
+from torch_snippets import *
 from torchvision import datasets, models
 
 from ....proto.messages_pb2 import TestResults

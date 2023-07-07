@@ -2,14 +2,14 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import json, time
+import json
 import queue
 import threading
+import time
+from pathlib import Path
 
 import zmq
-
 from logzero import logger
-from pathlib import Path 
 
 from ..ports import S2H_PORT
 from ..proto.messages_pb2 import SendTiles

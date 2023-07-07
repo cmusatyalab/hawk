@@ -4,8 +4,9 @@
 
 import io
 from abc import ABCMeta, abstractmethod
+from typing import Dict, Mapping, Union
+
 from PIL import Image
-from typing import Mapping, Dict, Union
 
 
 # Must be serializable

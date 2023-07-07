@@ -4,19 +4,22 @@
 
 import copy
 import gc
-import cv2
 import io
-import queue
-import os, shutil, subprocess
-import random
-import numpy as np 
-import time
-import threading
 import multiprocessing as mp
-from typing import Iterable, Sized
+import os
+import queue
+import random
+import shutil
+import subprocess
+import threading
+import time
 from collections import defaultdict
-from PIL import Image
+from typing import Iterable, Sized
+
+import cv2
+import numpy as np
 from logzero import logger
+from PIL import Image
 
 from ...proto.messages_pb2 import FileDataset, HawkObject, Streaming_Video
 from ..core.attribute_provider import HawkAttributeProvider

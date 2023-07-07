@@ -3,21 +3,21 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import base64
-import os
-import queue
 import io
 import json
+import os
+import queue
 import socket
 import sys
 import threading
 import time
-import yaml                                                                                              
-import zmq
-  
-from collections import defaultdict                                                                      
-from logzero import logger
-from google.protobuf.json_format import MessageToDict                                                             
+from collections import defaultdict
 from pathlib import Path
+
+import yaml
+import zmq
+from google.protobuf.json_format import MessageToDict
+from logzero import logger
 from PIL import Image
 
 from ..ports import A2S_PORT, H2A_PORT, S2S_PORT

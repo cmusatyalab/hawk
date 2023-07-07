@@ -5,8 +5,8 @@
 """Retrain policy based on availability of new model
 """
 
-import shutil
 import os
+import shutil
 
 from .retrain_policy_base import RetrainPolicyBase
 

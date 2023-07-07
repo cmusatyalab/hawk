@@ -5,20 +5,26 @@
 import argparse
 import csv
 import glob
-import json 
-import queue
 import imghdr
-import os
-import time
+import json
 import multiprocessing as mp
-import numpy as np
-
+import os
+import queue
+import time
 from os import walk
-from flask import Flask, Response, redirect, url_for, request
-from flask import render_template
-from flask import send_file
-from logzero import logger
 from pathlib import Path
+
+import numpy as np
+from flask import (
+    Flask,
+    Response,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    url_for,
+)
+from logzero import logger
 
 
 class EndpointAction(object):

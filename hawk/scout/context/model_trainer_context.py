@@ -6,9 +6,10 @@
 """Abstract class for model context
 """
 
+import multiprocessing as mp
 from abc import abstractmethod
 from pathlib import Path
-import multiprocessing as mp
+
 from torch.utils.tensorboard import SummaryWriter
 
 from .context_base import ContextBase

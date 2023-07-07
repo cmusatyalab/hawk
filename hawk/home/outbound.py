@@ -7,9 +7,9 @@
 
 import json
 import queue
-import zmq
 import socket
 
+import zmq
 from logzero import logger
 
 from ..proto import Empty

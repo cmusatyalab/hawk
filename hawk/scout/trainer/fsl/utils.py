@@ -2,16 +2,18 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+import glob
+import random
+from enum import Enum
+from pathlib import Path
+
+import numpy as np
 import torch
 import torch.nn as nn
+from PIL import Image
 from torch.utils.data import Dataset
-import glob 
-import random 
-import numpy as np
-from PIL import Image 
-from pathlib import Path
-from enum import Enum
 from torch_snippets import *
+
 
 class TripletData(Dataset):
     def __init__(self, path, transforms, split="train"):

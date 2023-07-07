@@ -2,26 +2,23 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+import glob
 import json
 import os
-import glob
-import time
 import random
-import numpy as np
+import subprocess
+import time
 from pathlib import Path
 from typing import Dict
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.transforms as transforms
-from torchvision import models
 from logzero import logger
 from torch_snippets import *
-
-
-import glob
-import subprocess
+from torchvision import models
 
 from ...context.model_trainer_context import ModelContext
 from ...core.model import Model

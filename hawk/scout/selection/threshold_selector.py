@@ -4,8 +4,9 @@
 
 import queue
 import threading
-from logzero import logger
 from typing import Optional
+
+from logzero import logger
 
 from ..core.model import Model
 from ..core.result_provider import ResultProvider

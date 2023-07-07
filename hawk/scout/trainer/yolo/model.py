@@ -4,18 +4,17 @@
 
 import gc
 import io
+import multiprocessing as mp
 import os
 import time
-import multiprocessing as mp
 from pathlib import Path
-from logzero import logger
-from pathlib import Path
-from PIL import Image, ImageFile
-from sklearn.metrics import average_precision_score
-from typing import Callable, List, Iterable, Dict
+from typing import Callable, Dict, Iterable, List
 
 import torch
 import torchvision.transforms as transforms
+from logzero import logger
+from PIL import Image, ImageFile
+from sklearn.metrics import average_precision_score
 from torch.utils.data import DataLoader
 from torchvision import datasets
 

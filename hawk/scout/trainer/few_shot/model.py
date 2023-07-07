@@ -3,18 +3,17 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import io
-import time
 import multiprocessing as mp
-import numpy as np
+import time
 from pathlib import Path
-from logzero import logger
-from pathlib import Path
-from PIL import Image, ImageFile
-from sklearn.metrics import average_precision_score
-from typing import Callable, List, Iterable, Tuple, Dict
+from typing import Callable, Dict, Iterable, List, Tuple
 
+import numpy as np
 import torch
 import torchvision.transforms as transforms
+from logzero import logger
+from PIL import Image, ImageFile
+from sklearn.metrics import average_precision_score
 from torch.utils.data import DataLoader
 from torchvision import datasets, models
 

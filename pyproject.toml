@@ -1,0 +1,7 @@
+[tool.isort]
+py_version = 38
+profile = "black"
+skip_glob = [
+    "hawk/proto/*",
+    "hawk/scout/trainer/yolo/yolov5/*",
+]

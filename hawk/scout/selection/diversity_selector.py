@@ -3,20 +3,21 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import copy
-import os
-import random
 import itertools
+import os
 import queue
-import time
+import random
 import threading
-import numpy as np
+import time
 from collections import defaultdict
-from logzero import logger
-from typing import Optional
 from pathlib import Path
-from sklearn.preprocessing import StandardScaler
+from typing import Optional
+
+import numpy as np
+from logzero import logger
 from sklearn.cluster import DBSCAN
-from sklearn.decomposition import PCA 
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 from ..core.model import Model
 from ..core.result_provider import ResultProvider

@@ -5,12 +5,13 @@
 import copy
 import os
 import queue
-import time
 import threading
+import time
 from collections import defaultdict
-from logzero import logger
-from typing import Optional, List
 from pathlib import Path
+from typing import List, Optional
+
+from logzero import logger
 
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
