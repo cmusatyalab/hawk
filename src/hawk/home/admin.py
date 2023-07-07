@@ -21,8 +21,10 @@ from PIL import Image
 from ..mission_config import load_config
 from ..ports import H2A_PORT
 from ..proto.messages_pb2 import (
+    AbsolutePolicyConfig,
     Dataset,
     FileDataset,
+    MissionResults,
     MissionStats,
     ModelArchive,
     ModelConfig,
@@ -32,6 +34,8 @@ from ..proto.messages_pb2 import (
     SampleIntervalPolicyConfig,
     ScoutConfiguration,
     SelectiveConfig,
+    Streaming_Video,
+    TokenConfig,
     TopKConfig,
     TrainConfig,
 )
@@ -355,7 +359,8 @@ class Admin:
         for index in known_scouts:
             if index not in return_msgs or "ERROR" in return_msgs[index]:
                 errormsg = return_msgs.get(index, "No response")
-                logger.error(f"ERROR during Configuration from Scout {self.scouts[index]}: {errormsg}")
+                scout = self.scouts[index]
+                logger.error(f"ERROR during Configuration from Scout {scout}: {errormsg}")
                 del self.scout_stubs[index]
         
         if not self.explicit_start: 
@@ -375,39 +380,36 @@ class Admin:
         ])
 
         self.start_time = time.time()
-        for index, stub in self.scout_stubs.items():
+        for stub in self.scout_stubs.values():
             msg = [
                 b"a2s_start_mission",
                 b"",
             ]
             stub.send_multipart(msg)
 
-        for index, stub in self.scout_stubs.items():
+        for stub in self.scout_stubs.values():
             stub.recv()
 
         logger.info("Start msg received")
         
         threading.Thread(target=self.get_mission_stats, name='get-stats').start()
-        return         
 
     def stop_mission(self):
         """Explicit stop Mission command""" 
 
-        for index, stub in self.scout_stubs.items():
+        for stub in self.scout_stubs.values():
             msg = [
                 b"a2s_stop_mission",
                 b"",
             ]
             stub.send_multipart(msg)
 
-        for index, stub in self.scout_stubs.items():
+        for stub in self.scout_stubs.values():
             stub.recv()
-        return         
 
     def get_mission_stats(self):
         time.sleep(10)
         count = 1
-        break_count = 0
         prev_bytes = 0
         prev_processed = 0
         try:
@@ -478,7 +480,7 @@ class Admin:
             
     def get_test_results(self):
         assert len(self.test_path), "Test path not provided"
-        for index, stub in self.scout_stubs.items():
+        for stub in self.scout_stubs.values():
             msg = [
                 b"a2s_get_test_results",
                 self.test_path.encode("utf-8"),
@@ -503,9 +505,9 @@ class Admin:
                         stat_path = results_dir / f"model-result-{version:06}.json"
                         with open(stat_path, "w") as f:
                             json.dump(model_stat, f, indent=4, sort_keys=True)
-                except Exception as e:
+                except Exception:
                     msg = reply.decode()
-                    logger.error(f"ERROR during Testing from Scout {index} \n {msg}")
+                    logger.error(f"ERROR during Testing from Scout {index}\n {msg}")
         return 
 
     def accumulate_mission_stats(self):
@@ -514,7 +516,7 @@ class Admin:
                       'train_positives', 'server_positives',
                       'msg']
         single = ['server_time', 'train_positives', 'version']
-        for index, stub in self.scout_stubs.items():
+        for stub in self.scout_stubs.values():
             msg = [
                 b"a2s_get_mission_stats",
                 b"",

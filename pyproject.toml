@@ -11,7 +11,7 @@ authors = [
 license = "GPL-2.0-only"
 readme = "README.md"
 packages = [
-    { include = "hawk", from = "." },
+    { include = "hawk", from = "src" },
 ]
 
 [tool.poetry.dependencies]
@@ -69,7 +69,7 @@ hawk_scout = "hawk.scout.server_main:main"
 target-version = ["py38"]
 extend-exclude = '''
 (
-  ^/hawk/scout/trainer/yolo/yolov5/ # exclude yolov5 code
+  ^/src/hawk/scout/trainer/yolo/yolov5/ # exclude yolov5 code
 | .*_pb2.pyi?                       # exclude protobuf stubs
 )
 '''
@@ -78,13 +78,13 @@ extend-exclude = '''
 py_version = 38
 profile = "black"
 skip_glob = [
-    "hawk/proto/*",
-    "hawk/scout/trainer/yolo/yolov5/*",
+    "src/hawk/proto/*",
+    "src/hawk/scout/trainer/yolo/yolov5/*",
 ]
 
 [tool.mypy]
 strict = true
-files = ["."]
+files = ["src"]
 
 [tool.poe]
 include = "tasks.toml"
