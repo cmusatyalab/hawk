@@ -60,13 +60,13 @@ class S2SServicer(object):
             request.ParseFromString(msg)
             label = request
             # Fetch data from dataretriever
-            object = self._mission.retriever.get_object(
+            object_ = self._mission.retriever.get_object(
                 object_id=label.objectId 
             )
             # Assuming data requirement in Distribute positives
             if label.imageLabel != '0':
                 # Transmit data to coordinator
-                response = objec.SerializeToString()
+                response = object_.SerializeToString()
                 logger.info("Fetch Tile for id {} parent {} Reply {}".format(
                     label.objectId, label.scoutIndex, len(response)))
             else:
@@ -74,7 +74,7 @@ class S2SServicer(object):
             # Store labels
             self._mission.store_labeled_tile(
                 LabeledTile(
-                    object=object,
+                    object=object_,
                     label=label,
                 ) 
             )
