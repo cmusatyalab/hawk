@@ -7,6 +7,7 @@ import json
 import os
 import random
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Dict
@@ -23,7 +24,6 @@ from torchvision import models
 from ...context.model_trainer_context import ModelContext
 from ...core.model import Model
 from ...core.model_trainer import ModelTrainerBase
-from . import PYTHON_EXEC
 from .model import FSLModel
 from .utils import TripletData, TripletLoss
 
@@ -91,7 +91,7 @@ class FSLTrainer(ModelTrainerBase):
         support_path = self.args['support_path']
         
         cmd = [
-            PYTHON_EXEC,
+            sys.executable,
             f"{file_path}/augment.py",
             train_dataset,
             support_path,

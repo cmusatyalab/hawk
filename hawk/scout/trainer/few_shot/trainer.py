@@ -16,7 +16,6 @@ from logzero import logger
 from ...context.model_trainer_context import ModelContext
 from ...core.model import Model
 from ...core.model_trainer import ModelTrainerBase
-from . import PYTHON_EXEC
 from .model import FewShotModel
 
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -50,4 +49,3 @@ class FewShotTrainer(ModelTrainerBase):
 
     def train_model(self, train_dir) -> Model:
         return self.load_model(self._model_path, version=self.version) 
-        

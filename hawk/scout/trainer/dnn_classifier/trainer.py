@@ -7,6 +7,7 @@ import json
 import os
 import shlex
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Dict
@@ -17,7 +18,6 @@ from logzero import logger
 from ...context.model_trainer_context import ModelContext
 from ...core.model import Model
 from ...core.model_trainer import ModelTrainerBase
-from . import PYTHON_EXEC
 from .model import DNNClassifierModel
 
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -137,7 +137,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
         file_path = os.path.dirname(os.path.abspath(__file__))
         
         cmd = [
-            PYTHON_EXEC,
+            sys.executable,
             f"{file_path}/train_model.py",
             "--trainpath", str(trainpath),
             "--arch", self.args['arch'],
@@ -173,4 +173,3 @@ class DNNClassifierTrainer(ModelTrainerBase):
                                   new_version,
                                   self.args['mode'], 
                                   context=self.context) 
-        

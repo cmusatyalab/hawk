@@ -7,6 +7,7 @@ import json
 import os
 import shlex
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Dict
@@ -19,7 +20,6 @@ from ...context.model_trainer_context import ModelContext
 from ...core.model import Model
 from ...core.model_trainer import ModelTrainerBase
 from ...core.utils import log_exceptions
-from . import PYTHON_EXEC
 from .model import YOLOModel
 
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -156,7 +156,7 @@ class YOLOTrainer(ModelTrainerBase):
             weights= self.prev_path
 
         cmd = [
-            PYTHON_EXEC,
+            sys.executable,
             f"{file_path}/yolov5/train.py",
             "--savepath", str(model_savepath),
             "--epochs", str(num_epochs),
