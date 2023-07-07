@@ -49,6 +49,7 @@ from hawk.reexamination.reexamination_strategy import ReexaminationStrategy
 from hawk.trainer.dnn_classifier.trainer import DNNClassifierTrainer 
 from hawk.trainer.fsl.trainer import FSLTrainer 
 from hawk.trainer.yolo.trainer import YOLOTrainer 
+from hawk.proto import Empty
 from hawk.proto.messages_pb2 import Dataset, ScoutConfiguration, MissionId, ImportModel, \
     RetrainPolicyConfig,  SelectiveConfig, ReexaminationStrategyConfig, MissionResults, MissionStats  
     
@@ -190,7 +191,7 @@ class A2SAPI(object):
             reply = self._a2s_get_post_mission_archive()
         except Exception as e:
             logger.exception(e)
-            reply = b""
+            reply = Empty
             raise e
         finally:
             return reply 
@@ -357,7 +358,7 @@ class A2SAPI(object):
         try:
             mission = self._manager.get_mission()
             if not mission:
-                return api.Empty
+                return Empty
 
             time_now = time.time() - mission.start_time
 
@@ -501,7 +502,7 @@ class A2SAPI(object):
             mission_archive.seek(0)
             reply = mission_archive
         except Exception as e:
-            reply = b""
+            reply = Empty
         return reply
     
     def _get_retrain_policy(self, retrain_policy: RetrainPolicyConfig, 

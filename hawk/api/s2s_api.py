@@ -9,6 +9,7 @@ import zmq
 from logzero import logger
 
 from hawk import api
+from hawk.proto import Empty
 from hawk.proto.messages_pb2 import * 
 
 def s2s_receive_request(s2s_input, s2s_output):
@@ -68,7 +69,7 @@ class S2SServicer(object):
                 logger.info("Fetch Tile for id {} parent {} Reply {}".format(
                     label.objectId, label.scoutIndex, len(response)))
             else:
-                response = api.Empty
+                response = Empty
             # Store labels
             self._mission.store_labeled_tile(
                 LabeledTile(
@@ -101,4 +102,4 @@ class S2SServicer(object):
             logger.exception(e)
             raise e
         finally:
-            return api.Empty 
+            return Empty

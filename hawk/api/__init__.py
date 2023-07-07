@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-Empty = b''
 A2S_PORT = 6100
 H2A_PORT = 6200
 S2S_PORT = 6300
