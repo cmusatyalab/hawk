@@ -271,7 +271,8 @@ class A2SAPI(object):
 
             reply = b"SUCCESS"
         except Exception as e:
-            reply = ("ERROR: {}".format(e)).encode()
+            logger.exception("Error during setup")
+            reply = f"ERROR: {e}".encode()
         return reply
     
     def _setup_bandwidth(self, bandwidth_func : str) -> None:
