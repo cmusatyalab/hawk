@@ -2,9 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import copy
 import io
-import json
 import multiprocessing as mp
 import os
 import sys
@@ -15,11 +13,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
-import numpy as np
-import tensorboard
-from google.protobuf.any_pb2 import Any
 from logzero import logger
-from torch.utils.tensorboard import SummaryWriter
 
 from ...proto.messages_pb2 import (
     DatasetSplit,

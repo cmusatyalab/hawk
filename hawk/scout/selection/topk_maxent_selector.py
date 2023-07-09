@@ -2,16 +2,10 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import math
-import queue
-import threading
 import time
-from typing import Optional
 
-from ..core.model import Model
 from ..core.result_provider import ResultProvider
 from ..reexamination.reexamination_strategy import ReexaminationStrategy
-from .selector_base import SelectorBase, SelectorStats
 from .topk_selector import TopKSelector
 
 

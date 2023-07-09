@@ -11,7 +11,7 @@ from logzero import logger
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
 from ..reexamination.reexamination_strategy import ReexaminationStrategy
-from .selector_base import SelectorBase, SelectorStats
+from .selector_base import SelectorBase
 
 
 class ThresholdSelector(SelectorBase):

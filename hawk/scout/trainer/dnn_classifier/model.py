@@ -12,7 +12,6 @@ import torch
 import torchvision.transforms as transforms
 from logzero import logger
 from PIL import Image, ImageFile
-from sklearn.metrics import average_precision_score
 from torch.utils.data import DataLoader
 from torchvision import datasets, models
 

@@ -3,26 +3,24 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import io
-import multiprocessing as mp
+import os
 import time
+import zipfile
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List, Tuple
 
 import numpy as np
 import torch
+import torchvision
 import torchvision.transforms as transforms
 from logzero import logger
 from PIL import Image, ImageFile
-from sklearn.metrics import average_precision_score
-from torch.utils.data import DataLoader
-from torchvision import datasets, models
 
-from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.object_provider import ObjectProvider
 from ...core.result_provider import ResultProvider
-from ...core.utils import ImageFromList, log_exceptions
+from ...core.utils import log_exceptions
 from .models.SnaTCHerF import SnaTCHerF
 
 torch.multiprocessing.set_sharing_strategy('file_system')

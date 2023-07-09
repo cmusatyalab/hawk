@@ -4,14 +4,10 @@
 
 import base64
 import binascii
-import os
 import re
 import socket
-import textwrap
-import uuid
 from pathlib import Path
 
-import dateutil.parser
 from logzero import logger
 
 BOUNDARY_START = '-----BEGIN OPENDIAMOND SCOPECOOKIE-----\n'

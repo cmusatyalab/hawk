@@ -4,21 +4,18 @@
 
 import io
 import math
-import queue
-import threading
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import Iterable, Sized
 
 import numpy as np
 from logzero import logger
 from PIL import Image
 
-from ...proto.messages_pb2 import FileDataset, HawkObject
+from ...proto.messages_pb2 import FileDataset
 from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
-from .retriever import KEYS, Retriever, RetrieverStats
+from .retriever import Retriever
 
 
 class RandomRetriever(Retriever):

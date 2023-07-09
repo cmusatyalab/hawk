@@ -12,7 +12,6 @@ from subprocess import call
 
 import numpy as np
 import yaml
-from logzero import logger
 
 SPLIT="RANDOM"
 

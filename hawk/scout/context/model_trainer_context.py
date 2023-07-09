@@ -10,8 +10,6 @@ import multiprocessing as mp
 from abc import abstractmethod
 from pathlib import Path
 
-from torch.utils.tensorboard import SummaryWriter
-
 from .context_base import ContextBase
 
 

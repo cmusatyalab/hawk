@@ -2,16 +2,10 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import copy
 import itertools
-import os
 import queue
-import random
 import threading
 import time
-from collections import defaultdict
-from pathlib import Path
-from typing import Optional
 
 import numpy as np
 from logzero import logger
@@ -19,11 +13,8 @@ from sklearn.cluster import DBSCAN
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-from ..core.model import Model
-from ..core.result_provider import ResultProvider
-from ..core.utils import get_example_key, log_exceptions
+from ..core.utils import log_exceptions
 from ..reexamination.reexamination_strategy import ReexaminationStrategy
-from .selector_base import SelectorBase, SelectorStats
 from .topk_selector import TopKSelector
 
 

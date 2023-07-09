@@ -2,17 +2,12 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import argparse
-import csv
 import glob
-import imghdr
 import json
 import multiprocessing as mp
 import os
-import queue
 import time
 from os import walk
-from pathlib import Path
 
 import numpy as np
 from flask import (

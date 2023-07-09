@@ -2,29 +2,12 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import copy
-import gc
-import io
-import multiprocessing as mp
-import os
-import queue
-import random
-import shutil
-import subprocess
-import threading
 import time
-from collections import defaultdict
-from typing import Iterable, Sized
 
 import cv2
 import numpy as np
 from logzero import logger
-from PIL import Image
 
-#from ...proto.messages_pb2 import FileDataset, HawkObject, Streaming_Video
-#from ..core.object_provider import ObjectProvider
-#from ..core.utils import ATTR_GT_LABEL, get_server_ids
-#from .retriever import Retriever, RetrieverStats
 '''
 class VideoFrameProducer:
     def __init__(self, video_source):

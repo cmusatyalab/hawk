@@ -17,7 +17,7 @@ from ..core.model import Model
 from ..core.result_provider import ResultProvider
 from ..core.utils import get_example_key, log_exceptions
 from ..reexamination.reexamination_strategy import ReexaminationStrategy
-from .selector_base import SelectorBase, SelectorStats
+from .selector_base import SelectorBase
 
 
 class TopKSelector(SelectorBase):

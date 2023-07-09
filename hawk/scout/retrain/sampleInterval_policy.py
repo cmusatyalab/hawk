@@ -5,8 +5,6 @@
 """Retrain policy based on percentage of #tiles retrieved increment
 """
 
-from logzero import logger
-
 from .retrain_policy_base import RetrainPolicyBase
 
 

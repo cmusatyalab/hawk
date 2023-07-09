@@ -2,15 +2,10 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import glob
-import json
-import os
-import time
 from pathlib import Path
 from typing import Dict
 
 import torch
-import torchvision
 from logzero import logger
 
 from ...context.model_trainer_context import ModelContext

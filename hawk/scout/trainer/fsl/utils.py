@@ -3,16 +3,14 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import glob
+import os
 import random
-from enum import Enum
-from pathlib import Path
 
-import numpy as np
 import torch
 import torch.nn as nn
+from logzero import logger
 from PIL import Image
 from torch.utils.data import Dataset
-from torch_snippets import *
 
 
 class TripletData(Dataset):

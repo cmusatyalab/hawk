@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-from typing import Optional
-
 from .attribute_provider import AttributeProvider
 
 

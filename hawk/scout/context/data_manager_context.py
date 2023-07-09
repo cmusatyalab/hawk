@@ -8,10 +8,8 @@
 
 from abc import abstractmethod
 from pathlib import Path
-from typing import List
 
 from ...proto.messages_pb2 import MissionId
-from ..core.model_trainer import ModelTrainer
 from .context_base import ContextBase
 
 

@@ -8,12 +8,9 @@ import io
 import json
 import os
 import sys
-import time
-from os import walk
 
 #import aiofiles
 import websockets
-from logzero import logger
 from PIL import Image
 
 

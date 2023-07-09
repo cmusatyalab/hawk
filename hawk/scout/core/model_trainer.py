@@ -4,12 +4,10 @@
 
 import threading
 from abc import ABCMeta, abstractmethod
-from enum import Enum, auto, unique
 from pathlib import Path
 from typing import Dict
 
 import torch
-from google.protobuf.any_pb2 import Any
 
 from .model import Model
 
