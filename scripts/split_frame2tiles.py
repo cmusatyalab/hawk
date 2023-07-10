@@ -1,4 +1,5 @@
-# Source https://github.com/CAPTAIN-WHU/DOTA_devkit/blob/master/ImgSplit_multi_process.py
+# Source:
+# https://github.com/CAPTAIN-WHU/DOTA_devkit/blob/master/ImgSplit_multi_process.py
 
 import copy
 import os
