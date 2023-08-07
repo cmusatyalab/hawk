@@ -29,26 +29,7 @@ class _ResultDisplayState extends State<ResultDisplay> {
   // Change back to 127.0.0.1 as needed above
     late WebSocketChannel _channel;
     int total_samples_received = 0;
-  /*
-  final channel =
-      //WebSocketChannel.connect(Uri.parse('ws://cloudlet038.elijah.cs.cmu.edu:5000'));
-      WebSocketChannel.connect(Uri.parse('wss://demo.piesocket.com/v3/channel_123?api_key=VCXCEuvhGcBDP7XhiJJUDvR1e1D3eiVjgZ9VRiaV&notify_self'));
-      int temp_count = 0;
 
-  channel.stream.listen(
-  (message) {
-    // Handle the received message
-    print('Received message: $message');
-  },
-  onError: (error) {
-    // Handle any errors that occur during streaming
-    print('Error: $error');
-  },
-  onDone: () {
-    // Handle the WebSocket stream closure
-    print('WebSocket stream closed');
-  },
-);*/
   Map<String, String> labels = {"1": "T", "0": "F"};
   String? label;
   String? img_num;
@@ -76,7 +57,7 @@ class _ResultDisplayState extends State<ResultDisplay> {
   StreamController<ValueNotifier<int>> timerStreamController = StreamController<ValueNotifier<int>>();
   ValueNotifier<int> counterValueNotifier = ValueNotifier<int>(0);
 
-  
+
 
 
   late StreamSubscription _subscription;
@@ -98,7 +79,7 @@ class _ResultDisplayState extends State<ResultDisplay> {
     });
   }
 
-  
+
 
   void handleMsg(dynamic message) {    
       total_samples_received++;  
@@ -120,8 +101,6 @@ class _ResultDisplayState extends State<ResultDisplay> {
         results.add(result);
         total_samples_received += 1;
       setState((){
-        
-        //received_ratio = total_samples_received/total_samples_inferenced;
       });
     });
   }
@@ -130,18 +109,8 @@ class _ResultDisplayState extends State<ResultDisplay> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    //count_unique_images();
      }
-/*
-  void _stopListening() {
-  _channel.sink.close();
-}
 
-@override
-void dispose() {
-  _stopListening();
-  super.dispose();
-}*/
 String time_elapsed(int elapsed_time){
   var duration = Duration(seconds:elapsed_time);
                         var minutes = duration.inMinutes;
@@ -262,29 +231,7 @@ Map<String, String> label_list(List<ResultItem> result_objects){
                   ? SizedBox(
                       width: MediaQuery.of(context).size.width*0.6,
                       height: MediaQuery.of(context).size.height - 100,
-                      /*child: StreamBuilder(
-                        stream: _channel.stream!,
-                        builder: (context, AsyncSnapshot snapshot) {
-                          if (!snapshot.hasData)  {
-                            return const CircularProgressIndicator();
-                          }
-                          if (snapshot.connectionState == ConnectionState.done){
-                            return const Center(
-                              child: Text("Connection Closed!"),
-                            );
-                          }
-                              // json encoded data
-                          var data = json.decode(snapshot.data.toString());
-                          var newData = snapshot.data;
-                          if (newData != lastDataItem){
-                            lastDataItem = newData;
-                            ResultItem result = ResultItem.fromJson(data);
-                            total_samples_received += 1;
-                            //sample_state[result.name] = {'pos_sel':false!, 'neg_sel': false!, 'neg_labeled': false!, 'pos_labeled': false!, 'unlabeled': true!};
 
-                          results.add(result);
-                          old_length += 1;
-                          }*/
 
                           child: results.length > 0 ? Row(
                             children: <Widget>[
@@ -312,16 +259,10 @@ Map<String, String> label_list(List<ResultItem> result_objects){
 
 
                                     return Container(key: ValueKey(index),
-                                          /*
-                                           decoration: BoxDecoration(
-                                                border: Border.all(
-                                                  color: selected_state[results[index].name]! ? Colors.red : Colors.transparent,
-                                                  width:2.0,
-                                                ),
-                                              ),  */
+
                                               child: Column(children:[
                                               Expanded(
-                                              child: Image(key:ValueKey(index),
+                                              child: Image(
                                           gaplessPlayback: true,
                                           excludeFromSemantics: true,
                                           fit: BoxFit.cover,
@@ -338,8 +279,6 @@ Map<String, String> label_list(List<ResultItem> result_objects){
                             pos_select_sample(this_result);
                             },
                             ),
-                            //Icon(Icons.check_box_outlined, color: Color.fromARGB(255, 8, 112, 11)),
-                            //Icon(Icons.check_box, color: Color.fromARGB(255, 8, 112, 11)),
                             Text(
                             '${index + 1}/${results.length}, '
                                 '$label',//${img_num_int}',
@@ -353,23 +292,15 @@ Map<String, String> label_list(List<ResultItem> result_objects){
                           neg_select_sample(this_result);
                           }
                           ),
-                          //Icon(Icons.do_disturb_on_outlined, color: Color.fromARGB(255, 168, 15, 4)),
-                          //Icon(Icons.do_disturb_on, color: Color.fromARGB(255, 168, 15, 4)),
-                          
                           ],),),
                         ),
-                                                                            
                                           ],
                                           ),);
-
-                                          //container ends                              
                                   },
                                 ),
                               ),
                             ],
                           ) : CircularProgressIndicator(),
-  //},// builder
-                      //), // streambuilder
                     )
      : const Text("Initiate Connection")
      ],
@@ -382,8 +313,7 @@ Expanded(
                   color: Colors.black,
                   width: 2,
                 ),
-                //borderRadius.BorderRadius.circular(10),
-              ),             
+              ),
               child: Center(
                 child: Column(mainAxisAlignment: MainAxisAlignment.start,
                 children: [
@@ -425,7 +355,6 @@ Expanded(
                         builder: (context, value, child){
                             return Text("${time_elapsed(value)}", style: TextStyle(fontSize:16));},
                       )
-                      
                   ],),  
                   ] ,
                   ),
@@ -461,8 +390,7 @@ Expanded(
                      },
                     child: const Text('Refresh Stats'),
                 ),
-                  SizedBox(height: 15, width: double.infinity),
-
+                  SizedBox(height: 10, width: double.infinity),
                 Text("Labeling Control",style: TextStyle(fontSize:24))  ,              
                 SizedBox(height: 10, width: double.infinity),
                 ElevatedButton(
@@ -475,33 +403,15 @@ Expanded(
                       textStyle: const TextStyle(fontSize: 16),
                     ),
                     onPressed: () async {
-                      //url to send the post configure request
-                      // make sure to update the states of the samples so the icon changes
-                        // generate list of positives for labeling
-                        //generate list of negative for labeling.
-                      Map<String, String> label_dict = label_list(results);                      
-                      
+                      Map<String, String> label_dict = label_list(results);
                       final url = 'http://cloudlet038.elijah.cs.cmu.edu:8000/hawk_push_labels';
                       //sending a post request to the url (default was 127.0.0.1:8000/start)
                       final response = await http.post(Uri.parse(url),
                         body: json.encode(label_dict));
-                      
-                      //final stats_url = 'http://cloudlet038.elijah.cs.cmu.edu:8000/get_stats';
-                      //var stats_response = await http.get(Uri.parse(stats_url));
-                      /*
-                      String stats_body = stats_response.body;
-                      Map<String, dynamic> json_data = jsonDecode(stats_body);
-                      setState((){
-                        current_model_version = int.parse(json_data['version']);
-                      });*/
-                      
-                      
-                       
                     },
                     child: const Text('Send New Labels'),
                   ),
                   SizedBox(height: 20, width: double.infinity),
-                  
                   
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
@@ -539,11 +449,9 @@ Expanded(
                 ],
                   ),
                 ),
-              //color: Colors.transparent,
               width:400,
             ),
           ),
-          // Need in the mission stats bar: reset selected button, setting all images to false
         ],
         ),
 ),
@@ -552,4 +460,3 @@ Expanded(
 }  
 }       
 
-// Need to add functionality to identify and label each image, the call the function label_samples in home_flutter.py.
