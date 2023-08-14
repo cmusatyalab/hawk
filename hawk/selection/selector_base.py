@@ -8,6 +8,7 @@ import threading
 from abc import ABCMeta, abstractmethod
 from typing import Optional, List
 from pathlib import Path
+from logzero import logger
 
 from hawk.context.data_manager_context import DataManagerContext
 from hawk.core.model import Model
@@ -102,6 +103,8 @@ class SelectorBase(Selector):
 
         with self.stats_lock:
             self.items_processed += 1
+            '''if self.items_processed % 10 == 0:
+                logger.info("Total items processed: {}".format(self.items_processed))'''
 
     def new_model(self, model: Optional[Model]) -> None:
         """New model generation is available from trainer""" 
@@ -111,8 +114,11 @@ class SelectorBase(Selector):
         self._new_model(model)
 
     def clear(self) -> None:
+        logger.info("Selector clear called in selector base...")
+
         self._clear_event.set()
         self.result_queue.put(None)
+
 
     def get_result(self) -> Optional[ResultProvider]:
         """Returns result for transmission when available"""

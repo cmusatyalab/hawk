@@ -313,6 +313,7 @@ class Mission(DataManagerContext, ModelContext):
         self._abort_event.set()
         self.retriever.stop()
         self.selector.clear()
+        logger.info("Selector clear called in mission.py...")
         self.log_file.close()
         sys.exit(0)
 
@@ -337,8 +338,9 @@ class Mission(DataManagerContext, ModelContext):
                     (new version {} available)'.format(starting_version, version))
                 return
             with self._model_lock:
-                retriever_object = self.retriever.get_objects()
-                model.add_requests(retriever_object)
+                retriever_object = self.retriever.get_objects() ## pops single retriever object from retriever result
+                # queue
+                model.add_requests(retriever_object) ## puts single retriever object into model inference request queue
 
         return
 
@@ -363,6 +365,13 @@ class Mission(DataManagerContext, ModelContext):
             while not self._abort_event.is_set():
                 result = self._model.get_results()
                 self.selector.add_result(result)
+                if self.retriever.total_tiles == self.selector.items_processed:
+                    self.selector.select_tiles(self.selector._k)
+                if  self.selector.items_processed > self.retriever.total_tiles - 200:
+                    logger.info("Items retrieved, {}, sent to model: {}, total items processed: {}".format(
+                        self.retriever._stats['retrieved_tiles'], self._model.request_count,
+                        self.selector.items_processed))
+                ## if total number selected == total number of tiles, then call select_tiles one last time.
         except Exception as e:
             logger.error(e)
             self.stop()

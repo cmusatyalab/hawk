@@ -81,8 +81,7 @@ class TopKSelector(SelectorBase):
             if self._batch_added in self.log_counter:
                 logger.info("ADDED {}/{}".format(self._batch_added, self._batch_size))
 
-            if (self._batch_added >= self._batch_size or 
-                self._clear_event.is_set() and self._batch_added != 0) :
+            if self._batch_added >= self._batch_size or (self._clear_event.is_set() and self._batch_added != 0) :
                 self.select_tiles(self._k)                    
 
     @log_exceptions

@@ -414,9 +414,11 @@ class Admin:
                     break
 
                 if stats['processedObjects'] != 0: 
-                    if (stats['processedObjects'] == stats['totalObjects'] or
+                    '''if (stats['processedObjects'] == stats['totalObjects'] or
                         (stats['retrieved_tiles'] == stats['totalObjects'] and
-                        prev_bytes == stats['bytes'] and prev_processed == stats['processedObjects'])):
+                        prev_bytes == stats['bytes'] and prev_processed == stats['processedObjects'])):'''
+                    if stats['processedObjects'] == stats['totalObjects']:
+                        time.sleep(60)
                         self.stop_event.set()
                         logger.info("End mission")
                         with open(self.end_file, "w") as f:

@@ -141,3 +141,6 @@ dmypy.json
 .idea
 hawk/proto/*_pb2*
 home/configs
+home/hawk_ui/images
+home/hosts
+
