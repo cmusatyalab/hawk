@@ -374,6 +374,10 @@ def set_parameter_requires_grad(model, unfreeze=0):
         if count < num_freeze:
             for param in child.parameters():
                 param.requires_grad = False
+        else:
+            print("COunt:", count)
+            print("The following layer will be retrained:\n",child)
+
 
 
 def initialize_model(arch, num_classes, unfreeze=0):

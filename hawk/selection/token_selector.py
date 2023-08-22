@@ -48,8 +48,23 @@ class TokenSelector(TopKSelector):
         self.sample_count += 1
         with self._insert_lock:
             time_result = time.time() - self._mission.start_time
+            self._mission.log_file.write("{:.3f} {}_{} CLASSIFICATION: {} GT {} Score {:.4f}\n".format(
+                time_result, self._mission.host_name,
+                self.version, result.id, result.gt, result.score))
+
+            # Incrementing positives in stream
+            if result.gt:
+                self.num_positives += 1
+                logger.info("Queueing {} Score {}".format(result.id, result.score))
+
+            if self._mode == "oracle":
+                if int(result.score) == 1:
+                    self.result_queue.put(result)
+                    logger.info("[Result] Id {} Score {}".format(result.id, result.score))
+
             self._priority_queues[-1].put((-result.score, time_result, result))
             # pop the top 4 samples of the first 100 to populate the initial labeling queue at home.
-            if self.sample_count == 100: 
+            #logger.info("Self.k parameter: {}".format(self._k))
+            if self.sample_count == 1000:
                 self._initialize_queue()
             
