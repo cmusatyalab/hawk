@@ -142,6 +142,11 @@ class Admin:
                                 absolute=AbsolutePolicyConfig(
                                     threshold=retrain_config['threshold'],
                                     onlyPositives=retrain_config['only_positives'],))
+        elif retrain_type == 'sample':
+            retrain_policy = RetrainPolicyConfig(
+                sample=SampleIntervalPolicyConfig(
+                    num_intervals=retrain_config['num_intervals'],
+                     ))
         else:
             raise NotImplementedError("Unknown retrain policy {}".format(retrain_type))
           

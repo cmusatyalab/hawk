@@ -94,6 +94,7 @@ message RetrainPolicyConfig {
     AbsolutePolicyConfig absolute = 1;
     PercentagePolicyConfig percentage = 2;
     ModelPolicyConfig model = 3;
+    SampleIntervalPolicyConfig sample = 4;
   }
 }
 
@@ -109,6 +110,10 @@ message PercentagePolicyConfig {
 
 message ModelPolicyConfig {
   string name = 1;
+}
+
+message SampleIntervalPolicyConfig {
+  int32 num_intervals = 1;
 }
 
 message Dataset {

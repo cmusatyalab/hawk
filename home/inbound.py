@@ -83,8 +83,8 @@ class InboundProcess:
 
                         ## move this line to the toek thread that pops images from pri queues
 
-                        for num, i in enumerate(self._per_scout_priority_queues):
-                            logger.info("Length of Pri Queue for Scout {} is: {}".format(num, i.qsize()))
+                        #for num, i in enumerate(self._per_scout_priority_queues):
+                            #logger.info("Length of Pri Queue for Scout {} is: {}".format(num, i.qsize()))
                     elif self._rotation_mode == 'top':
                         self._global_priority_queue.put((-score, temp_meta_data, data))
                     ## if aggregate priority queue length is less than total init samples, then continue

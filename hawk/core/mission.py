@@ -29,6 +29,7 @@ from hawk.core.hawk_stub import HawkStub
 from hawk.core.model import Model
 from hawk.core.object_provider import ObjectProvider
 from hawk.retrain.retrain_policy_base import RetrainPolicyBase
+from hawk.retrain.sampleInterval_policy import SampleIntervalPolicy
 from hawk.retrieval.retriever import Retriever
 from hawk.selection.selector_base import Selector
 from hawk.selection.token_selector import TokenSelector
@@ -53,6 +54,8 @@ class Mission(DataManagerContext, ModelContext):
         self._id = mission_id
         self.positives = 0
         self.negatives = 0
+        self.sample_sent_to_model = 0
+
         self._scout_index = scout_index
         self._scouts = scouts
 
@@ -76,6 +79,7 @@ class Mission(DataManagerContext, ModelContext):
         self.retriever = retriever
         self.selector = selector
         self.bootstrap_zip = bootstrap_zip
+        self._retrain_policy.total_tiles = self.retriever.total_tiles
         
         self.initial_model = initial_model
         self._validate = validate
@@ -256,14 +260,17 @@ class Mission(DataManagerContext, ModelContext):
     def new_labels_callback(self, new_positives: int, new_negatives: int, retrain=True) -> None:
         if self._abort_event.is_set():
             return 
-        
+        logger.info("New labels call back has been called...positives: {}, negatives: {}".format(new_positives, new_negatives))
         end_t = time.time()
 
         if retrain:
             self.positives += new_positives
             self.negatives += new_negatives
 
-        self._retrain_policy.update(new_positives, new_negatives)
+        ## add line here to only call the function below if the retrain policy is not the sample interval policy
+        ## or simply use an if statement and feed the total number of retreived samples
+        if not isinstance(self._retrain_policy, SampleIntervalPolicy):
+            self._retrain_policy.update(new_positives, new_negatives)
         if self.enable_logfile:
             self.log_file.write("{:.3f} {} {}_NEW Examples \
                 Positives {} Negatives {}\n".format(end_t - self.start_time, time.ctime(), 
@@ -276,16 +283,17 @@ class Mission(DataManagerContext, ModelContext):
         if not retrain:
             return
 
-        if self._retrain_policy.should_retrain():
-            should_retrain = True
-        else:
-            with self._model_lock:
-                model = self._model
-            should_retrain = model is None
+        if not isinstance(self._retrain_policy, SampleIntervalPolicy):
+            if self._retrain_policy.should_retrain():
+                should_retrain = True
+            else:
+                with self._model_lock:
+                    model = self._model
+                should_retrain = model is None
 
-        if should_retrain:
-            self._retrain_policy.reset()
-            self._model_event.set()
+            if should_retrain:
+                self._retrain_policy.reset()
+                self._model_event.set()
 
     def start(self) -> None:
         try:
@@ -341,6 +349,15 @@ class Mission(DataManagerContext, ModelContext):
                 retriever_object = self.retriever.get_objects() ## pops single retriever object from retriever result
                 # queue
                 model.add_requests(retriever_object) ## puts single retriever object into model inference request queue
+
+                if isinstance(self._retrain_policy, SampleIntervalPolicy):
+                    self._retrain_policy.interval_samples_retrieved += 1
+
+                    if self._retrain_policy.should_retrain():
+                        logger.info("Reached Retrain sample policy...")
+                        self._retrain_policy.reset()
+                        self._model_event.set()
+
 
         return
 

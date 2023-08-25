@@ -10,7 +10,7 @@ import warnings
 import numpy as np
 from enum import Enum
 from logzero import logger
-from sklearn.metrics import average_precision_score
+from sklearn.metrics import average_precision_score, roc_auc_score, auc, precision_recall_curve
 from hawk.core.utils import ImageFromList
 from tqdm import tqdm
 
@@ -499,7 +499,12 @@ def adjust_learning_rate(optimizer, scheduler, epoch, args):
 
 def calculate_performance(y_true, y_pred):
     ap = average_precision_score(y_true, y_pred, average=None)
+    roc_auc = roc_auc_score(y_true, y_pred)
+    precision, recall, _ = precision_recall_curve(y_true, y_pred)
+    pr_auc = auc(recall, precision)
     logger.info("AUC {}".format(ap))
+    logger.info("ROC AUC {}".format(roc_auc))
+    logger.info("PR AUC {}".format(pr_auc))
     return ap
 
 

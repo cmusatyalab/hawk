@@ -162,7 +162,7 @@ class DataManager(object):
 
         new_positives = sum(labels)
         new_negatives = len(labels) - new_positives
-        print(" New positives {} \n Negatives {}".format(new_positives, new_negatives))
+        logger.info(" New positives {} \n Negatives {}".format(new_positives, new_negatives))
 
         retrain = True
         if self._context.check_initial_model():

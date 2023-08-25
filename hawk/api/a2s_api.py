@@ -30,7 +30,8 @@ from hawk.core.mission_manager import MissionManager
 from hawk.core.utils import log_exceptions
 from hawk.retrain.absolute_policy import AbsolutePolicy                          
 from hawk.retrain.percentage_policy import PercentagePolicy                      
-from hawk.retrain.model_policy import ModelPolicy 
+from hawk.retrain.model_policy import ModelPolicy
+from hawk.retrain.sampleInterval_policy import SampleIntervalPolicy
 from hawk.retrain.retrain_policy_base import RetrainPolicyBase
 from hawk.retrieval.frame_retriever import FrameRetriever                                          
 from hawk.retrieval.random_retriever import RandomRetriever                                             
@@ -213,6 +214,9 @@ class A2SAPI(object):
 
             mission_id = MissionId(value=request.missionId)
             retrain_policy = self._get_retrain_policy(request.retrainPolicy, model_dir)
+            retriever = self._get_retriever(request.dataset)
+            if request.retrainPolicy.HasField("sample"):
+                retrain_policy.num_interval_sample(retriever.total_tiles)
             host_ip = request.scouts[request.scoutIndex]
             scouts = [HawkStub(scout, api.S2S_PORT, host_ip) for scout in request.scouts]
 
@@ -221,7 +225,7 @@ class A2SAPI(object):
             mission = Mission(mission_id, request.scoutIndex, scouts, 
                             request.homeIP, retrain_policy, 
                             root_dir / mission_id.value,
-                            self._port, self._get_retriever(request.dataset),
+                            self._port, retriever,
                             self._get_selector(request.selector, request.reexamination),
                             request.bootstrapZip, request.initialModel, request.validate)
             logger.info("Finished setting up mission")
@@ -512,7 +516,8 @@ class A2SAPI(object):
         elif retrain_policy.HasField('model'):
             logger.info("Model Policy")
             return ModelPolicy(str(model_dir))
-
+        elif retrain_policy.HasField('sample'):
+            return SampleIntervalPolicy(retrain_policy.sample.num_intervals)
         else:
             raise NotImplementedError('unknown retrain policy: {}'.format(
                 json_format.MessageToJson(retrain_policy)))
