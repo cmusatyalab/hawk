@@ -31,57 +31,108 @@ from tqdm import tqdm
 
 from ...core.utils import ImageFromList
 
-model_names = sorted(name for name in models.__dict__
-    if name.islower() and not name.startswith("__")
-    and callable(models.__dict__[name]))
+model_names = sorted(
+    name
+    for name in models.__dict__
+    if name.islower() and not name.startswith("__") and callable(models.__dict__[name])
+)
 
-parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('--trainpath', type=str, default='',
-                    help='path to tain file')
-parser.add_argument('--valpath', type=str, default='',
-                    help='path to val file')
-parser.add_argument('--savepath', type=str, default='model.pth',
-                    help='path to save trained model')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
-                    choices=model_names,
-                    help='model architecture: ' +
-                        ' | '.join(model_names) +
-                        ' (default: resnet18)')
-parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
-                    help='evaluate model on validation set')
-parser.add_argument('--num-classes', default=2, type=int,
-                    help='number of classes to train')
-parser.add_argument('--num-unfreeze', default=0, type=int,
-                    help='number of layers to train')
-parser.add_argument('-j', '--workers', default=4, type=int,
-                    help='number of data loading workers (default: 4)')
-parser.add_argument('--epochs', default=10000, type=int, metavar='N',
-                    help='number of total epochs to run')
-parser.add_argument('--warmup-epochs', default=5, type=int,
-                    help='intial number of epochs for warmup')
-parser.add_argument('--start-epoch', default=0, type=int,
-                    help='manual epoch number (useful on restarts)')
-parser.add_argument('--break-epoch', default=-1, type=int,
-                    help='break epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=64, type=int,
-                    help='mini-batch size (default: 32), this is the total '
-                         'batch size of all GPUs on the current node when '
-                         'using Data Parallel or Distributed Data Parallel')
-parser.add_argument('--lr', '--learning-rate', default=0.01, type=float,
-                    metavar='LR', help='initial learning rate', dest='lr')
-parser.add_argument('--min-lr', default=1e-4, type=float,
-                    help='minimum learning rate')
-parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
-                    help='momentum')
-parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
-                    metavar='W', help='weight decay (default: 1e-4)',
-                    dest='weight_decay')
-parser.add_argument('--resume', default=None, type=str, metavar='PATH',
-                    help='path to latest checkpoint (default: none)')
-parser.add_argument('--seed', default=None, type=int,
-                    help='seed for initializing training. ')
-parser.add_argument('--gpu', default=None, type=int,
-                    help='GPU id to use.')
+parser = argparse.ArgumentParser(description="PyTorch ImageNet Training")
+parser.add_argument("--trainpath", type=str, default="", help="path to tain file")
+parser.add_argument("--valpath", type=str, default="", help="path to val file")
+parser.add_argument(
+    "--savepath", type=str, default="model.pth", help="path to save trained model"
+)
+parser.add_argument(
+    "-a",
+    "--arch",
+    metavar="ARCH",
+    default="resnet50",
+    choices=model_names,
+    help="model architecture: " + " | ".join(model_names) + " (default: resnet18)",
+)
+parser.add_argument(
+    "-e",
+    "--evaluate",
+    dest="evaluate",
+    action="store_true",
+    help="evaluate model on validation set",
+)
+parser.add_argument(
+    "--num-classes", default=2, type=int, help="number of classes to train"
+)
+parser.add_argument(
+    "--num-unfreeze", default=0, type=int, help="number of layers to train"
+)
+parser.add_argument(
+    "-j",
+    "--workers",
+    default=4,
+    type=int,
+    help="number of data loading workers (default: 4)",
+)
+parser.add_argument(
+    "--epochs",
+    default=10000,
+    type=int,
+    metavar="N",
+    help="number of total epochs to run",
+)
+parser.add_argument(
+    "--warmup-epochs", default=5, type=int, help="intial number of epochs for warmup"
+)
+parser.add_argument(
+    "--start-epoch",
+    default=0,
+    type=int,
+    help="manual epoch number (useful on restarts)",
+)
+parser.add_argument(
+    "--break-epoch",
+    default=-1,
+    type=int,
+    help="break epoch number (useful on restarts)",
+)
+parser.add_argument(
+    "-b",
+    "--batch-size",
+    default=64,
+    type=int,
+    help="mini-batch size (default: 32), this is the total "
+    "batch size of all GPUs on the current node when "
+    "using Data Parallel or Distributed Data Parallel",
+)
+parser.add_argument(
+    "--lr",
+    "--learning-rate",
+    default=0.01,
+    type=float,
+    metavar="LR",
+    help="initial learning rate",
+    dest="lr",
+)
+parser.add_argument("--min-lr", default=1e-4, type=float, help="minimum learning rate")
+parser.add_argument("--momentum", default=0.9, type=float, metavar="M", help="momentum")
+parser.add_argument(
+    "--wd",
+    "--weight-decay",
+    default=1e-4,
+    type=float,
+    metavar="W",
+    help="weight decay (default: 1e-4)",
+    dest="weight_decay",
+)
+parser.add_argument(
+    "--resume",
+    default=None,
+    type=str,
+    metavar="PATH",
+    help="path to latest checkpoint (default: none)",
+)
+parser.add_argument(
+    "--seed", default=None, type=int, help="seed for initializing training. "
+)
+parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
 
 best_acc1 = 0
 
@@ -93,11 +144,13 @@ def main():
         random.seed(args.seed)
         torch.manual_seed(args.seed)
         cudnn.deterministic = True
-        warnings.warn('You have chosen to seed training. '
-                      'This will turn on the CUDNN deterministic setting, '
-                      'which can slow down your training considerably! '
-                      'You may see unexpected behavior when restarting '
-                      'from checkpoints.')
+        warnings.warn(
+            "You have chosen to seed training. "
+            "This will turn on the CUDNN deterministic setting, "
+            "which can slow down your training considerably! "
+            "You may see unexpected behavior when restarting "
+            "from checkpoints."
+        )
 
     ngpus_per_node = torch.cuda.device_count()
 
@@ -107,6 +160,7 @@ def main():
     else:
         assert os.path.exists(args.trainpath)
         train_worker(args.gpu, ngpus_per_node, args)
+
 
 def eval_worker(gpu, ngpus_per_node, args):
     global best_acc1
@@ -121,9 +175,9 @@ def eval_worker(gpu, ngpus_per_node, args):
     model, input_size = initialize_model(args.arch, args.num_classes, args.num_unfreeze)
 
     if not torch.cuda.is_available():
-        print('using CPU, this will be slow')
+        print("using CPU, this will be slow")
     else:
-        print('using GPU')
+        print("using GPU")
         model = model.cuda()
 
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
@@ -134,14 +188,15 @@ def eval_worker(gpu, ngpus_per_node, args):
             print(f"=> loading checkpoint '{args.resume}'")
             checkpoint = torch.load(args.resume)
 
-            args.start_epoch = checkpoint['epoch']
-            model.load_state_dict(checkpoint['state_dict'])
+            args.start_epoch = checkpoint["epoch"]
+            model.load_state_dict(checkpoint["state_dict"])
             print(f"=> loaded checkpoint {args.resume}")
         else:
             print(f"=> no checkpoint found at '{args.resume}'")
 
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+    )
 
     val_path = args.valpath
     logger.info(f"Test path {val_path}")
@@ -157,17 +212,24 @@ def eval_worker(gpu, ngpus_per_node, args):
 
     val_dataset = ImageFromList(
         val_list,
-        transforms.Compose([
-            transforms.Resize(input_size + 32),
-            transforms.CenterCrop(input_size),
-            transforms.ToTensor(),
-            normalize,
-        ]),
-        label_list=val_labels)
+        transforms.Compose(
+            [
+                transforms.Resize(input_size + 32),
+                transforms.CenterCrop(input_size),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        ),
+        label_list=val_labels,
+    )
 
     val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True)
+        val_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.workers,
+        pin_memory=True,
+    )
 
     auc = validate_model(val_loader, model, criterion, args)
 
@@ -188,11 +250,10 @@ def train_worker(gpu, ngpus_per_node, args):
     model, input_size = initialize_model(args.arch, args.num_classes, args.num_unfreeze)
 
     if not torch.cuda.is_available():
-        print('using CPU, this will be slow')
+        print("using CPU, this will be slow")
     else:
-        print('using GPU')
+        print("using GPU")
         model = model.cuda()
-
 
     cudnn.benchmark = True
 
@@ -207,25 +268,34 @@ def train_worker(gpu, ngpus_per_node, args):
             train_list.append(path)
             train_labels.append(int(label))
 
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+    )
 
     train_dataset = ImageFromList(
         train_list,
-        transforms.Compose([
-            transforms.RandomResizedCrop(input_size),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize,
-        ]),
+        transforms.Compose(
+            [
+                transforms.RandomResizedCrop(input_size),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ]
+        ),
         label_list=train_labels,
-        limit=500*sum(train_labels))
+        limit=500 * sum(train_labels),
+    )
 
     train_sampler = None
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
-        num_workers=args.workers, pin_memory=True, sampler=train_sampler)
+        train_dataset,
+        batch_size=args.batch_size,
+        shuffle=(train_sampler is None),
+        num_workers=args.workers,
+        pin_memory=True,
+        sampler=train_sampler,
+    )
 
     args.validate = True if args.valpath else False
     logger.info(f"Validate {args.validate}")
@@ -244,39 +314,55 @@ def train_worker(gpu, ngpus_per_node, args):
 
         val_dataset = ImageFromList(
             val_list,
-            transforms.Compose([
-                transforms.Resize(input_size + 32),
-                transforms.CenterCrop(input_size),
-                transforms.ToTensor(),
-                normalize,
-            ]),
+            transforms.Compose(
+                [
+                    transforms.Resize(input_size + 32),
+                    transforms.CenterCrop(input_size),
+                    transforms.ToTensor(),
+                    normalize,
+                ]
+            ),
             label_list=val_labels,
-            limit=500*sum(val_labels))
+            limit=500 * sum(val_labels),
+        )
 
         val_loader = torch.utils.data.DataLoader(
-            val_dataset, batch_size=args.batch_size, shuffle=False,
-            num_workers=args.workers, pin_memory=True)
+            val_dataset,
+            batch_size=args.batch_size,
+            shuffle=False,
+            num_workers=args.workers,
+            pin_memory=True,
+        )
 
     targets = torch.LongTensor(train_dataset.targets)
     class_sample_count = torch.tensor(
-        [(targets == t).sum() for t in torch.unique(targets, sorted=True)])
+        [(targets == t).sum() for t in torch.unique(targets, sorted=True)]
+    )
     total_samples = sum(class_sample_count)
     class_weights = [1 - (float(x) / float(total_samples)) for x in class_sample_count]
     logger.info(f"Total samples {total_samples} Class Weight {class_weights}")
-    criterion = nn.CrossEntropyLoss(weight = torch.Tensor(class_weights), label_smoothing=0.1).cuda()
+    criterion = nn.CrossEntropyLoss(
+        weight=torch.Tensor(class_weights), label_smoothing=0.1
+    ).cuda()
 
     # define loss function (criterion), optimizer, and learning rate scheduler
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
+    optimizer = torch.optim.SGD(
+        model.parameters(),
+        args.lr,
+        momentum=args.momentum,
+        weight_decay=args.weight_decay,
+    )
 
     lr_scheduler = StepLR(optimizer, step_size=100, gamma=0.9)
     lr_warmup_epochs = args.warmup_epochs
     warmup_lr_scheduler = torch.optim.lr_scheduler.LinearLR(
-                    optimizer, start_factor=0.5, total_iters=lr_warmup_epochs)
+        optimizer, start_factor=0.5, total_iters=lr_warmup_epochs
+    )
     scheduler = torch.optim.lr_scheduler.SequentialLR(
-                optimizer, schedulers=[warmup_lr_scheduler, lr_scheduler], milestones=[lr_warmup_epochs])
-
+        optimizer,
+        schedulers=[warmup_lr_scheduler, lr_scheduler],
+        milestones=[lr_warmup_epochs],
+    )
 
     # optionally resume from a checkpoint
     if args.resume:
@@ -284,12 +370,15 @@ def train_worker(gpu, ngpus_per_node, args):
             print(f"=> loading checkpoint '{args.resume}'")
             checkpoint = torch.load(args.resume)
 
-            args.start_epoch = checkpoint['epoch']
-            model.load_state_dict(checkpoint['state_dict'])
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            scheduler.load_state_dict(checkpoint['scheduler'])
-            print("=> loaded checkpoint '{}' (epoch {})"
-                  .format(args.resume, checkpoint['epoch']))
+            args.start_epoch = checkpoint["epoch"]
+            model.load_state_dict(checkpoint["state_dict"])
+            optimizer.load_state_dict(checkpoint["optimizer"])
+            scheduler.load_state_dict(checkpoint["scheduler"])
+            print(
+                "=> loaded checkpoint '{}' (epoch {})".format(
+                    args.resume, checkpoint["epoch"]
+                )
+            )
         else:
             print(f"=> no checkpoint found at '{args.resume}'")
 
@@ -312,26 +401,32 @@ def train_worker(gpu, ngpus_per_node, args):
             best_acc1 = max(acc1, best_acc1)
             if is_best:
                 logger.info(f"Saving model AUC: {best_acc1}")
-                save_checkpoint({
-                    'epoch': epoch + 1,
-                    'arch': args.arch,
-                    'state_dict': model.state_dict(),
-                    'optimizer' : optimizer.state_dict(),
-                    'scheduler' : scheduler.state_dict()
-                }, args.savepath)
+                save_checkpoint(
+                    {
+                        "epoch": epoch + 1,
+                        "arch": args.arch,
+                        "state_dict": model.state_dict(),
+                        "optimizer": optimizer.state_dict(),
+                        "scheduler": scheduler.state_dict(),
+                    },
+                    args.savepath,
+                )
 
         adjust_learning_rate(optimizer, scheduler, epoch, args)
         epoch_count += 1
         if epoch_count >= args.break_epoch:
             if not args.validate:
                 logger.info("Saving last model")
-                save_checkpoint({
-                    'epoch': epoch + 1,
-                    'arch': args.arch,
-                    'state_dict': model.state_dict(),
-                    'optimizer' : optimizer.state_dict(),
-                    'scheduler' : scheduler.state_dict()
-                }, args.savepath)
+                save_checkpoint(
+                    {
+                        "epoch": epoch + 1,
+                        "arch": args.arch,
+                        "state_dict": model.state_dict(),
+                        "optimizer": optimizer.state_dict(),
+                        "scheduler": scheduler.state_dict(),
+                    },
+                    args.savepath,
+                )
 
             break
 
@@ -341,17 +436,17 @@ def train_worker(gpu, ngpus_per_node, args):
     # EMA: Averaging models
     if args.validate:
         best_checkpoint = torch.load(args.savepath)
-        curr_model = best_checkpoint['state_dict']
+        curr_model = best_checkpoint["state_dict"]
     else:
         curr_model = model.state_dict()
 
     if args.resume:
         # curr_model = curr_model.detach().cpu()
         checkpoint = torch.load(args.resume)
-        old_model = checkpoint['state_dict']
+        old_model = checkpoint["state_dict"]
 
         for key in old_model:
-            curr_model[key] = (curr_model[key] + old_model[key]) / 2.
+            curr_model[key] = (curr_model[key] + old_model[key]) / 2.0
 
     model.load_state_dict(curr_model)
 
@@ -359,13 +454,16 @@ def train_worker(gpu, ngpus_per_node, args):
         best_auc = validate_model(val_loader, model, criterion, args)
         logger.info(f"Best TEST AUC {best_auc}")
 
-    save_checkpoint({
-        'epoch': epoch + 1,
-        'arch': args.arch,
-        'state_dict': model.state_dict(),
-        'optimizer' : optimizer.state_dict(),
-        'scheduler' : scheduler.state_dict()
-    }, args.savepath)
+    save_checkpoint(
+        {
+            "epoch": epoch + 1,
+            "arch": args.arch,
+            "state_dict": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "scheduler": scheduler.state_dict(),
+        },
+        args.savepath,
+    )
 
 
 def set_parameter_requires_grad(model, unfreeze=0):
@@ -382,8 +480,7 @@ def set_parameter_requires_grad(model, unfreeze=0):
                 param.requires_grad = False
         else:
             print("COunt:", count)
-            print("The following layer will be retrained:\n",child)
-
+            print("The following layer will be retrained:\n", child)
 
 
 def initialize_model(arch, num_classes, unfreeze=0):
@@ -392,47 +489,44 @@ def initialize_model(arch, num_classes, unfreeze=0):
     model_ft = models.__dict__[arch](pretrained=True)
 
     if "resnet" in arch:
-        """ Resnet
-        """
+        """Resnet"""
         set_parameter_requires_grad(model_ft, unfreeze)
         num_ftrs = model_ft.fc.in_features
         model_ft.fc = nn.Linear(num_ftrs, num_classes)
         input_size = 224
 
     elif "alexnet" in arch:
-        """ Alexnet
-        """
+        """Alexnet"""
         set_parameter_requires_grad(model_ft, unfreeze)
         num_ftrs = model_ft.classifier[6].in_features
-        model_ft.classifier[6] = nn.Linear(num_ftrs,num_classes)
+        model_ft.classifier[6] = nn.Linear(num_ftrs, num_classes)
         input_size = 224
 
     elif "vgg" in arch:
-        """ VGG11_bn
-        """
+        """VGG11_bn"""
         set_parameter_requires_grad(model_ft, unfreeze)
         num_ftrs = model_ft.classifier[6].in_features
-        model_ft.classifier[6] = nn.Linear(num_ftrs,num_classes)
+        model_ft.classifier[6] = nn.Linear(num_ftrs, num_classes)
         input_size = 224
 
     elif "squeezenet" in arch:
-        """ Squeezenet
-        """
+        """Squeezenet"""
         set_parameter_requires_grad(model_ft, unfreeze)
-        model_ft.classifier[1] = nn.Conv2d(512, num_classes, kernel_size=(1,1), stride=(1,1))
+        model_ft.classifier[1] = nn.Conv2d(
+            512, num_classes, kernel_size=(1, 1), stride=(1, 1)
+        )
         model_ft.num_classes = num_classes
         input_size = 224
 
     elif "densenet" in arch:
-        """ Densenet
-        """
+        """Densenet"""
         set_parameter_requires_grad(model_ft, unfreeze)
         num_ftrs = model_ft.classifier.in_features
         model_ft.classifier = nn.Linear(num_ftrs, num_classes)
         input_size = 224
 
     elif "inception" in arch:
-        """ Inception v3
+        """Inception v3
         Be careful, expects (299,299) sized images and has auxiliary output
         """
         set_parameter_requires_grad(model_ft, unfreeze)
@@ -441,13 +535,13 @@ def initialize_model(arch, num_classes, unfreeze=0):
         model_ft.AuxLogits.fc = nn.Linear(num_ftrs, num_classes)
         # Handle the primary net
         num_ftrs = model_ft.fc.in_features
-        model_ft.fc = nn.Linear(num_ftrs,num_classes)
+        model_ft.fc = nn.Linear(num_ftrs, num_classes)
         input_size = 299
 
     elif "efficientnet" in arch:
         set_parameter_requires_grad(model_ft, unfreeze)
         num_ftrs = model_ft.classifier[1].in_features
-        model_ft.classifier[1] = nn.Linear(num_ftrs,num_classes)
+        model_ft.classifier[1] = nn.Linear(num_ftrs, num_classes)
         input_size = 224
 
     else:
@@ -458,9 +552,9 @@ def initialize_model(arch, num_classes, unfreeze=0):
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
-    batch_time = AverageMeter('Time', ':6.3f')
-    data_time = AverageMeter('Data', ':6.3f')
-    losses = AverageMeter('Loss', ':.4e')
+    batch_time = AverageMeter("Time", ":6.3f")
+    data_time = AverageMeter("Data", ":6.3f")
+    losses = AverageMeter("Loss", ":.4e")
 
     # switch to train mode
     model.train()
@@ -490,14 +584,15 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         batch_time.update(time.time() - end)
         end = time.time()
 
+
 def adjust_learning_rate(optimizer, scheduler, epoch, args):
     # lr = args.lr * (0.1 ** (epoch // 20))
     # for param_group in optimizer.param_groups:
-        # param_group['lr'] = lr
+    # param_group['lr'] = lr
     try:
         last_lr = scheduler.get_last_lr()[0]
     except:
-        last_lr = optimizer.param_groups[0]['lr']
+        last_lr = optimizer.param_groups[0]["lr"]
     if epoch > args.warmup_epochs and last_lr <= args.min_lr:
         return
     scheduler.step()
@@ -515,8 +610,8 @@ def calculate_performance(y_true, y_pred):
 
 
 def validate_model(val_loader, model, criterion, args):
-    batch_time = AverageMeter('Time', ':6.3f', Summary.NONE)
-    losses = AverageMeter('Loss', ':.4e', Summary.NONE)
+    batch_time = AverageMeter("Time", ":6.3f", Summary.NONE)
+    losses = AverageMeter("Loss", ":.4e", Summary.NONE)
 
     # switch to evaluate mode
     model.eval()
@@ -559,17 +654,21 @@ def validate_model(val_loader, model, criterion, args):
     return auc
 
 
-def save_checkpoint(state, filename='checkpoint.pth'):
+def save_checkpoint(state, filename="checkpoint.pth"):
     torch.save(state, filename)
+
+
 class Summary(Enum):
     NONE = 0
     AVERAGE = 1
     SUM = 2
     COUNT = 3
 
+
 class AverageMeter:
     """Computes and stores the average and current value"""
-    def __init__(self, name, fmt=':f', summary_type=Summary.AVERAGE):
+
+    def __init__(self, name, fmt=":f", summary_type=Summary.AVERAGE):
         self.name = name
         self.fmt = fmt
         self.summary_type = summary_type
@@ -588,24 +687,24 @@ class AverageMeter:
         self.avg = self.sum / self.count
 
     def __str__(self):
-        fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
+        fmtstr = "{name} {val" + self.fmt + "} ({avg" + self.fmt + "})"
         return fmtstr.format(**self.__dict__)
 
     def summary(self):
-        fmtstr = ''
+        fmtstr = ""
         if self.summary_type is Summary.NONE:
-            fmtstr = ''
+            fmtstr = ""
         elif self.summary_type is Summary.AVERAGE:
-            fmtstr = '{name} {avg:.3f}'
+            fmtstr = "{name} {avg:.3f}"
         elif self.summary_type is Summary.SUM:
-            fmtstr = '{name} {sum:.3f}'
+            fmtstr = "{name} {sum:.3f}"
         elif self.summary_type is Summary.COUNT:
-            fmtstr = '{name} {count:.3f}'
+            fmtstr = "{name} {count:.3f}"
         else:
-            raise ValueError('invalid summary type %r' % self.summary_type)
+            raise ValueError("invalid summary type %r" % self.summary_type)
 
         return fmtstr.format(**self.__dict__)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

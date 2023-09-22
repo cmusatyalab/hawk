@@ -9,7 +9,6 @@ from .retrain_policy_base import RetrainPolicyBase
 
 
 class SampleIntervalPolicy(RetrainPolicyBase):
-
     def __init__(self, num_intervals: int):
         super().__init__()
         self.new_examples = 0
@@ -23,20 +22,19 @@ class SampleIntervalPolicy(RetrainPolicyBase):
     def num_interval_sample(self, total_tiles) -> int:
         self.num_interval_samples = int(total_tiles / self.num_intervals)
 
-
     def update(self, new_positives: int, new_negatives: int) -> None:
         pass
-        #super().update(new_positives, new_negatives)
-        #self.new_examples += new_positives
+        # super().update(new_positives, new_negatives)
+        # self.new_examples += new_positives
 
-        #if not self._only_positives:
-            #self.new_examples += new_negatives
-
-
+        # if not self._only_positives:
+        # self.new_examples += new_negatives
 
     def should_retrain(self) -> bool:
         if self.retrain_num < self.num_intervals:
-            completed_interval = (self.interval_samples_retrieved >= int(self.total_tiles / self.num_intervals))
+            completed_interval = self.interval_samples_retrieved >= int(
+                self.total_tiles / self.num_intervals
+            )
             if completed_interval:
                 self.retrain_num += 1
                 return True

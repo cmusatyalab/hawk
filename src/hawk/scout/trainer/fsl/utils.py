@@ -16,16 +16,16 @@ from torch.utils.data import Dataset
 class TripletData(Dataset):
     def __init__(self, path, transforms, split="train"):
         self.path = path
-        self.split = split    # train or valid
-        self.classes = glob.glob(os.path.join(path, '*'))
-        self.cats = len(self.classes)       # number of categories
+        self.split = split  # train or valid
+        self.classes = glob.glob(os.path.join(path, "*"))
+        self.cats = len(self.classes)  # number of categories
         self.transforms = transforms
-        self.total_images = len(glob.glob(os.path.join(path, '*/*')))
+        self.total_images = len(glob.glob(os.path.join(path, "*/*")))
         logger.info(f"Num cats {self.cats} Total {self.total_images}")
 
     def __getitem__(self, idx):
         # our positive class for the triplet
-        idx = int(idx%self.cats)
+        idx = int(idx % self.cats)
         classname = self.classes[idx]
         # choosing our pair of positive images (im1, im2)
         positives = os.listdir(os.path.join(self.path, classname))
@@ -39,7 +39,11 @@ class TripletData(Dataset):
         negatives = os.listdir(os.path.join(self.path, negative_cat))
         im3 = random.choice(negatives)
 
-        im1,im2,im3 = os.path.join(self.path, classname, im1), os.path.join(self.path, classname, im2), os.path.join(self.path, negative_cat, im3)
+        im1, im2, im3 = (
+            os.path.join(self.path, classname, im1),
+            os.path.join(self.path, classname, im2),
+            os.path.join(self.path, negative_cat, im3),
+        )
 
         im1 = self.transforms(Image.open(im1))
         im2 = self.transforms(Image.open(im2))

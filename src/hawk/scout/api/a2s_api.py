@@ -62,7 +62,8 @@ from ..trainer.dnn_classifier.trainer import DNNClassifierTrainer
 from ..trainer.fsl.trainer import FSLTrainer
 from ..trainer.yolo.trainer import YOLOTrainer
 
-MODEL_FORMATS = ['pt', 'pth']
+MODEL_FORMATS = ["pt", "pth"]
+
 
 class A2SAPI:
     """Admin to Scouts API Calls
@@ -96,7 +97,7 @@ class A2SAPI:
             bytes: SUCESS or ERROR message
         """
         try:
-            request =  ScoutConfiguration()
+            request = ScoutConfiguration()
             request.ParseFromString(msg)
 
             reply = self._a2s_configure_scout(request)
@@ -104,7 +105,7 @@ class A2SAPI:
         except Exception as e:
             logger.exception(e)
             reply = (f"ERROR: {e}").encode()
-            #raise e
+            # raise e
 
         return reply
 
@@ -217,9 +218,9 @@ class A2SAPI:
 
         """
         try:
-            root_dir = Path(request.missionDirectory) / 'data'
+            root_dir = Path(request.missionDirectory) / "data"
             assert root_dir.is_dir(), f"Root directory {root_dir} does not exist"
-            model_dir = root_dir / request.missionId / 'model'
+            model_dir = root_dir / request.missionId / "model"
 
             mission_id = MissionId(value=request.missionId)
             retrain_policy = self._get_retrain_policy(request.retrainPolicy, model_dir)
@@ -231,31 +232,39 @@ class A2SAPI:
 
             # Setting up Mission with config params
             logger.info("Start setting up mission")
-            mission = Mission(mission_id, request.scoutIndex, scouts,
-                            request.homeIP, retrain_policy,
-                            root_dir / mission_id.value,
-                            self._port, retriever,
-                            self._get_selector(request.selector, request.reexamination),
-                            request.bootstrapZip, request.initialModel, request.validate)
+            mission = Mission(
+                mission_id,
+                request.scoutIndex,
+                scouts,
+                request.homeIP,
+                retrain_policy,
+                root_dir / mission_id.value,
+                self._port,
+                retriever,
+                self._get_selector(request.selector, request.reexamination),
+                request.bootstrapZip,
+                request.initialModel,
+                request.validate,
+            )
             logger.info("Finished setting up mission")
             self._manager.set_mission(mission)
 
             # Setting up mission trainer
             model = request.trainStrategy
             trainer = None
-            if model.HasField('dnn_classifier'):
+            if model.HasField("dnn_classifier"):
                 config = model.dnn_classifier
                 trainer = DNNClassifierTrainer(mission, config.args)
-            elif model.HasField('yolo'):
+            elif model.HasField("yolo"):
                 config = model.yolo
                 trainer = YOLOTrainer(mission, config.args)
-            elif model.HasField('fsl'):
+            elif model.HasField("fsl"):
                 config = model.fsl
-                support_path = config.args['support_path']
+                support_path = config.args["support_path"]
 
                 # Saving support image
-                support_data = config.args['support_data']
-                data = base64.b64decode(support_data.encode('utf8'))
+                support_data = config.args["support_data"]
+                data = base64.b64decode(support_data.encode("utf8"))
                 image = Image.open(io.BytesIO(data))
                 image.save(support_path)
 
@@ -272,11 +281,14 @@ class A2SAPI:
             # Constricting bandwidth
             # Only supports one bandwidth
             logger.info(request.bandwidthFunc)
-            if not request.selector.HasField('token'):
+            if not request.selector.HasField("token"):
                 self._setup_bandwidth(request.bandwidthFunc[request.scoutIndex])
             if mission.enable_logfile:
-                mission.log_file.write("{:.3f} {} SEARCH CREATED\n".format(
-                    time.time() - mission.start_time, mission.host_name))
+                mission.log_file.write(
+                    "{:.3f} {} SEARCH CREATED\n".format(
+                        time.time() - mission.start_time, mission.host_name
+                    )
+                )
 
             reply = b"SUCCESS"
         except Exception as e:
@@ -284,18 +296,18 @@ class A2SAPI:
             reply = f"ERROR: {e}".encode()
         return reply
 
-    def _setup_bandwidth(self, bandwidth_func : str) -> None:
-        """ Function for FireQos Bandwidth limiting"""
+    def _setup_bandwidth(self, bandwidth_func: str) -> None:
+        """Function for FireQos Bandwidth limiting"""
         bandwidth_map = {
-            '100k': '/root/fireqos/scenario-100k.conf',
-            '30k': '/root/fireqos/scenario-30k.conf',
-            '12k': '/root/fireqos/scenario-12k.conf',
+            "100k": "/root/fireqos/scenario-100k.conf",
+            "30k": "/root/fireqos/scenario-30k.conf",
+            "12k": "/root/fireqos/scenario-12k.conf",
         }
         logger.info(bandwidth_func)
         bandwidth_list = json.loads(bandwidth_func)
-        default_file = bandwidth_map['100k']
+        default_file = bandwidth_map["100k"]
         # bandwidth_file = default_file
-        if bandwidth_list[0] == '0k':
+        if bandwidth_list[0] == "0k":
             return
 
         for time_stamp, bandwidth in bandwidth_list:
@@ -314,14 +326,17 @@ class A2SAPI:
             bytes: SUCESS or ERROR message
         """
         try:
-            logger.info('Starting mission calling mission')
+            logger.info("Starting mission calling mission")
             mission = self._manager.get_mission()
             mission_id = mission.mission_id.value
-            logger.info(f'Starting mission with id {mission_id}')
+            logger.info(f"Starting mission with id {mission_id}")
             mission.start()
             if mission.enable_logfile:
-                mission.log_file.write("{:.3f} {} SEARCH STARTED\n".format(
-                    time.time() - mission.start_time, mission.host_name))
+                mission.log_file.write(
+                    "{:.3f} {} SEARCH STARTED\n".format(
+                        time.time() - mission.start_time, mission.host_name
+                    )
+                )
 
             reply = b"SUCCESS"
         except Exception as e:
@@ -341,10 +356,13 @@ class A2SAPI:
                 return b"ERROR: Mission does not exist"
 
             mission_id = mission.mission_id.value
-            logger.info(f'Stopping mission with id {mission_id}')
+            logger.info(f"Stopping mission with id {mission_id}")
             if mission.enable_logfile:
-                mission.log_file.write("{:.3f} {} SEARCH STOPPED\n".format(
-                    time.time() - mission.start_time, mission.host_name))
+                mission.log_file.write(
+                    "{:.3f} {} SEARCH STOPPED\n".format(
+                        time.time() - mission.start_time, mission.host_name
+                    )
+                )
             mission.stop()
             self._manager.remove_mission()
             reply = b"SUCCESS"
@@ -373,47 +391,67 @@ class A2SAPI:
             time_now = time.time() - mission.start_time
 
             if mission.enable_logfile:
-                mission.log_file.write("{:.3f} {} SEARCH STATS\n".format(
-                    time.time() - mission.start_time, mission.host_name))
+                mission.log_file.write(
+                    "{:.3f} {} SEARCH STATS\n".format(
+                        time.time() - mission.start_time, mission.host_name
+                    )
+                )
 
             retriever_stats = mission.retriever.get_stats()
             selector_stats = mission.selector.get_stats()
-            processed_objects = retriever_stats.dropped_objects + selector_stats.processed_objects
+            processed_objects = (
+                retriever_stats.dropped_objects + selector_stats.processed_objects
+            )
 
             mission_stats = vars(copy.deepcopy(retriever_stats))
             mission_stats.update(vars(copy.deepcopy(selector_stats)))
-            keys_to_remove = ['total_objects', 'processed_objects', 'dropped_objects',
-                              'passed_objects', 'false_negatives']
+            keys_to_remove = [
+                "total_objects",
+                "processed_objects",
+                "dropped_objects",
+                "passed_objects",
+                "false_negatives",
+            ]
             for k in list(mission_stats):
                 v = mission_stats[k]
                 mission_stats[k] = str(v)
                 if k in keys_to_remove:
                     del mission_stats[k]
 
-            mission_stats.update({
-                'server_time': str(time_now),
-                'version': str(mission._model.version),
-                'msg': "stats",
-                'ctime': str(time.ctime()),
-                'server_positives': str(mission.positives),
-                'server_negatives': str(mission.negatives),
-                })
+            mission_stats.update(
+                {
+                    "server_time": str(time_now),
+                    "version": str(mission._model.version),
+                    "msg": "stats",
+                    "ctime": str(time.ctime()),
+                    "server_positives": str(mission.positives),
+                    "server_negatives": str(mission.negatives),
+                }
+            )
 
-            reply = MissionStats(totalObjects=int(retriever_stats.total_objects),
-                              processedObjects=int(processed_objects),
-                              droppedObjects=int(retriever_stats.dropped_objects + selector_stats.dropped_objects),
-                              falseNegatives=int(retriever_stats.false_negatives + selector_stats.false_negatives),
-                              others=mission_stats)
+            reply = MissionStats(
+                totalObjects=int(retriever_stats.total_objects),
+                processedObjects=int(processed_objects),
+                droppedObjects=int(
+                    retriever_stats.dropped_objects + selector_stats.dropped_objects
+                ),
+                falseNegatives=int(
+                    retriever_stats.false_negatives + selector_stats.false_negatives
+                ),
+                others=mission_stats,
+            )
 
             if mission.enable_logfile:
-                mission.log_file.write("{:.3f} {} SEARCH STATS\n".format(
-                    time.time() - mission.start_time, mission.host_name))
+                mission.log_file.write(
+                    "{:.3f} {} SEARCH STATS\n".format(
+                        time.time() - mission.start_time, mission.host_name
+                    )
+                )
 
             reply = reply.SerializeToString()
         except Exception as e:
             reply = (f"ERROR: {e}").encode()
         return reply
-
 
     def _a2s_new_model(self, request: ImportModel):
         """Function to import new model from HOME
@@ -433,8 +471,11 @@ class A2SAPI:
             mission.import_model(model.content, path, version)
             logger.info("[IMPORT] FINISHED Model Import")
             if mission.enable_logfile:
-                mission.log_file.write("{:.3f} {} IMPORT MODEL\n".format(
-                    time.time() - mission.start_time, mission.host_name))
+                mission.log_file.write(
+                    "{:.3f} {} IMPORT MODEL\n".format(
+                        time.time() - mission.start_time, mission.host_name
+                    )
+                )
 
             reply = b"SUCCESS"
         except Exception as e:
@@ -458,14 +499,16 @@ class A2SAPI:
 
             mission = self._manager.get_mission()
             model_dir = str(mission.model_dir)
-            files = sorted(glob.glob(os.path.join(model_dir, '*.*')))
-            model_paths = [x for x in files if x.split('.')[-1].lower() in MODEL_FORMATS]
+            files = sorted(glob.glob(os.path.join(model_dir, "*.*")))
+            model_paths = [
+                x for x in files if x.split(".")[-1].lower() in MODEL_FORMATS
+            ]
             logger.info(model_paths)
 
             def get_version(path, idx):
                 name = path.name
                 try:
-                    version = int(name.split('model-')[-1].split('.')[0])
+                    version = int(name.split("model-")[-1].split(".")[0])
                 except:
                     version = idx
 
@@ -488,7 +531,6 @@ class A2SAPI:
             reply = (f"ERROR: {e}").encode()
         return reply
 
-
     def _a2s_get_post_mission_archive(self):
         """Function to send mission models and logs archive
 
@@ -501,7 +543,9 @@ class A2SAPI:
             model_dir = mission.model_dir
 
             mission_archive = io.BytesIO()
-            with zipfile.ZipFile(mission_archive, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+            with zipfile.ZipFile(
+                mission_archive, "w", compression=zipfile.ZIP_DEFLATED
+            ) as zf:
                 for dirname, subdirs, files in os.walk(model_dir):
                     zf.write(dirname)
                     for filename in files:
@@ -515,73 +559,92 @@ class A2SAPI:
             reply = Empty
         return reply
 
-    def _get_retrain_policy(self, retrain_policy: RetrainPolicyConfig,
-                            model_dir: Path) -> RetrainPolicyBase:
-        if retrain_policy.HasField('absolute'):
-            return AbsolutePolicy(retrain_policy.absolute.threshold,
-                                           retrain_policy.absolute.onlyPositives)
-        elif retrain_policy.HasField('percentage'):
-            return PercentagePolicy(retrain_policy.percentage.threshold,
-                                             retrain_policy.percentage.onlyPositives)
-        elif retrain_policy.HasField('model'):
+    def _get_retrain_policy(
+        self, retrain_policy: RetrainPolicyConfig, model_dir: Path
+    ) -> RetrainPolicyBase:
+        if retrain_policy.HasField("absolute"):
+            return AbsolutePolicy(
+                retrain_policy.absolute.threshold, retrain_policy.absolute.onlyPositives
+            )
+        elif retrain_policy.HasField("percentage"):
+            return PercentagePolicy(
+                retrain_policy.percentage.threshold,
+                retrain_policy.percentage.onlyPositives,
+            )
+        elif retrain_policy.HasField("model"):
             logger.info("Model Policy")
             return ModelPolicy(str(model_dir))
-        elif retrain_policy.HasField('sample'):
+        elif retrain_policy.HasField("sample"):
             return SampleIntervalPolicy(retrain_policy.sample.num_intervals)
         else:
-            raise NotImplementedError('unknown retrain policy: {}'.format(
-                json_format.MessageToJson(retrain_policy)))
+            raise NotImplementedError(
+                "unknown retrain policy: {}".format(
+                    json_format.MessageToJson(retrain_policy)
+                )
+            )
 
-    def _get_selector(self, selector: SelectiveConfig,
-                      reexamination_strategy: ReexaminationStrategyConfig) -> Selector:
-
-        if selector.HasField('topk'):
+    def _get_selector(
+        self,
+        selector: SelectiveConfig,
+        reexamination_strategy: ReexaminationStrategyConfig,
+    ) -> Selector:
+        if selector.HasField("topk"):
             top_k_param = json_format.MessageToDict(selector.topk)
             logger.info(f"TopK Params {top_k_param}")
-            return TopKSelector(selector.topk.k, selector.topk.batchSize,
-                                self._get_reexamination_strategy(
-                                    reexamination_strategy))
-        elif selector.HasField('token'):
-            return TokenSelector(selector.token.initial_samples, selector.token.batch_size,
-                                 self._get_reexamination_strategy(
-                                    reexamination_strategy))
-        elif selector.HasField('threshold'):
-            return ThresholdSelector(selector.threshold.threshold,
-                                self._get_reexamination_strategy(
-                                    reexamination_strategy))
-        elif selector.HasField('diversity'):
+            return TopKSelector(
+                selector.topk.k,
+                selector.topk.batchSize,
+                self._get_reexamination_strategy(reexamination_strategy),
+            )
+        elif selector.HasField("token"):
+            return TokenSelector(
+                selector.token.initial_samples,
+                selector.token.batch_size,
+                self._get_reexamination_strategy(reexamination_strategy),
+            )
+        elif selector.HasField("threshold"):
+            return ThresholdSelector(
+                selector.threshold.threshold,
+                self._get_reexamination_strategy(reexamination_strategy),
+            )
+        elif selector.HasField("diversity"):
             top_k_param = json_format.MessageToDict(selector.diversity)
             logger.info(f"TopK Params {top_k_param}")
-            return DiversitySelector(selector.topk.k, selector.topk.batchSize,
-                                self._get_reexamination_strategy(
-                                    reexamination_strategy))
+            return DiversitySelector(
+                selector.topk.k,
+                selector.topk.batchSize,
+                self._get_reexamination_strategy(reexamination_strategy),
+            )
         else:
             raise NotImplementedError(
                 f"unknown selector: {json_format.MessageToJson(selector)}"
             )
 
-    def _get_reexamination_strategy(self,
-                                    reexamination_strategy: ReexaminationStrategyConfig) -> ReexaminationStrategy:
+    def _get_reexamination_strategy(
+        self, reexamination_strategy: ReexaminationStrategyConfig
+    ) -> ReexaminationStrategy:
         reexamination_type = reexamination_strategy.type
-        if reexamination_type == 'none':
+        if reexamination_type == "none":
             return NoReexaminationStrategy()
-        elif reexamination_type == 'top':
+        elif reexamination_type == "top":
             return TopReexaminationStrategy(reexamination_strategy.k)
-        elif reexamination_type == 'full':
+        elif reexamination_type == "full":
             return FullReexaminationStrategy()
         else:
             raise NotImplementedError(
-                'unknown reexamination strategy: {}'.format(
-                    json_format.MessageToJson(reexamination_strategy)))
+                "unknown reexamination strategy: {}".format(
+                    json_format.MessageToJson(reexamination_strategy)
+                )
+            )
 
     def _get_retriever(self, dataset: Dataset) -> Retriever:
-        if dataset.HasField('tile'):
+        if dataset.HasField("tile"):
             return TileRetriever(dataset.tile)
-        elif dataset.HasField('frame'):
+        elif dataset.HasField("frame"):
             return FrameRetriever(dataset.frame)
-        elif dataset.HasField('random'):
+        elif dataset.HasField("random"):
             return RandomRetriever(dataset.random)
-        elif dataset.HasField('video'):
+        elif dataset.HasField("video"):
             return VideoRetriever(dataset.video)
         else:
             raise NotImplementedError(

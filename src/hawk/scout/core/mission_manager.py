@@ -9,7 +9,6 @@ from .mission import Mission
 
 
 class MissionManager:
-
     def __init__(self):
         self._lock = threading.Lock()
         self._mission: Union[Mission, None] = None

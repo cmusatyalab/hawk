@@ -9,7 +9,6 @@ from .retrain_policy_base import RetrainPolicyBase
 
 
 class PercentagePolicy(RetrainPolicyBase):
-
     def __init__(self, threshold: float, only_positives: bool):
         super().__init__()
         self.new_examples = 0

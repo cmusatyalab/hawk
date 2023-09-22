@@ -9,7 +9,6 @@ from .retrain_policy_base import RetrainPolicyBase
 
 
 class AbsolutePolicy(RetrainPolicyBase):
-
     def __init__(self, threshold: int, only_positives: bool):
         super().__init__()
         self.new_examples = 0

@@ -14,7 +14,6 @@ from .context_base import ContextBase
 
 
 class ModelContext(ContextBase):
-
     def __init__(self):
         self.result_queue = mp.Queue()
         self.model_input_queue = mp.Queue()

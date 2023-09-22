@@ -7,7 +7,7 @@ from .base import FewShotModel
 
 
 class ScaledDotProductAttention(nn.Module):
-    ''' Scaled Dot-Product Attention '''
+    """Scaled Dot-Product Attention"""
 
     def __init__(self, temperature, attn_dropout=0.1):
         super().__init__()
@@ -16,7 +16,6 @@ class ScaledDotProductAttention(nn.Module):
         self.softmax = nn.Softmax(dim=2)
 
     def forward(self, q, k, v):
-
         attn = torch.bmm(q, k.transpose(1, 2))
         attn = attn / self.temperature
         raw_attn = attn
@@ -26,8 +25,9 @@ class ScaledDotProductAttention(nn.Module):
         output = torch.bmm(attn, v)
         return output, attn, log_attn, raw_attn
 
+
 class MultiHeadAttention(nn.Module):
-    ''' Multi-Head Attention module '''
+    """Multi-Head Attention module"""
 
     def __init__(self, args, n_head, d_model, d_k, d_v, dropout=0.1):
         super().__init__()
@@ -53,7 +53,7 @@ class MultiHeadAttention(nn.Module):
         self.probe_k = None
         self.probe_v = None
         self.temperature = np.power(d_k, 0.5)
-        self.flag_norm = args.slf_flag_norm if hasattr(args, 'slf_flag_norm') else True
+        self.flag_norm = args.slf_flag_norm if hasattr(args, "slf_flag_norm") else True
 
     def forward(self, q, k, v):
         d_k, d_v, n_head = self.d_k, self.d_v, self.n_head
@@ -66,9 +66,9 @@ class MultiHeadAttention(nn.Module):
         k = self.w_ks(k).view(sz_b, len_k, n_head, d_k)
         v = self.w_vs(v).view(sz_b, len_v, n_head, d_v)
 
-        q = q.permute(2, 0, 1, 3).contiguous().view(-1, len_q, d_k) # (n*b) x lq x dk
-        k = k.permute(2, 0, 1, 3).contiguous().view(-1, len_k, d_k) # (n*b) x lk x dk
-        v = v.permute(2, 0, 1, 3).contiguous().view(-1, len_v, d_v) # (n*b) x lv x dv
+        q = q.permute(2, 0, 1, 3).contiguous().view(-1, len_q, d_k)  # (n*b) x lq x dk
+        k = k.permute(2, 0, 1, 3).contiguous().view(-1, len_k, d_k)  # (n*b) x lk x dk
+        v = v.permute(2, 0, 1, 3).contiguous().view(-1, len_v, d_v)  # (n*b) x lv x dv
         self.probe_q = q
         self.probe_k = k
         self.probe_v = v
@@ -78,7 +78,9 @@ class MultiHeadAttention(nn.Module):
         self.probe_raw_attn = raw_attn
 
         output = output.view(n_head, sz_q, len_q, d_v)
-        output = output.permute(1, 2, 0, 3).contiguous().view(sz_q, len_q, -1) # b x lq x (n*dv)
+        output = (
+            output.permute(1, 2, 0, 3).contiguous().view(sz_q, len_q, -1)
+        )  # b x lq x (n*dv)
         resout = self.fc(output)
         output = self.dropout(resout)
         if self.flag_norm:
@@ -88,25 +90,24 @@ class MultiHeadAttention(nn.Module):
 
         return output, resout
 
+
 class SnaTCHerF(FewShotModel):
     def __init__(self, args):
         super().__init__(args)
-        if args.backbone_class == 'ConvNet':
+        if args.backbone_class == "ConvNet":
             hdim = 64
-        elif args.backbone_class == 'Res12':
+        elif args.backbone_class == "Res12":
             hdim = 640
-        elif args.backbone_class == 'Res18':
+        elif args.backbone_class == "Res18":
             hdim = 512
-        elif args.backbone_class == 'WRN':
+        elif args.backbone_class == "WRN":
             hdim = 640
         else:
-            raise ValueError('')
+            raise ValueError("")
 
         self.slf_attn = MultiHeadAttention(args, 1, hdim, hdim, hdim, dropout=0.5)
         self.hdim = hdim
 
     def _forward(self, instance_embs, support_idx=[], query_idx=[]):
-
         self.probe_instance_embs = instance_embs
         return instance_embs
-

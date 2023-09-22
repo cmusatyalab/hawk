@@ -13,17 +13,23 @@ from ..context.data_manager_context import DataManagerContext
 from ..core.object_provider import ObjectProvider
 from ..core.utils import get_server_ids
 
-KEYS = ['total_objects', 'total_images', 'dropped_objects',
-        'false_negatives', 'retrieved_images', 'retrieved_tiles']
+KEYS = [
+    "total_objects",
+    "total_images",
+    "dropped_objects",
+    "false_negatives",
+    "retrieved_images",
+    "retrieved_tiles",
+]
+
 
 class RetrieverStats:
-
     def __init__(self, dictionary):
         for key in dictionary:
             setattr(self, key, dictionary[key])
 
-class RetrieverBase(metaclass=ABCMeta):
 
+class RetrieverBase(metaclass=ABCMeta):
     @abstractmethod
     def start(self) -> None:
         pass
@@ -48,8 +54,8 @@ class RetrieverBase(metaclass=ABCMeta):
     def is_running(self) -> bool:
         pass
 
-class Retriever(RetrieverBase):
 
+class Retriever(RetrieverBase):
     def __init__(self) -> None:
         self._context = None
         self._start_event = threading.Event()
@@ -65,7 +71,7 @@ class Retriever(RetrieverBase):
             self._start_time = time.time()
 
         self._start_event.set()
-        threading.Thread(target=self.stream_objects, name='stream').start()
+        threading.Thread(target=self.stream_objects, name="stream").start()
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -84,9 +90,9 @@ class Retriever(RetrieverBase):
 
     def set_tile_attributes(self, object_id: str, label: str):
         attributes = {
-            'Device-Name': str.encode(self.server_id),
-            '_ObjectID': str.encode(object_id),
-            '_gt_label': str.encode(label),
+            "Device-Name": str.encode(self.server_id),
+            "_ObjectID": str.encode(object_id),
+            "_gt_label": str.encode(label),
         }
         return attributes
 
@@ -95,14 +101,14 @@ class Retriever(RetrieverBase):
 
     def get_object(self, object_id: str, attributes: Sized = []) -> HawkObject:
         image_path = object_id.split("collection/id/")[-1]
-        with open(image_path, 'rb') as f:
+        with open(image_path, "rb") as f:
             content = f.read()
 
         # Return object attributes
         dct = {
-                'Device-Name': str.encode(self.server_id),
-                '_ObjectID': str.encode(object_id),
-              }
+            "Device-Name": str.encode(self.server_id),
+            "_ObjectID": str.encode(object_id),
+        }
 
         return HawkObject(objectId=object_id, content=content, attributes=dct)
 

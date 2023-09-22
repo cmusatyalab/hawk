@@ -14,7 +14,6 @@ FILENAME = "new_model"
 
 
 class ModelPolicy(RetrainPolicyBase):
-
     def __init__(self, directory: str):
         super().__init__()
         self.new_examples = 0

@@ -11,7 +11,6 @@ from PIL import Image
 
 # Must be serializable
 class AttributeProvider(metaclass=ABCMeta):
-
     @abstractmethod
     def get_image(self):
         pass
@@ -30,8 +29,12 @@ class AttributeProvider(metaclass=ABCMeta):
 
 
 class HawkAttributeProvider(AttributeProvider):
-
-    def __init__(self, attributes: Dict[str, bytes], image_provider: Union[str, bytes], resize=True):
+    def __init__(
+        self,
+        attributes: Dict[str, bytes],
+        image_provider: Union[str, bytes],
+        resize=True,
+    ):
         self._attributes = attributes
         self.thumbnail_size = (256, 256)
         self.resize = resize
@@ -40,16 +43,16 @@ class HawkAttributeProvider(AttributeProvider):
         self.set_thumbnail()
 
     def set_thumbnail(self):
-        image = Image.open(self._image_provider).convert('RGB')
+        image = Image.open(self._image_provider).convert("RGB")
         image = image.copy()
         self.thumbnail = io.BytesIO()
         if self.resize:
             image.resize(self.thumbnail_size)
-        image.save(self.thumbnail, 'JPEG')
+        image.save(self.thumbnail, "JPEG")
         return
 
     def get_image(self):
-        return Image.open(self._image_provider).convert('RGB')
+        return Image.open(self._image_provider).convert("RGB")
 
     def get_thumbnail_size(self):
         return self.thumbnail.getbuffer().nbytes
@@ -62,9 +65,9 @@ class HawkAttributeProvider(AttributeProvider):
     def get(self) -> Mapping[str, bytes]:
         attributes = dict(self._attributes)
 
-        image = Image.open(self._image_provider).convert('RGB')
+        image = Image.open(self._image_provider).convert("RGB")
         width, height = image.size
 
-        attributes['thumbnail.jpeg'] = self.thumbnail.getvalue()
+        attributes["thumbnail.jpeg"] = self.thumbnail.getvalue()
 
         return attributes

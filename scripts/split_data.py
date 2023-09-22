@@ -13,19 +13,19 @@ from subprocess import call
 import numpy as np
 import yaml
 
-SPLIT="RANDOM"
+SPLIT = "RANDOM"
+
 
 def shuffle_and_generate_index_files(config):
-
     """
     Reads stream.txt from input dir and shuffles and
     sends index files to the hosts
     """
-    data_config = config['dataset']
-    stream_file = Path(data_config['stream_path'])
-    index_file = data_config['index_path']
-    hosts = config['scouts']
-    seed = config.get('seed', None)
+    data_config = config["dataset"]
+    stream_file = Path(data_config["stream_path"])
+    index_file = data_config["index_path"]
+    hosts = config["scouts"]
+    seed = config.get("seed", None)
     assert stream_file.exists(), "Stream file does not exist"
 
     contents = sorted(open(stream_file).read().splitlines())
@@ -42,16 +42,16 @@ def shuffle_and_generate_index_files(config):
         keys = set()
         for content in contents:
             path, label = content.split()
-            k = os.path.basename(path).split('_')[0]
+            k = os.path.basename(path).split("_")[0]
             keys.add(k)
     else:
-        num_tiles_per_frame = data_config.get('tiles_per_frame', 200)
-        num_frames = math.ceil(total_tiles/num_tiles_per_frame)
+        num_tiles_per_frame = data_config.get("tiles_per_frame", 200)
+        num_frames = math.ceil(total_tiles / num_tiles_per_frame)
         keys = np.arange(num_frames)
 
     keys = list(keys)
     total_keys = len(keys)
-    tiles_per_frame = math.ceil(total_tiles/total_keys)
+    tiles_per_frame = math.ceil(total_tiles / total_keys)
     per_frame = np.array_split(contents, total_keys)
     print(len(per_frame[0]))
 
@@ -91,14 +91,15 @@ def shuffle_and_generate_index_files(config):
         call(cmd.split(" "))
     return
 
+
 if __name__ == "__main__":
-    config_path = sys.argv[1] if len(sys.argv) > 1 \
-                else (Path.cwd() / 'configs/config.yml')
-    random_seed = int(sys.argv[2]) if len(sys.argv) > 2 \
-                else None
+    config_path = (
+        sys.argv[1] if len(sys.argv) > 1 else (Path.cwd() / "configs/config.yml")
+    )
+    random_seed = int(sys.argv[2]) if len(sys.argv) > 2 else None
 
     with open(config_path) as f:
         config = yaml.safe_load(f)
-    config['seed'] = random_seed
+    config["seed"] = random_seed
 
     shuffle_and_generate_index_files(config)

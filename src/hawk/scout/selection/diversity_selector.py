@@ -19,16 +19,19 @@ from .topk_selector import TopKSelector
 
 
 class DiversitySelector(TopKSelector):
-
-    def __init__(self, k: int, batch_size: int,
-                 reexamination_strategy: ReexaminationStrategy,
-                 add_negatives: bool = False):
+    def __init__(
+        self,
+        k: int,
+        batch_size: int,
+        reexamination_strategy: ReexaminationStrategy,
+        add_negatives: bool = False,
+    ):
         assert k < batch_size
         super().__init__()
 
         self.version = 0
         self.model_train_time = 0
-        self._div_k = int(k/3)
+        self._div_k = int(k / 3)
         self._k = k - self._div_k
         self._result_list = []
 
@@ -42,7 +45,7 @@ class DiversitySelector(TopKSelector):
         self._model = None
         self.n_pca = 5
         self.min_sample = 3
-        self.log_counter = [int(i/3.*self._batch_size) for i in range(1, 4)]
+        self.log_counter = [int(i / 3.0 * self._batch_size) for i in range(1, 4)]
 
     def diversity_sample(self):
         logger.info("Diversity start")
@@ -60,12 +63,12 @@ class DiversitySelector(TopKSelector):
             return results
         logger.info("Found embeddings")
 
-        #Dimensionality reduction
+        # Dimensionality reduction
         embeddings = StandardScaler().fit_transform(embeddings)
         pca = PCA(self.n_pca)
         embeddings = pca.fit_transform(embeddings)
 
-        #Desnity clustering
+        # Desnity clustering
         cluster_learner = DBSCAN(eps=2, min_samples=self.min_sample)
         cluster_idxs = cluster_learner.fit_predict(embeddings)
         logger.info("Found clusters")
@@ -79,9 +82,12 @@ class DiversitySelector(TopKSelector):
         logger.info(f"Num clusters {num_clusters}")
         n = self._div_k
         if num_clusters <= self._div_k:
-            num_samples = [(n // num_clusters) + (1 if i < (n % num_clusters) else 0) for i in range(num_clusters)]
+            num_samples = [
+                (n // num_clusters) + (1 if i < (n % num_clusters) else 0)
+                for i in range(num_clusters)
+            ]
         else:
-            num_samples = [1]*n
+            num_samples = [1] * n
 
         q_idxs = set()
         sampled = 0
@@ -89,7 +95,7 @@ class DiversitySelector(TopKSelector):
 
         for num_sample in num_samples:
             label = next(cluster_label_gen)
-            n_c = np.where(data_labels==label)[0]
+            n_c = np.where(data_labels == label)[0]
             n_ = len(n_c)
             logger.info(f"{label} {n_} {num_sample}")
             n_sample = min(n_, num_sample)
@@ -100,22 +106,28 @@ class DiversitySelector(TopKSelector):
         q_idxs = q_idxs.astype(int)
 
         len_array = len(original)
-        results =  original[q_idxs]
+        results = original[q_idxs]
 
         return results
 
-
     @log_exceptions
     def select_tiles(self):
-        #TopK sampling
+        # TopK sampling
         results = []
         logger.info("TopK call")
         for i in range(self._k):
             result = self._priority_queues[-1].get()[-1]
             if self._mission.enable_logfile:
-                self._mission.log_file.write("{:.3f} {}_{} {}_{} SEL: FILE SELECTED {}\n".format(
-                    time.time() - self._mission.start_time, self._mission.host_name,
-                    self.version, i, self._k, result.id))
+                self._mission.log_file.write(
+                    "{:.3f} {}_{} {}_{} SEL: FILE SELECTED {}\n".format(
+                        time.time() - self._mission.start_time,
+                        self._mission.host_name,
+                        self.version,
+                        i,
+                        self._k,
+                        result.id,
+                    )
+                )
                 if self._mode != "oracle":
                     # self.result_queue.put(result)
                     results.append(result)
@@ -132,4 +144,3 @@ class DiversitySelector(TopKSelector):
             logger.info(f"[Result] Id {result.id} Score {result.score}")
 
         self._batch_added -= self._batch_size
-

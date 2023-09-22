@@ -22,44 +22,48 @@ from ...core.object_provider import ObjectProvider
 from ...core.result_provider import ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
 
-torch.multiprocessing.set_sharing_strategy('file_system')
+torch.multiprocessing.set_sharing_strategy("file_system")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
+
 class DNNClassifierModel(ModelBase):
-
-    def __init__(self,
-                 args: Dict,
-                 model_path: Path,
-                 version: int,
-                 mode: str,
-                 context: ModelContext):
-
+    def __init__(
+        self,
+        args: Dict,
+        model_path: Path,
+        version: int,
+        mode: str,
+        context: ModelContext,
+    ):
         logger.info(f"Loading DNN Model from {model_path}")
         assert model_path.is_file()
-        args['input_size'] = args.get('input_size', 224)
-        test_transforms = transforms.Compose([
-            transforms.Resize(args['input_size'] + 32),
-            transforms.CenterCrop(args['input_size']),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
-        ])
-        args['test_batch_size'] = args.get('test_batch_size', 64)
-        args['version'] = version
-        args['arch'] = args.get('arch', 'resnet50')
-        args['train_examples'] = args.get('train_examples', {'1':0, '0':0})
-        args['mode'] = mode
+        args["input_size"] = args.get("input_size", 224)
+        test_transforms = transforms.Compose(
+            [
+                transforms.Resize(args["input_size"] + 32),
+                transforms.CenterCrop(args["input_size"]),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                ),
+            ]
+        )
+        args["test_batch_size"] = args.get("test_batch_size", 64)
+        args["version"] = version
+        args["arch"] = args.get("arch", "resnet50")
+        args["train_examples"] = args.get("train_examples", {"1": 0, "0": 0})
+        args["mode"] = mode
         self.args = args
 
         super().__init__(self.args, model_path, context)
 
-        self._arch = args['arch']
-        self._train_examples = args['train_examples']
+        self._arch = args["arch"]
+        self._train_examples = args["train_examples"]
         self._test_transforms = test_transforms
-        self._batch_size = args['test_batch_size']
+        self._batch_size = args["test_batch_size"]
 
         self._model = self.load_model(model_path)
-        self._device = torch.device('cpu')
+        self._device = torch.device("cpu")
         self._model.to(self._device)
         self._model.eval()
         self._running = True
@@ -68,14 +72,16 @@ class DNNClassifierModel(ModelBase):
     def version(self) -> int:
         return self._version
 
-    def preprocess(self, request: ObjectProvider) -> Tuple[ObjectProvider, torch.Tensor]:
+    def preprocess(
+        self, request: ObjectProvider
+    ) -> Tuple[ObjectProvider, torch.Tensor]:
         try:
             image = Image.open(io.BytesIO(request.content))
 
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
+            if image.mode != "RGB":
+                image = image.convert("RGB")
         except Exception as e:
-            raise(e)
+            raise (e)
 
         return request, self._test_transforms(image)
 
@@ -84,9 +90,12 @@ class DNNClassifierModel(ModelBase):
             return None
 
         content = io.BytesIO()
-        torch.save({
-            'state_dict': self._model.state_dict(),
-        }, content)
+        torch.save(
+            {
+                "state_dict": self._model.state_dict(),
+            },
+            content,
+        )
         content.seek(0)
 
         return content.getvalue()
@@ -94,7 +103,7 @@ class DNNClassifierModel(ModelBase):
     def load_model(self, model_path: Path):
         model = self.initialize_model(self._arch)
         checkpoint = torch.load(model_path)
-        model.load_state_dict(checkpoint['state_dict'])
+        model.load_state_dict(checkpoint["state_dict"])
         return model
 
     def initialize_model(self, arch, num_classes=2):
@@ -102,37 +111,34 @@ class DNNClassifierModel(ModelBase):
         model_ft = models.__dict__[arch](pretrained=True)
 
         if "resnet" in arch:
-            """ Resnet
-            """
+            """Resnet"""
             num_ftrs = model_ft.fc.in_features
             model_ft.fc = torch.nn.Linear(num_ftrs, num_classes)
 
         elif "alexnet" in arch:
-            """ Alexnet
-            """
+            """Alexnet"""
             num_ftrs = model_ft.classifier[6].in_features
-            model_ft.classifier[6] = torch.nn.Linear(num_ftrs,num_classes)
+            model_ft.classifier[6] = torch.nn.Linear(num_ftrs, num_classes)
 
         elif "vgg" in arch:
-            """ VGG11_bn
-            """
+            """VGG11_bn"""
             num_ftrs = model_ft.classifier[6].in_features
-            model_ft.classifier[6] = torch.nn.Linear(num_ftrs,num_classes)
+            model_ft.classifier[6] = torch.nn.Linear(num_ftrs, num_classes)
 
         elif "squeezenet" in arch:
-            """ Squeezenet
-            """
-            model_ft.classifier[1] = torch.nn.Conv2d(512, num_classes, kernel_size=(1,1), stride=(1,1))
+            """Squeezenet"""
+            model_ft.classifier[1] = torch.nn.Conv2d(
+                512, num_classes, kernel_size=(1, 1), stride=(1, 1)
+            )
             model_ft.num_classes = num_classes
 
         elif "densenet" in arch:
-            """ Densenet
-            """
+            """Densenet"""
             num_ftrs = model_ft.classifier.in_features
             model_ft.classifier = torch.nn.Linear(num_ftrs, num_classes)
 
         elif "inception" in arch:
-            """ Inception v3
+            """Inception v3
             Be careful, expects (299,299) sized images and has auxiliary output
             """
             # Handle the auxilary net
@@ -140,11 +146,11 @@ class DNNClassifierModel(ModelBase):
             model_ft.AuxLogits.fc = torch.nn.Linear(num_ftrs, num_classes)
             # Handle the primary net
             num_ftrs = model_ft.fc.in_features
-            model_ft.fc = torch.nn.Linear(num_ftrs,num_classes)
+            model_ft.fc = torch.nn.Linear(num_ftrs, num_classes)
 
         elif "efficientnet" in arch:
             num_ftrs = model_ft.classifier[1].in_features
-            model_ft.classifier[1] = torch.nn.Linear(num_ftrs,num_classes)
+            model_ft.classifier[1] = torch.nn.Linear(num_ftrs, num_classes)
 
         else:
             logger.error("Invalid model name, exiting...")
@@ -169,7 +175,6 @@ class DNNClassifierModel(ModelBase):
         timeout = 5
         prev_infer = time.time()
         while self._running:
-
             try:
                 request = self.request_queue.get(block=False)
                 requests.append(request)
@@ -180,16 +185,18 @@ class DNNClassifierModel(ModelBase):
             if not len(requests):
                 continue
 
-            if (len(requests) >=  self._batch_size or
-                (time.time() - prev_infer) > timeout):
+            if (
+                len(requests) >= self._batch_size
+                or (time.time() - prev_infer) > timeout
+            ):
                 prev_infer = time.time()
                 results = self._process_batch(requests)
                 for result in results:
                     self.result_count += 1
                     self.result_queue.put(result)
                 requests = []
-                #logger.info("Total results inferenced by model: {}".format(self.result_count))
-                #logger.info("Request queue size: {}".format(self.request_queue.qsize()))
+                # logger.info("Total results inferenced by model: {}".format(self.result_count))
+                # logger.info("Request queue size: {}".format(self.request_queue.qsize()))
 
     def infer(self, requests: Iterable[ObjectProvider]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:
@@ -198,7 +205,7 @@ class DNNClassifierModel(ModelBase):
         output = []
         for i in range(0, len(requests), self._batch_size):
             batch = []
-            for request in requests[i:i+self._batch_size]:
+            for request in requests[i : i + self._batch_size]:
                 batch.append(self.preprocess(request))
             results = self._process_batch(batch)
             for result in results:
@@ -206,10 +213,16 @@ class DNNClassifierModel(ModelBase):
 
         return output
 
-    def infer_dir(self, directory: Path, callback_fn: Callable[[int, float], None]) -> TestResults:
+    def infer_dir(
+        self, directory: Path, callback_fn: Callable[[int, float], None]
+    ) -> TestResults:
         dataset = datasets.ImageFolder(str(directory), transform=self._test_transforms)
-        data_loader = DataLoader(dataset, batch_size=self._batch_size,
-                                 shuffle=False, num_workers=mp.cpu_count())
+        data_loader = DataLoader(
+            dataset,
+            batch_size=self._batch_size,
+            shuffle=False,
+            num_workers=mp.cpu_count(),
+        )
 
         targets = []
         predictions = []
@@ -224,8 +237,9 @@ class DNNClassifierModel(ModelBase):
 
         return callback_fn(self.version, targets, predictions)
 
-    def infer_path(self, test_file: Path, callback_fn: Callable[[int, float], None]) -> TestResults:
-
+    def infer_path(
+        self, test_file: Path, callback_fn: Callable[[int, float], None]
+    ) -> TestResults:
         image_list = []
         label_list = []
         with open(test_file) as f:
@@ -235,10 +249,15 @@ class DNNClassifierModel(ModelBase):
                 image_list.append(path)
                 label_list.append(int(label))
 
-        dataset = ImageFromList(image_list, transform=self._test_transforms,
-                                label_list=label_list)
-        data_loader = DataLoader(dataset, batch_size=self._batch_size,
-                                 shuffle=False, num_workers=mp.cpu_count())
+        dataset = ImageFromList(
+            image_list, transform=self._test_transforms, label_list=label_list
+        )
+        data_loader = DataLoader(
+            dataset,
+            batch_size=self._batch_size,
+            shuffle=False,
+            num_workers=mp.cpu_count(),
+        )
 
         targets = []
         predictions = []
@@ -255,7 +274,7 @@ class DNNClassifierModel(ModelBase):
 
     def evaluate_model(self, test_path: Path) -> None:
         # call infer_dir
-        self._device = torch.device('cuda')
+        self._device = torch.device("cuda")
         self._model.to(self._device)
         self._model.eval()
 
@@ -265,9 +284,11 @@ class DNNClassifierModel(ModelBase):
             logger.info("Evaluating model")
             return self.infer_path(test_path, self.calculate_performance)
         else:
-            raise Exception(f'ERROR: {test_path} does not exist')
+            raise Exception(f"ERROR: {test_path} does not exist")
 
-    def _process_batch(self, batch: List[Tuple[ObjectProvider, torch.Tensor]]) -> Iterable[ResultProvider]:
+    def _process_batch(
+        self, batch: List[Tuple[ObjectProvider, torch.Tensor]]
+    ) -> Iterable[ResultProvider]:
         if self._model is None:
             if len(batch) > 0:
                 # put request back in queue
@@ -283,12 +304,12 @@ class DNNClassifierModel(ModelBase):
                 score = predictions[i]
                 result_object = batch[i][0]
                 if self._mode == "oracle":
-                    if '/0/' in result_object.id:
+                    if "/0/" in result_object.id:
                         score = 0
                     else:
                         score = 1
-                result_object.attributes.add({'score': str.encode(str(score))})
-                yield ResultProvider(result_object, score,  self.version)
+                result_object.attributes.add({"score": str.encode(str(score))})
+                yield ResultProvider(result_object, score, self.version)
 
     def stop(self):
         logger.info(f"Stopping model of version {self.version}")

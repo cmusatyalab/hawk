@@ -12,7 +12,6 @@ from ..core.hawk_stub import HawkStub
 
 
 class ContextBase(metaclass=ABCMeta):
-
     @property
     @abstractmethod
     def scout_index(self) -> int:

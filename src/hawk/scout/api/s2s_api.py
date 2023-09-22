@@ -39,8 +39,8 @@ def s2s_receive_request(s2s_input, s2s_output):
         logger.exception()
         raise e
 
-class S2SServicer:
 
+class S2SServicer:
     def __init__(self, mission):
         self._mission = mission
 
@@ -60,15 +60,16 @@ class S2SServicer:
             request.ParseFromString(msg)
             label = request
             # Fetch data from dataretriever
-            object_ = self._mission.retriever.get_object(
-                object_id=label.objectId
-            )
+            object_ = self._mission.retriever.get_object(object_id=label.objectId)
             # Assuming data requirement in Distribute positives
-            if label.imageLabel != '0':
+            if label.imageLabel != "0":
                 # Transmit data to coordinator
                 response = object_.SerializeToString()
-                logger.info("Fetch Tile for id {} parent {} Reply {}".format(
-                    label.objectId, label.scoutIndex, len(response)))
+                logger.info(
+                    "Fetch Tile for id {} parent {} Reply {}".format(
+                        label.objectId, label.scoutIndex, len(response)
+                    )
+                )
             else:
                 response = Empty
             # Store labels

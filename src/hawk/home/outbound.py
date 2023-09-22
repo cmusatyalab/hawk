@@ -27,7 +27,9 @@ class OutboundProcess:
         if train_location == "scout":
             self.transmit_func = self.scout_send_labels
         else:
-            raise NotImplementedError(f"Training Location {train_location} Not Implemented")
+            raise NotImplementedError(
+                f"Training Location {train_location} Not Implemented"
+            )
 
     def send_labels(self, scout_ips, h2c_port, result_q, stop_event):
         """API call to send messages from Home to Scouts"""
@@ -64,19 +66,25 @@ class OutboundProcess:
                 with open(label_path) as f:
                     data = json.load(f)
 
-                label=LabelWrapper(
-                    objectId = data['objectId'],
-                    scoutIndex = data['scoutIndex'],
-                    imageLabel = data['imageLabel'],
-                    boundingBoxes = data['boundingBoxes']
+                label = LabelWrapper(
+                    objectId=data["objectId"],
+                    scoutIndex=data["scoutIndex"],
+                    imageLabel=data["imageLabel"],
+                    boundingBoxes=data["boundingBoxes"],
                 )
                 response = SendLabels(
                     label=label,
                 )
                 msg = response.SerializeToString()
-                logger.info("Send labels {} {} {} {}".format(
-                    data['imageLabel'], data['scoutIndex'], data['objectId'], len(msg)))
-                scout_index = int(data['scoutIndex'])
+                logger.info(
+                    "Send labels {} {} {} {}".format(
+                        data["imageLabel"],
+                        data["scoutIndex"],
+                        data["objectId"],
+                        len(msg),
+                    )
+                )
+                scout_index = int(data["scoutIndex"])
                 self.stubs[scout_index].send(msg)
 
         except (OSError, KeyboardInterrupt) as e:

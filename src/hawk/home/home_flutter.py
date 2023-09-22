@@ -29,7 +29,7 @@ from .inbound import InboundProcess
 from .outbound import OutboundProcess
 from .utils import define_scope, get_ip
 
-REMOTE_USER = 'root'
+REMOTE_USER = "root"
 CONFIG = Path.home().joinpath(".hawk", "config.yml")  # PUT this in ~/.hawk
 home_path = Path(__file__).resolve().parent
 app_data = {}
@@ -37,9 +37,9 @@ app = Flask(__name__)
 
 
 def restart_scouts(scouts: Iterable[str]):
-    host_file = home_path / 'hosts'
+    host_file = home_path / "hosts"
     host_file.write_text("\n".join(scouts))
-    restart_file = home_path / 'scout-restart.sh'
+    restart_file = home_path / "scout-restart.sh"
 
     scout_startup_cmd = f"parallel-ssh -t 0 -h {host_file} \
         -l {REMOTE_USER} -P -I<{restart_file} > /dev/null"
@@ -51,15 +51,15 @@ def restart_scouts(scouts: Iterable[str]):
 def stop_mission():
     global app_data
 
-    if 'started' in app_data:
+    if "started" in app_data:
         logger.info("Stopping Mission")
-        home_admin = app_data['home-admin']
+        home_admin = app_data["home-admin"]
         home_admin.stop_mission()
 
-        restart_scouts(app_data['scouts'])
+        restart_scouts(app_data["scouts"])
 
         # Stopping processes
-        processes = app_data['processes']
+        processes = app_data["processes"]
         for p in processes:
             p.terminate()
 
@@ -73,12 +73,14 @@ def handler_signals(signum, frame):
 
 
 def get_results():
-    result_cmd = shlex.join([
-        sys.executable,
-        "-m",
-        "hawk.home.result_stream_new",
-        app_data['image-dir'].parent,
-    ])
+    result_cmd = shlex.join(
+        [
+            sys.executable,
+            "-m",
+            "hawk.home.result_stream_new",
+            app_data["image-dir"].parent,
+        ]
+    )
     logger.info(result_cmd)
     os.system(result_cmd)
     return
@@ -89,69 +91,78 @@ def configure_mission(filter_config):
     stop_mission()
 
     config = load_config(CONFIG)
-    #logger.info(config)
-    #pprint(config)
-    pprint(config['train_strategy'])
+    # logger.info(config)
+    # pprint(config)
+    pprint(config["train_strategy"])
 
     # Setting up mission
-    mission_name = config.get('mission-name', "test")
+    mission_name = config.get("mission-name", "test")
 
-    assert (Path(config['train_strategy'].get('initial_model_path', '')).exists() or
-            Path(config['train_strategy'].get('bootstrap_path', '')).exists() or
-            Path(config['train_strategy'].get('example_path', '')).exists())
+    assert (
+        Path(config["train_strategy"].get("initial_model_path", "")).exists()
+        or Path(config["train_strategy"].get("bootstrap_path", "")).exists()
+        or Path(config["train_strategy"].get("example_path", "")).exists()
+    )
 
-    mission_id = "_".join([mission_name,
-                               datetime.now().strftime('%Y%m%d-%H%M%S')])
+    mission_id = "_".join([mission_name, datetime.now().strftime("%Y%m%d-%H%M%S")])
     scouts = config.scouts
 
-    if config['dataset']['type'] == 'cookie':
+    if config["dataset"]["type"] == "cookie":
         logger.info("Reading Scope Cookie")
         logger.info(f"Participating scouts \n{scouts}")
         config = define_scope(config)
 
-    bandwidth = config.get('bandwidth', "100")
-    assert int(bandwidth) in [100, 30, 12], f"Fireqos script may not exist for {bandwidth}"
-    config['bandwidth'] = [f"[[-1, \"{bandwidth}k\"]]" for _ in scouts]
+    bandwidth = config.get("bandwidth", "100")
+    assert int(bandwidth) in [
+        100,
+        30,
+        12,
+    ], f"Fireqos script may not exist for {bandwidth}"
+    config["bandwidth"] = [f'[[-1, "{bandwidth}k"]]' for _ in scouts]
 
-    config['train_strategy']['type'] = filter_config['name']
+    config["train_strategy"]["type"] = filter_config["name"]
     logger.info(f"Train strategy is: {config['train_strategy']}")
 
     # Add more filters here
-    if filter_config['name'] == "fsl":
-        support_string = filter_config['args']['support']
+    if filter_config["name"] == "fsl":
+        support_string = filter_config["args"]["support"]
         image = Image.open(io.BytesIO(base64.b64decode(support_string)))
         # Resize to 256 x 256
         dim = (256, 256)
         image = image.resize(dim, Image.LANCZOS)
-        image_path = "/home/eric/.hawk/current_mission.jpg" ## This is the support set image.
+        image_path = (
+            "/home/eric/.hawk/current_mission.jpg"  ## This is the support set image.
+        )
         image.save(image_path)
-        config['train_strategy']['example_path'] = image_path
-    elif filter_config['name'] == 'dnn_classifier':
-        #init_model = config['train_strategy']['bootstrap_path']
+        config["train_strategy"]["example_path"] = image_path
+    elif filter_config["name"] == "dnn_classifier":
+        # init_model = config['train_strategy']['bootstrap_path']
         pass
         ### find the initial model
         ### find the initial dataset
 
     else:
-        raise NotImplementedError("Unknown train_strategy {}".format(filter_config['name']))
+        raise NotImplementedError(
+            "Unknown train_strategy {}".format(filter_config["name"])
+        )
 
     # create local directories
-    mission_dir = Path(config['home-params']['mission_dir'])
+    mission_dir = Path(config["home-params"]["mission_dir"])
     mission_dir = mission_dir / mission_id
     logger.info(mission_dir)
 
     global log_dir
-    log_dir = mission_dir / 'logs'
-    config['home-params']['log_dir'] = str(log_dir)
+    log_dir = mission_dir / "logs"
+    config["home-params"]["log_dir"] = str(log_dir)
 
     global meta_dir, label_dir
-    image_dir = mission_dir / 'images'
-    meta_dir = mission_dir / 'meta'
-    label_dir = mission_dir / 'labels'
+    image_dir = mission_dir / "images"
+    meta_dir = mission_dir / "meta"
+    label_dir = mission_dir / "labels"
 
-    app_data['image-dir'] = image_dir
-    app_data['meta-dir'] = meta_dir
-    app_data['label-dir'] = label_dir
+    app_data["image-dir"] = image_dir
+    app_data["meta-dir"] = meta_dir
+    app_data["label-dir"] = label_dir
 
     log_dir.mkdir(parents=True)
     image_dir.mkdir(parents=True)
@@ -159,13 +170,13 @@ def configure_mission(filter_config):
     label_dir.mkdir(parents=True)
 
     # Save config file to log_dir
-    config_path = log_dir / 'hawk.yml'
+    config_path = log_dir / "hawk.yml"
     write_config(config, config_path)
 
     # Setting up helpers
     scout_ips = [socket.gethostbyname(scout) for scout in scouts]
 
-    app_data['scouts'] = scouts
+    app_data["scouts"] = scouts
     restart_scouts(scouts)
 
     processes = []
@@ -175,13 +186,12 @@ def configure_mission(filter_config):
     global label_q
     label_q = mp.Queue()
     stats_q = mp.Queue()
-    stats_q.put((0,0,0))
+    stats_q.put((0, 0, 0))
 
-    thread = threading.Thread(target = get_results)
+    thread = threading.Thread(target=get_results)
     thread.start()
 
     try:
-
         # Starting home to admin conn
         context = zmq.Context()
         h2a_socket = context.socket(zmq.REQ)
@@ -191,20 +201,22 @@ def configure_mission(filter_config):
         home_ip = get_ip()
 
         logger.info("Starting Admin Process")
-        home_admin = Admin(home_ip, mission_id) # , explicit_start=True)
-        p = mp.Process(target=home_admin.receive_from_home, kwargs={'stop_event': stop_event,
-                                                                    'stats_q': stats_q})
-        app_data['home-admin'] = home_admin
+        home_admin = Admin(home_ip, mission_id)  # , explicit_start=True)
+        p = mp.Process(
+            target=home_admin.receive_from_home,
+            kwargs={"stop_event": stop_event, "stats_q": stats_q},
+        )
+        app_data["home-admin"] = home_admin
         processes.append(p)
         p.start()
 
         # Start inbound process
         logger.info("Starting Inbound Process")
-        home_inbound = InboundProcess(image_dir,
-                                      meta_dir,
-                                      config)
-        p = mp.Process(target=home_inbound.receive_data, kwargs={'result_q': meta_q,
-                                                                 'stop_event': stop_event})
+        home_inbound = InboundProcess(image_dir, meta_dir, config)
+        p = mp.Process(
+            target=home_inbound.receive_data,
+            kwargs={"result_q": meta_q, "stop_event": stop_event},
+        )
         processes.append(p)
         p.start()
 
@@ -212,14 +224,19 @@ def configure_mission(filter_config):
         logger.info("Starting Outbound Process")
         h2c_port = config.deploy.h2c_port
         home_outbound = OutboundProcess()
-        p = mp.Process(target=home_outbound.send_labels, kwargs={'scout_ips': scout_ips,
-                                                                 'h2c_port': h2c_port,
-                                                                 'result_q': label_q,
-                                                                 'stop_event': stop_event})
+        p = mp.Process(
+            target=home_outbound.send_labels,
+            kwargs={
+                "scout_ips": scout_ips,
+                "h2c_port": h2c_port,
+                "result_q": label_q,
+                "stop_event": stop_event,
+            },
+        )
         p.start()
         processes.append(p)
 
-        app_data['processes'] = processes
+        app_data["processes"] = processes
 
         # Send config file to admin
         # send msg "<config> <path to config file>"
@@ -227,25 +244,23 @@ def configure_mission(filter_config):
         h2a_socket.send_string(f"config {config_path}")
         h2a_socket.recv()
 
-
     except KeyboardInterrupt as e:
-        #stop_mission()
+        # stop_mission()
         logger.info("killing all chld processes...")
         logger.error(e)
 
 
-
-@app.route('/hawk_push_labels', methods = ['POST'])
+@app.route("/hawk_push_labels", methods=["POST"])
 def label_Sample():
     label_nums = {"positive": "1", "negative": "0"}
     print("In label function...")
-    request_data = request.data #getting the response data
-    request_data = json.loads(request_data.decode('utf-8'))
-    #label_sign = request_data['label_sign']
-    #image_strings = request_data['label_strings']
+    request_data = request.data  # getting the response data
+    request_data = json.loads(request_data.decode("utf-8"))
+    # label_sign = request_data['label_sign']
+    # image_strings = request_data['label_strings']
     for key, val in request_data.items():
         print(key, val)
-    #response = f'{label_sign}'
+    # response = f'{label_sign}'
     for sample, label in request_data.items():
         print(sample)
         tile_index = sample.split("/")[-1].split(".")[0]
@@ -253,9 +268,9 @@ def label_Sample():
         print(meta_path)
         with open(meta_path) as f:
             meta_data = json.load(f)
-        del meta_data['score']
-        meta_data['imageLabel'] = label_nums[label]
-        meta_data['boundingBoxes'] = '[]'
+        del meta_data["score"]
+        meta_data["imageLabel"] = label_nums[label]
+        meta_data["boundingBoxes"] = "[]"
         label_path = label_dir / f"{tile_index}.json"
         with open(label_path, "w") as f:
             json.dump(meta_data, f)
@@ -267,49 +282,48 @@ def label_Sample():
     ### now that i have the sign and labels,
     ### Send label to outbound queue, save label in labels directory and any other admin tasks as in original ui labeler.
 
-    app_data['started'] = True
-    return ('', 204)
+    app_data["started"] = True
+    return ("", 204)
+
 
 @app.errorhandler(500)
 def internal_error(error):
-
     return "500 error"
 
-@app.route('/get_stats', methods = ['GET'])
+
+@app.route("/get_stats", methods=["GET"])
 def get_stat():
     print("In stats_function...")
-    #request_data = request.data #getting the response data
-    #request_data = json.loads(request_data.decode('utf-8'))
-    #label_sign = request_data['label_sign']
-    #image_strings = request_data['label_strings']
+    # request_data = request.data #getting the response data
+    # request_data = json.loads(request_data.decode('utf-8'))
+    # label_sign = request_data['label_sign']
+    # image_strings = request_data['label_strings']
     logs = os.listdir(log_dir)
     json_logs = [log for log in logs if log.endswith(".json")]
     index = len(json_logs)
     file_name = f"stats-{index:06d}.json"
-    with open (os.path.join(log_dir,file_name)) as f:
+    with open(os.path.join(log_dir, file_name)) as f:
         data = json.load(f)
     print(file_name)
     print(data)
     response = jsonify(data)
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    return  response
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
 
 
-
-
-@app.route('/start', methods = ['POST'])
+@app.route("/start", methods=["POST"])
 def startMission():
     print("In start mission...")
-    name_dict = {'fsl':'fsl', 'hawk': 'dnn_classifier'}
-    request_data = request.data #getting the response data
-    request_data = json.loads(request_data.decode('utf-8'))
-    print(request_data['name'])
-    request_data['name'] = name_dict[request_data['name']]
+    name_dict = {"fsl": "fsl", "hawk": "dnn_classifier"}
+    request_data = request.data  # getting the response data
+    request_data = json.loads(request_data.decode("utf-8"))
+    print(request_data["name"])
+    request_data["name"] = name_dict[request_data["name"]]
     configure_mission(request_data)
     print("called configure mission...")
-    app_data['started'] = True
-    response = make_response('', 204)
-    response.headers.add('Access-Control-Allow-Origin', '*')
+    app_data["started"] = True
+    response = make_response("", 204)
+    response.headers.add("Access-Control-Allow-Origin", "*")
 
     return response
 
@@ -333,23 +347,23 @@ def startMission():
 #     return ('', 204)
 
 
-@app.route('/stop', methods = ['POST'])
+@app.route("/stop", methods=["POST"])
 def stopMission():
     request_data = request.data
-    request_data = json.loads(request_data.decode('utf-8'))
-    name = request_data['name']
+    request_data = json.loads(request_data.decode("utf-8"))
+    name = request_data["name"]
     logger.info(f"stop mission {name}")
-    if 'home-admin' in app_data:
+    if "home-admin" in app_data:
         logger.info("Stopping Mission")
         stop_mission()
-    return ('', 204)
+    return ("", 204)
 
 
 if __name__ == "__main__":
     filter_config = {}
     signal.signal(signal.SIGINT, handler_signals)
     signal.signal(signal.SIGTERM, handler_signals)
-    #filter_config['name'] = 'dnn_classifier'
-    #configure_mission(filter_config)
-    app.run(host='0.0.0.0', port=8000)
+    # filter_config['name'] = 'dnn_classifier'
+    # configure_mission(filter_config)
+    app.run(host="0.0.0.0", port=8000)
     print("Executed app.run...")

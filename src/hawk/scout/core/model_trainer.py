@@ -13,7 +13,6 @@ from .model import Model
 
 
 class ModelTrainer(metaclass=ABCMeta):
-
     @abstractmethod
     def load_model(self, path: str, content: bytes, version: int) -> Model:
         pass
@@ -24,14 +23,13 @@ class ModelTrainer(metaclass=ABCMeta):
 
 
 class ModelTrainerBase(ModelTrainer):
-
     def __init__(self, args: Dict[str, str]):
         torch.manual_seed(42)
         torch.cuda.manual_seed(42)
         self._latest_version = -1
         self._version_lock = threading.Lock()
         self.args = dict(args)
-        self.args['mode'] = self.args.get('mode', "hawk")
+        self.args["mode"] = self.args.get("mode", "hawk")
 
     def parse_args(self):
         raise NotImplementedError("Parse Args")

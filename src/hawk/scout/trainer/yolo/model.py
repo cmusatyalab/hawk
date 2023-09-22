@@ -24,45 +24,51 @@ from ...core.object_provider import ObjectProvider
 from ...core.result_provider import ResultProvider
 from ...core.utils import log_exceptions
 
-torch.multiprocessing.set_sharing_strategy('file_system')
+torch.multiprocessing.set_sharing_strategy("file_system")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-class YOLOModel(ModelBase):
-    def __init__(self,
-                 args: Dict,
-                 model_path: Path,
-                 version: int,
-                 mode: str,
-                 context: ModelContext):
 
+class YOLOModel(ModelBase):
+    def __init__(
+        self,
+        args: Dict,
+        model_path: Path,
+        version: int,
+        mode: str,
+        context: ModelContext,
+    ):
         logger.info(f"Loading DNN Model from {model_path}")
         assert model_path.is_file()
         # args = dict(args)
-        args['input_size'] = args.get('input_size', 480)
-        test_transforms = transforms.Compose([
-            transforms.Resize(args['input_size'] + 32),
-            transforms.CenterCrop(args['input_size']),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
-        ])
+        args["input_size"] = args.get("input_size", 480)
+        test_transforms = transforms.Compose(
+            [
+                transforms.Resize(args["input_size"] + 32),
+                transforms.CenterCrop(args["input_size"]),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                ),
+            ]
+        )
 
-        args['test_batch_size'] = args.get('test_batch_size', 32)
-        args['version'] = version
-        args['train_examples'] = args.get('train_examples', {'1':0, '0':0})
-        args['mode'] = mode
+        args["test_batch_size"] = args.get("test_batch_size", 32)
+        args["version"] = version
+        args["train_examples"] = args.get("train_examples", {"1": 0, "0": 0})
+        args["mode"] = mode
         self.args = args
-        self.yolo_repo = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                      'yolov5')
+        self.yolo_repo = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "yolov5"
+        )
 
         super().__init__(self.args, model_path, context)
 
         self._test_transforms = test_transforms
-        self._train_examples = args['train_examples']
-        self._batch_size = args['test_batch_size']
+        self._train_examples = args["train_examples"]
+        self._batch_size = args["test_batch_size"]
 
         self._model = self.load_model(model_path)
-        self._device = torch.device('cuda')
+        self._device = torch.device("cuda")
         self._model = self._model.to(self._device)
         self._model.eval()
         self._running = True
@@ -75,10 +81,10 @@ class YOLOModel(ModelBase):
         try:
             image = Image.open(io.BytesIO(request.content))
 
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
+            if image.mode != "RGB":
+                image = image.convert("RGB")
         except Exception as e:
-            raise(e)
+            raise (e)
 
         return request, self._test_transforms(image)
 
@@ -87,25 +93,30 @@ class YOLOModel(ModelBase):
             return None
 
         content = io.BytesIO()
-        torch.save({
-            'state_dict': self._model.state_dict(),
-        }, content)
+        torch.save(
+            {
+                "state_dict": self._model.state_dict(),
+            },
+            content,
+        )
         content.seek(0)
 
         return content.getvalue()
 
     def load_model(self, model_path: Path):
-        model = torch.hub.load(self.yolo_repo,
-                               'custom',
-                               path=str(model_path),
-                               source='local',)
+        model = torch.hub.load(
+            self.yolo_repo,
+            "custom",
+            path=str(model_path),
+            source="local",
+        )
         return model
 
     def get_predictions(self, inputs) -> List[float]:
         with torch.no_grad():
             output = self._model(inputs, detection=True).pred
             predictions = [out.cpu().numpy() for out in output]
-            probability = [max(pred[:,4]) if len(pred) else 0 for pred in predictions]
+            probability = [max(pred[:, 4]) if len(pred) else 0 for pred in predictions]
             return probability
 
     @log_exceptions
@@ -116,7 +127,6 @@ class YOLOModel(ModelBase):
         timeout = 5
         prev_infer = time.time()
         while self._running:
-
             try:
                 request = self.request_queue.get(block=False)
                 requests.append(request)
@@ -127,8 +137,10 @@ class YOLOModel(ModelBase):
             if not len(requests):
                 continue
 
-            if (len(requests) >=  self._batch_size or
-                (time.time() - prev_infer) > timeout):
+            if (
+                len(requests) >= self._batch_size
+                or (time.time() - prev_infer) > timeout
+            ):
                 prev_infer = time.time()
                 results = self._process_batch(requests)
                 for result in results:
@@ -143,7 +155,7 @@ class YOLOModel(ModelBase):
         output = []
         for i in range(0, len(requests), self._batch_size):
             batch = []
-            for request in requests[i:i+self._batch_size]:
+            for request in requests[i : i + self._batch_size]:
                 batch.append(self.preprocess(request))
             results = self._process_batch(batch)
             for result in results:
@@ -151,10 +163,16 @@ class YOLOModel(ModelBase):
 
         return output
 
-    def infer_dir(self, directory: Path, callback_fn: Callable[[int, float], None]) -> None:
+    def infer_dir(
+        self, directory: Path, callback_fn: Callable[[int, float], None]
+    ) -> None:
         dataset = datasets.ImageFolder(str(directory), transform=None)
-        data_loader = DataLoader(dataset, batch_size=self._batch_size,
-                                 shuffle=False, num_workers=mp.cpu_count())
+        data_loader = DataLoader(
+            dataset,
+            batch_size=self._batch_size,
+            shuffle=False,
+            num_workers=mp.cpu_count(),
+        )
 
         targets = []
         predictions = []
@@ -169,7 +187,6 @@ class YOLOModel(ModelBase):
         callback_fn(targets, predictions)
 
     def evaluate_model(self, test_path: Path) -> None:
-
         def calculate_performance(y_true, y_pred):
             return average_precision_score(y_true, y_pred, average=None)
 
@@ -190,11 +207,11 @@ class YOLOModel(ModelBase):
             for i in range(len(batch)):
                 score = predictions[i]
                 if self._mode == "oracle":
-                    if '/0/' in batch[i][0].id:
+                    if "/0/" in batch[i][0].id:
                         score = 0
                     else:
                         score = 1
-                batch[i][0].attributes.add({'score': str.encode(str(score))})
+                batch[i][0].attributes.add({"score": str.encode(str(score))})
                 yield ResultProvider(batch[i][0], score, self.version)
 
     def stop(self):

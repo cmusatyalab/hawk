@@ -15,9 +15,8 @@ from ..core.result_provider import ResultProvider
 
 
 class SelectorStats:
-
     def __init__(self, dictionary):
-        assert 'processed_objects' in dictionary, "Missing processed_objects attribute"
+        assert "processed_objects" in dictionary, "Missing processed_objects attribute"
         self.dropped_objects = 0
         self.passed_objects = 0
         self.false_negatives = 0
@@ -27,7 +26,6 @@ class SelectorStats:
 
 
 class Selector(metaclass=ABCMeta):
-
     @abstractmethod
     def add_result(self, result: ResultProvider) -> None:
         """Add processed results from model to selector"""
@@ -60,7 +58,6 @@ class Selector(metaclass=ABCMeta):
 
 
 class SelectorBase(Selector):
-
     def __init__(self):
         self.result_queue = queue.Queue(maxsize=100)
         self.stats_lock = threading.Lock()
@@ -96,14 +93,14 @@ class SelectorBase(Selector):
             model_present = self._model_present
 
         if not model_present:
-            self.result_queue.put(result) # pass through
+            self.result_queue.put(result)  # pass through
         else:
             self._add_result(result)
 
         with self.stats_lock:
             self.items_processed += 1
-            '''if self.items_processed % 10 == 0:
-                logger.info("Total items processed: {}".format(self.items_processed))'''
+            """if self.items_processed % 10 == 0:
+                logger.info("Total items processed: {}".format(self.items_processed))"""
 
     def new_model(self, model: Optional[Model]) -> None:
         """New model generation is available from trainer"""
@@ -118,7 +115,6 @@ class SelectorBase(Selector):
         self._clear_event.set()
         self.result_queue.put(None)
 
-
     def get_result(self) -> Optional[ResultProvider]:
         """Returns result for transmission when available"""
         while True:
@@ -129,10 +125,11 @@ class SelectorBase(Selector):
 
     def get_stats(self) -> SelectorStats:
         with self.stats_lock:
-            stats = {'processed_objects': self.items_processed,
-                     'items_revisited': self.num_revisited,
-                     'positive_in_stream': self.num_positives,
-                     'train_positives': self.model_examples,
-                     }
+            stats = {
+                "processed_objects": self.items_processed,
+                "items_revisited": self.num_revisited,
+                "positive_in_stream": self.num_positives,
+                "train_positives": self.model_examples,
+            }
 
         return SelectorStats(stats)

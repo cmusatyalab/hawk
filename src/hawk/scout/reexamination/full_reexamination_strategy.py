@@ -14,14 +14,13 @@ from .reexamination_strategy import ReexaminationStrategy
 
 
 class FullReexaminationStrategy(ReexaminationStrategy):
-
     @property
     def reexamines_old_results(self) -> bool:
         return True
 
-    def get_new_queues(self, model: Model, old_queues: List[queue.PriorityQueue],
-                       start_time: float = 0) -> Tuple[List[queue.PriorityQueue], int]:
-
+    def get_new_queues(
+        self, model: Model, old_queues: List[queue.PriorityQueue], start_time: float = 0
+    ) -> Tuple[List[queue.PriorityQueue], int]:
         new_queue = queue.PriorityQueue()
 
         to_reexamine = []
@@ -33,8 +32,10 @@ class FullReexaminationStrategy(ReexaminationStrategy):
                 except queue.Empty:
                     break
 
-        reexamine = [ObjectProvider(item[-1].id, item[-1].content, item[-1].attributes)
-            for item in to_reexamine]
+        reexamine = [
+            ObjectProvider(item[-1].id, item[-1].content, item[-1].attributes)
+            for item in to_reexamine
+        ]
 
         results = model.infer(reexamine)
 
@@ -43,7 +44,9 @@ class FullReexaminationStrategy(ReexaminationStrategy):
             obj_id = result.id
             prev_score = prev_result[0]
             score = result.score
-            logger.info(f"Reexamine score id: {obj_id} prev_score{prev_score} curr_score {score}")
+            logger.info(
+                f"Reexamine score id: {obj_id} prev_score{prev_score} curr_score {score}"
+            )
             new_queue.put((-score, time_result, result))
 
         for result in model.infer(to_reexamine):

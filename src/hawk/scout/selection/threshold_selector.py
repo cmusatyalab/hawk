@@ -15,7 +15,6 @@ from .selector_base import SelectorBase
 
 
 class ThresholdSelector(SelectorBase):
-
     def __init__(self, threshold, reexamination_strategy: ReexaminationStrategy):
         super().__init__()
 
@@ -29,8 +28,8 @@ class ThresholdSelector(SelectorBase):
 
     def _add_result(self, result: ResultProvider) -> None:
         if result.gt:
-           self.num_positives += 1
-           logger.info(f"{result.id} Score {result.score}")
+            self.num_positives += 1
+            logger.info(f"{result.id} Score {result.score}")
 
         if result.score > self._threshold:
             self.result_queue.put(result)
@@ -48,8 +47,12 @@ class ThresholdSelector(SelectorBase):
             if model is not None:
                 version = self.version
                 self.version = model.version
-                self.model_examples = model.train_examples.get('1', 0)
-                self._priority_queues, num_revisited = self._reexamination_strategy.get_new_queues(
-                    model, self._priority_queues, self._mission.start_time)
+                self.model_examples = model.train_examples.get("1", 0)
+                (
+                    self._priority_queues,
+                    num_revisited,
+                ) = self._reexamination_strategy.get_new_queues(
+                    model, self._priority_queues, self._mission.start_time
+                )
 
                 self.num_revisited += num_revisited

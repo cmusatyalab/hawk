@@ -13,13 +13,12 @@ from ...core.model import Model
 from ...core.model_trainer import ModelTrainerBase
 from .model import FewShotModel
 
-torch.multiprocessing.set_sharing_strategy('file_system')
+torch.multiprocessing.set_sharing_strategy("file_system")
 
 
 class FewShotTrainer(ModelTrainerBase):
-
     def __init__(self, context: ModelContext, args: Dict[str, str]):
-        assert 'support_data' in args
+        assert "support_data" in args
         super().__init__(args)
 
         self.context = context
@@ -28,8 +27,7 @@ class FewShotTrainer(ModelTrainerBase):
 
         logger.info("FSL TRAINER CALLED")
 
-
-    def load_model(self, path:Path = "", content:bytes = b'', version: int = -1):
+    def load_model(self, path: Path = "", content: bytes = b"", version: int = -1):
         if isinstance(path, str):
             path = Path(path)
         assert path.is_file() or len(content)
@@ -39,8 +37,7 @@ class FewShotTrainer(ModelTrainerBase):
 
         logger.info(f"Loading from path {path}")
         self._model_path = path
-        return FewShotModel(self.args, path, version,
-                                  context=self.context)
+        return FewShotModel(self.args, path, version, context=self.context)
 
     def train_model(self, train_dir) -> Model:
         return self.load_model(self._model_path, version=self.version)

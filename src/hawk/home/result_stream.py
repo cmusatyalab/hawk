@@ -17,17 +17,16 @@ from PIL import Image
 
 
 class UILabeler:
-
     def __init__(self, mission_dir):
         self.config = {}
         mission_dir = str(mission_dir)
-        self._image_dir = os.path.join(mission_dir, 'images')
-        self._meta_dir = os.path.join(mission_dir, 'meta')
-        self._label_dir = os.path.join(mission_dir, 'labels')
+        self._image_dir = os.path.join(mission_dir, "images")
+        self._meta_dir = os.path.join(mission_dir, "meta")
+        self._label_dir = os.path.join(mission_dir, "labels")
 
         directory = self._image_dir
         if directory[len(directory) - 1] != "/":
-             directory += "/"
+            directory += "/"
         self.config["IMAGES"] = directory
         self.config["LABELS"] = []
         self.config["HEAD"] = -1
@@ -52,26 +51,31 @@ class UILabeler:
                 if len(self.config["FILES"]):
                     print(self.config["FILES"][0])
                 image_name = self.config["FILES"][self.config["HEAD"]]
-                image_name = os.path.join(self.config['IMAGES'], image_name)
+                image_name = os.path.join(self.config["IMAGES"], image_name)
                 logger.info(image_name)
-                image = Image.open(image_name).convert('RGB')
+                image = Image.open(image_name).convert("RGB")
                 image.thumbnail(size, Image.LANCZOS)
                 content = io.BytesIO()
-                image.save(content, format='JPEG', quality=75)
+                image.save(content, format="JPEG", quality=75)
                 content = content.getvalue()
-                encoded_img = base64.b64encode(content).decode('utf8')
+                encoded_img = base64.b64encode(content).decode("utf8")
 
-                data = json.dumps({'name':image_name,
-                                   'image': encoded_img,
-                                  })
+                data = json.dumps(
+                    {
+                        "name": image_name,
+                        "image": encoded_img,
+                    }
+                )
                 await websocket.send(data)
-                self.not_end = not(self.config["HEAD"] == len(self.config["FILES"]) - 1)
+                self.not_end = not (
+                    self.config["HEAD"] == len(self.config["FILES"]) - 1
+                )
 
                 if self.not_end:
                     self.config["HEAD"] = self.config["HEAD"] + 1
                 else:
                     logger.info("Waiting for Results ...")
-                    while (not self.not_end):
+                    while not self.not_end:
                         time.sleep(5)
                         self.reload_directory()
             except websockets.exceptions.ConnectionClosed as e:
@@ -81,7 +85,7 @@ class UILabeler:
     def reload_directory(self):
         files = None
         old_length = len(self.config["FILES"])
-        for (dirpath, dirnames, filenames) in walk(self.config["IMAGES"]):
+        for dirpath, dirnames, filenames in walk(self.config["IMAGES"]):
             files = sorted(filenames)
             break
         if files == None:
@@ -89,8 +93,8 @@ class UILabeler:
             exit()
         self.config["FILES"] = files
         new_files = len(self.config["FILES"]) - old_length
-        [self.config["LABELS"].append('-1') for i in range(new_files)]
-        self.not_end = not(self.config["HEAD"] == len(self.config["FILES"]) - 1)
+        [self.config["LABELS"].append("-1") for i in range(new_files)]
+        self.not_end = not (self.config["HEAD"] == len(self.config["FILES"]) - 1)
         if new_files and self.config["HEAD"] < 0:
             self.config["HEAD"] = 0
         return
@@ -99,8 +103,8 @@ class UILabeler:
 def main():
     mission = sys.argv[1]
     server = UILabeler(mission)
-    server.run(host='0.0.0.0', port=5000)
+    server.run(host="0.0.0.0", port=5000)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

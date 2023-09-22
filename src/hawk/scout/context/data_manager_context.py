@@ -23,6 +23,7 @@ class DataManagerContext(ContextBase):
     data_dir : Path
         path to the TRAIN/TEST split
     """
+
     @property
     @abstractmethod
     def mission_id(self) -> MissionId:
@@ -39,8 +40,9 @@ class DataManagerContext(ContextBase):
         pass
 
     @abstractmethod
-    def new_labels_callback(self, new_positives: int,
-                              new_negatives: int, retrain: bool = True) -> None:
+    def new_labels_callback(
+        self, new_positives: int, new_negatives: int, retrain: bool = True
+    ) -> None:
         """Adds new labels to the data directory"""
         pass
 

@@ -21,10 +21,13 @@ from .selector_base import SelectorBase
 
 
 class TopKSelector(SelectorBase):
-
-    def __init__(self, k: int, batch_size: int,
-                 reexamination_strategy: ReexaminationStrategy,
-                 add_negatives: bool = True):
+    def __init__(
+        self,
+        k: int,
+        batch_size: int,
+        reexamination_strategy: ReexaminationStrategy,
+        add_negatives: bool = True,
+    ):
         assert k < batch_size
         super().__init__()
 
@@ -41,16 +44,23 @@ class TopKSelector(SelectorBase):
         self._insert_lock = threading.Lock()
         self._mode = "hawk"
 
-        self.log_counter = [int(i/3.*self._batch_size) for i in range(1, 4)]
+        self.log_counter = [int(i / 3.0 * self._batch_size) for i in range(1, 4)]
 
     @log_exceptions
     def select_tiles(self, num_tiles):
         for i in range(num_tiles):
             result = self._priority_queues[-1].get()[-1]
             if self._mission.enable_logfile:
-                self._mission.log_file.write("{:.3f} {}_{} {}_{} SEL: FILE SELECTED {}\n".format(
-                    time.time() - self._mission.start_time, self._mission.host_name,
-                    self.version, i, self._k, result.id))
+                self._mission.log_file.write(
+                    "{:.3f} {}_{} {}_{} SEL: FILE SELECTED {}\n".format(
+                        time.time() - self._mission.start_time,
+                        self._mission.host_name,
+                        self.version,
+                        i,
+                        self._k,
+                        result.id,
+                    )
+                )
                 if self._mode != "oracle":
                     self.result_queue.put(result)
                     logger.info(f"[Result] Id {result.id} Score {result.score}")
@@ -59,11 +69,17 @@ class TopKSelector(SelectorBase):
     @log_exceptions
     def _add_result(self, result: ResultProvider) -> None:
         with self._insert_lock:
-
             time_result = time.time() - self._mission.start_time
-            self._mission.log_file.write("{:.3f} {}_{} CLASSIFICATION: {} GT {} Score {:.4f}\n".format(
-                time_result, self._mission.host_name,
-                self.version, result.id, result.gt, result.score))
+            self._mission.log_file.write(
+                "{:.3f} {}_{} CLASSIFICATION: {} GT {} Score {:.4f}\n".format(
+                    time_result,
+                    self._mission.host_name,
+                    self.version,
+                    result.id,
+                    result.gt,
+                    result.score,
+                )
+            )
 
             # Incrementing positives in stream
             if result.gt:
@@ -82,7 +98,9 @@ class TopKSelector(SelectorBase):
             if self._batch_added in self.log_counter:
                 logger.info(f"ADDED {self._batch_added}/{self._batch_size}")
 
-            if self._batch_added >= self._batch_size or (self._clear_event.is_set() and self._batch_added != 0) :
+            if self._batch_added >= self._batch_size or (
+                self._clear_event.is_set() and self._batch_added != 0
+            ):
                 self.select_tiles(self._k)
 
     @log_exceptions
@@ -90,7 +108,7 @@ class TopKSelector(SelectorBase):
         if not self.add_negatives:
             return
 
-        negative_path = path / '-1'
+        negative_path = path / "-1"
         os.makedirs(str(negative_path), exist_ok=True)
 
         result_queue = queue.PriorityQueue()
@@ -107,20 +125,24 @@ class TopKSelector(SelectorBase):
         num_auto_negative = min(int(0.40 * length_results), 200)
         auto_negative_list = result_list[-num_auto_negative:]
 
-        labels = [1 if '/1/' in item.id else 0 for item in auto_negative_list]
-        logger.info("[EASY NEG] Length of result list {} \n \
-         negatives added:{} \n ".format(length_results, num_auto_negative, sum(labels)))
+        labels = [1 if "/1/" in item.id else 0 for item in auto_negative_list]
+        logger.info(
+            "[EASY NEG] Length of result list {} \n \
+         negatives added:{} \n ".format(
+                length_results, num_auto_negative, sum(labels)
+            )
+        )
 
         self.num_negatives_added += len(auto_negative_list)
 
         for result in auto_negative_list:
             object_id = result.id
-            example = self._mission.retriever.get_object(object_id, [''])
+            example = self._mission.retriever.get_object(object_id, [""])
             if example is None:
                 break
             example_file = get_example_key(example.content)
             example_path = negative_path / example_file
-            with example_path.open('wb') as f:
+            with example_path.open("wb") as f:
                 f.write(example.content)
             with self._insert_lock:
                 self.easy_negatives[self.version].append(example_path)
@@ -136,14 +158,18 @@ class TopKSelector(SelectorBase):
                 version = self.version
                 self.version = model.version
                 self._mode = model.mode
-                self.model_examples = model.train_examples.get('1', 0)
+                self.model_examples = model.train_examples.get("1", 0)
                 if version != self.version:
                     versions = [v for v in self.easy_negatives.keys() if v <= version]
                     for v in versions:
                         self.delete_examples(self.easy_negatives[v])
 
-                self._priority_queues, num_revisited = self._reexamination_strategy.get_new_queues(
-                    model, self._priority_queues, self._mission.start_time)
+                (
+                    self._priority_queues,
+                    num_revisited,
+                ) = self._reexamination_strategy.get_new_queues(
+                    model, self._priority_queues, self._mission.start_time
+                )
 
                 self._batch_added += num_revisited
                 logger.info(f"ADDING  Reexamined to result Queue {num_revisited}")

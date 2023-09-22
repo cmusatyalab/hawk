@@ -13,8 +13,9 @@ from .topk_selector import TopKSelector
 
 
 class TokenSelector(TopKSelector):
-
-    def __init__(self, k: int, batch_size: int, reexamination_strategy: ReexaminationStrategy):
+    def __init__(
+        self, k: int, batch_size: int, reexamination_strategy: ReexaminationStrategy
+    ):
         super().__init__(k, batch_size, reexamination_strategy)
         self.sample_count = 0
 
@@ -28,12 +29,14 @@ class TokenSelector(TopKSelector):
             self.result_queue.put(result)
             logger.info(f"Put tile number {self.sample_count} into result queue.")
 
-
     @log_exceptions
     def receive_token_message(self, label):
         logger.info("In receive token message in token selector...")
-        logger.info("Index and label of received label: {} ... {} \n".format(label.scoutIndex,
-                                                                             label.imageLabel))
+        logger.info(
+            "Index and label of received label: {} ... {} \n".format(
+                label.scoutIndex, label.imageLabel
+            )
+        )
         result = self._priority_queues[-1].get()[-1]
         self.result_queue.put(result)
         logger.info("Sent new sample as a result of token message...")
@@ -42,9 +45,16 @@ class TokenSelector(TopKSelector):
         self.sample_count += 1
         with self._insert_lock:
             time_result = time.time() - self._mission.start_time
-            self._mission.log_file.write("{:.3f} {}_{} CLASSIFICATION: {} GT {} Score {:.4f}\n".format(
-                time_result, self._mission.host_name,
-                self.version, result.id, result.gt, result.score))
+            self._mission.log_file.write(
+                "{:.3f} {}_{} CLASSIFICATION: {} GT {} Score {:.4f}\n".format(
+                    time_result,
+                    self._mission.host_name,
+                    self.version,
+                    result.id,
+                    result.gt,
+                    result.score,
+                )
+            )
 
             # Incrementing positives in stream
             if result.gt:
@@ -58,7 +68,6 @@ class TokenSelector(TopKSelector):
 
             self._priority_queues[-1].put((-result.score, time_result, result))
             # pop the top 4 samples of the first 100 to populate the initial labeling queue at home.
-            #logger.info("Self.k parameter: {}".format(self._k))
+            # logger.info("Self.k parameter: {}".format(self._k))
             if self.sample_count == 1000:
                 self._initialize_queue()
-

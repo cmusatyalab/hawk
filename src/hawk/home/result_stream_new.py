@@ -9,28 +9,27 @@ import json
 import os
 import sys
 
-#import aiofiles
+# import aiofiles
 import websockets
 from PIL import Image
 
 
 class UILabeler:
-
     def __init__(self, mission_dir):
         self.config = {}
         mission_dir = str(mission_dir)
-        self._image_dir = os.path.join(mission_dir, 'images')
-        self._meta_dir = os.path.join(mission_dir, 'meta')
-        self._label_dir = os.path.join(mission_dir, 'labels')
+        self._image_dir = os.path.join(mission_dir, "images")
+        self._meta_dir = os.path.join(mission_dir, "meta")
+        self._label_dir = os.path.join(mission_dir, "labels")
 
         directory = self._image_dir
         if directory[len(directory) - 1] != "/":
-             directory += "/"
+            directory += "/"
         self.config["IMAGES"] = directory
         self.config["LABELS"] = []
         self.config["HEAD"] = -1
         self.config["FILES"] = []
-        #self.reload_directory()
+        # self.reload_directory()
         self.not_end = True
         self.total_images_sent = 0
 
@@ -41,7 +40,7 @@ class UILabeler:
 
     async def watch_directory(self, websocket):
         # Create a set to store the filenames of existing files in the directory
-        #existing_files = set(os.listdir(self._image_dir))
+        # existing_files = set(os.listdir(self._image_dir))
         existing_files = set()
         size = (100, 100)
 
@@ -54,50 +53,54 @@ class UILabeler:
 
             # Process new files
             for filename in new_files:
-                await asyncio.sleep(.1)
+                await asyncio.sleep(0.1)
                 # Check if the file is an image file
-                if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif')):
+                if filename.lower().endswith((".jpg", ".jpeg", ".png", ".gif")):
                     image_name = os.path.join(self._image_dir, filename)
-                    #async with aiofiles.open(file_path, mode='rb') as file:
-                        # Perform your image processing logic here
-                        # Example: Read the file contents
-                        #contents = await file.read()
+                    # async with aiofiles.open(file_path, mode='rb') as file:
+                    # Perform your image processing logic here
+                    # Example: Read the file contents
+                    # contents = await file.read()
                     if os.stat(image_name).st_size == 0:
                         print("Skipping empty file")
                         current_files.remove(filename)
                         continue
                     print(f"New image file '{image_name}' arrived!")
                     ### Get the label to feed into flutter
-                    image_number = image_name.split("/images/")[1].split('.')[0]
+                    image_number = image_name.split("/images/")[1].split(".")[0]
                     image_meta = image_number + ".json"
                     image_meta_path = os.path.join(self._meta_dir, image_meta)
                     with open(image_meta_path) as f:
                         meta_data = json.load(f)
-                    meta_orig_file = meta_data['objectId']
+                    meta_orig_file = meta_data["objectId"]
                     label = meta_orig_file.split("/")[1]
                     ###
-                    image = Image.open(image_name).convert('RGB')
+                    image = Image.open(image_name).convert("RGB")
                     image.thumbnail(size, Image.LANCZOS)
                     content = io.BytesIO()
-                    image.save(content, format='JPEG', quality=75)
+                    image.save(content, format="JPEG", quality=75)
                     content = content.getvalue()
-                    encoded_img = base64.b64encode(content).decode('utf8')
+                    encoded_img = base64.b64encode(content).decode("utf8")
 
-                    data = json.dumps({'name': image_name + " " + label,
-                                       'image': encoded_img,
-                                       })
+                    data = json.dumps(
+                        {
+                            "name": image_name + " " + label,
+                            "image": encoded_img,
+                        }
+                    )
 
-                        # Serve the image over the WebSocket
+                    # Serve the image over the WebSocket
                 await websocket.send(data)
 
             # Update the set of existing files
             existing_files = current_files
 
             # Wait for a certain interval before checking again
-            #print("Before sleeping...")
+            # print("Before sleeping...")
             await asyncio.sleep(1)
-            #print("After sleeping...")
-    '''
+            # print("After sleeping...")
+
+    """
     async def handle_websocket(websocket, path):
         # Specify the directory to monitor
         directory_path = '/path/to/your/directory'
@@ -113,12 +116,14 @@ class UILabeler:
         asyncio.get_event_loop().run_forever()
     except KeyboardInterrupt:
         pass
-    '''
+    """
+
+
 def main():
     mission = sys.argv[1]
     server = UILabeler(mission)
-    server.run(host='0.0.0.0', port=5000)
+    server.run(host="0.0.0.0", port=5000)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

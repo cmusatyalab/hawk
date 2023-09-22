@@ -15,33 +15,33 @@ from PIL import Image
 
 
 class StringAttributeCodec:
-    '''Codec for a null-terminated string.'''
+    """Codec for a null-terminated string."""
 
     def encode(self, item):
         assert isinstance(item, str)
-        return str.encode(item + '\0')
+        return str.encode(item + "\0")
 
     def decode(self, data):
         data = data.decode()
-        if data[-1] != '\0':
-            raise ValueError(f'Attribute value is not null-terminated: {str(data)}')
+        if data[-1] != "\0":
+            raise ValueError(f"Attribute value is not null-terminated: {str(data)}")
         return data[:-1]
 
 
 class IntegerAttributeCodec:
-    '''Codec for a 32-bit native-endian integer.'''
+    """Codec for a 32-bit native-endian integer."""
 
     def encode(self, item):
         assert isinstance(item, int)
-        return struct.pack('i', item)
+        return struct.pack("i", item)
 
     def decode(self, data):
-        return struct.unpack('i', data)[0]
+        return struct.unpack("i", data)[0]
 
 
 class AverageMeter:
     """Computes and stores the average and current value
-       Imported from https://github.com/pytorch/examples/blob/master/imagenet/main.py#L247-L262
+    Imported from https://github.com/pytorch/examples/blob/master/imagenet/main.py#L247-L262
     """
 
     def __init__(self):
@@ -64,6 +64,7 @@ class Dict2Obj:
     """
     Turns a dictionary into a class
     """
+
     def __init__(self, dictionary):
         for key in dictionary:
             setattr(self, key, dictionary[key])
@@ -71,16 +72,15 @@ class Dict2Obj:
 
 class ImageFromList(torch.utils.data.Dataset):
     """Load dataset from path list"""
-    def __init__(self, image_list, transform,
-                 label_list=None, limit=None, loader=None):
 
+    def __init__(self, image_list, transform, label_list=None, limit=None, loader=None):
         if loader is None:
             self.loader = self.image_loader
         else:
             self.loader = loader
 
         self.transform = transform
-        target_transform = lambda x: 1 if '/1/' in x else 0
+        target_transform = lambda x: 1 if "/1/" in x else 0
 
         labels = [target_transform(path) for path in image_list]
         self.classes = sorted(set(labels))
@@ -102,17 +102,20 @@ class ImageFromList(torch.utils.data.Dataset):
             self.targets.append(target)
             self.imlist.append(img)
 
-        logger.info("Number of Dataset(Limit {}): \n Targets {} \n Positives {} Labels {}".format(
-            limit, len(self.targets), sum(self.targets), set(self.targets)))
+        logger.info(
+            "Number of Dataset(Limit {}): \n Targets {} \n Positives {} Labels {}".format(
+                limit, len(self.targets), sum(self.targets), set(self.targets)
+            )
+        )
 
     def image_loader(self, path):
         assert isinstance(path, str), f"Loader error {path}"
         try:
-            image = Image.open(path).convert('RGB')
+            image = Image.open(path).convert("RGB")
         except Exception as e:
             logger.error(e)
             logger.error(path)
-            image = Image.fromarray(np.random.randint(0, 255, (256, 256, 3)), 'RGB')
+            image = Image.fromarray(np.random.randint(0, 255, (256, 256, 3)), "RGB")
 
         return image
 
@@ -129,6 +132,7 @@ class ImageFromList(torch.utils.data.Dataset):
 
 class ImageWithPath(ImageFromList):
     """Returns image path with data"""
+
     def __init__(self, image_list, transform, label_list=None):
         self.img_paths = image_list
         super().__init__(image_list, transform, label_list)
@@ -145,8 +149,7 @@ def get_server_ids():
     try:
         for info in socket.getaddrinfo(hostname, None):
             try:
-                name = socket.getnameinfo(
-                    info[4], socket.NI_NAMEREQD)[0]
+                name = socket.getnameinfo(info[4], socket.NI_NAMEREQD)[0]
                 names.add(name)
             except socket.gaierror:
                 pass
@@ -157,7 +160,7 @@ def get_server_ids():
 
 
 def get_example_key(content) -> str:
-    return hashlib.sha1(content).hexdigest() + '.jpg'
+    return hashlib.sha1(content).hexdigest() + ".jpg"
 
 
 def get_weights(targets: List[int], num_classes=2) -> List[int]:
@@ -166,7 +169,7 @@ def get_weights(targets: List[int], num_classes=2) -> List[int]:
     for class_id, count in zip(classes, counts):
         class_weights[class_id] = len(targets) / float(count)
 
-    logger.info(f'Class weights: {class_weights}')
+    logger.info(f"Class weights: {class_weights}")
 
     weight = [0] * len(targets)
     for idx, val in enumerate(targets):
