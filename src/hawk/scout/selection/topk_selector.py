@@ -127,10 +127,9 @@ class TopKSelector(SelectorBase):
 
         labels = [1 if "/1/" in item.id else 0 for item in auto_negative_list]
         logger.info(
-            "[EASY NEG] Length of result list {} \n \
-         negatives added:{} \n ".format(
-                length_results, num_auto_negative, sum(labels)
-            )
+            f"[EASY NEG] Length of result list {length_results}"
+            f" negatives added: {num_auto_negative}"
+            f" total labels: {sum(labels)}"
         )
 
         self.num_negatives_added += len(auto_negative_list)

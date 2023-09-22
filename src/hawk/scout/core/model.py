@@ -167,7 +167,7 @@ class ModelBase(Model):
         fp = np.sum(target[target == 1] == pred[target == 0])
         fn = np.sum(target[target == 0] == pred[target == 1])
 
-        logger.info("Total positive {} TP {} FP {} FN {}".format(tp, fp, fn))
+        logger.info(f"Total positive {tp} TP {fp} FP {fn} FN")
         model_metrics = ModelMetrics(
             truePositives=tp,
             falsePositives=fp,
