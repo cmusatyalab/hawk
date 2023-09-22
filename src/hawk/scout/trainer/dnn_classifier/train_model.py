@@ -591,7 +591,7 @@ def adjust_learning_rate(optimizer, scheduler, epoch, args):
     # param_group['lr'] = lr
     try:
         last_lr = scheduler.get_last_lr()[0]
-    except:
+    except Exception:
         last_lr = optimizer.param_groups[0]["lr"]
     if epoch > args.warmup_epochs and last_lr <= args.min_lr:
         return
@@ -637,7 +637,7 @@ def validate_model(val_loader, model, criterion, args):
                 probability = probability[:, 1]
                 y_pred.extend(probability)
                 y_true.extend(target.cpu())
-            except:
+            except Exception:
                 probability = probability[1]
                 y_pred.append(probability)
                 y_true.append(target.cpu()[0])

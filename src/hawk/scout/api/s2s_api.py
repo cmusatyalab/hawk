@@ -81,9 +81,8 @@ class S2SServicer:
             )
         except Exception as e:
             logger.exception(e)
-            raise e
-        finally:
-            return response
+            response = Empty
+        return response
 
     def s2s_add_tile_and_label(self, msg: str):
         """API call to add tile content and labels
@@ -102,6 +101,4 @@ class S2SServicer:
             return
         except Exception as e:
             logger.exception(e)
-            raise e
-        finally:
-            return Empty
+        return Empty

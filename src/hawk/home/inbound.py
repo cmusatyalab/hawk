@@ -108,7 +108,7 @@ class InboundProcess:
                 else:
                     self.write_push(result_q, temp_meta_data, data_name, data, 0)
 
-        except (Exception, OSError, KeyboardInterrupt) as e:
+        except (Exception, KeyboardInterrupt) as e:
             logger.error(e)
 
     def write_push(self, result_queue, temp_meta_data, data_name, data, local_counter):

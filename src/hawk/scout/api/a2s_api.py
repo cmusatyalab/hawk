@@ -202,9 +202,7 @@ class A2SAPI:
         except Exception as e:
             logger.exception(e)
             reply = Empty
-            raise e
-        finally:
-            return reply
+        return reply
 
     @log_exceptions
     def _a2s_configure_scout(self, request: ScoutConfiguration):
@@ -509,7 +507,7 @@ class A2SAPI:
                 name = path.name
                 try:
                     version = int(name.split("model-")[-1].split(".")[0])
-                except:
+                except Exception:
                     version = idx
 
                 return version
