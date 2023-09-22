@@ -48,10 +48,10 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
                         ' | '.join(model_names) +
                         ' (default: resnet18)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
-                    help='evaluate model on validation set')                        
-parser.add_argument('--num-classes', default=2, type=int, 
+                    help='evaluate model on validation set')
+parser.add_argument('--num-classes', default=2, type=int,
                     help='number of classes to train')
-parser.add_argument('--num-unfreeze', default=0, type=int, 
+parser.add_argument('--num-unfreeze', default=0, type=int,
                     help='number of layers to train')
 parser.add_argument('-j', '--workers', default=4, type=int,
                     help='number of data loading workers (default: 4)')
@@ -127,7 +127,7 @@ def eval_worker(gpu, ngpus_per_node, args):
         model = model.cuda()
 
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
-    
+
     # load model from checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
@@ -139,7 +139,7 @@ def eval_worker(gpu, ngpus_per_node, args):
             print("=> loaded checkpoint {}".format(args.resume))
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
-    
+
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
 
@@ -168,11 +168,11 @@ def eval_worker(gpu, ngpus_per_node, args):
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
-    
+
     auc = validate_model(val_loader, model, criterion, args)
-    
+
     logger.info("Model AUC {}".format(auc))
-    return 
+    return
 
 
 def train_worker(gpu, ngpus_per_node, args):
@@ -347,7 +347,7 @@ def train_worker(gpu, ngpus_per_node, args):
 
     if args.resume:
         # curr_model = curr_model.detach().cpu()
-        checkpoint = torch.load(args.resume) 
+        checkpoint = torch.load(args.resume)
         old_model = checkpoint['state_dict']
 
         for key in old_model:
@@ -496,12 +496,12 @@ def adjust_learning_rate(optimizer, scheduler, epoch, args):
         # param_group['lr'] = lr
     try:
         last_lr = scheduler.get_last_lr()[0]
-    except: 
+    except:
         last_lr = optimizer.param_groups[0]['lr']
     if epoch > args.warmup_epochs and last_lr <= args.min_lr:
-        return 
+        return
     scheduler.step()
-    
+
 
 def calculate_performance(y_true, y_pred):
     ap = average_precision_score(y_true, y_pred, average=None)

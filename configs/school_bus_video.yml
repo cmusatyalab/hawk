@@ -1,5 +1,5 @@
-mission-name: "test-hawk-school_bus_tiles_video" # Mission identifier 
-train-location: scout 
+mission-name: "test-hawk-school_bus_tiles_video" # Mission identifier
+train-location: scout
 label-mode: ui # type of labeling interface
 scouts: # list of addresses of scouts
 - agra.diamond.cs.cmu.edu
@@ -18,7 +18,7 @@ home-params:
   label_dir: /home/eric/School_Bus_Hawk/src/ # directory where labels present
 dataset:
   type: video # type of input data, set to "video"
-  video_list: 
+  video_list:
   - /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-09-14-23-29.mp4
  #- /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-10-14-08-03.mp4
  #- /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-16-14-53-30.mp4
@@ -30,10 +30,10 @@ dataset:
   index_path: /srv/diamond/stream_list.txt # path on scout of index file
   tiles_per_frame: 192 # number of tiles per frame if random sampling (default 200)
 retrain_policy:
-  type: percentage # type of retrain condition 
+  type: percentage # type of retrain condition
   only_positives: true # if only positives are counted
   threshold: 0.2 # percentage of increment (default 0.33)
-train_strategy:  
+train_strategy:
   type: dnn_classifier # type of model training
   args:
     arch: resnet50 # DNN model architecture
@@ -52,5 +52,5 @@ selector:
     rotation: round-robin # or top
 reexamination:
   type: top # type of reexamination strategy
-  k: 100 
+  k: 100
 bandwidth: 100

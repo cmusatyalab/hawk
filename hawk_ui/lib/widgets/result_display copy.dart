@@ -70,7 +70,7 @@ class _ResultDisplayState extends State<ResultDisplay> {
   int old_length =  0;
   //print('After vars');
 
-  
+
 
 
   late StreamSubscription _subscription;
@@ -78,13 +78,13 @@ class _ResultDisplayState extends State<ResultDisplay> {
   void initState() {
     super.initState();
     _connectToWebSocket();
-    
+
       }
 
-  
 
-  void handleMsg(dynamic message) {    
-      total_samples_received++;  
+
+  void handleMsg(dynamic message) {
+      total_samples_received++;
   }
 
   void _connectToWebSocket() async {
@@ -193,12 +193,12 @@ Map<String, String> label_list(List<ResultItem> result_objects){
         res.pos_sel = false;
         res.pos_labeled = true;
         total_positive_labels += 1;
-    } else if (res.neg_sel == true) { 
+    } else if (res.neg_sel == true) {
         staged_for_label[res.name] = 'negative';
         res.neg_sel = false;
         res.neg_labeled = true;
         total_negative_labels += 1;
-      }  
+      }
       }
 
       );
@@ -221,7 +221,7 @@ Map<String, String> label_list(List<ResultItem> result_objects){
       appBar: AppBar(
         title: const Text("Hawk Results"),
       ),
-      body: 
+      body:
       Padding(
         padding: const EdgeInsets.all(20.0),
         child: Center(child: Row(children: [
@@ -264,7 +264,7 @@ Map<String, String> label_list(List<ResultItem> result_objects){
                                     crossAxisSpacing: 5,
                                     mainAxisSpacing: 20,
                                     crossAxisCount: 5,
-                                  ),                                  
+                                  ),
                                   itemCount: results.length,
                                   itemBuilder: (context, index) {
                                     ResultItem this_result = results[index];
@@ -294,13 +294,13 @@ Map<String, String> label_list(List<ResultItem> result_objects){
                                           gaplessPlayback: true,
                                           excludeFromSemantics: true,
                                           fit: BoxFit.cover,
-                                          width: double.infinity, 
+                                          width: double.infinity,
                                           image: MemoryImage(
                                               this_result.getContent())),
                                               ),
                                               Container(
                           padding: EdgeInsets.all(2.0),
-                          color: index > 1 ? Colors.black.withOpacity(0.1) : Colors.red.withOpacity(0.1), 
+                          color: index > 1 ? Colors.black.withOpacity(0.1) : Colors.red.withOpacity(0.1),
                           child: Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                             IconButton(icon: Icon(getPosIconType(this_result), color: Color.fromARGB(255, 8, 112, 11)),
                             onPressed: () {
@@ -324,14 +324,14 @@ Map<String, String> label_list(List<ResultItem> result_objects){
                           ),
                           //Icon(Icons.do_disturb_on_outlined, color: Color.fromARGB(255, 168, 15, 4)),
                           //Icon(Icons.do_disturb_on, color: Color.fromARGB(255, 168, 15, 4)),
-                          
+
                           ],),),
                         ),
-                                                                            
+
                                           ],
                                           ),);
 
-                                          //container ends                              
+                                          //container ends
                                   },
                                 ),
                               ),
@@ -352,13 +352,13 @@ Expanded(
                   width: 2,
                 ),
                 //borderRadius.BorderRadius.circular(10),
-              ),             
+              ),
               child: Center(
                 child: Column(mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Text("HAWK MISSION STATS", style: TextStyle(fontSize: 24)),
 
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, 
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     Flexible(child: Column(crossAxisAlignment: CrossAxisAlignment.start,children: [
                       Text("Total Positives Labeled:", style: TextStyle(fontSize:16)),
@@ -386,7 +386,7 @@ Expanded(
                       }%", style: TextStyle
                          (fontSize:16)),
                       Text("${current_model_version}", style: TextStyle(fontSize:16)),
-                  ],),  
+                  ],),
                   ] ,
                   ),
                 SizedBox(height: 10, width: double.infinity),
@@ -421,7 +421,7 @@ Expanded(
                 ),
                   SizedBox(height: 15, width: double.infinity),
 
-                Text("Labeling Control",style: TextStyle(fontSize:24))  ,              
+                Text("Labeling Control",style: TextStyle(fontSize:24))  ,
                 SizedBox(height: 10, width: double.infinity),
                 ElevatedButton(
                     style: ElevatedButton.styleFrom(
@@ -437,13 +437,13 @@ Expanded(
                       // make sure to update the states of the samples so the icon changes
                         // generate list of positives for labeling
                         //generate list of negative for labeling.
-                      Map<String, String> label_dict = label_list(results);                      
-                      
+                      Map<String, String> label_dict = label_list(results);
+
                       final url = 'http://cloudlet038.elijah.cs.cmu.edu:8000/hawk_push_labels';
                       //sending a post request to the url (default was 127.0.0.1:8000/start)
                       final response = await http.post(Uri.parse(url),
                         body: json.encode(label_dict));
-                      
+
                       //final stats_url = 'http://cloudlet038.elijah.cs.cmu.edu:8000/get_stats';
                       //var stats_response = await http.get(Uri.parse(stats_url));
                       /*
@@ -452,15 +452,15 @@ Expanded(
                       setState((){
                         current_model_version = int.parse(json_data['version']);
                       });*/
-                      
-                      
-                       
+
+
+
                     },
                     child: const Text('Send New Labels'),
                   ),
                   SizedBox(height: 20, width: double.infinity),
-                  
-                  
+
+
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
@@ -507,7 +507,7 @@ Expanded(
 ),
 ),
 );
-}  
-}       
+}
+}
 
 // Need to add functionality to identify and label each image, the call the function label_samples in home_flutter.py.

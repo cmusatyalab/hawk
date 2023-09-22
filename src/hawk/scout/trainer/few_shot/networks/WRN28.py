@@ -55,7 +55,7 @@ class Wide_ResNet(nn.Module):
         self.layer2 = self._wide_layer(wide_basic, nStages[2], n, dropout_rate, stride=2)
         self.layer3 = self._wide_layer(wide_basic, nStages[3], n, dropout_rate, stride=2)
         self.bn1 = nn.BatchNorm2d(nStages[3], momentum=0.9)
-        
+
     def _wide_layer(self, block, planes, num_blocks, dropout_rate, stride):
         strides = [stride] + [1]*(num_blocks-1)
         layers = []
@@ -75,5 +75,5 @@ class Wide_ResNet(nn.Module):
 #        out = F.avg_pool2d(out, 21)
         out = F.adaptive_avg_pool2d(out, (1,1))
         out = out.view(out.size(0), -1)
-        
+
         return out

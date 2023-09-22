@@ -14,7 +14,7 @@ from ...proto.messages_pb2 import LabeledTile, LabelWrapper
 
 
 def s2s_receive_request(s2s_input, s2s_output):
-    """Function to receive and invoke S2S api calls 
+    """Function to receive and invoke S2S api calls
 
     Uses Request-Response messaging protocol
 
@@ -46,22 +46,22 @@ class S2SServicer(object):
 
     def s2s_get_tile(self, msg: str):
         """API call to fetch contents of requested tile ids
-    
-        Call made by COORDINATOR to (PARENT) scout where image is present 
-    
+
+        Call made by COORDINATOR to (PARENT) scout where image is present
+
         Args:
             msg: serialized LabelWrapper message
 
         Returns:
             str: transmits serialized HawkObject message
         """
-        try:    
+        try:
             request = LabelWrapper()
             request.ParseFromString(msg)
             label = request
             # Fetch data from dataretriever
             object_ = self._mission.retriever.get_object(
-                object_id=label.objectId 
+                object_id=label.objectId
             )
             # Assuming data requirement in Distribute positives
             if label.imageLabel != '0':
@@ -76,18 +76,18 @@ class S2SServicer(object):
                 LabeledTile(
                     object=object_,
                     label=label,
-                ) 
+                )
             )
         except Exception as e:
             logger.exception(e)
             raise e
         finally:
             return response
-    
+
     def s2s_add_tile_and_label(self, msg: str):
         """API call to add tile content and labels
-    
-        Call made by COORDINATOR to non-PARENT scouts 
+
+        Call made by COORDINATOR to non-PARENT scouts
 
         Args:
             msg: serialized LabeledTile message
@@ -97,8 +97,8 @@ class S2SServicer(object):
             request.ParseFromString(msg)
 
             self._mission.store_labeled_tile(request)
-            
-            return 
+
+            return
         except Exception as e:
             logger.exception(e)
             raise e

@@ -45,7 +45,7 @@ class RetrieverBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def is_running(self) -> bool: 
+    def is_running(self) -> bool:
         pass
 
 class Retriever(RetrieverBase):
@@ -70,7 +70,7 @@ class Retriever(RetrieverBase):
     def stop(self) -> None:
         self._stop_event.set()
 
-    def is_running(self) -> bool: 
+    def is_running(self) -> bool:
         return not self._stop_event.is_set()
 
     def add_context(self, context: DataManagerContext):

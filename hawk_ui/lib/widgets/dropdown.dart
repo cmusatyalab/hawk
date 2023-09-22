@@ -14,7 +14,7 @@ class DropDownWidget extends StatefulWidget {
 DropDownWidget({
     Key? key,
     required this.config,
-  }) : super(key: key); 
+  }) : super(key: key);
 
 
   @override

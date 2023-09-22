@@ -48,7 +48,7 @@ def shuffle_and_generate_index_files(config):
         num_tiles_per_frame = data_config.get('tiles_per_frame', 200)
         num_frames = math.ceil(total_tiles/num_tiles_per_frame)
         keys = np.arange(num_frames)
-        
+
     keys = list(keys)
     total_keys = len(keys)
     tiles_per_frame = math.ceil(total_tiles/total_keys)
@@ -64,7 +64,7 @@ def shuffle_and_generate_index_files(config):
 
     keys = list(img_tile_map.keys())
     random.shuffle(keys)
-    
+
     num_hosts = len(hosts)
 
     div_keys = [keys[i::num_hosts] for i in range(num_hosts)]
@@ -91,7 +91,7 @@ def shuffle_and_generate_index_files(config):
         call(cmd.split(" "))
     return
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     config_path = sys.argv[1] if len(sys.argv) > 1 \
                 else (Path.cwd() / 'configs/config.yml')
     random_seed = int(sys.argv[2]) if len(sys.argv) > 2 \

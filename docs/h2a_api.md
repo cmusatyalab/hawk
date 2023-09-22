@@ -25,11 +25,11 @@ Call to send content of configuration file
 
 Input:
 
-*  bytes 
+*  bytes
 
 Output:
 
-*   None   
+*   None
 
 ### **h2a_send_model**
 
@@ -37,8 +37,8 @@ Call to send path to model trained at home
 
 Input:
 
-*  string 
+*  string
 
 Output:
 
-*   None   
+*   None

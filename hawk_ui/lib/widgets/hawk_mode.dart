@@ -7,8 +7,8 @@ import 'package:hawk_ui/models/filters.dart';
 
 class HawkSetup extends StatefulWidget {
 
-  FilterConfig config; 
-  
+  FilterConfig config;
+
   HawkSetup({
     Key? key,
     required this.config,
@@ -20,7 +20,7 @@ class HawkSetup extends StatefulWidget {
 
 class _HawkSetupState extends State<HawkSetup> {
   Uint8List? imageFile;
-  
+
 
   uploadImage() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -36,10 +36,10 @@ class _HawkSetupState extends State<HawkSetup> {
     }
 
     String image_string = base64.encode(imageFile!);
-    
+
   }
   int image_dim = 100;
-  
+
   @override
   Widget build(BuildContext context) {
   widget.config.name = 'hawk';
@@ -149,7 +149,7 @@ ElevatedButton(
                   : Image.memory(imageFile!),
                 ),*/
                 const SizedBox(width: 60),
-                
+
 
                                 const SizedBox(width: 60),
           ],

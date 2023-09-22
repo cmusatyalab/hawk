@@ -11,8 +11,8 @@ from abc import ABCMeta, abstractmethod
 class RetrainPolicyBase(metaclass=ABCMeta):
 
     def __init__(self):
-        self.positives = 0 
-        self.negatives = 0 
+        self.positives = 0
+        self.negatives = 0
 
     @abstractmethod
     def update(self, new_positives: int, new_negatives: int) -> None:
@@ -29,4 +29,3 @@ class RetrainPolicyBase(metaclass=ABCMeta):
     def reset(self) -> None:
         """Resets the retrain policy"""
         pass
-

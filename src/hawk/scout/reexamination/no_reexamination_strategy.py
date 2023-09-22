@@ -15,6 +15,6 @@ class NoReexaminationStrategy(ReexaminationStrategy):
     def reexamines_old_results(self) -> bool:
         return False
 
-    def get_new_queues(self, model: Model, old_queues: List[queue.PriorityQueue], 
+    def get_new_queues(self, model: Model, old_queues: List[queue.PriorityQueue],
                        start_time: float = 0) -> Tuple[List[queue.PriorityQueue], int]:
         return old_queues + [queue.PriorityQueue()], 0

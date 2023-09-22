@@ -27,13 +27,13 @@ class DNNClassifierTrainer(ModelTrainerBase):
 
     def __init__(self, context: ModelContext, args: Dict[str, str]):
         super().__init__(args)
-        
+
         self.args['test_dir'] = self.args.get('test_dir', '')
         self.args['arch'] = self.args.get('arch', 'resnet50')
         self.args['batch-size'] = int(self.args.get('batch-size', 64))
         self.args['unfreeze'] = int(self.args.get('unfreeze_layers', 0))
         self.args['initial_model_epochs'] = int(self.args.get('initial_model_epochs', 15))
-        self.train_initial_model = False 
+        self.train_initial_model = False
         self.testpath = self.args['test_dir']
 
         self.context = context
@@ -43,10 +43,10 @@ class DNNClassifierTrainer(ModelTrainerBase):
         if self.args['test_dir']:
             self.test_dir = Path(self.args['test_dir'])
             msg = "Test Path {} provided does not exist".format(self.test_dir)
-            assert self.test_dir.exists(), msg 
+            assert self.test_dir.exists(), msg
 
         logger.info("DNN CLASSIFIER TRAINER CALLED")
-            
+
     def load_model(self, path:Path = "", content:bytes = b'', version: int = -1):
         if isinstance(path, str):
             path = Path(path)
@@ -57,16 +57,16 @@ class DNNClassifierTrainer(ModelTrainerBase):
         if not path.is_file():
             path = self.context.model_path(new_version)
             path.write_bytes(content)
-            
+
         version = self.get_version()
         logger.info(f"Loading from path {path}")
         self.prev_path = path
-        return DNNClassifierModel(self.args, path, version,  
+        return DNNClassifierModel(self.args, path, version,
                                   mode=self.args['mode'],
-                                  context=self.context) 
+                                  context=self.context)
 
     def train_model(self, train_dir) -> Model:
-        
+
         # check mode if not hawk return model
         # EXPERIMENTAL
         if self.args['mode'] == "oracle":
@@ -78,15 +78,15 @@ class DNNClassifierTrainer(ModelTrainerBase):
             time_sleep = self.args.get('notional_train_time', 0)
             time_now = time.time()
             while (time.time() - time_now) < time_sleep:
-                time.sleep(1) 
-                         
+                time.sleep(1)
+
             return self.load_model(Path(notional_path), version=0)
-             
+
         new_version = self.get_new_version()
 
         model_savepath = self.context.model_path(new_version)
         trainpath = self.context.model_path(new_version, template="train-{}.txt")
-               
+
         # labels = [subdir.name for subdir in self._train_dir.iterdir()]
         labels = ['0', '1']
         train_samples = {l:glob.glob(str(train_dir / l / '*')) for l in labels}
@@ -103,7 +103,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
 
         if self.context.check_create_test():
             valpath = self.context.model_path(new_version, template="val-{}.txt")
-            val_dir = train_dir.parent / 'test' 
+            val_dir = train_dir.parent / 'test'
             val_samples = {l:glob.glob(str(val_dir / l / '*')) for l in labels}
             val_len = {l:len(val_samples[l]) for l in labels}
             if val_len['1'] == 0:
@@ -114,7 +114,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
             with open(valpath, 'w') as f:
                 for l in labels:
                     for path in val_samples[l]:
-                        f.write("{} {}\n".format(path, l))            
+                        f.write("{} {}\n".format(path, l))
 
             self.args['test_dir'] = valpath
 
@@ -123,19 +123,19 @@ class DNNClassifierTrainer(ModelTrainerBase):
             num_epochs = self.args['initial_model_epochs']
         else:
             online_epochs = json.loads(self.args['online_epochs'])
-            
+
             if isinstance(online_epochs, list):
                 for epoch, pos in online_epochs:
                     pos = int(pos)
                     epoch = int(epoch)
                     if train_len['1'] >= pos:
                         num_epochs = epoch
-                        break 
+                        break
             else:
                 num_epochs = int(online_epochs)
-            
+
         file_path = os.path.dirname(os.path.abspath(__file__))
-        
+
         cmd = [
             sys.executable,
             f"{file_path}/train_model.py",
@@ -159,17 +159,17 @@ class DNNClassifierTrainer(ModelTrainerBase):
         proc = subprocess.Popen(cmd)
         proc.communicate()
 
-        # train completed time 
+        # train completed time
         train_time = time.time() - self.context.start_time
-        
+
         self.prev_path = model_savepath
 
         model_args = self.args.copy()
         model_args['train_examples'] = train_len
         model_args['train_time'] = train_time
-        
-        return DNNClassifierModel(model_args, 
+
+        return DNNClassifierModel(model_args,
                                   model_savepath,
                                   new_version,
-                                  self.args['mode'], 
-                                  context=self.context) 
+                                  self.args['mode'],
+                                  context=self.context)

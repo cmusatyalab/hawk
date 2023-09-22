@@ -40,4 +40,4 @@ def produce_video_frames(producer_queue, video_source):
                 logger.info(e)
         status, frame = capture.read()
 
-        
+

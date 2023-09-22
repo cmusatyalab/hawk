@@ -1,2 +1,1 @@
 ffmpeg -i /srv/diamond/fifthcraig/2020-november/FifthCraig1-2020-11-04-15-53-25.mp4 -vf fps=1 /srv/diamond/video_stream_temp_image_dir/%04d.png
-

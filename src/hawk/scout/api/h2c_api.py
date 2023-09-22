@@ -16,12 +16,12 @@ class H2CSubscriber(object):
     @staticmethod
     def h2c_receive_labels(label_conn):
         """API call to receives labels from HOME
-    
+
         Uses ZeroMQ PUSH/PULL protocol for async label transfer
         Network is bandwidth constricted using FireQOS.
 
         Args:
-            label_conn: mp.Pipe connection object 
+            label_conn: mp.Pipe connection object
 
         Returns:
             str: serializes LabelWrapper message
@@ -39,4 +39,4 @@ class H2CSubscriber(object):
         except Exception as e:
             logger.exception(e)
             raise e
-        
+

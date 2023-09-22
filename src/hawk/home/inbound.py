@@ -15,15 +15,15 @@ from ..proto.messages_pb2 import SendTiles
 
 
 class InboundProcess:
-    def __init__(self, 
-                 tile_dir: Path, 
+    def __init__(self,
+                 tile_dir: Path,
                  meta_dir: Path,
                  configuration: dict) -> None:
 
         self._tile_dir = tile_dir
         self._meta_dir = meta_dir
         self._token = False
-        self._running = False 
+        self._running = False
         self._save_attribute = "thumbnail.jpeg"
         self._count = 1
 
@@ -44,7 +44,7 @@ class InboundProcess:
             for i in range(self._num_scouts):
                 self._per_scout_priority_queues.append(queue.PriorityQueue())
         ##########
-    
+
     def receive_data(self, result_q, stop_event):
         context = zmq.Context()
         socket = context.socket(zmq.PULL)
@@ -110,7 +110,7 @@ class InboundProcess:
                 # label = 1 if '/1/' in object_id else 0
                 with open(self._tile_dir/ f"{data_name}.jpeg", "wb") as f:
                     img_array = data[self._save_attribute]
-                    f.write(bytearray(img_array))  
+                    f.write(bytearray(img_array))
 
                 ### need to modify these attributes to what is actually being pulled from the queue.###
                 meta_data = {
@@ -152,5 +152,3 @@ class InboundProcess:
             byte_size = meta_data['size']
             local_counter += 1
             self.write_push(result_queue, meta_data, data_name, data, local_counter)
-
-

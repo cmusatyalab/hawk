@@ -58,7 +58,7 @@ class Admin:
 
         self.stats_q = stats_q
         self.stop_event = stop_event
-        
+
         # Bind H2A Server
         context = zmq.Context()
         socket = context.socket(zmq.REP)
@@ -68,39 +68,39 @@ class Admin:
             msg_string = socket.recv_string()
             header, body = msg_string.split()
             socket.send_string("RECEIVED")
-        
+
             if header == "config":
                 config_path = Path(body)
                 config = load_config(config_path)
                 self._setup_mission(config)
             else:
                 raise NotImplementedError("Unknown header {}".format(header))
-        
-    
+
+
     def _setup_mission(self, config):
 
-        self._mission_name = config['mission-name']    
+        self._mission_name = config['mission-name']
         self.log_dir = Path(config['home-params']['log_dir'])
         self.end_file = self.log_dir / 'end'
         self.end_time = int(config.get('end-time', 5000))
 
         self.scouts = config.scouts
-        
-        # homeIP 
+
+        # homeIP
         home_ip = self._home_ip
-        
-        # trainLocation 
+
+        # trainLocation
         train_location = config['train-location']
 
         # missionDirectory
         mission_directory = config['scout-params']['mission_dir']
         self.test_path = config['scout-params'].get('test_path', "")
-        
+
         # trainStrategy
         train_config = config['train_strategy']
         train_type = train_config['type']
-       
-        train_strategy = None 
+
+        train_strategy = None
         if train_type == "dnn_classifier":
             default_args = {'mode': "hawk",
                     "unfreeze_layers": "3",
@@ -127,7 +127,7 @@ class Admin:
             content = content.getvalue()
             support_data = base64.b64encode(content).decode('utf8')
             default_args = {'mode': "hawk",
-                    "support_path": "/srv/diamond/dota/support.jpg", 
+                    "support_path": "/srv/diamond/dota/support.jpg",
                     "fsl_traindir": "/srv/diamond/dota/fsl_traindir",
                     "support_data": support_data}
 
@@ -139,7 +139,7 @@ class Admin:
             )
         else:
             raise NotImplementedError("Unknown train strategy {}".format(train_type))
-        
+
         # retrainPolicy
         retrain_config = config['retrain_policy']
         retrain_type = retrain_config['type']
@@ -160,7 +160,7 @@ class Admin:
                      ))
         else:
             raise NotImplementedError("Unknown retrain policy {}".format(retrain_type))
-          
+
         # dataset
         dataset_config = config['dataset']
         dataset_type = dataset_config['type']
@@ -202,7 +202,7 @@ class Admin:
                         timeout=timeout,
                     )
                 )
-            elif dataset_type == "cookie":                                                               
+            elif dataset_type == "cookie":
                 dataset = Dataset(
                     random=FileDataset(
                         dataPath=dataset_config['index_path'],
@@ -229,8 +229,8 @@ class Admin:
         # reexamination
         reexamination_config = config['reexamination']
         reexamination_type = reexamination_config.get('type', 'top')
-        
-        reexamination = None 
+
+        reexamination = None
         if reexamination_type == "top":
             k_value = reexamination_config.get('k', 100)
             reexamination = ReexaminationStrategyConfig(
@@ -243,12 +243,12 @@ class Admin:
                 )
         else:
             raise NotImplementedError(f"Unknown reexamination {reexamination_type}")
-        
-        
+
+
         # selector
         selector_config = config['selector']
         selector_type = selector_config.get('type', 'topk')
-        
+
         if selector_type == "topk":
             topk_config = selector_config.get('topk', {})
             k_value = topk_config.get('k', 10)
@@ -256,7 +256,7 @@ class Admin:
             selector = SelectiveConfig(
                 topk=TopKConfig(
                     k=k_value,
-                    batchSize=batch_size, 
+                    batchSize=batch_size,
                 )
             )
         elif selector_type == "token":
@@ -271,27 +271,27 @@ class Admin:
             )
         else:
             raise NotImplementedError("Unknown selector {}".format(selector_type))
-        
+
         # initialModel
         model_path = train_config.get('initial_model_path','')
         model_content = b''
         if os.path.isfile(model_path):
             with open(model_path, 'rb') as f:
                 model_content = f.read()
-       
-        initial_model = None 
-        if len(model_content):    
+
+        initial_model = None
+        if len(model_content):
             initial_model = ModelArchive(
-                content=model_content,      
+                content=model_content,
             )
-       
+
         # bootstrapZip
         bootstrap_path = train_config.get('bootstrap_path', '')
         bootstrap_zip = b''
         if os.path.exists(bootstrap_path):
             with open(bootstrap_path, 'rb') as f:
                 bootstrap_zip = f.read()
-       
+
         # bandwidthFunc
         bandwidth_config = config['bandwidth']
         assert len(self.scouts) == len(bandwidth_config), "Length Bandwidth {} does not match {}".format(
@@ -299,23 +299,23 @@ class Admin:
         )
         bandwidth_func = {}
         for i, _b in enumerate(bandwidth_config):
-            bandwidth_func[int(i)] = str(_b)  
+            bandwidth_func[int(i)] = str(_b)
 
         train_validate = train_config.get('validate', True)
 
         self.zmq_context = zmq.Context()
 
         a2s_port = config.deploy.a2s_port
-         
+
         self.scout_stubs = {}
         for index, host in enumerate(self.scouts):
             ip = socket.gethostbyname(host)
             stub = self.zmq_context.socket(zmq.REQ)
             stub.connect(f"tcp://{ip}:{a2s_port}")
             self.scout_stubs[index] = stub
-       
+
         # setup ScoutConfiguration
-        # Call a2s_configure_scout and wait for success message 
+        # Call a2s_configure_scout and wait for success message
 
         # inform scouts on which address/port they can find each other
         s2s_port = config.deploy.s2s_port
@@ -326,18 +326,18 @@ class Admin:
 
         for index, stub in self.scout_stubs.items():
             scout_config = ScoutConfiguration(
-                missionId=self._mission_id, 
+                missionId=self._mission_id,
                 scouts=s2s_scouts,
-                scoutIndex=index, 
-                homeIP=home_ip, 
-                trainLocation=train_location, 
+                scoutIndex=index,
+                homeIP=home_ip,
+                trainLocation=train_location,
                 missionDirectory=mission_directory,
                 trainStrategy=train_strategy,
                 retrainPolicy=retrain_policy,
                 dataset=datasets[index],
-                selector=selector, 
+                selector=selector,
                 reexamination=reexamination,
-                initialModel=initial_model, 
+                initialModel=initial_model,
                 bootstrapZip=bootstrap_zip,
                 bandwidthFunc=bandwidth_func,
                 validate=train_validate,
@@ -353,7 +353,7 @@ class Admin:
 
             reply = stub.recv()
             return_msgs[index] = reply.decode()
-       
+
         # Remove scouts that failed, create a list to make sure we can safely delete
         known_scouts = list(self.scout_stubs.keys())
         for index in known_scouts:
@@ -362,16 +362,16 @@ class Admin:
                 scout = self.scouts[index]
                 logger.error(f"ERROR during Configuration from Scout {scout}: {errormsg}")
                 del self.scout_stubs[index]
-        
-        if not self.explicit_start: 
-            self.start_mission()        
+
+        if not self.explicit_start:
+            self.start_mission()
 
         return "SUCCESS"
-        
-        
+
+
     def start_mission(self):
-        """Explicit start Mission command""" 
-        # Start Mission  
+        """Explicit start Mission command"""
+        # Start Mission
 
         logger.info("Starting mission")
         self.log_files = dict([
@@ -391,11 +391,11 @@ class Admin:
             stub.recv()
 
         logger.info("Start msg received")
-        
+
         threading.Thread(target=self.get_mission_stats, name='get-stats').start()
 
     def stop_mission(self):
-        """Explicit stop Mission command""" 
+        """Explicit stop Mission command"""
 
         for stub in self.scout_stubs.values():
             msg = [
@@ -419,9 +419,9 @@ class Admin:
                 while True:
                     try:
                         last_stats = self.stats_q.get_nowait()
-                    except queue.Empty:  
+                    except queue.Empty:
                         break
-                
+
                 if last_stats is None:
                     last_stats = self.last_stats
                 else:
@@ -441,7 +441,7 @@ class Admin:
                         f.write("\n")
                     break
 
-                if stats['processedObjects'] != 0: 
+                if stats['processedObjects'] != 0:
                     '''if (stats['processedObjects'] == stats['totalObjects'] or
                         (stats['retrieved_tiles'] == stats['totalObjects'] and
                         prev_bytes == stats['bytes'] and prev_processed == stats['processedObjects'])):'''
@@ -455,14 +455,14 @@ class Admin:
 
                 prev_bytes = stats['bytes']
                 prev_processed = stats['processedObjects']
-                count += 1            
+                count += 1
                 time.sleep(LOG_INTERVAL)
         except (Exception, KeyboardInterrupt) as e:
             raise e
         self.stop_event.set()
         self.stop_mission()
-        return 
-    
+        return
+
     def get_post_mission_archive(self):
         for index, stub in self.scout_stubs.items():
             msg = [
@@ -475,9 +475,9 @@ class Admin:
             if len(reply):
                 with open("mission_{}.zip".format(index), "wb") as f:
                     f.write(reply)
-        return 
-    
-            
+        return
+
+
     def get_test_results(self):
         assert len(self.test_path), "Test path not provided"
         for stub in self.scout_stubs.values():
@@ -490,16 +490,16 @@ class Admin:
         for index, stub in self.scout_stubs.items():
             reply = stub.recv()
             hostname = self.scouts[index].split('.')[0]
-            results_dir = (Path(self.log_dir.parent)/ 
-                           "results" / 
-                           "{}".format(hostname)) 
-            results_dir.mkdir(parents=True, exist_ok=True)            
+            results_dir = (Path(self.log_dir.parent)/
+                           "results" /
+                           "{}".format(hostname))
+            results_dir.mkdir(parents=True, exist_ok=True)
             if len(reply):
                 try:
                     mission_stat = MissionResults()
                     mission_stat.ParseFromString(reply)
                     mission_stat = mission_stat.results
-                
+
                     for version, result in mission_stat.items():
                         model_stat = MessageToDict(result)
                         stat_path = results_dir / f"model-result-{version:06}.json"
@@ -508,7 +508,7 @@ class Admin:
                 except Exception:
                     msg = reply.decode()
                     logger.error(f"ERROR during Testing from Scout {index}\n {msg}")
-        return 
+        return
 
     def accumulate_mission_stats(self):
         stats = defaultdict(lambda: 0)

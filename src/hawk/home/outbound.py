@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Home Outbound process: sending labels from HOME to SCOUTS 
+"""Home Outbound process: sending labels from HOME to SCOUTS
 """
 
 import json
@@ -19,11 +19,11 @@ class OutboundProcess:
     def __init__(self, train_location: str = "scout") -> None:
         """Outbound messages from HOME to SCOUT
 
-        API calls from home to scouts to to send tile labels from home to coordinator scout. 
+        API calls from home to scouts to to send tile labels from home to coordinator scout.
         Uses PUSH/PULL messaging protocol. The network is bandwidth constricted using FireQos.
         """
         train_location = train_location.lower()
-       
+
         if train_location == "scout":
             self.transmit_func = self.scout_send_labels
         else:
@@ -46,8 +46,8 @@ class OutboundProcess:
             self.transmit_func()
 
         except KeyboardInterrupt as e:
-            raise e 
-    
+            raise e
+
     def scout_send_labels(self):
         """Function to serialize labels for transmission"""
         msg = Empty
@@ -58,7 +58,7 @@ class OutboundProcess:
                     label_path = self.result_q.get()
                 except queue.Empty:
                     continue
-                
+
                 # Read meta data and create LabelWrapper
                 data = {}
                 with open(label_path, "r") as f:

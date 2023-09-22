@@ -59,7 +59,7 @@ def main():
             reply = a2s_methods[method](req)
             socket.send(reply)
     except KeyboardInterrupt:
-        pass 
+        pass
     except Exception as e:
         logger.exception()
         raise e

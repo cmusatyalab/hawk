@@ -40,7 +40,7 @@ class FrameRetriever(Retriever):
 
         self._stats['total_objects'] = len(self.images)
         self._stats['total_images'] = len(self.images)
-        
+
     def save_tile(self, img, imagename, subimgname, left, up):
         dirname = os.path.dirname(imagename)
         subimg = copy.deepcopy(img[up: (up + self.tilesize), left: (left + self.tilesize)])
@@ -52,15 +52,15 @@ class FrameRetriever(Retriever):
             cv2.imwrite(outdir, outimg)
         else:
             cv2.imwrite(outdir, subimg)
-        
+
         return outdir
 
     def split_frame(self, frame):
         name, ext = os.path.basename(frame).split('.')
-       
+
         image = cv2.imread(frame)
-         
-        outbasename = name + '__' 
+
+        outbasename = name + '__'
         weight = np.shape(image)[1]
         height = np.shape(image)[0]
 
@@ -85,8 +85,8 @@ class FrameRetriever(Retriever):
             if (left + self.tilesize >= weight):
                 break
             else:
-                left = left + self.slide   
-                
+                left = left + self.slide
+
         return tiles
 
     def stream_objects(self):

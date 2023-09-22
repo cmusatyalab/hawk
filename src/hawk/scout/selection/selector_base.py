@@ -106,7 +106,7 @@ class SelectorBase(Selector):
                 logger.info("Total items processed: {}".format(self.items_processed))'''
 
     def new_model(self, model: Optional[Model]) -> None:
-        """New model generation is available from trainer""" 
+        """New model generation is available from trainer"""
         with self._model_lock:
             self._model_present = model is not None
 

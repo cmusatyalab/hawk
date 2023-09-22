@@ -24,7 +24,7 @@ class UILabeler:
         self._image_dir = os.path.join(mission_dir, 'images')
         self._meta_dir = os.path.join(mission_dir, 'meta')
         self._label_dir = os.path.join(mission_dir, 'labels')
-        
+
         directory = self._image_dir
         if directory[len(directory) - 1] != "/":
              directory += "/"
@@ -33,13 +33,13 @@ class UILabeler:
         self.config["HEAD"] = -1
         self.config["FILES"] = []
         self.reload_directory()
-        self.not_end = True 
+        self.not_end = True
 
     def run(self, host, port):
         start_server = websockets.serve(self.transmit_results, host=host, port=port)
         asyncio.get_event_loop().run_until_complete(start_server)
         asyncio.get_event_loop().run_forever()
-        
+
     async def transmit_results(self, websocket):
         size = (100, 100)
         while True:
@@ -60,13 +60,13 @@ class UILabeler:
                 image.save(content, format='JPEG', quality=75)
                 content = content.getvalue()
                 encoded_img = base64.b64encode(content).decode('utf8')
-                
-                data = json.dumps({'name':image_name, 
+
+                data = json.dumps({'name':image_name,
                                    'image': encoded_img,
                                   })
                 await websocket.send(data)
                 self.not_end = not(self.config["HEAD"] == len(self.config["FILES"]) - 1)
-            
+
                 if self.not_end:
                     self.config["HEAD"] = self.config["HEAD"] + 1
                 else:
@@ -77,7 +77,7 @@ class UILabeler:
             except websockets.exceptions.ConnectionClosed as e:
                 print("Client Disconnected !")
                 break
-    
+
     def reload_directory(self):
         files = None
         old_length = len(self.config["FILES"])
@@ -97,7 +97,7 @@ class UILabeler:
 
 
 def main():
-    mission = sys.argv[1] 
+    mission = sys.argv[1]
     server = UILabeler(mission)
     server.run(host='0.0.0.0', port=5000)
 

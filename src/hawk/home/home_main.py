@@ -34,14 +34,14 @@ def main():
 
     # Setting up mission
     mission_name = config.get('mission-name', "test")
-    
-    assert (Path(config['train_strategy'].get('initial_model_path', '')).exists() or 
-            Path(config['train_strategy'].get('bootstrap_path', '')).exists())    
 
-    mission_id = "_".join([mission_name, 
+    assert (Path(config['train_strategy'].get('initial_model_path', '')).exists() or
+            Path(config['train_strategy'].get('bootstrap_path', '')).exists())
+
+    mission_id = "_".join([mission_name,
                                datetime.now().strftime('%Y%m%d-%H%M%S')])
     scouts = config.scouts
-   
+
     if config['dataset']['type'] == 'cookie':
         logger.info("Reading Scope Cookie")
         logger.info(f"Participating scouts \n{scouts}")
@@ -51,7 +51,7 @@ def main():
     assert int(bandwidth) in [100, 30, 12], "Fireqos script may not exist for {}".format(bandwidth)
     config['bandwidth'] = ["[[-1, \"{}k\"]]".format(bandwidth) for _ in scouts]
 
-    # create local directories 
+    # create local directories
     mission_dir = Path(config['home-params']['mission_dir'])
     mission_dir = mission_dir / mission_id
     logger.info(mission_dir)
@@ -76,20 +76,20 @@ def main():
     # Setting up helpers
     scout_ips = [socket.gethostbyname(scout) for scout in scouts]
 
-    processes = [] 
+    processes = []
     stop_event = mp.Event()
     meta_q = mp.Queue()
     label_q = mp.Queue()
     stats_q = mp.Queue()
     stats_q.put((0,0,0))
-    
+
     try:
-        # Starting home to admin conn 
+        # Starting home to admin conn
         context = zmq.Context()
         h2a_socket = context.socket(zmq.REQ)
         h2a_socket.connect(f"tcp://127.0.0.1:{H2A_PORT}")
 
-        # Setup admin 
+        # Setup admin
         home_ip = get_ip()
 
         logger.info("Starting Admin Process")
@@ -98,7 +98,7 @@ def main():
                                                                     'stats_q': stats_q})
         processes.append(p)
         p.start()
-    
+
         # Start inbound process
         logger.info("Starting Inbound Process")
         home_inbound = InboundProcess(image_dir, meta_dir, config)
@@ -106,18 +106,18 @@ def main():
                                                                  'stop_event': stop_event})
         processes.append(p)
         p.start()
-        
-        # Start labeler process 
+
+        # Start labeler process
         logger.info("Starting Labeler Process")
         labeler =  config.get('label-mode', 'ui')
         gt_dir = config['home-params'].get('label_dir', "")
         trainer = (config['train_strategy']['type']).lower()
         logger.info("Trainer {}".format(trainer))
         label_mode = "classify"
-        
+
         if trainer == "yolo":
             label_mode = "detect"
-            
+
         if labeler == 'script':
             home_labeler = ScriptLabeler(label_dir, config, gt_dir, label_mode)
         elif labeler == 'ui' or labeler == 'browser':
@@ -131,8 +131,8 @@ def main():
                                                                    'stop_event': stop_event})
         p.start()
         processes.append(p)
-    
-        # start outbound process  
+
+        # start outbound process
         logger.info("Starting Outbound Process")
         h2c_port = config.deploy.h2c_port
         home_outbound = OutboundProcess()
@@ -143,12 +143,12 @@ def main():
         p.start()
         processes.append(p)
 
-        # Send config file to admin 
+        # Send config file to admin
         # send msg "<config> <path to config file>"
-        
+
         h2a_socket.send_string(f"config {config_path}")
         h2a_socket.recv()
-   
+
         while not stop_event.is_set():
             if end_file.is_file():
                 stop_event.set()
@@ -172,6 +172,6 @@ def main():
         #     logger.info("Deleting directory {}".format(mission_dir))
         #     shutil.rmtree(mission_dir)
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     main()
-        
+

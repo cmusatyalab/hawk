@@ -8,11 +8,11 @@ import 'package:hawk_ui/models/filters.dart';
 
 class FSLSetup extends StatefulWidget {
 
-  FilterConfig config; 
+  FilterConfig config;
   FSLSetup({
     Key? key,
     required this.config,
-  }) : super(key: key);  
+  }) : super(key: key);
 
   @override
   State<FSLSetup> createState() => _FSLSetupState();
@@ -21,7 +21,7 @@ class FSLSetup extends StatefulWidget {
 class _FSLSetupState extends State<FSLSetup> {
   Uint8List? imageFile;
   String? filePath;
-  
+
   uploadImage() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -34,12 +34,12 @@ class _FSLSetupState extends State<FSLSetup> {
       setState(() {
         imageFile = newFile;
       });
-      
-      
+
+
       } else {
       // User canceled the picker
     }
-  
+
 
     String image_string = base64.encode(imageFile!);
     widget.config.name = 'fsl';
@@ -74,7 +74,7 @@ class _FSLSetupState extends State<FSLSetup> {
                 const SizedBox(width: 30),
           ],
         ),
-      ); 
+      );
     });
   }
 }

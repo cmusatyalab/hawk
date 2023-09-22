@@ -18,13 +18,13 @@ message ScoutConfiguration {
   repeated string scouts = 2;
   int32 scoutIndex = 3;
   string homeIP = 4;
-  string trainLocation = 5; 
+  string trainLocation = 5;
   string missionDirectory = 6;
   TrainConfig trainStrategy = 7;
   RetrainPolicyConfig retrainPolicy = 8;
   Dataset dataset = 9;
   SelectiveConfig selector = 10;
-  ReexaminationStrategyConfig reexamination = 11;  
+  ReexaminationStrategyConfig reexamination = 11;
   ModelArchive initialModel = 12;
   bytes bootstrapZip = 13;
   map<int32, string> bandwidthFunc = 14;
@@ -122,13 +122,13 @@ message Dataset {
     FileDataset random = 2; // random sampling
     FileDataset tile = 3; // tile sampling
     FileDataset scope = 4; // scopecookie
-    Streaming_Video video = 5; // ingest video stream 
+    Streaming_Video video = 5; // ingest video stream
   }
 }
 
 message FileDataset {
   string dataPath = 1; // path to index file or directory on scout
-  int32 tileSize = 2; 
+  int32 tileSize = 2;
   int32 numTiles = 3; // optional param for random sampling
   int32 timeout = 4; // optional param for random sampling
   bool resizeTile = 5;
@@ -142,7 +142,7 @@ message Streaming_Video {
   int32 tile_height = 5;
   int32 tile_width = 6;
    }
-  
+
 
 message SelectiveConfig {
   oneof value {
@@ -168,7 +168,7 @@ message TokenConfig {
 
 message ReexaminationStrategyConfig {
   string type = 1;
-  int32 k = 2; 
+  int32 k = 2;
 }
 
 message NoReexaminationStrategyConfig {

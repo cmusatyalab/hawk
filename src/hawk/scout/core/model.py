@@ -73,8 +73,8 @@ class Model(metaclass=ABCMeta):
 
 class ModelBase(Model):
 
-    def __init__(self, 
-                 args: Dict, 
+    def __init__(self,
+                 args: Dict,
                  model_path: Path,
                  context: ModelContext = None):
 
@@ -83,12 +83,12 @@ class ModelBase(Model):
         self.result_count = 0
         self._model_lock = threading.Lock()
         self._running = True
-        
+
         if self.context is not None:
             self.request_queue = self.context.model_input_queue
-            self.result_queue = self.context.model_output_queue        
-        
-        
+            self.result_queue = self.context.model_output_queue
+
+
         self._model = None
         self._version = args.get('version', 0)
         self._mode = args.get('mode', "hawk")
@@ -96,8 +96,8 @@ class ModelBase(Model):
         self._train_time = args.get('train_time', 0)
 
         if self._mode != "oracle" and not model_path.exists():
-            raise FileNotFoundError(errno.ENOENT, 
-                                    os.strerror(errno.ENOENT), 
+            raise FileNotFoundError(errno.ENOENT,
+                                    os.strerror(errno.ENOENT),
                                     model_path)
     @property
     def version(self) -> int:
@@ -163,7 +163,7 @@ class ModelBase(Model):
             'Test classification report ({} threshold):\n{}'.format(best_threshold, classification_report(target, pred)))
 
         stats = classification_report(target, pred, output_dict=True)
-        
+
         tp = np.sum(target[target==1] == pred[target==1])
         fp = np.sum(target[target==1] == pred[target==0])
         fn = np.sum(target[target==0] == pred[target==1])
@@ -190,5 +190,5 @@ class ModelBase(Model):
 
     def evaluate_model(self, test_path: Path) -> None:
         pass
-    
-            
+
+

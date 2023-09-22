@@ -43,8 +43,8 @@ class DataManager(object):
         self._stored_examples_event = threading.Event()
         threading.Thread(target=self._promote_staging_examples,
                          name='promote-staging-examples').start()
-        self._positives = 0  
-        self._negatives = 0 
+        self._positives = 0
+        self._negatives = 0
 
     def get_example_directory(self, example_set: DatasetSplit) -> Path:
         return self._examples_dir / self._to_dir(example_set)
@@ -77,12 +77,12 @@ class DataManager(object):
                 object.ParseFromString(reply)
         else: ##Local scout contains image of respective label received.
             object = self._context.retriever.get_object(
-                object_id=label.objectId 
+                object_id=label.objectId
             )
-        
+
         if object is None:
             return
-        # Save labeled tile 
+        # Save labeled tile
         labeled_tile = LabeledTile(
             object=object,
             label=label,
@@ -90,19 +90,19 @@ class DataManager(object):
         self._context.store_labeled_tile(labeled_tile)
         if label.imageLabel == "0":
             return
-        # Transmit 
+        # Transmit
         for i, stub in enumerate(self._context.scouts):
             if i in [self._context.scout_index, scout_index]:
-                continue 
+                continue
             msg = [
                 b"s2s_add_tile_and_label",
                 labeled_tile.SerializeToString(),
             ]
             stub.internal.send_multipart(msg)
             stub.internal.recv()
-        
-        return 
-        
+
+        return
+
     def add_initial_examples(self, zip_content):
         def name_is_integer(name: str):
             try:
@@ -118,21 +118,21 @@ class DataManager(object):
             for filename in example_files:
                 basename = Path(filename).name
                 parent_name = Path(filename).parent.name
-                    
+
                 if basename.endswith(image_extensions) and name_is_integer(parent_name):
                     label = str(parent_name)
                     content = zf.read(filename)
                     example_file = get_example_key(content)
-                    if (self._validate and 
-                        (self._get_example_count(DatasetSplit.TEST, 
-                                                 label) * TRAIN_TO_TEST_RATIO < 
+                    if (self._validate and
+                        (self._get_example_count(DatasetSplit.TEST,
+                                                 label) * TRAIN_TO_TEST_RATIO <
                          self._get_example_count(DatasetSplit.TRAIN, label))):
                         example_set = DatasetSplit.TEST
-                    else: 
+                    else:
                         example_set = DatasetSplit.TRAIN
-                    
-                    example_dir = os.path.join(self._examples_dir, 
-                                               DatasetSplit.Name(example_set).lower(), 
+
+                    example_dir = os.path.join(self._examples_dir,
+                                               DatasetSplit.Name(example_set).lower(),
                                                label)
 
                     if not os.path.exists(example_dir):
@@ -149,7 +149,7 @@ class DataManager(object):
                     if label_filename in example_files:
                         logger.info("label_file {} ".format(label_filename))
                         label_content = zf.read(label_filename)
-                        label_dir = os.path.join(self._examples_dir, 
+                        label_dir = os.path.join(self._examples_dir,
                                                  DatasetSplit.Name(example_set).lower(),
                                                  'labels')
                         if not os.path.exists(label_dir):
@@ -157,7 +157,7 @@ class DataManager(object):
                         label_path = os.path.join(label_dir, example_file.split('.')[0]+".txt")
                         with open(label_path, 'wb') as f:
                             f.write(label_content)
-                        
+
                     labels.append(int(label))
 
         new_positives = sum(labels)
@@ -236,7 +236,7 @@ class DataManager(object):
                 label =  example.label.imageLabel
                 bounding_boxes = example.label.boundingBoxes
 
-                if self._validate: 
+                if self._validate:
                     example_subdir = "unspecified"
                 else:
                     example_subdir = self._to_dir(DatasetSplit.TRAIN)
@@ -250,10 +250,10 @@ class DataManager(object):
                     if bounding_boxes:
                         label_dir = self._staging_dir / example_subdir / 'labels'
                         label_dir.mkdir(parents=True, exist_ok=True)
-                        example_path = label_dir / (example_file.split('.')[0] + ".txt")                        
+                        example_path = label_dir / (example_file.split('.')[0] + ".txt")
                         with example_path.open('w') as f:
                             f.write("\n".join(bounding_boxes))
-                        
+
                 else:
                     logger.info('Example set to ignore - skipping')
                     ignore_file = self._staging_dir / IGNORE_FILE[0]
@@ -322,13 +322,13 @@ class DataManager(object):
                     if old_path is not None:
                         self._increment_example_count(example_set, old_path.parent.name, -1)
 
-                if (subdir.name == 'test' or 
-                    (subdir.name == 'unspecified' and 
-                     self._get_example_count(DatasetSplit.TEST, 
-                                             label) * TRAIN_TO_TEST_RATIO < 
+                if (subdir.name == 'test' or
+                    (subdir.name == 'unspecified' and
+                     self._get_example_count(DatasetSplit.TEST,
+                                             label) * TRAIN_TO_TEST_RATIO <
                      self._get_example_count(DatasetSplit.TRAIN, label))):
                     example_set = DatasetSplit.TEST
-                else: 
+                else:
                     example_set = DatasetSplit.TRAIN
 
                 self._increment_example_count(example_set, label.name, 1)
@@ -359,4 +359,3 @@ class DataManager(object):
     @staticmethod
     def _to_dir(example_set: DatasetSplit):
         return DatasetSplit.Name(example_set).lower()
-

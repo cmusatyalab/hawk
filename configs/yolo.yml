@@ -1,5 +1,5 @@
-mission-name: "hawk-yolo" # part of mission identifier 
-train-location: scout 
+mission-name: "hawk-yolo" # part of mission identifier
+train-location: scout
 label-mode: script # type of labeling interface
 scouts: # addresses of scouts
 - agra.diamond.cs.cmu.edu
@@ -20,7 +20,7 @@ dataset:
   type: filesystem # type of input data
   data_path: /srv/diamond/INDEXES/GIDIDXDELPHI # path to directory or index file
 retrain_policy:
-  type: percentage # type of retrain condition 
+  type: percentage # type of retrain condition
   only_positives: true # if only positives are counted
   threshold: 0.33 # percentage of increment
 train_strategy:
@@ -34,5 +34,5 @@ selector:
     batchSize: 1000
 reexamination:
   type: top # type of reexamination strategy
-  k: 100 
+  k: 100
 bandwidth: 100

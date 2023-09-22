@@ -28,10 +28,10 @@ class FewShotModel(nn.Module):
     def split_instances(self, data):
         args = self.args
         if self.training:
-            return  (torch.Tensor(np.arange(args.way*args.shot)).long().view(1, args.shot, args.way), 
+            return  (torch.Tensor(np.arange(args.way*args.shot)).long().view(1, args.shot, args.way),
                      torch.Tensor(np.arange(args.way*args.shot, args.way * (args.shot + args.query))).long().view(1, args.query, args.way))
         else:
-            return  (torch.Tensor(np.arange(args.eval_way*args.eval_shot)).long().view(1, args.eval_shot, args.eval_way), 
+            return  (torch.Tensor(np.arange(args.eval_way*args.eval_shot)).long().view(1, args.eval_shot, args.eval_way),
                      torch.Tensor(np.arange(args.eval_way*args.eval_shot, args.eval_way * (args.eval_shot + args.eval_query))).long().view(1, args.eval_query, args.eval_way))
 
     def forward(self, x, get_feature=False):
@@ -46,13 +46,13 @@ class FewShotModel(nn.Module):
             num_inst = instance_embs.shape[0]
             # split support query set for few-shot data
             # support_idx, query_idx = self.split_instances(x)
-            
+
             self.probe_instance_embs = instance_embs
             # self.probe_support_idx = support_idx
             # self.probe_query_idx = query_idx
             output = self._forward(instance_embs)
             return output
-            
+
 
     def _forward(self, x, support_idx, query_idx):
         raise NotImplementedError('Suppose to be implemented by subclass')

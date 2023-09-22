@@ -151,6 +151,3 @@ class VideoRetriever(Retriever):
                 time.time() - self._context.start_time, self._context.host_name, num_retrieved_images))
 
         #shutil.rmtree(self.temp_tile_dir)
-
-
-

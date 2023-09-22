@@ -1,5 +1,5 @@
-mission-name: "test-hawk" # Mission identifier 
-train-location: scout 
+mission-name: "test-hawk" # Mission identifier
+train-location: scout
 label-mode: script # type of labeling interface
 scouts: # list of addresses of scouts
 - agra.diamond.cs.cmu.edu
@@ -20,7 +20,7 @@ dataset:
   index_path: /srv/diamond/INDEXES/GIDIDXHAWK # path on scout of index file
   tiles_per_frame: 200 # number of tiles per frame if random sampling
 retrain_policy:
-  type: percentage # type of retrain condition 
+  type: percentage # type of retrain condition
   only_positives: true # if only positives are counted
   threshold: 0.33 # percentage of increment
 train_strategy:
@@ -40,5 +40,5 @@ selector:
     batchSize: 1000
 reexamination:
   type: top # type of reexamination strategy
-  k: 100 
+  k: 100
 bandwidth: 100

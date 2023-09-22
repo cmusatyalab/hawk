@@ -22,8 +22,8 @@
                         <li>Key P: Positive</li>
                         <li>Key N: Negative</li>
                     </ul>
-                
-                <p>To draw bounding boxes click on two 
+
+                <p>To draw bounding boxes click on two
                     diagonal corners of the box</p>
                 </div>
                 <!-- <div class="gap-10"></div> -->
@@ -43,7 +43,7 @@
                               <span class="input-group-addon" id="id">{{ box.id }}</span>
                                 <text style="background-color:#E5E7E9;" class="form-control custom-control" style="resize:none">POSITIVE</text>
                               <span class="input-group-btn">
-                                  <button id= "{{ box.id }}" class="btn btn-danger" onclick="window.location.replace('/remove/' + this.id)" type="button">-</button> 
+                                  <button id= "{{ box.id }}" class="btn btn-danger" onclick="window.location.replace('/remove/' + this.id)" type="button">-</button>
                               </span>
                           </div>
                       </div>
@@ -66,18 +66,18 @@
 
     <div id="content" class="container">
         <div class="row">
-            <text> {{ head }} / {{ files }} </text> 
+            <text> {{ head }} / {{ files }} </text>
             {% if head <= 1 %}
             <a id="next" class="btn btn-primary btn-space" style="float:right;" type="button" onclick="return buttonClick(this.id);">
                 <span class="glyphicon glyphicon-chevron-right"></span>
             </a>
             <a href="/save" class="btn btn-success btn-space "  type="button" style="float:right;">
                 <span class="glyphicon glyphicon-ok	"></span>
-                <u>S</u>AVE 
+                <u>S</u>AVE
             </a>
             <a href="/undo" class="btn btn-danger btn-space "  type="button" style="float:right;">
                 <span class="glyphicon glyphicon-remove	"></span>
-                <u>U</u>NDO 
+                <u>U</u>NDO
             </a>
             {% else %}
             <a id="backward" class="btn btn-primary btn-space" style="float:left;" type="button" onclick="return buttonClick(this.id)">
@@ -94,11 +94,11 @@
             </a>
             <a href="/save" class="btn btn-success btn-space "  type="button" style="float:right;">
                 <span class="glyphicon glyphicon-ok	"></span>
-                <u>S</u>AVE 
+                <u>S</u>AVE
             </a>
             <a href="/undo" class="btn btn-danger btn-space "  type="button" style="float:right;">
                 <span class="glyphicon glyphicon-remove	"></span>
-                <u>U</u>NDO 
+                <u>U</u>NDO
             </a>
 
             {% endif %}

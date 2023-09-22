@@ -18,7 +18,7 @@ class ReexaminationStrategy(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_new_queues(self, model: Model, 
+    def get_new_queues(self, model: Model,
                        old_queues: List[queue.PriorityQueue]) -> Tuple[List[queue.PriorityQueue], int]:
         """Generates a new queue with reexamined results"""
         pass

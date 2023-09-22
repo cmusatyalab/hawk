@@ -67,7 +67,7 @@ MODEL_FORMATS = ['pt', 'pth']
 class A2SAPI(object):
     """Admin to Scouts API Calls
 
-    API calls from admin to scouts to configure missions, explicitly start / stop mission, 
+    API calls from admin to scouts to configure missions, explicitly start / stop mission,
     and other control calls. Uses Request-Response messaging. The network is not constricted.
 
     Attributes
@@ -75,17 +75,17 @@ class A2SAPI(object):
     _port : int
         TCP port number
     _manager : MissionManager
-        manages hawk mission (sets and clears) 
+        manages hawk mission (sets and clears)
     _trainer : ModelTrainerBase
         TrainingStrategy used in mission
     """
 
-    def __init__(self, port: int):  
+    def __init__(self, port: int):
         self._port = port
         self._manager = MissionManager()
         self._trainer = None
-    
-    @log_exceptions 
+
+    @log_exceptions
     def a2s_configure_scout(self, msg: str):
         """API call to configure scouts before mission
 
@@ -116,12 +116,12 @@ class A2SAPI(object):
             bytes: SUCESS or ERROR message
         """
         try:
-            reply = self._a2s_start_mission()  
-            return reply 
+            reply = self._a2s_start_mission()
+            return reply
         except Exception as e:
             logger.exception(e)
             raise e
-    
+
     @log_exceptions
     def a2s_stop_mission(self, _arg):
         """API call to stop mission
@@ -130,8 +130,8 @@ class A2SAPI(object):
             bytes: SUCESS or ERROR message
         """
         try:
-            reply = self._a2s_stop_mission()  
-            return reply 
+            reply = self._a2s_stop_mission()
+            return reply
         except Exception as e:
             logger.exception(e)
             raise e
@@ -155,7 +155,7 @@ class A2SAPI(object):
         """API call to import new model from HOME
 
         Args:
-            request (str): serialized ImportModel message 
+            request (str): serialized ImportModel message
 
         Returns:
             bytes: SUCESS or ERROR message
@@ -163,8 +163,8 @@ class A2SAPI(object):
         try:
             request = ImportModel()
             request.ParseFromString(msg)
-            reply = self._a2s_new_model(request)  
-            return reply 
+            reply = self._a2s_new_model(request)
+            return reply
         except Exception as e:
             logger.exception(e)
             raise e
@@ -183,13 +183,13 @@ class A2SAPI(object):
             test_path = msg.decode("utf-8")
             logger.info("Testing {}".format(test_path))
             assert os.path.exists(test_path)
-            reply = self._a2s_get_test_results(test_path)  
-            return reply 
+            reply = self._a2s_get_test_results(test_path)
+            return reply
         except Exception as e:
             logger.exception(e)
             raise e
 
-    @log_exceptions 
+    @log_exceptions
     def a2s_get_post_mission_archive(self, _arg):
         """API call to send mission models and logs archive
 
@@ -203,14 +203,14 @@ class A2SAPI(object):
             reply = Empty
             raise e
         finally:
-            return reply 
+            return reply
 
     @log_exceptions
     def _a2s_configure_scout(self, request: ScoutConfiguration):
         """Function to parse config message and setup for mission
 
         Args:
-            request (ScoutConfiguration): configuration message 
+            request (ScoutConfiguration): configuration message
 
         Returns:
             bytes: SUCESS or ERROR message
@@ -231,8 +231,8 @@ class A2SAPI(object):
 
             # Setting up Mission with config params
             logger.info("Start setting up mission")
-            mission = Mission(mission_id, request.scoutIndex, scouts, 
-                            request.homeIP, retrain_policy, 
+            mission = Mission(mission_id, request.scoutIndex, scouts,
+                            request.homeIP, retrain_policy,
                             root_dir / mission_id.value,
                             self._port, retriever,
                             self._get_selector(request.selector, request.reexamination),
@@ -253,7 +253,7 @@ class A2SAPI(object):
                 config = model.fsl
                 support_path = config.args['support_path']
 
-                # Saving support image 
+                # Saving support image
                 support_data = config.args['support_data']
                 data = base64.b64decode(support_data.encode('utf8'))
                 image = Image.open(io.BytesIO(data))
@@ -268,7 +268,7 @@ class A2SAPI(object):
             mission.setup_trainer(trainer)
             logger.info('Create mission with id {}'.format(
                 request.missionId))
-            
+
             # Constricting bandwidth
             # Only supports one bandwidth
             logger.info(request.bandwidthFunc)
@@ -283,21 +283,21 @@ class A2SAPI(object):
             logger.exception("Error during setup")
             reply = f"ERROR: {e}".encode()
         return reply
-    
+
     def _setup_bandwidth(self, bandwidth_func : str) -> None:
         """ Function for FireQos Bandwidth limiting"""
         bandwidth_map = {
-            '100k': '/root/fireqos/scenario-100k.conf', 
+            '100k': '/root/fireqos/scenario-100k.conf',
             '30k': '/root/fireqos/scenario-30k.conf',
             '12k': '/root/fireqos/scenario-12k.conf',
         }
         logger.info(bandwidth_func)
-        bandwidth_list = json.loads(bandwidth_func)    
+        bandwidth_list = json.loads(bandwidth_func)
         default_file = bandwidth_map['100k']
         # bandwidth_file = default_file
         if bandwidth_list[0] == '0k':
             return
-        
+
         for time_stamp, bandwidth in bandwidth_list:
             bandwidth_file = bandwidth_map.get(bandwidth.lower(), default_file)
 
@@ -305,7 +305,7 @@ class A2SAPI(object):
         bandwidth_cmd = ["fireqos", "start", str(bandwidth_file)]
         b = subprocess.Popen(bandwidth_cmd)
         b.communicate()
-        return 
+        return
 
     def _a2s_start_mission(self):
         """Function to start mission
@@ -327,7 +327,7 @@ class A2SAPI(object):
         except Exception as e:
             reply = ("ERROR: {}".format(e)).encode()
         return reply
-    
+
     def _a2s_stop_mission(self):
         """Function to stop mission
 
@@ -408,18 +408,18 @@ class A2SAPI(object):
             if mission.enable_logfile:
                 mission.log_file.write("{:.3f} {} SEARCH STATS\n".format(
                     time.time() - mission.start_time, mission.host_name))
-            
-            reply = reply.SerializeToString()            
+
+            reply = reply.SerializeToString()
         except Exception as e:
             reply = ("ERROR: {}".format(e)).encode()
         return reply
 
-            
+
     def _a2s_new_model(self, request: ImportModel):
         """Function to import new model from HOME
 
         Args:
-            request (ImportModel) ImportModel message 
+            request (ImportModel) ImportModel message
 
         Returns:
             bytes: SUCESS or ERROR message
@@ -452,25 +452,25 @@ class A2SAPI(object):
         """
         try:
             test_path = Path(request)
-            
+
             if not test_path.is_file():
-                raise Exception 
-            
+                raise Exception
+
             mission = self._manager.get_mission()
             model_dir = str(mission.model_dir)
-            files = sorted(glob.glob(os.path.join(model_dir, '*.*'))) 
+            files = sorted(glob.glob(os.path.join(model_dir, '*.*')))
             model_paths = [x for x in files if x.split('.')[-1].lower() in MODEL_FORMATS]
             logger.info(model_paths)
-            
+
             def get_version(path, idx):
                 name = path.name
                 try:
                     version = int(name.split('model-')[-1].split('.')[0])
                 except:
                     version = idx
-                
-                return version     
-            
+
+                return version
+
             results = {}
             for idx, path in enumerate(model_paths):
                 path = Path(path)
@@ -481,9 +481,9 @@ class A2SAPI(object):
                 model = self._trainer.load_model(path, version=version)
                 result = model.evaluate_model(test_path)
                 results[version] = result
-                
+
             reply = MissionResults(results=results)
-            reply = reply.SerializeToString()            
+            reply = reply.SerializeToString()
         except Exception as e:
             reply = ("ERROR: {}".format(e)).encode()
         return reply
@@ -499,8 +499,8 @@ class A2SAPI(object):
             mission = self._manager.get_mission()
             data_dir = mission.data_dir
             model_dir = mission.model_dir
-           
-            mission_archive = io.BytesIO() 
+
+            mission_archive = io.BytesIO()
             with zipfile.ZipFile(mission_archive, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
                 for dirname, subdirs, files in os.walk(model_dir):
                     zf.write(dirname)
@@ -514,8 +514,8 @@ class A2SAPI(object):
         except Exception as e:
             reply = Empty
         return reply
-    
-    def _get_retrain_policy(self, retrain_policy: RetrainPolicyConfig, 
+
+    def _get_retrain_policy(self, retrain_policy: RetrainPolicyConfig,
                             model_dir: Path) -> RetrainPolicyBase:
         if retrain_policy.HasField('absolute'):
             return AbsolutePolicy(retrain_policy.absolute.threshold,
@@ -532,9 +532,9 @@ class A2SAPI(object):
             raise NotImplementedError('unknown retrain policy: {}'.format(
                 json_format.MessageToJson(retrain_policy)))
 
-    def _get_selector(self, selector: SelectiveConfig, 
+    def _get_selector(self, selector: SelectiveConfig,
                       reexamination_strategy: ReexaminationStrategyConfig) -> Selector:
-        
+
         if selector.HasField('topk'):
             top_k_param = json_format.MessageToDict(selector.topk)
             logger.info("TopK Params {}".format(top_k_param))
@@ -559,7 +559,7 @@ class A2SAPI(object):
             raise NotImplementedError('unknown selector: {}'.format(
                 json_format.MessageToJson(selector)))
 
-    def _get_reexamination_strategy(self, 
+    def _get_reexamination_strategy(self,
                                     reexamination_strategy: ReexaminationStrategyConfig) -> ReexaminationStrategy:
         reexamination_type = reexamination_strategy.type
         if reexamination_type == 'none':

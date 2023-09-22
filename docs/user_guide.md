@@ -9,15 +9,15 @@ SPDX-License-Identifier: GPL-2.0-only
 
 ## Hawk Sequence Diagram
 
-![Hawk Sequence](hawk-sequence.png)  
+![Hawk Sequence](hawk-sequence.png)
 Figure 1: Calls made during labeling in Hawk
 
 ### Steps:
 1. Admin sends configuration message to scouts
-2. Mission is started across scouts by admin 
+2. Mission is started across scouts by admin
 3. Scout<sub>M</sub> sends selected tile
 4. Home sends labels to coordinator
-5. Coordinator fetches the tile content from Scout<sub>M</sub> 
+5. Coordinator fetches the tile content from Scout<sub>M</sub>
 6. If positive, coordinator sends the labeled tile to other scouts
 7. Mission may be explicitly stopped by admin
 8. Admin collects the logs and models trained on scouts for post processing
@@ -28,10 +28,10 @@ Figure 1: Calls made during labeling in Hawk
 
 Scouts are distant unmanned compute units collecting and learning on unlabeled
 data. The source of unlabeled data may be images stored on the disk or real time
-video feed. Each scout receives [configuration message](messages.md#ScoutConfiguration) from home. 
+video feed. Each scout receives [configuration message](messages.md#ScoutConfiguration) from home.
 The configuration message specifies the type of training, selective and
 retraining strategies to be used for the mission. It also contains the weight of initial
-DNN model or labeled images needed to train the initial model. The mission is started 
+DNN model or labeled images needed to train the initial model. The mission is started
 upon receiving [start request](a2s_api.md#admin_start_mission) fom home.
 
 Once the mission starts, the model in scout processes the input data and a subset of tiles
@@ -57,15 +57,15 @@ configuration to the coordinator to start the mission. The configuration file al
 path to data directories used in the mission and hyperparameters used for training DNN
 models. An example configuration file can be found [here](https://github.com/cmusatyalab/hawk/blob/dev/home/configs/config.yml)
 
-Hawk supports three modes of training: 
-1. Scout-based: Training happens on scouts 
-2. Cloud-based: Training happens on the cloud and the model is transmitted to scouts 
+Hawk supports three modes of training:
+1. Scout-based: Training happens on scouts
+2. Cloud-based: Training happens on the cloud and the model is transmitted to scouts
 3. Adaptive: The location of training is decided based on bandwidth availability
 
 Home process forks three child processes:
 * Admin process: Sends control messages to scouts
 * Inbound process: Receives and saves tiles or thumbnails from scouts
-* Outbound process: Reads the labels provided by the annotator and send them to the coordinator 
+* Outbound process: Reads the labels provided by the annotator and send them to the coordinator
 
 Hawk supports two modes of labeling, 1) interactive and 2) scripted. If
 interactive labeling is specified, a web-browser is launched for labeling. The
@@ -75,12 +75,12 @@ labeling is chosen, home programmatically saves the labels of thumbnails
 to the outbound path. The label files from this path are then read by the
 outbound process to send to the coordinator scout.
 
-## Admin 
+## Admin
 
 Admin module sends control messages to scouts. It reads the configuration
 file from home and constructs the [configuration
 message](messages.md#ScoutConfiguration), which defines the parameters used
-during mission. The network is not constricted using FireQos. 
+during mission. The network is not constricted using FireQos.
 Post mission, the admin collects the trained models and logs from scouts.
 
 # Operational Overview
@@ -137,7 +137,7 @@ transmitted to the scouts via <i>a2s_configure_scout</i> call. When a scout
 receives the configuration message, it initializes all modules needed for the
 mission which includes training, processing, selective transmission, and so on.
 The configuration message also includes the initial boostrapping examples or the
-intial trained model. The admin waits to receive reply from all the 
+intial trained model. The admin waits to receive reply from all the
 participating scouts. On receiving response from all the participating scouts,
 the admin calls <i>a2s_start_mission</i> to begin the mission.  The model
 processing the incoming tiles and the selective module selects a small subset
@@ -149,7 +149,7 @@ The outbound process reads from this directory and sends the
 [labels](messages.md#LabelWrapper) to the coordinator.  The coordinator calls
 <i>s2s_get_tile</i> to fetch the tile content from the parent scout if the label
 is a positive.  It then invokes <i>s2s_add_tile_and_label</i> to distribute the
-labeled tile along with its content to other scouts. This continues till the end of the mission. 
-The admin calls <i>a2s_stop_mission</i> to explicitly stop the mission. Post mission, the admin makes 
-<i>a2s_get_post_mission_archive</i>call to collect the  model generation 
+labeled tile along with its content to other scouts. This continues till the end of the mission.
+The admin calls <i>a2s_stop_mission</i> to explicitly stop the mission. Post mission, the admin makes
+<i>a2s_get_post_mission_archive</i>call to collect the  model generation
  along with logs from the scouts.

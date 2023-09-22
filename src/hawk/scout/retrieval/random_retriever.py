@@ -32,10 +32,10 @@ class RandomRetriever(Retriever):
         self._data_root = Path(index_file).parent.parent
         contents = open(index_file).read().splitlines()
         self.total_tiles = len(contents)
-        
+
         num_tiles =  self._dataset.numTiles
         key_len = math.ceil(self.total_tiles / num_tiles)
-        
+
         keys = np.arange(key_len)
         per_frame = np.array_split(contents, key_len)
 

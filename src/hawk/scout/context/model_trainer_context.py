@@ -18,7 +18,7 @@ class ModelContext(ContextBase):
     def __init__(self):
         self.result_queue = mp.Queue()
         self.model_input_queue = mp.Queue()
-        self.model_output_queue = mp.Queue() 
+        self.model_output_queue = mp.Queue()
 
     @property
     @abstractmethod

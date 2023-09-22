@@ -21,8 +21,8 @@ class TokenSelector(TopKSelector):
     @log_exceptions
     def _initialize_queue(self):
         if self._mode == "oracle":
-            return 
-        
+            return
+
         for i in range(self._k):
             result = self._priority_queues[-1].get()[-1]
             self.result_queue.put(result)
@@ -32,7 +32,7 @@ class TokenSelector(TopKSelector):
     @log_exceptions
     def receive_token_message(self, label):
         logger.info("In receive token message in token selector...")
-        logger.info("Index and label of received label: {} ... {} \n".format(label.scoutIndex, 
+        logger.info("Index and label of received label: {} ... {} \n".format(label.scoutIndex,
                                                                              label.imageLabel))
         result = self._priority_queues[-1].get()[-1]
         self.result_queue.put(result)
@@ -61,4 +61,4 @@ class TokenSelector(TopKSelector):
             #logger.info("Self.k parameter: {}".format(self._k))
             if self.sample_count == 1000:
                 self._initialize_queue()
-            
+

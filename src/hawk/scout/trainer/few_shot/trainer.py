@@ -21,13 +21,13 @@ class FewShotTrainer(ModelTrainerBase):
     def __init__(self, context: ModelContext, args: Dict[str, str]):
         assert 'support_data' in args
         super().__init__(args)
-        
+
         self.context = context
         self._model_path = None
         self.version = 0
-        
+
         logger.info("FSL TRAINER CALLED")
-            
+
 
     def load_model(self, path:Path = "", content:bytes = b'', version: int = -1):
         if isinstance(path, str):
@@ -36,11 +36,11 @@ class FewShotTrainer(ModelTrainerBase):
         if not path.is_file():
             path = self.context.model_path(new_version)
             path.write_bytes(content)
-            
+
         logger.info("Loading from path {}".format(path))
         self._model_path = path
-        return FewShotModel(self.args, path, version,  
-                                  context=self.context) 
+        return FewShotModel(self.args, path, version,
+                                  context=self.context)
 
     def train_model(self, train_dir) -> Model:
-        return self.load_model(self._model_path, version=self.version) 
+        return self.load_model(self._model_path, version=self.version)

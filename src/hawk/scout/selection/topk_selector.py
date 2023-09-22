@@ -40,7 +40,7 @@ class TopKSelector(SelectorBase):
         self._batch_added = 0
         self._insert_lock = threading.Lock()
         self._mode = "hawk"
-        
+
         self.log_counter = [int(i/3.*self._batch_size) for i in range(1, 4)]
 
     @log_exceptions
@@ -55,7 +55,7 @@ class TopKSelector(SelectorBase):
                     self.result_queue.put(result)
                     logger.info("[Result] Id {} Score {}".format(result.id, result.score))
         self._batch_added -= self._batch_size
-         
+
     @log_exceptions
     def _add_result(self, result: ResultProvider) -> None:
         with self._insert_lock:
@@ -64,7 +64,7 @@ class TopKSelector(SelectorBase):
             self._mission.log_file.write("{:.3f} {}_{} CLASSIFICATION: {} GT {} Score {:.4f}\n".format(
                 time_result, self._mission.host_name,
                 self.version, result.id, result.gt, result.score))
-            
+
             # Incrementing positives in stream
             if result.gt:
                 self.num_positives += 1
@@ -72,18 +72,18 @@ class TopKSelector(SelectorBase):
 
             if self._mode == "oracle":
                 if int(result.score) == 1:
-                    self.result_queue.put(result)    
+                    self.result_queue.put(result)
                     logger.info("[Result] Id {} Score {}".format(result.id, result.score))
 
             self._priority_queues[-1].put((-result.score, time_result, result))
             self._batch_added += 1
-            
+
             # Logging for debugging
             if self._batch_added in self.log_counter:
                 logger.info("ADDED {}/{}".format(self._batch_added, self._batch_size))
 
             if self._batch_added >= self._batch_size or (self._clear_event.is_set() and self._batch_added != 0) :
-                self.select_tiles(self._k)                    
+                self.select_tiles(self._k)
 
     @log_exceptions
     def add_easy_negatives(self, path: Path) -> None:

@@ -61,7 +61,7 @@ class _FilterSetupState extends State<FilterSetup> {
                       backgroundColor: Colors.tealAccent[400],
                     ),
                     onPressed: () async {
-                      //url to send the post configure request 
+                      //url to send the post configure request
                       final url = 'http://cloudlet038.elijah.cs.cmu.edu:8000/start';
                       //sending a post request to the url (default was 127.0.0.1:8000/start)
                       final response = await http.post(Uri.parse(url),

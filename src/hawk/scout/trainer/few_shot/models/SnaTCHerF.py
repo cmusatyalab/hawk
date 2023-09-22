@@ -54,7 +54,7 @@ class MultiHeadAttention(nn.Module):
         self.probe_v = None
         self.temperature = np.power(d_k, 0.5)
         self.flag_norm = args.slf_flag_norm if hasattr(args, 'slf_flag_norm') else True
-        
+
     def forward(self, q, k, v):
         d_k, d_v, n_head = self.d_k, self.d_v, self.n_head
         sz_q, len_q, _ = q.size()
@@ -65,7 +65,7 @@ class MultiHeadAttention(nn.Module):
         q = self.w_qs(q).view(sz_q, len_q, n_head, d_k)
         k = self.w_ks(k).view(sz_b, len_k, n_head, d_k)
         v = self.w_vs(v).view(sz_b, len_v, n_head, d_v)
-        
+
         q = q.permute(2, 0, 1, 3).contiguous().view(-1, len_q, d_k) # (n*b) x lq x dk
         k = k.permute(2, 0, 1, 3).contiguous().view(-1, len_k, d_k) # (n*b) x lk x dk
         v = v.permute(2, 0, 1, 3).contiguous().view(-1, len_v, d_v) # (n*b) x lv x dv
@@ -87,7 +87,7 @@ class MultiHeadAttention(nn.Module):
             output = output
 
         return output, resout
-    
+
 class SnaTCHerF(FewShotModel):
     def __init__(self, args):
         super().__init__(args)
@@ -101,12 +101,12 @@ class SnaTCHerF(FewShotModel):
             hdim = 640
         else:
             raise ValueError('')
-        
+
         self.slf_attn = MultiHeadAttention(args, 1, hdim, hdim, hdim, dropout=0.5)
-        self.hdim = hdim        
-        
+        self.hdim = hdim
+
     def _forward(self, instance_embs, support_idx=[], query_idx=[]):
-        
+
         self.probe_instance_embs = instance_embs
         return instance_embs
- 
+

@@ -30,15 +30,15 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class FewShotModel(ModelBase):
 
-    def __init__(self, 
-                 args: Dict, 
-                 model_path: Path, 
+    def __init__(self,
+                 args: Dict,
+                 model_path: Path,
                  version: int,
-                 mode: str, 
+                 mode: str,
                  context: ModelContext):
 
         # model_path is None for few-shot
-        # Hardcoding model architecture to resnet-50 
+        # Hardcoding model architecture to resnet-50
         logger.info("Loading FSL Model from {}".format(model_path))
         test_transforms = transforms.Compose([
             transforms.Resize(92),
@@ -52,10 +52,10 @@ class FewShotModel(ModelBase):
         args['version'] = version
         args['train_examples'] = args.get('train_examples', {'1':0, '0':0})
         args['mode'] = mode
-        self.args = args 
+        self.args = args
 
         super().__init__(self.args, model_path, context)
-        
+
         self._train_examples = args['train_examples']
         self._test_transforms = test_transforms
         self._model = self.load_model(model_path)
@@ -77,32 +77,32 @@ class FewShotModel(ModelBase):
                 label = parent_name
                 self.labels.add(label)
                 content = zf.read(filename)
-                path = os.path.join(self.train_dir, label, basename) 
+                path = os.path.join(self.train_dir, label, basename)
                 if not os.path.exists(Path(path).parent.name):
                     os.makedirs(Path(path).parent.name, exist_ok=True)
                     with open(path, 'wb') as f:
                         f.write(content)
         assert len(labels) == 5, "Incompatible n_shot {len(labels)}"
 
-    def load_supports(self):                
+    def load_supports(self):
         self.unzip_support()
         trainset = torchvision.datasets.ImageFolder(self.train_dir, transform=self._test_transforms)
         train_loader = torch.utils.data.DataLoader(dataset=trainset,
-                                   pin_memory=True)                                          
-        batch = next(iter(train_loader))                                                             
-        data, _ = [_ for _ in batch]                                                                 
-        _ = self._model(data)                                                                        
-        instance_embs = self._model.probe_instance_embs                                              
-        support_shape = (1, 5, 5)                                                                    
-        support = instance_embs.view(*(support_shape + (-1,)))                                       
-        logger.info("Support emb shape {}".format(support.shape))                                    
-        self.emb_dim = support.shape[-1]                                                             
-        support = support.contiguous()                                                               
-        self.proto = support.mean(dim=1) # Ntask x NK x d                                           
-        s_proto = proto                                                                          
-        s_proto = self._model.slf_attn(s_proto, s_proto, s_proto)                                            
-        s_proto = s_proto[0]                                                                             
-        self.support_proto = s_proto      
+                                   pin_memory=True)
+        batch = next(iter(train_loader))
+        data, _ = [_ for _ in batch]
+        _ = self._model(data)
+        instance_embs = self._model.probe_instance_embs
+        support_shape = (1, 5, 5)
+        support = instance_embs.view(*(support_shape + (-1,)))
+        logger.info("Support emb shape {}".format(support.shape))
+        self.emb_dim = support.shape[-1]
+        support = support.contiguous()
+        self.proto = support.mean(dim=1) # Ntask x NK x d
+        s_proto = proto
+        s_proto = self._model.slf_attn(s_proto, s_proto, s_proto)
+        s_proto = s_proto[0]
+        self.support_proto = s_proto
 
     @property
     def version(self) -> int:
@@ -139,7 +139,7 @@ class FewShotModel(ModelBase):
         model_weights = weights['params']
         model.load_state_dict(model_weights, strict=False)
         return model
-   
+
     def get_predictions(self, inputs: torch.Tensor) -> List[float]:
         if len(data.shape) == 3:
             data = torch.unsqueeze(data, dim=0)
@@ -160,7 +160,7 @@ class FewShotModel(ModelBase):
                 pdiff = (pproto - self.support_proto).pow(2).sum(-1).sum() / 64.0
 
                 predictions.append(pdiff)
-                
+
         pkdiff = torch.stack(predictions)
         pkdiff = pkdiff.cpu().detach().numpy()
         return pkdiff
@@ -177,13 +177,13 @@ class FewShotModel(ModelBase):
             try:
                 request = self.request_queue.get(block=False)
                 requests.append(request)
-            except Exception: 
-                # sleep when queue empty 
+            except Exception:
+                # sleep when queue empty
                 time.sleep(1)
-            
+
             if not len(requests):
                 continue
-            
+
             if (len(requests) >=  self._batch_size or
                 (time.time() - prev_infer) > timeout):
                 prev_infer = time.time()
@@ -215,7 +215,7 @@ class FewShotModel(ModelBase):
                 for req in batch:
                     self.request_queue.put(req)
             return
-        
+
         with self._model_lock:
             tensors = torch.stack([f[1] for f in batch])
             predictions = self.get_predictions(tensors)

@@ -29,4 +29,3 @@ class ConvNet(nn.Module):
             x = nn.MaxPool2d(5)(x)
         x = x.view(x.size(0), -1)
         return x
-

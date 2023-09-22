@@ -28,11 +28,11 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class FSLModel(ModelBase):
 
-    def __init__(self, 
-                 args: Dict, 
-                 model_path: Path, 
+    def __init__(self,
+                 args: Dict,
+                 model_path: Path,
                  version: int,
-                 mode: str, 
+                 mode: str,
                  context: ModelContext,
                  support_path: str):
 
@@ -52,10 +52,10 @@ class FSLModel(ModelBase):
         args['train_examples'] = args.get('train_examples', {'1':0, '0':0})
         args['mode'] = mode
 
-        self.args = args 
+        self.args = args
 
         super().__init__(self.args, model_path, context)
-        
+
         self._train_examples = args['train_examples']
         self._test_transforms = test_transforms
         self._batch_size = args['test_batch_size']
@@ -65,7 +65,7 @@ class FSLModel(ModelBase):
         self._model.to(self._device)
         self._model.eval()
         self._running = True
-        
+
         support = Image.open(support_path).convert('RGB')
         self.support = self.get_embed(support)
 
@@ -114,7 +114,7 @@ class FSLModel(ModelBase):
         model.load_state_dict(checkpoint)
         logger.info("Starting model complete")
         return model
-    
+
     def get_predictions(self, inputs: torch.Tensor) -> List[float]:
         probability = []
         with torch.no_grad():
@@ -123,9 +123,9 @@ class FSLModel(ModelBase):
                 similarity = [float(similarity)]
             else:
                 similarity = np.squeeze(similarity)
-            return similarity       
-        
-        
+            return similarity
+
+
     @log_exceptions
     def _infer_results(self):
         logger.info("INFER RESULTS THREAD STARTED")
@@ -138,13 +138,13 @@ class FSLModel(ModelBase):
             try:
                 request = self.request_queue.get(block=False)
                 requests.append(request)
-            except Exception: 
-                # sleep when queue empty 
+            except Exception:
+                # sleep when queue empty
                 time.sleep(1)
-            
+
             if not len(requests):
                 continue
-            
+
             if (len(requests) >=  self._batch_size or
                 (time.time() - prev_infer) > timeout):
                 prev_infer = time.time()
@@ -153,7 +153,7 @@ class FSLModel(ModelBase):
                     self.result_count += 1
                     self.result_queue.put(result)
                 requests = []
-                
+
     def infer(self, requests: Iterable[ObjectProvider]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:
             return
@@ -167,9 +167,9 @@ class FSLModel(ModelBase):
             for result in results:
                 output.append(result)
 
-        return output 
-    
-    
+        return output
+
+
     def _process_batch(self, batch: List[Tuple[ObjectProvider, torch.Tensor]]) -> Iterable[ResultProvider]:
         if self._model is None:
             if len(batch) > 0:
@@ -177,7 +177,7 @@ class FSLModel(ModelBase):
                 for req in batch:
                     self.request_queue.put(req)
             return
-        
+
         with self._model_lock:
             tensors = np.stack([np.squeeze(f[1]) for f in batch])
             predictions = self.get_predictions(tensors)

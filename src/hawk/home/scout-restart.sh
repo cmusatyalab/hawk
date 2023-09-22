@@ -1,7 +1,7 @@
-#!/bin/bash 
+#!/bin/bash
 ###############################################################################
-#Script Name    : scout-restart.sh                       
-#Description    : execute restart commands on multiple scouts                                                                     
+#Script Name    : scout-restart.sh
+#Description    : execute restart commands on multiple scouts
 ################################################################################
 
 fireqos stop

@@ -17,7 +17,7 @@ BASE64_RE = '[A-Za-z0-9+/=\n]+'
 
 def parse_cookie(data):
     """Parse a (single) scope cookie string and return a ScopeCookie
-    
+
     Arguments:
         data {str} -- A single base64-encoded cookie
 
@@ -62,7 +62,7 @@ def parse_cookie(data):
     scopeurl = "/srv/diamond/INDEXES/GIDIDX"+scopeurls[0].split('/')[-1]
     print(scopeurl)
     logger.info(servers)
-    return scopeurl, servers 
+    return scopeurl, servers
 
 
 def define_scope(config):

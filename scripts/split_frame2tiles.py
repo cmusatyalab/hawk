@@ -48,7 +48,7 @@ class Frame2TileSplitter:
         self.gap = gap
         self.tilesize = tilesize
         self.slide = self.tilesize - self.gap
-        self.imagepath = image_dir 
+        self.imagepath = image_dir
         output_dir = Path(image_dir)
         output_dir = output_dir.parent / str(output_dir.name)+"tiles"
         self.outimagepath = os.path.join(output_dir, 'images')
@@ -56,13 +56,13 @@ class Frame2TileSplitter:
         self.ext = ext
         self.padding = padding
         self.num_process = num_process
-        self.pool = Pool(num_process) 
-        
+        self.pool = Pool(num_process)
+
         if not os.path.isdir(self.outimagepath):
             os.mkdir(self.outimagepath)
         if not os.path.isdir(self.outlabelpath):
             os.mkdir(self.outlabelpath)
-        
+
     def save_tile(self, img, subimgname, left, up):
         subimg = copy.deepcopy(img[up: (up + self.tilesize), left: (left + self.tilesize)])
         outdir = os.path.join(self.outimagepath, subimgname + self.ext)
@@ -73,13 +73,13 @@ class Frame2TileSplitter:
             cv2.imwrite(outdir, outimg)
         else:
             cv2.imwrite(outdir, subimg)
-        
+
         return outdir
 
     def split_frame(self, name, extent):
         image = cv2.imread(os.path.join(self.imagepath, name + extent))
-       
-        outbasename = name + '__' 
+
+        outbasename = name + '__'
         weight = np.shape(image)[1]
         height = np.shape(image)[0]
 
@@ -105,21 +105,21 @@ class Frame2TileSplitter:
             if (left + self.tilesize >= weight):
                 break
             else:
-                left = left + self.slide   
-                
+                left = left + self.slide
+
         return tiles
-    
+
     def splitdata(self):
         imagelist = GetFileFromThisRootDir(self.imagepath)
         imagenames = [custombasename(x) for x in imagelist if (custombasename(x) != 'Thumbs')]
 
         worker = partial(split_single_warp, split_base=self, extent=self.ext)
         self.pool.map(worker, imagenames)
-        
-        
+
+
 if __name__ == '__main__':
-    
-    config_path = sys.argv[1] # path to config file 
+
+    config_path = sys.argv[1] # path to config file
     with open(config_path) as f:
         config = yaml.safe_load(f)
 
@@ -132,4 +132,4 @@ if __name__ == '__main__':
                                tilesize=1024,
                                num_process=8
                                )
-    split.splitdata(1)    
+    split.splitdata(1)

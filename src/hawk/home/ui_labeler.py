@@ -35,7 +35,7 @@ class EndpointAction(object):
             return response
         else:
             return self.response
-    
+
 class UILabeler(object):
     app = None
 
@@ -49,7 +49,7 @@ class UILabeler(object):
         self._label_dir = os.path.join(mission_dir, 'labels')
         self._stats_dir = os.path.join(mission_dir, 'logs')
         self._label_map = {
-            '-1': {'color': '#ffffff', 
+            '-1': {'color': '#ffffff',
                     'text': 'UNLABELED'},
             '0': {'color': '#ae163e',
                    'text': 'NEGATIVE'},
@@ -58,11 +58,11 @@ class UILabeler(object):
         }
         self._stats_keys = {
             'version' : "Model Version : ",
-            'totalObjects': "Total Tiles : ", 
+            'totalObjects': "Total Tiles : ",
             'processedObjects': "Tiles Processed : ",
             'positives': "Positives Labeled : ",
             'negatives': "Negatives Labeled : "}
-        
+
         directory = self._image_dir
         if directory[len(directory) - 1] != "/":
              directory += "/"
@@ -72,7 +72,7 @@ class UILabeler(object):
         self.app.config["LOGS"] = self._stats_dir
         self.label_changed = False
         self.save_auto = save_automatically
-         
+
         files = None
         for (_, _, filenames) in walk(self.app.config["IMAGES"]):
             files = sorted(filenames)
@@ -83,8 +83,8 @@ class UILabeler(object):
         else:
             self.app.config["LABELS"] = ['-1'] * len(files)
         self.app.config["FILES"] = files
-        self.not_end = True 
-        
+        self.not_end = True
+
         self.image_boxes = []
         self.num_thumbnails = 4
         self.add_all_endpoints()
@@ -94,25 +94,25 @@ class UILabeler(object):
         self.result_q = result_q
         self.stop_event = stop_event
         self.stats_q = stats_q
-        self.positives = 0 
-        self.negatives = 0 
+        self.positives = 0
+        self.negatives = 0
         self.bytes = 0
 
         try:
             self.app.run(port=8000, use_reloader=False)
         except KeyboardInterrupt as e:
-            raise e 
-        
+            raise e
+
     def run(self):
         self.result_q = mp.Queue()
         self.stats_q = mp.Queue()
-        self.positives = 0 
-        self.negatives = 0 
+        self.positives = 0
+        self.negatives = 0
         self.bytes = 0
         self.app.jinja_env.filters['bool'] = bool
         self.app.run(port=8000)
 
-        
+
     def add_all_endpoints(self):
         # Add endpoints
         self.add_endpoint(endpoint='/', endpoint_name='index', handler=self.index)
@@ -126,9 +126,9 @@ class UILabeler(object):
         self.add_endpoint(endpoint='/remove/<id>', endpoint_name='remove', handler=self.remove)
         self.add_endpoint(endpoint='/image/<f>', endpoint_name='images', handler=self.images)
         self.add_endpoint(endpoint='/classify/<id>', endpoint_name='classify', handler=self.classify)
-        
+
     def add_endpoint(self, endpoint=None, endpoint_name=None, handler=None):
-        self.app.add_url_rule(endpoint, endpoint_name, EndpointAction(handler)) 
+        self.app.add_url_rule(endpoint, endpoint_name, EndpointAction(handler))
         # You can also add options here : "... , methods=['POST'], ... "
 
     # ==================== ------ API Calls ------- ====================
@@ -136,22 +136,22 @@ class UILabeler(object):
         self.reload_directory()
         if (len(self.app.config["FILES"]) == 0):
             self.not_end = False
-            self.app.config["HEAD"] = -1 
-            return render_template('index.html', 
-                                   directory="", images=[""], 
-                                   head=0, 
+            self.app.config["HEAD"] = -1
+            return render_template('index.html',
+                                   directory="", images=[""],
+                                   head=0,
                                    len=len(self.app.config["FILES"]),
-                                   color='#ffffff', label_text="", 
+                                   color='#ffffff', label_text="",
                                    boxes=self.image_boxes,
                                    stats={},
                                    label_changed= 1 if self.label_changed else 0,
             )
-        
+
         directory = self.app.config['IMAGES']
 
         index_num = self.app.config["HEAD"]
         length_files = len(self.app.config["FILES"])
-        
+
         # main image and thumbnails
         image_paths = []
         for i in range(self.num_thumbnails+1):
@@ -166,16 +166,16 @@ class UILabeler(object):
             self.image_boxes = boxes
         else:
             label = self.app.config["LABELS"][self.app.config["HEAD"]]
-            
+
         color = self._label_map[label]['color']
         label_text = self._label_map[label]['text']
         self.not_end = not(self.app.config["HEAD"] == length_files - 1)
         condition_changed = self.label_changed and not self.save_auto
         search_stats = self.get_latest_stats()
 
-        return render_template('index.html', 
-                               directory=directory, images=image_paths, 
-                               head=self.app.config["HEAD"] + 1, 
+        return render_template('index.html',
+                               directory=directory, images=image_paths,
+                               head=self.app.config["HEAD"] + 1,
                                files=len(self.app.config["FILES"]),
                                color=color, label_text=label_text,
                                boxes=self.image_boxes,
@@ -209,7 +209,7 @@ class UILabeler(object):
         if os.path.exists(label_path):
             with open(label_path, "r") as f:
                 image_labels = json.load(f)
-                
+
             label = str(image_labels['imageLabel'])
             assert label in ['1', '0'], f"Unkonown label {label}"
             image_boxes = image_labels['boundingBoxes']
@@ -217,25 +217,25 @@ class UILabeler(object):
             for i, box in enumerate(image_boxes):
                 _, xMin, xMax, yMin, yMax = box.split(" ")
                 id = i + 1
-                boxes.append({"id":id, 
-                              "xMin":xMin, 
-                              "xMax":xMax, 
-                              "yMin":yMin, 
+                boxes.append({"id":id,
+                              "xMin":xMin,
+                              "xMax":xMax,
+                              "yMin":yMin,
                               "yMax":yMax})
-            
+
             return label, boxes
-        
-        return '-1', [] 
-       
-    
-    def write_labels(self): 
+
+        return '-1', []
+
+
+    def write_labels(self):
         if not self.label_changed:
-            return 
+            return
         path = self.app.config["FILES"][self.app.config["HEAD"]]
         data_name = os.path.splitext(path)[0]
         meta_path = os.path.join(self._meta_dir, f"{data_name}.json")
         label_path = os.path.join(self._label_dir, f"{data_name}.json")
-        image_label = self.app.config["LABELS"][self.app.config["HEAD"]] 
+        image_label = self.app.config["LABELS"][self.app.config["HEAD"]]
 
         if image_label == '-1':
             if os.path.exists(label_path):
@@ -250,10 +250,10 @@ class UILabeler(object):
         self.bytes += data['size']
         # assuming binary class hardcoding positive id as 0
         bounding_boxes = [ ]
-        
+
         for box in self.image_boxes:
             # convert to yolo fomat
-            bounding_boxes.append(" ".join(['0', 
+            bounding_boxes.append(" ".join(['0',
                                             box['xMin'],
                                             box['xMax'],
                                             box['yMin'],
@@ -262,12 +262,12 @@ class UILabeler(object):
         label = {
             'objectId': data['objectId'],
             'scoutIndex': data['scoutIndex'],
-            'imageLabel': image_label, 
-            'boundingBoxes': bounding_boxes, 
-        }    
+            'imageLabel': image_label,
+            'boundingBoxes': bounding_boxes,
+        }
         with open(label_path, "w") as f:
             json.dump(label, f, indent=4, sort_keys=True)
-             
+
         self.result_q.put(label_path)
         image_labels = np.array(self.app.config["LABELS"])
         self.positives = len(np.where(image_labels == '1')[0])
@@ -322,10 +322,10 @@ class UILabeler(object):
             label, boxes = self.read_labels(new_id)
             if label == '1':
                 found_positive = True
-            
+
         if found_positive:
             self.app.config["HEAD"] = new_id
-        
+
         label, boxes = self.read_labels()
         self.app.config["LABELS"][self.app.config["HEAD"]] = label
         self.image_boxes = boxes
@@ -347,10 +347,10 @@ class UILabeler(object):
             label, boxes = self.read_labels(new_id)
             if label == '1':
                 found_positive = True
-            
+
         if found_positive:
             self.app.config["HEAD"] = new_id
-        
+
         label, boxes = self.read_labels()
         self.app.config["LABELS"][self.app.config["HEAD"]] = label
         self.image_boxes = boxes
@@ -376,12 +376,12 @@ class UILabeler(object):
         xMax = request.args.get("xMax")
         yMin = request.args.get("yMin")
         yMax = request.args.get("yMax")
-        self.image_boxes.append({"id":id, 
-                                    "xMin":xMin, 
-                                    "xMax":xMax, 
-                                    "yMin":yMin, 
+        self.image_boxes.append({"id":id,
+                                    "xMin":xMin,
+                                    "xMax":xMax,
+                                    "yMin":yMin,
                                     "yMax":yMax})
-        return redirect(url_for('index'))   
+        return redirect(url_for('index'))
 
     def remove(self, *args, **kwargs):
         self.label_changed = True
@@ -407,11 +407,11 @@ class UILabeler(object):
             self.image_boxes = []
         if label == '-1':
             self.undo()
-        
+
         return redirect(url_for('index'))
 
     def get_latest_stats(self):
-        list_of_files = glob.glob(self._stats_dir+'/stats-*') 
+        list_of_files = glob.glob(self._stats_dir+'/stats-*')
         latest_stats = max(list_of_files, key=os.path.getctime)
         search_stats = {}
         with open(latest_stats, "r") as f:
@@ -427,7 +427,7 @@ class UILabeler(object):
             stats.append(stats_text)
         return stats
 
-    
+
 # mission = "/home/shilpag/Documents/label_ui/dota-20-30k_swimming-pool_30_20221031-121302"
 # mission = "/home/eric/School_Bus_Hawk/Hawk_Mission_Data/test-hawk-school_bus_tiles_video_20221010-131323"
 # a = UILabeler(mission)

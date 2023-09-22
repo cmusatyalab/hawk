@@ -28,11 +28,11 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class YOLOModel(ModelBase):
-    def __init__(self, 
-                 args: Dict, 
-                 model_path: Path, 
+    def __init__(self,
+                 args: Dict,
+                 model_path: Path,
                  version: int,
-                 mode: str, 
+                 mode: str,
                  context: ModelContext):
 
         logger.info("Loading DNN Model from {}".format(model_path))
@@ -51,12 +51,12 @@ class YOLOModel(ModelBase):
         args['version'] = version
         args['train_examples'] = args.get('train_examples', {'1':0, '0':0})
         args['mode'] = mode
-        self.args = args 
-        self.yolo_repo = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+        self.args = args
+        self.yolo_repo = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                       'yolov5')
 
         super().__init__(self.args, model_path, context)
-        
+
         self._test_transforms = test_transforms
         self._train_examples = args['train_examples']
         self._batch_size = args['test_batch_size']
@@ -71,7 +71,7 @@ class YOLOModel(ModelBase):
     def version(self) -> int:
         return self._version
 
-    def preprocess(self, request: ObjectProvider): 
+    def preprocess(self, request: ObjectProvider):
         try:
             image = Image.open(io.BytesIO(request.content))
 
@@ -95,9 +95,9 @@ class YOLOModel(ModelBase):
         return content.getvalue()
 
     def load_model(self, model_path: Path):
-        model = torch.hub.load(self.yolo_repo, 
-                               'custom', 
-                               path=str(model_path), 
+        model = torch.hub.load(self.yolo_repo,
+                               'custom',
+                               path=str(model_path),
                                source='local',)
         return model
 
@@ -120,13 +120,13 @@ class YOLOModel(ModelBase):
             try:
                 request = self.request_queue.get(block=False)
                 requests.append(request)
-            except Exception: 
-                # sleep when queue empty 
+            except Exception:
+                # sleep when queue empty
                 time.sleep(0.01)
-            
+
             if not len(requests):
                 continue
-            
+
             if (len(requests) >=  self._batch_size or
                 (time.time() - prev_infer) > timeout):
                 prev_infer = time.time()
@@ -153,7 +153,7 @@ class YOLOModel(ModelBase):
 
     def infer_dir(self, directory: Path, callback_fn: Callable[[int, float], None]) -> None:
         dataset = datasets.ImageFolder(str(directory), transform=None)
-        data_loader = DataLoader(dataset, batch_size=self._batch_size, 
+        data_loader = DataLoader(dataset, batch_size=self._batch_size,
                                  shuffle=False, num_workers=mp.cpu_count())
 
         targets = []
@@ -165,14 +165,14 @@ class YOLOModel(ModelBase):
                 for i in range(len(prediction)):
                     targets.append(target[i])
                     predictions.append(prediction[i])
-        
+
         callback_fn(targets, predictions)
-        
+
     def evaluate_model(self, test_path: Path) -> None:
 
         def calculate_performance(y_true, y_pred):
             return average_precision_score(y_true, y_pred, average=None)
-        
+
         return self.infer_dir(test_path, calculate_performance)
 
     def _process_batch(self, batch) -> Iterable[ResultProvider]:
@@ -182,7 +182,7 @@ class YOLOModel(ModelBase):
                 for req in batch:
                     self.request_queue.put(req)
             return
-        
+
         with self._model_lock:
             tensors = torch.stack([f[1] for f in batch]).to(self._device)
             predictions = self.get_predictions(tensors)

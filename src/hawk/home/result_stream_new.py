@@ -22,7 +22,7 @@ class UILabeler:
         self._image_dir = os.path.join(mission_dir, 'images')
         self._meta_dir = os.path.join(mission_dir, 'meta')
         self._label_dir = os.path.join(mission_dir, 'labels')
-        
+
         directory = self._image_dir
         if directory[len(directory) - 1] != "/":
              directory += "/"
@@ -31,7 +31,7 @@ class UILabeler:
         self.config["HEAD"] = -1
         self.config["FILES"] = []
         #self.reload_directory()
-        self.not_end = True 
+        self.not_end = True
         self.total_images_sent = 0
 
     def run(self, host, port):
@@ -107,7 +107,7 @@ class UILabeler:
 
     # Usage
     start_server = websockets.serve(handle_websocket, 'localhost', 8765)
-    
+
     try:
         asyncio.get_event_loop().run_until_complete(start_server)
         asyncio.get_event_loop().run_forever()

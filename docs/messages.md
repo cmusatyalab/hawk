@@ -63,14 +63,14 @@ Message to configure mission
 | scoutIndex | int32 | True| Scout index |
 | homeIP | string | True | Home IP address |
 | trainLocation | string | True | Train location: scout / cloud / adaptive |
-| missionDirectory| string | True | Path to directory to store models and logs | 
-| trainStrategy| TrainConfig | True | Learning strategy configuration| 
+| missionDirectory| string | True | Path to directory to store models and logs |
+| trainStrategy| TrainConfig | True | Learning strategy configuration|
 | retrainPolicy| RetrainPolicyConfig| True| Retrain policy configuration |
 | dataset| Dataset | True| Input data configuration|
 | selector| SelectiveConfig | True| Selective tile transmission trategy|
-| reexamination| ReexaminationStrategyConfig | True | Reexamination Strategy | 
+| reexamination| ReexaminationStrategyConfig | True | Reexamination Strategy |
 | initialModel | ModelArchive | False| Initial model weight|
-| bootstrapZip | bytes | True| Zip archive of bootstrap directory| 
+| bootstrapZip | bytes | True| Zip archive of bootstrap directory|
 | bandwidthFunc | map<int, string> | True| Maps network bandwidth over time (-1: end of mission)|
 
 ### **MissionStats**
@@ -124,7 +124,7 @@ Parameters in mission statistics
 
 ### **TrainConfig**
 
-One of 
+One of
 
 | Fields  | Type  | Description |
 | ------------ |---------------| -----|
@@ -146,9 +146,9 @@ One of
 ### **SVMMode**
 
 Choice of SVM Training
-1. MASTER_ONLY 
-2. DISTRIBUTED 
-3. ENSEMBLE 
+1. MASTER_ONLY
+2. DISTRIBUTED
+3. ENSEMBLE
 
 ### **FastMPNCOVConfig**
 | Fields  | Type  | Description |
@@ -172,7 +172,7 @@ Choice of SVM Training
 
 ### **RetrainPolicyConfig**
 
-One of 
+One of
 1. AbsolutePolicyConfig
 2. PercentagePolicyConfig
 3. ModelPolicyConfig
@@ -202,16 +202,16 @@ One of
 
 ### **Dataset**
 
-One of 
+One of
 1. FileDataset
 2. LiveCameraDataset
 
 ### **SelectiveConfig**
 
 One of:
-1. TopKConfig 
-2. ThresholdConfig 
-3. PushPullConfig 
+1. TopKConfig
+2. ThresholdConfig
+3. PushPullConfig
 
 
 ### **TopKConfig**

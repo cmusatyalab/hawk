@@ -64,7 +64,7 @@ def stop_mission():
             p.terminate()
 
     app_data = {}
-    return 
+    return
 
 
 def handler_signals(signum, frame):
@@ -87,23 +87,23 @@ def get_results():
 def configure_mission(filter_config):
     # Stop previous missions
     stop_mission()
-    
+
     config = load_config(CONFIG)
     #logger.info(config)
     #pprint(config)
     pprint(config['train_strategy'])
 
-    # Setting up mission 
+    # Setting up mission
     mission_name = config.get('mission-name', "test")
-    
-    assert (Path(config['train_strategy'].get('initial_model_path', '')).exists() or 
-            Path(config['train_strategy'].get('bootstrap_path', '')).exists() or 
-            Path(config['train_strategy'].get('example_path', '')).exists())    
 
-    mission_id = "_".join([mission_name, 
+    assert (Path(config['train_strategy'].get('initial_model_path', '')).exists() or
+            Path(config['train_strategy'].get('bootstrap_path', '')).exists() or
+            Path(config['train_strategy'].get('example_path', '')).exists())
+
+    mission_id = "_".join([mission_name,
                                datetime.now().strftime('%Y%m%d-%H%M%S')])
     scouts = config.scouts
-    
+
     if config['dataset']['type'] == 'cookie':
         logger.info("Reading Scope Cookie")
         logger.info(f"Participating scouts \n{scouts}")
@@ -112,11 +112,11 @@ def configure_mission(filter_config):
     bandwidth = config.get('bandwidth', "100")
     assert int(bandwidth) in [100, 30, 12], "Fireqos script may not exist for {}".format(bandwidth)
     config['bandwidth'] = ["[[-1, \"{}k\"]]".format(bandwidth) for _ in scouts]
-    
+
     config['train_strategy']['type'] = filter_config['name']
     logger.info(f"Train strategy is: {config['train_strategy']}")
 
-    # Add more filters here 
+    # Add more filters here
     if filter_config['name'] == "fsl":
         support_string = filter_config['args']['support']
         image = Image.open(io.BytesIO(base64.b64decode(support_string)))
@@ -135,7 +135,7 @@ def configure_mission(filter_config):
     else:
         raise NotImplementedError("Unknown train_strategy {}".format(filter_config['name']))
 
-    # create local directories 
+    # create local directories
     mission_dir = Path(config['home-params']['mission_dir'])
     mission_dir = mission_dir / mission_id
     logger.info(mission_dir)
@@ -148,14 +148,14 @@ def configure_mission(filter_config):
     image_dir = mission_dir / 'images'
     meta_dir = mission_dir / 'meta'
     label_dir = mission_dir / 'labels'
-    
+
     app_data['image-dir'] = image_dir
     app_data['meta-dir'] = meta_dir
     app_data['label-dir'] = label_dir
 
     log_dir.mkdir(parents=True)
-    image_dir.mkdir(parents=True)   
-    meta_dir.mkdir(parents=True)    
+    image_dir.mkdir(parents=True)
+    meta_dir.mkdir(parents=True)
     label_dir.mkdir(parents=True)
 
     # Save config file to log_dir
@@ -168,9 +168,9 @@ def configure_mission(filter_config):
     app_data['scouts'] = scouts
     restart_scouts(scouts)
 
-    processes = [] 
+    processes = []
     stop_event = mp.Event()
-    
+
     meta_q = mp.Queue()
     global label_q
     label_q = mp.Queue()
@@ -179,15 +179,15 @@ def configure_mission(filter_config):
 
     thread = threading.Thread(target = get_results)
     thread.start()
-    
+
     try:
 
-        # Starting home to admin conn 
+        # Starting home to admin conn
         context = zmq.Context()
         h2a_socket = context.socket(zmq.REQ)
         h2a_socket.connect(f"tcp://127.0.0.1:{H2A_PORT}")
 
-        # Setup admin 
+        # Setup admin
         home_ip = get_ip()
 
         logger.info("Starting Admin Process")
@@ -197,18 +197,18 @@ def configure_mission(filter_config):
         app_data['home-admin'] = home_admin
         processes.append(p)
         p.start()
-    
+
         # Start inbound process
         logger.info("Starting Inbound Process")
-        home_inbound = InboundProcess(image_dir, 
-                                      meta_dir, 
+        home_inbound = InboundProcess(image_dir,
+                                      meta_dir,
                                       config)
         p = mp.Process(target=home_inbound.receive_data, kwargs={'result_q': meta_q,
                                                                  'stop_event': stop_event})
         processes.append(p)
         p.start()
-        
-        # start outbound process  
+
+        # start outbound process
         logger.info("Starting Outbound Process")
         h2c_port = config.deploy.h2c_port
         home_outbound = OutboundProcess()
@@ -221,9 +221,9 @@ def configure_mission(filter_config):
 
         app_data['processes'] = processes
 
-        # Send config file to admin 
+        # Send config file to admin
         # send msg "<config> <path to config file>"
-        
+
         h2a_socket.send_string(f"config {config_path}")
         h2a_socket.recv()
 
@@ -264,7 +264,7 @@ def label_Sample():
 
         ## Still need to figure out a method to store positives and negatives labeled for stats
 
-    ### now that i have the sign and labels, 
+    ### now that i have the sign and labels,
     ### Send label to outbound queue, save label in labels directory and any other admin tasks as in original ui labeler.
 
     app_data['started'] = True
@@ -293,8 +293,8 @@ def get_stat():
     response = jsonify(data)
     response.headers.add('Access-Control-Allow-Origin', '*')
     return  response
-    
-    
+
+
 
 
 @app.route('/start', methods = ['POST'])
@@ -336,8 +336,8 @@ def startMission():
 @app.route('/stop', methods = ['POST'])
 def stopMission():
     request_data = request.data
-    request_data = json.loads(request_data.decode('utf-8')) 
-    name = request_data['name'] 
+    request_data = json.loads(request_data.decode('utf-8'))
+    name = request_data['name']
     logger.info(f"stop mission {name}")
     if 'home-admin' in app_data:
         logger.info("Stopping Mission")
@@ -353,4 +353,3 @@ if __name__ == "__main__":
     #configure_mission(filter_config)
     app.run(host='0.0.0.0', port=8000)
     print("Executed app.run...")
-

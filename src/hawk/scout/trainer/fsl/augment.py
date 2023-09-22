@@ -49,4 +49,3 @@ def AugmentSave(image):
 
 image = np.array(Image.open(image_name))
 AugmentSave(image)
-

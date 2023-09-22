@@ -1,6 +1,6 @@
 # Change paths to scope cookie and mission_dir
-mission-name: "test" # Mission identifier 
-train-location: scout 
+mission-name: "test" # Mission identifier
+train-location: scout
 label-mode: ui # type of labeling interface
 scouts: # list of addresses of scouts
 - briolette.diamond.cs.cmu.edu
@@ -19,12 +19,12 @@ dataset:
   type: cookie # type of input data
   path: /path/to/.hawk/NEWSCOPE
 retrain_policy:
-  type: absolute # type of retrain condition 
+  type: absolute # type of retrain condition
   only_positives: true # if only positives are counted
   threshold: 1000 # percentage of increment
 train_strategy:
   type: fsl # type of model training
-  example_path: /path/to/.hawk/example.jpg 
+  example_path: /path/to/.hawk/example.jpg
 bandwidth: 100
 selector:
   type: topk # type of selective transmission
@@ -33,4 +33,4 @@ selector:
     batchSize: 100
 reexamination:
   type: top # type of reexamination strategy
-  k: 100 
+  k: 100

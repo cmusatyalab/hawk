@@ -12,12 +12,12 @@ from logzero import logger
 
 
 class ScriptLabeler:
-    def __init__(self, 
-                 label_dir: Path, 
-                 configuration: Dict, 
+    def __init__(self,
+                 label_dir: Path,
+                 configuration: Dict,
                  gt_path: str = "",
                  label_mode: str = "classify") -> None:
-        
+
         self._label_dir = label_dir
         self._gt_path = Path(gt_path)
         self.ordered_queue = queue.PriorityQueue()
@@ -41,14 +41,14 @@ class ScriptLabeler:
         else:
             raise NotImplementedError(f"Labeling mode not known {label_mode}")
 
-    
+
     def start_labeling(self, input_q, result_q, stats_q, stop_event):
         self.input_q = input_q
         self.result_q = result_q
         self.stop_event = stop_event
         self.stats_q = stats_q
-        self.positives = 0 
-        self.negatives = 0 
+        self.positives = 0
+        self.negatives = 0
         self.bytes = 0
         self.received_samples = 0
 
@@ -56,19 +56,19 @@ class ScriptLabeler:
         try:
             self.labeling_func()
         except KeyboardInterrupt as e:
-            raise e 
-    
+            raise e
+
     def classify(self):
-        
+
         # Object ID contains label
-        # if /1/ in Id then label = 1 else 0 
+        # if /1/ in Id then label = 1 else 0
         try:
             while not self.stop_event.is_set():
                 try:
                     meta_path = self.input_q.get() ## get the meta path for the next sample to label
                     self.received_samples += 1
                 except queue.Empty:
-                    continue 
+                    continue
 
                 data_name = meta_path.name
                 logger.info(data_name)
@@ -86,18 +86,18 @@ class ScriptLabeler:
                 else:
                     self.negatives += 1
                 time.sleep(self._label_time)
-                    
+
                 self.bytes += data['size']
 
                 label = {
                     'objectId': data['objectId'],
                     'scoutIndex': data['scoutIndex'],
-                    'imageLabel': image_label, 
-                    'boundingBoxes': [], 
-                }    
+                    'imageLabel': image_label,
+                    'boundingBoxes': [],
+                }
 
                 with open(label_path, "w") as f:
-                    json.dump(label, f) 
+                    json.dump(label, f)
 
                 self.result_q.put(label_path)
                 logger.info("({}, {}) Labeled {}".format(self.positives, self.negatives, data['objectId']))
@@ -105,9 +105,9 @@ class ScriptLabeler:
         except (IOError, KeyboardInterrupt) as e:
             logger.error(e)
 
-            
+
     def detect(self):
-        
+
         assert self._gt_path.exists(), "GT Dir does not exist"
         # Takes labels from file: _gt_path/<basename>.txt
         try:
@@ -115,7 +115,7 @@ class ScriptLabeler:
                 try:
                     meta_path = self.input_q.get()
                 except queue.Empty:
-                    continue 
+                    continue
 
                 data_name = meta_path.name
 
@@ -130,7 +130,7 @@ class ScriptLabeler:
 
                 basename = Path(data['objectId']).name
                 label_file = self._gt_path / (basename.split('.')[0]+".txt")
-                
+
                 bounding_boxes = []
                 if label_file.exists():
                     bounding_boxes = open(label_file).read().splitlines()
@@ -141,18 +141,18 @@ class ScriptLabeler:
                 else:
                     image_label = '0'
                     self.negatives += 1
-                        
+
                 self.bytes += data['size']
 
                 label = {
                     'objectId': data['objectId'],
                     'scoutIndex': data['scoutIndex'],
-                    'imageLabel': image_label, 
-                    'boundingBoxes': bounding_boxes, 
-                }    
+                    'imageLabel': image_label,
+                    'boundingBoxes': bounding_boxes,
+                }
 
                 with open(label_path, "w") as f:
-                    json.dump(label, f) 
+                    json.dump(label, f)
 
                 self.result_q.put(label_path)
                 logger.info("({}, {}) Labeled {}".format(self.positives, self.negatives, data['objectId']))
@@ -160,6 +160,6 @@ class ScriptLabeler:
         except (IOError, KeyboardInterrupt) as e:
             logger.error(e)
 
-            
-            
-            
+
+
+

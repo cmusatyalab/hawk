@@ -39,7 +39,7 @@ class DataManagerContext(ContextBase):
         pass
 
     @abstractmethod
-    def new_labels_callback(self, new_positives: int, 
+    def new_labels_callback(self, new_positives: int,
                               new_negatives: int, retrain: bool = True) -> None:
         """Adds new labels to the data directory"""
         pass
@@ -48,4 +48,3 @@ class DataManagerContext(ContextBase):
     def check_create_test(self) -> bool:
         """Checks if TEST dataset needs to be created"""
         pass
-

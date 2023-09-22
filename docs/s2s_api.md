@@ -9,7 +9,7 @@ SPDX-License-Identifier: GPL-2.0-only
 
 ## Introduction
 
-API calls from coordinator scout to scout to share knowledge of learning such as examples or models.  
+API calls from coordinator scout to scout to share knowledge of learning such as examples or models.
 Uses Request-Response messaging. The network can be bandwidth constrained with FireQOS (1Mbps in the paper).
 
 List of calls in Hawk Admin API:

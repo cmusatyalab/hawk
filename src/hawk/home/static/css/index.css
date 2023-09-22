@@ -61,7 +61,7 @@ body {
 .box {
     display: inline-block;
     width: 20px;
-    height: 20px; 
+    height: 20px;
     border: 1px solid rgba(0, 0, 0, .2);
     background: #ffffff;
 }
@@ -74,10 +74,10 @@ body {
     background: #ae163e;
 }
 
-.gap-10 { 
-    width:100%; 
-    height:10px; 
-} 
+.gap-10 {
+    width:100%;
+    height:10px;
+}
 
 .btn-space {
     margin-left: 5px;

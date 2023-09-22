@@ -9,7 +9,7 @@ SPDX-License-Identifier: GPL-2.0-only
 
 ## Introduction
 
-API calls to transmit selected tiles from scout to home.  
+API calls to transmit selected tiles from scout to home.
 Uses PUSH/PULL messaging. The network is bandwidth constricted using FireQos.
 
 ### API Calls
@@ -21,4 +21,3 @@ Call to send selected tiles with metadata (objectId, parentScout) to home
 Publish:
 
 *   [SendTiles](messages.md#SendTiles)
-

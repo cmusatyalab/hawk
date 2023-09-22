@@ -10,7 +10,7 @@ SPDX-License-Identifier: GPL-2.0-only
 
 ## Introduction
 
-API calls from admin to scouts to configure missions, explicitly start / stop mission, and other control calls.  
+API calls from admin to scouts to configure missions, explicitly start / stop mission, and other control calls.
 Uses Request-Response messaging. The network is not constricted using FireQos.
 
 List of calls in Admin API:
@@ -35,7 +35,7 @@ Input:
 
 Output:
 
-*   None   
+*   None
 
 ### **a2s_start_mission**
 
@@ -47,7 +47,7 @@ Input:
 
 Output:
 
-*   None   
+*   None
 
 ### **a2s_stop_mission**
 
@@ -76,7 +76,7 @@ Output:
 ### **a2s_new_model**
 
  Call to transfer and load model on the scout.
- For experimental purposes. 
+ For experimental purposes.
 
 Input:
 

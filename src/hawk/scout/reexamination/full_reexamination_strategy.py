@@ -19,9 +19,9 @@ class FullReexaminationStrategy(ReexaminationStrategy):
     def reexamines_old_results(self) -> bool:
         return True
 
-    def get_new_queues(self, model: Model, old_queues: List[queue.PriorityQueue], 
+    def get_new_queues(self, model: Model, old_queues: List[queue.PriorityQueue],
                        start_time: float = 0) -> Tuple[List[queue.PriorityQueue], int]:
-        
+
         new_queue = queue.PriorityQueue()
 
         to_reexamine = []
@@ -33,9 +33,9 @@ class FullReexaminationStrategy(ReexaminationStrategy):
                 except queue.Empty:
                     break
 
-        reexamine = [ObjectProvider(item[-1].id, item[-1].content, item[-1].attributes) 
+        reexamine = [ObjectProvider(item[-1].id, item[-1].content, item[-1].attributes)
             for item in to_reexamine]
-        
+
         results = model.infer(reexamine)
 
         for result, prev_result in zip(results, to_reexamine):

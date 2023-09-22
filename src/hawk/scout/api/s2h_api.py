@@ -13,15 +13,15 @@ from ...ports import S2H_PORT
 
 class S2HPublisher(object):
     @staticmethod
-    def s2h_send_tiles(home_ip, result_conn): 
+    def s2h_send_tiles(home_ip, result_conn):
         """API call to send results to HOME
-    
+
         Uses ZeroMQ PUSH/PULL protocol for async result transfer
         Network is bandwidth constricted using FireQOS.
 
         Args:
             home_ip: IP address of HOME
-            result_conn: mp.Pipe connection object 
+            result_conn: mp.Pipe connection object
 
         Returns:
             str: transmits serialized SendTiles message

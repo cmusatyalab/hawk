@@ -1,5 +1,5 @@
-mission-name: "test-hawk" # Mission identifier 
-train-location: scout 
+mission-name: "test-hawk" # Mission identifier
+train-location: scout
 label-mode: script # type of labeling interface
 scouts: # list of addresses of scouts
 - scout-ip-address-1
@@ -8,7 +8,7 @@ scouts: # list of addresses of scouts
 scout-params: # directory on scouts where data, models and logs of mission are saved
   mission_dir: /path/on/scout/mission_dir
 home-params:
-  mission_dir: /path/on/home/mission_dir # directory where results and logs stored 
+  mission_dir: /path/on/home/mission_dir # directory where results and logs stored
   image_dir: /path/on/home/image_dir # directory where images present
   label_dir: /path/on/home/label_dir # directory where labels present
 dataset:
@@ -17,7 +17,7 @@ dataset:
   index_path: /path/on/scout/HawkIndexFile # path on scout of index file
   tile_size: 256 # if frames are split into tiles
 retrain_policy:
-  type: percentage # type of retrain condition 
+  type: percentage # type of retrain condition
   only_positives: true # if only positives are counted
   threshold: 0.33 # percentage of increment
 train_strategy:
@@ -34,5 +34,5 @@ selector:
     batchSize: 1000
 reexamination:
   type: top # type of reexamination strategy
-  k: 100 
-bandwidth: 100 # bandwidth in kbps 
+  k: 100
+bandwidth: 100 # bandwidth in kbps

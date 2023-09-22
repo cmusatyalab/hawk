@@ -32,7 +32,7 @@ image.onload = function(e) {
     ctx.drawImage(image, 0, 0, dimension, dimension);
     for (i = 0; i < boxes.length; i++){
         drawBoxes(boxes[i].id, boxes[i].xMin, boxes[i].xMax, boxes[i].yMin, boxes[i].yMax);
-    } 
+    }
 };
 
 image.style.display = "block";
@@ -41,20 +41,20 @@ image.src = "image/" + image_paths[0];
 // Show thumbnails
 for (i = 1; i < image_paths.length; i++){
     imageDisplay(image_paths[i], i);
-} 
+}
 
 function arrToUl(root, arr) {
     var ul = document.createElement('ul');
     var li;
-    
+
     root.appendChild(ul); // append the created ul to the root
-  
+
     arr.forEach(function(item) {
       if (Array.isArray(item)) { // if it's an array
         arrToUl(li, item); // call arrToUl with the li as the root
         return;
       }
-      
+
       li = document.createElement('li'); // create a new list item
       li.appendChild(document.createTextNode(item)); // append the text to the li
       ul.appendChild(li); // append the list item to the ul
@@ -72,7 +72,7 @@ if (stats.length > 0) {
 }
 
 
-var label = 0; 
+var label = 0;
 
 var clicked = false;
 var fPoint = {};
@@ -130,15 +130,15 @@ document.getElementById("demo").addEventListener("keypress", (event) => {
     console.log(`Key pressed ${name} \n Key code Value: ${code}`);
     const valid_keys = ['KeyP', 'KeyN', 'KeyU'];
     if (code === 'KeyP') {
-        label = '1'; 
+        label = '1';
         changed = 1;
     }
     else if (code === 'KeyN') {
-        label = '0'; 
+        label = '0';
         changed = 1;
     }
     else if (code === 'KeyU') {
-        label = '-1'; 
+        label = '-1';
         changed = 0;
         unsaved = false;
     }

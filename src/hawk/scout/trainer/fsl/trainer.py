@@ -28,7 +28,7 @@ class FSLTrainer(ModelTrainerBase):
 
     def __init__(self, context: ModelContext, args: Dict[str, str]):
         super().__init__(args)
-        
+
         assert 'support_path' in self.args
         assert 'fsl_traindir' in self.args
 
@@ -36,7 +36,7 @@ class FSLTrainer(ModelTrainerBase):
         self.args['arch'] = self.args.get('arch', 'siamese')
         self.args['batch-size'] = int(self.args.get('batch-size', 64))
         self.args['initial_model_epochs'] = int(self.args.get('initial_model_epochs', 15))
-        self.train_initial_model = False 
+        self.train_initial_model = False
         self.testpath = self.args['test_dir']
 
         self.context = context
@@ -44,7 +44,7 @@ class FSLTrainer(ModelTrainerBase):
         logger.info(f"Model_dir {self.context.model_dir}")
 
         logger.info("FSL TRAINER CALLED")
-        
+
     def load_model(self, path:Path = "", content:bytes = b'', version: int = -1):
         if isinstance(path, str):
             path = Path(path)
@@ -55,15 +55,15 @@ class FSLTrainer(ModelTrainerBase):
         if not path.is_file():
             path = self.context.model_path(new_version)
             path.write_bytes(content)
-            
+
         version = self.get_version()
         logger.info("Loading from path {}".format(path))
         self.prev_path = path
-        return FSLModel(self.args, path, version,  
+        return FSLModel(self.args, path, version,
                                   mode=self.args['mode'],
                                   context=self.context,
-                                  support_path= self.args['support_path']) 
-    
+                                  support_path= self.args['support_path'])
+
     def train_batch(self, model, data, optimizer, criterion):
         imgsA, imgsB, labels = [t.to(device) for t in data]
         optimizer.zero_grad()
@@ -71,19 +71,19 @@ class FSLTrainer(ModelTrainerBase):
         loss, acc = criterion(codesA, codesB, labels)
         loss.backward()
         optimizer.step()
-        return loss.item(), acc.item() 
-    
-    
+        return loss.item(), acc.item()
+
+
     def train_model(self, train_dir='') -> Model:
-        
+
         new_version = self.get_new_version()
 
         model_savepath = self.context.model_path(new_version)
-       
+
         file_path = os.path.dirname(os.path.abspath(__file__))
         train_dataset = self.args['fsl_traindir']
         support_path = self.args['support_path']
-        
+
         cmd = [
             sys.executable,
             f"{file_path}/augment.py",
@@ -106,7 +106,7 @@ class FSLTrainer(ModelTrainerBase):
             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
         ])
 
-        
+
         train_data = TripletData(train_dataset, train_transforms)
         train_loader = torch.utils.data.DataLoader(dataset = train_data, batch_size=32, shuffle=True, num_workers=4)
 
@@ -128,8 +128,8 @@ class FSLTrainer(ModelTrainerBase):
                 x1,x2,x3 = data
                 e1 = model(x1.to(device))
                 e2 = model(x2.to(device))
-                e3 = model(x3.to(device)) 
-                
+                e3 = model(x3.to(device))
+
                 loss = triplet_loss(e1,e2,e3)
                 epoch_loss += loss
                 loss.backward()
@@ -140,18 +140,18 @@ class FSLTrainer(ModelTrainerBase):
         logger.info(f"Training time = {time_end - time_start}")
 
         torch.save(model.state_dict(), model_savepath)
-        # train completed time 
+        # train completed time
         train_time = time_end - time_start
-        
+
         self.prev_path = model_savepath
 
         model_args = self.args.copy()
         model_args['train_examples'] = {'1':1, '0':0}
         model_args['train_time'] = train_time
-        
-        return FSLModel(model_args, 
+
+        return FSLModel(model_args,
                         model_savepath,
                         new_version,
-                        self.args['mode'], 
-                        context=self.context, 
+                        self.args['mode'],
+                        context=self.context,
                         support_path=self.args['support_path'])

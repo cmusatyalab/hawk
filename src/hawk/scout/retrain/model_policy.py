@@ -32,4 +32,3 @@ class ModelPolicy(RetrainPolicyBase):
             src_path = open(self._new_model_present).read().strip()
             shutil.copy(src_path, self.model_path)
             os.remove(self._new_model_present)
-

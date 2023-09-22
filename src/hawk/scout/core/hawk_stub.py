@@ -12,9 +12,9 @@ from ...ports import S2S_PORT
 class HawkStub(object):
 
     def __init__(self, host, this_host):
-        
+
         if host == this_host:
-            # open server connection 
+            # open server connection
             self.internal = None
         else:
             hostname, port = (host.rsplit(':', 1) + [S2S_PORT])[:2]

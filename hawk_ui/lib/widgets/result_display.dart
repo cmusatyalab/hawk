@@ -65,10 +65,10 @@ class _ResultDisplayState extends State<ResultDisplay> {
   void initState() {
     super.initState();
     _connectToWebSocket();
- 
+
     timerStreamController.stream.listen((valueNotifier) {
         counterValueNotifier.value = valueNotifier.value;
-    
+
     });
     _startTimer();
       }
@@ -81,8 +81,8 @@ class _ResultDisplayState extends State<ResultDisplay> {
 
 
 
-  void handleMsg(dynamic message) {    
-      total_samples_received++;  
+  void handleMsg(dynamic message) {
+      total_samples_received++;
   }
 
   void _connectToWebSocket() async {
@@ -96,7 +96,7 @@ class _ResultDisplayState extends State<ResultDisplay> {
   void listener(){
     _channel.stream.listen((var newdata){
       var data = json.decode(newdata.toString());
-        //var newData = snapshot.data;                    
+        //var newData = snapshot.data;
         ResultItem result = ResultItem.fromJson(data);
         results.add(result);
         total_samples_received += 1;
@@ -193,12 +193,12 @@ Map<String, String> label_list(List<ResultItem> result_objects){
         res.pos_sel = false;
         res.pos_labeled = true;
         total_positive_labels += 1;
-    } else if (res.neg_sel == true) { 
+    } else if (res.neg_sel == true) {
         staged_for_label[res.name] = 'negative';
         res.neg_sel = false;
         res.neg_labeled = true;
         total_negative_labels += 1;
-      }  
+      }
       }
 
       );
@@ -221,7 +221,7 @@ Map<String, String> label_list(List<ResultItem> result_objects){
       appBar: AppBar(
         title: const Text("Hawk Results"),
       ),
-      body: 
+      body:
       Padding(
         padding: const EdgeInsets.all(20.0),
         child: Center(child: Row(children: [
@@ -242,7 +242,7 @@ Map<String, String> label_list(List<ResultItem> result_objects){
                                     crossAxisSpacing: 5,
                                     mainAxisSpacing: 20,
                                     crossAxisCount: 5,
-                                  ),                                  
+                                  ),
                                   itemCount: results.length,
                                   itemBuilder: (context, index) {
                                     ResultItem this_result = results[index];
@@ -266,13 +266,13 @@ Map<String, String> label_list(List<ResultItem> result_objects){
                                           gaplessPlayback: true,
                                           excludeFromSemantics: true,
                                           fit: BoxFit.cover,
-                                          width: double.infinity, 
+                                          width: double.infinity,
                                           image: MemoryImage(
                                               this_result.getContent())),
                                               ),
                                               Container(
                           padding: EdgeInsets.all(2.0),
-                          color: Colors.black.withOpacity(0.1), 
+                          color: Colors.black.withOpacity(0.1),
                           child: Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                             IconButton(icon: Icon(getPosIconType(this_result), color: Color.fromARGB(255, 8, 112, 11)),
                             onPressed: () {
@@ -319,7 +319,7 @@ Expanded(
                 children: [
                   Text("HAWK MISSION STATS", style: TextStyle(fontSize: 24)),
 
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, 
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     Flexible(child: Column(crossAxisAlignment: CrossAxisAlignment.start,children: [
                       Text("Total Positives Labeled:", style: TextStyle(fontSize:16)),
@@ -355,7 +355,7 @@ Expanded(
                         builder: (context, value, child){
                             return Text("${time_elapsed(value)}", style: TextStyle(fontSize:16));},
                       )
-                  ],),  
+                  ],),
                   ] ,
                   ),
                 SizedBox(height: 10, width: double.infinity),
@@ -381,7 +381,7 @@ Expanded(
                         total_samples_inferenced =
                         json_data['processedObjects'];
                         elapsed_time = json_data['home_time'].toInt();
-                        time_string = time_elapsed(elapsed_time);                        
+                        time_string = time_elapsed(elapsed_time);
                         received_ratio =
                             total_samples_received/total_samples_inferenced;
                         positive_label_ratio = total_positive_labels/(total_positive_labels +
@@ -391,7 +391,7 @@ Expanded(
                     child: const Text('Refresh Stats'),
                 ),
                   SizedBox(height: 10, width: double.infinity),
-                Text("Labeling Control",style: TextStyle(fontSize:24))  ,              
+                Text("Labeling Control",style: TextStyle(fontSize:24))  ,
                 SizedBox(height: 10, width: double.infinity),
                 ElevatedButton(
                     style: ElevatedButton.styleFrom(
@@ -412,7 +412,7 @@ Expanded(
                     child: const Text('Send New Labels'),
                   ),
                   SizedBox(height: 20, width: double.infinity),
-                  
+
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
@@ -457,6 +457,5 @@ Expanded(
 ),
 ),
 );
-}  
-}       
-
+}
+}

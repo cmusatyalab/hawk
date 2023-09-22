@@ -21,7 +21,7 @@ class ModelTrainer(metaclass=ABCMeta):
     @abstractmethod
     def train_model(self, train_dir: Path) -> Model:
         pass
-    
+
 
 class ModelTrainerBase(ModelTrainer):
 
@@ -34,9 +34,9 @@ class ModelTrainerBase(ModelTrainer):
         self.args['mode'] = self.args.get('mode', "hawk")
 
     def parse_args(self):
-        raise NotImplementedError("Parse Args") 
-        pass    
-    
+        raise NotImplementedError("Parse Args")
+        pass
+
     def get_new_version(self):
         with self._version_lock:
             self._latest_version += 1

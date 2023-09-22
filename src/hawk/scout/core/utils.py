@@ -154,7 +154,7 @@ def get_server_ids():
         pass
 
     return list(names)
-    
+
 
 def get_example_key(content) -> str:
     return hashlib.sha1(content).hexdigest() + '.jpg'

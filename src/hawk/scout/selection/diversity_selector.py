@@ -49,7 +49,7 @@ class DiversitySelector(TopKSelector):
         objects = []
         original = np.array(list(self._result_list))
         results = []
-        
+
         for result in self._result_list:
             objects.append(result)
 
@@ -98,10 +98,10 @@ class DiversitySelector(TopKSelector):
 
         q_idxs = np.array(list(q_idxs))
         q_idxs = q_idxs.astype(int)
-        
-        len_array = len(original) 
+
+        len_array = len(original)
         results =  original[q_idxs]
-        
+
         return results
 
 
@@ -119,10 +119,10 @@ class DiversitySelector(TopKSelector):
                 if self._mode != "oracle":
                     # self.result_queue.put(result)
                     results.append(result)
-                
+
         self._result_list = list(set(self._result_list) - set(results))
 
-        # diversity sampling 
+        # diversity sampling
         time_start = time.time()
         div_sample = self.diversity_sample()
         logger.info("Time taken {}".format(time.time() - time_start))
@@ -132,4 +132,4 @@ class DiversitySelector(TopKSelector):
             logger.info("[Result] Id {} Score {}".format(result.id, result.score))
 
         self._batch_added -= self._batch_size
-         
+
