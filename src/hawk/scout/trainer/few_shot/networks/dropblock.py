@@ -6,7 +6,7 @@ from torch.distributions import Bernoulli
 
 class DropBlock(nn.Module):
     def __init__(self, block_size):
-        super(DropBlock, self).__init__()
+        super().__init__()
 
         self.block_size = block_size
 

@@ -76,7 +76,7 @@ class DiversitySelector(TopKSelector):
         num_clusters = len(unique_labels) - (1 if -1 in unique_labels else 0)
         cluster_labels = np.arange(num_clusters)
         np.random.shuffle(cluster_labels)
-        logger.info("Num clusters {}".format(num_clusters))
+        logger.info(f"Num clusters {num_clusters}")
         n = self._div_k
         if num_clusters <= self._div_k:
             num_samples = [(n // num_clusters) + (1 if i < (n % num_clusters) else 0) for i in range(num_clusters)]
@@ -91,7 +91,7 @@ class DiversitySelector(TopKSelector):
             label = next(cluster_label_gen)
             n_c = np.where(data_labels==label)[0]
             n_ = len(n_c)
-            logger.info("{} {} {}".format(label, n_, num_sample))
+            logger.info(f"{label} {n_} {num_sample}")
             n_sample = min(n_, num_sample)
             sample_idxs = list(np.random.choice(n_c, n_sample, replace=False))
             q_idxs = q_idxs | set(sample_idxs)
@@ -125,11 +125,11 @@ class DiversitySelector(TopKSelector):
         # diversity sampling
         time_start = time.time()
         div_sample = self.diversity_sample()
-        logger.info("Time taken {}".format(time.time() - time_start))
+        logger.info(f"Time taken {time.time() - time_start}")
         results += list(div_sample)
         for result in results:
             self.result_queue.put(result)
-            logger.info("[Result] Id {} Score {}".format(result.id, result.score))
+            logger.info(f"[Result] Id {result.id} Score {result.score}")
 
         self._batch_added -= self._batch_size
 

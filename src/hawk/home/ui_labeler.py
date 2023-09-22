@@ -22,7 +22,7 @@ from flask import (
 from logzero import logger
 
 
-class EndpointAction(object):
+class EndpointAction:
 
     def __init__(self, action):
         self.action = action
@@ -36,7 +36,7 @@ class EndpointAction(object):
         else:
             return self.response
 
-class UILabeler(object):
+class UILabeler:
     app = None
 
     def __init__(self, mission_dir, save_automatically=False):
@@ -207,7 +207,7 @@ class UILabeler(object):
         label_path = os.path.join(self._label_dir, f"{data_name}.json")
 
         if os.path.exists(label_path):
-            with open(label_path, "r") as f:
+            with open(label_path) as f:
                 image_labels = json.load(f)
 
             label = str(image_labels['imageLabel'])
@@ -245,7 +245,7 @@ class UILabeler(object):
             return
 
         data = {}
-        with open(meta_path, "r") as f:
+        with open(meta_path) as f:
             data = json.load(f)
         self.bytes += data['size']
         # assuming binary class hardcoding positive id as 0
@@ -414,7 +414,7 @@ class UILabeler(object):
         list_of_files = glob.glob(self._stats_dir+'/stats-*')
         latest_stats = max(list_of_files, key=os.path.getctime)
         search_stats = {}
-        with open(latest_stats, "r") as f:
+        with open(latest_stats) as f:
             search_stats = json.load(f)
         stats = []
         for k, v in self._stats_keys.items():

@@ -5,7 +5,7 @@
 from .attribute_provider import AttributeProvider
 
 
-class ObjectProvider(object):
+class ObjectProvider:
 
     def __init__(self, obj_id: str, content: bytes,
                  attributes: AttributeProvider, gt: int=0):

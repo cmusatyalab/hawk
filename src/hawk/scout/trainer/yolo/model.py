@@ -35,7 +35,7 @@ class YOLOModel(ModelBase):
                  mode: str,
                  context: ModelContext):
 
-        logger.info("Loading DNN Model from {}".format(model_path))
+        logger.info(f"Loading DNN Model from {model_path}")
         assert model_path.is_file()
         # args = dict(args)
         args['input_size'] = args.get('input_size', 480)
@@ -198,7 +198,7 @@ class YOLOModel(ModelBase):
                 yield ResultProvider(batch[i][0], score, self.version)
 
     def stop(self):
-        logger.info("Stopping model of version {}".format(self.version))
+        logger.info(f"Stopping model of version {self.version}")
         with self._model_lock:
             self._running = False
             if self._model:

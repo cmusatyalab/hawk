@@ -11,7 +11,7 @@ from logzero import logger
 from ...ports import S2H_PORT
 
 
-class S2HPublisher(object):
+class S2HPublisher:
     @staticmethod
     def s2h_send_tiles(home_ip, result_conn):
         """API call to send results to HOME

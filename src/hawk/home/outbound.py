@@ -61,7 +61,7 @@ class OutboundProcess:
 
                 # Read meta data and create LabelWrapper
                 data = {}
-                with open(label_path, "r") as f:
+                with open(label_path) as f:
                     data = json.load(f)
 
                 label=LabelWrapper(
@@ -79,7 +79,7 @@ class OutboundProcess:
                 scout_index = int(data['scoutIndex'])
                 self.stubs[scout_index].send(msg)
 
-        except (IOError, KeyboardInterrupt) as e:
+        except (OSError, KeyboardInterrupt) as e:
             logger.error(e)
 
         return msg, [scout_index]

@@ -76,7 +76,7 @@ class ScriptLabeler:
                 label_path = self._label_dir / f"{data_name}"
 
                 data = {}
-                with open(meta_path, "r") as f: ## get the data from the meta_data file
+                with open(meta_path) as f: ## get the data from the meta_data file
                     data = json.load(f)
 
                 image_label = '1' if '/1/' in data['objectId'] else '0'
@@ -102,7 +102,7 @@ class ScriptLabeler:
                 self.result_q.put(label_path)
                 logger.info("({}, {}) Labeled {}".format(self.positives, self.negatives, data['objectId']))
                 self.stats_q.put((self.positives, self.negatives, self.bytes))
-        except (IOError, KeyboardInterrupt) as e:
+        except (OSError, KeyboardInterrupt) as e:
             logger.error(e)
 
 
@@ -125,7 +125,7 @@ class ScriptLabeler:
                 label_path = self._label_dir / f"{data_name}"
 
                 data = {}
-                with open(meta_path, "r") as f:
+                with open(meta_path) as f:
                     data = json.load(f)
 
                 basename = Path(data['objectId']).name
@@ -157,7 +157,7 @@ class ScriptLabeler:
                 self.result_q.put(label_path)
                 logger.info("({}, {}) Labeled {}".format(self.positives, self.negatives, data['objectId']))
                 self.stats_q.put((self.positives, self.negatives, self.bytes))
-        except (IOError, KeyboardInterrupt) as e:
+        except (OSError, KeyboardInterrupt) as e:
             logger.error(e)
 
 

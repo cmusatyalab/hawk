@@ -57,7 +57,7 @@ class FSLTrainer(ModelTrainerBase):
             path.write_bytes(content)
 
         version = self.get_version()
-        logger.info("Loading from path {}".format(path))
+        logger.info(f"Loading from path {path}")
         self.prev_path = path
         return FSLModel(self.args, path, version,
                                   mode=self.args['mode'],
@@ -65,7 +65,7 @@ class FSLTrainer(ModelTrainerBase):
                                   support_path= self.args['support_path'])
 
     def train_batch(self, model, data, optimizer, criterion):
-        imgsA, imgsB, labels = [t.to(device) for t in data]
+        imgsA, imgsB, labels = (t.to(device) for t in data)
         optimizer.zero_grad()
         codesA, codesB = model(imgsA, imgsB)
         loss, acc = criterion(codesA, codesB, labels)
@@ -134,7 +134,7 @@ class FSLTrainer(ModelTrainerBase):
                 epoch_loss += loss
                 loss.backward()
                 optimizer.step()
-            logger.info("Train Loss: {} {}".format(epoch, epoch_loss.item()))
+            logger.info(f"Train Loss: {epoch} {epoch_loss.item()}")
 
         time_end = time.time()
         logger.info(f"Training time = {time_end - time_start}")

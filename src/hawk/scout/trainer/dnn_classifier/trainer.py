@@ -42,7 +42,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
 
         if self.args['test_dir']:
             self.test_dir = Path(self.args['test_dir'])
-            msg = "Test Path {} provided does not exist".format(self.test_dir)
+            msg = f"Test Path {self.test_dir} provided does not exist"
             assert self.test_dir.exists(), msg
 
         logger.info("DNN CLASSIFIER TRAINER CALLED")
@@ -99,7 +99,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
         with open(trainpath, 'w') as f:
             for l in labels:
                 for path in train_samples[l]:
-                    f.write("{} {}\n".format(path, l))
+                    f.write(f"{path} {l}\n")
 
         if self.context.check_create_test():
             valpath = self.context.model_path(new_version, template="val-{}.txt")
@@ -114,7 +114,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
             with open(valpath, 'w') as f:
                 for l in labels:
                     for path in val_samples[l]:
-                        f.write("{} {}\n".format(path, l))
+                        f.write(f"{path} {l}\n")
 
             self.args['test_dir'] = valpath
 
@@ -155,7 +155,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
         if self.args['test_dir']:
             cmd.extend(["--valpath", self.args['test_dir']])
 
-        logger.info("TRAIN CMD \n {}".format(shlex.join(cmd)))
+        logger.info(f"TRAIN CMD \n {shlex.join(cmd)}")
         proc = subprocess.Popen(cmd)
         proc.communicate()
 

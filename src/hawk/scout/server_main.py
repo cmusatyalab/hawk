@@ -27,7 +27,7 @@ def handler_signals(signum, frame):
 
 def dumpstacks(_, __):
     traceback.print_stack()
-    id2name = dict([(th.ident, th.name) for th in threading.enumerate()])
+    id2name = {th.ident: th.name for th in threading.enumerate()}
     code = []
     for threadId, stack in sys._current_frames().items():
         code.append("\n# Thread: %s(%d)" % (id2name.get(threadId, ""), threadId))
@@ -43,10 +43,10 @@ def main():
     multiprocessing_logging.install_mp_handler()
 
     learning_module_api = A2SAPI(A2S_PORT)
-    a2s_methods = dict((k.encode("utf-8"), getattr(learning_module_api, k))
+    a2s_methods = {k.encode("utf-8"): getattr(learning_module_api, k)
         for k in dir(learning_module_api)
         if callable(getattr(learning_module_api, k)) and
-        k.startswith('a2s_'))
+        k.startswith('a2s_')}
 
     context = zmq.Context()
     socket = context.socket(zmq.REP)
@@ -55,7 +55,7 @@ def main():
     try:
         while True:
             method, req = socket.recv_multipart()
-            logger.info("Received A2S call {} {}".format(method, len(req)))
+            logger.info(f"Received A2S call {method} {len(req)}")
             reply = a2s_methods[method](req)
             socket.send(reply)
     except KeyboardInterrupt:

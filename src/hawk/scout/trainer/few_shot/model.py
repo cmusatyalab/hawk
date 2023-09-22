@@ -39,7 +39,7 @@ class FewShotModel(ModelBase):
 
         # model_path is None for few-shot
         # Hardcoding model architecture to resnet-50
-        logger.info("Loading FSL Model from {}".format(model_path))
+        logger.info(f"Loading FSL Model from {model_path}")
         test_transforms = transforms.Compose([
             transforms.Resize(92),
             transforms.CenterCrop(84),
@@ -90,12 +90,12 @@ class FewShotModel(ModelBase):
         train_loader = torch.utils.data.DataLoader(dataset=trainset,
                                    pin_memory=True)
         batch = next(iter(train_loader))
-        data, _ = [_ for _ in batch]
+        data, _ = (_ for _ in batch)
         _ = self._model(data)
         instance_embs = self._model.probe_instance_embs
         support_shape = (1, 5, 5)
         support = instance_embs.view(*(support_shape + (-1,)))
-        logger.info("Support emb shape {}".format(support.shape))
+        logger.info(f"Support emb shape {support.shape}")
         self.emb_dim = support.shape[-1]
         support = support.contiguous()
         self.proto = support.mean(dim=1) # Ntask x NK x d
@@ -226,7 +226,7 @@ class FewShotModel(ModelBase):
                 yield ResultProvider(batch[i][0], score, self.version)
 
     def stop(self):
-        logger.info("Stopping model of version {}".format(self.version))
+        logger.info(f"Stopping model of version {self.version}")
         with self._model_lock:
             self._running = False
             self._model = None

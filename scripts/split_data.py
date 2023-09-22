@@ -82,12 +82,12 @@ def shuffle_and_generate_index_files(config):
 
     dest_path = os.path.join(index_file)
     filename = os.path.basename(index_file)
-    src_path = "/tmp/{}".format(filename)
+    src_path = f"/tmp/{filename}"
     for i, host in enumerate(hosts):
         with open(src_path, "w") as f:
             f.write("\n".join(div_files[i]))
         # scp to hosts
-        cmd = "scp {} root@{}:{}".format(src_path, host, dest_path)
+        cmd = f"scp {src_path} root@{host}:{dest_path}"
         call(cmd.split(" "))
     return
 

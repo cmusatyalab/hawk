@@ -53,7 +53,7 @@ class TripletData(Dataset):
 
 class TripletLoss(nn.Module):
     def __init__(self, margin=1.0):
-        super(TripletLoss, self).__init__()
+        super().__init__()
         self.margin = margin
 
     def calc_euclidean(self, x1, x2):

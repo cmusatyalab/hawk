@@ -7,7 +7,7 @@ from typing import Optional
 from .object_provider import ObjectProvider
 
 
-class ResultProvider(object):
+class ResultProvider:
 
     def __init__(self, obj: ObjectProvider, score: float, model_version: Optional[int]):
         self.id = obj.id

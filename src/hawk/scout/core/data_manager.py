@@ -21,7 +21,7 @@ TMP_DIR = 'test-0'
 IGNORE_FILE = ['ignore', '-1', 'labels']
 TRAIN_TO_TEST_RATIO = 4
 
-class DataManager(object):
+class DataManager:
 
     def __init__(self, context: DataManagerContext):
         self._context = context
@@ -62,7 +62,7 @@ class DataManager(object):
         else:
             self._positives += 1
         if  int(scout_index) != int(self._context.scout_index):
-            logger.info("Fetch {} from {}".format(label.objectId, scout_index))
+            logger.info(f"Fetch {label.objectId} from {scout_index}")
             stub = self._context.scouts[scout_index]
             msg = [
                 b"s2s_get_tile",
@@ -147,7 +147,7 @@ class DataManager(object):
                     # check if labels folder exists
                     label_filename = os.path.join('labels', basename.split('.')[0]+".txt")
                     if label_filename in example_files:
-                        logger.info("label_file {} ".format(label_filename))
+                        logger.info(f"label_file {label_filename} ")
                         label_content = zf.read(label_filename)
                         label_dir = os.path.join(self._examples_dir,
                                                  DatasetSplit.Name(example_set).lower(),
@@ -162,12 +162,12 @@ class DataManager(object):
 
         new_positives = sum(labels)
         new_negatives = len(labels) - new_positives
-        logger.info(" New positives {} \n Negatives {}".format(new_positives, new_negatives))
+        logger.info(f" New positives {new_positives} \n Negatives {new_negatives}")
 
         retrain = True
         if self._context.check_initial_model():
             retrain = False
-        logger.info("Initial model {} retrain {}".format(self._context.check_initial_model(), retrain))
+        logger.info(f"Initial model {self._context.check_initial_model()} retrain {retrain}")
         self._context.new_labels_callback(new_positives, new_negatives, retrain=retrain)
 
 
@@ -340,10 +340,10 @@ class DataManager(object):
         return new_positives, new_negatives
 
     def _get_example_count(self, example_set: DatasetSplit, label: str) -> int:
-        return self._example_counts['{}_{}'.format(DatasetSplit.Name(example_set), label)]
+        return self._example_counts[f'{DatasetSplit.Name(example_set)}_{label}']
 
     def _increment_example_count(self, example_set: DatasetSplit, label: str, delta: int) -> None:
-        self._example_counts['{}_{}'.format(DatasetSplit.Name(example_set), label)] += delta
+        self._example_counts[f'{DatasetSplit.Name(example_set)}_{label}'] += delta
 
     @staticmethod
     def _remove_old_paths(example_file: str, old_dirs: List[Path]) -> Optional[Path]:
@@ -351,7 +351,7 @@ class DataManager(object):
             old_example_path = old_path / example_file
             if old_example_path.exists():
                 old_example_path.unlink()
-                logger.info('Removed old path {} for example'.format(old_example_path))
+                logger.info(f'Removed old path {old_example_path} for example')
                 return old_example_path
 
         return None

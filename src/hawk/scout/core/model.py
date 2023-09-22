@@ -156,11 +156,11 @@ class ModelBase(Model):
         f1_best_idx = np.argmax(f1_score)
 
         best_threshold = thresholds[f1_best_idx]
-        logger.info('Test AUC: {}'.format(ap))
+        logger.info(f'Test AUC: {ap}')
 
         pred = np.where(pred >= best_threshold, 1, 0) if is_probability else np.where(pred > 0, 1, 0)
         logger.info(
-            'Test classification report ({} threshold):\n{}'.format(best_threshold, classification_report(target, pred)))
+            f'Test classification report ({best_threshold} threshold):\n{classification_report(target, pred)}')
 
         stats = classification_report(target, pred, output_dict=True)
 

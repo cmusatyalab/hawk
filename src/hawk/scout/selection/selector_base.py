@@ -14,7 +14,7 @@ from ..core.model import Model
 from ..core.result_provider import ResultProvider
 
 
-class SelectorStats(object):
+class SelectorStats:
 
     def __init__(self, dictionary):
         assert 'processed_objects' in dictionary, "Missing processed_objects attribute"

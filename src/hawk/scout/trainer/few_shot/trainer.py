@@ -37,7 +37,7 @@ class FewShotTrainer(ModelTrainerBase):
             path = self.context.model_path(new_version)
             path.write_bytes(content)
 
-        logger.info("Loading from path {}".format(path))
+        logger.info(f"Loading from path {path}")
         self._model_path = path
         return FewShotModel(self.args, path, version,
                                   context=self.context)

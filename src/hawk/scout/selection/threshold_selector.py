@@ -30,7 +30,7 @@ class ThresholdSelector(SelectorBase):
     def _add_result(self, result: ResultProvider) -> None:
         if result.gt:
            self.num_positives += 1
-           logger.info("{} Score {}".format(result.id, result.score))
+           logger.info(f"{result.id} Score {result.score}")
 
         if result.score > self._threshold:
             self.result_queue.put(result)

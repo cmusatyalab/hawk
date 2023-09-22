@@ -114,9 +114,9 @@ def eval_worker(gpu, ngpus_per_node, args):
     start_time = time.time()
 
     if args.gpu is not None:
-        print("Use GPU: {} for training".format(args.gpu))
+        print(f"Use GPU: {args.gpu} for training")
 
-    print("=> using pre-trained model '{}'".format(args.arch))
+    print(f"=> using pre-trained model '{args.arch}'")
     model = models.__dict__[args.arch](pretrained=True)
     model, input_size = initialize_model(args.arch, args.num_classes, args.num_unfreeze)
 
@@ -131,24 +131,24 @@ def eval_worker(gpu, ngpus_per_node, args):
     # load model from checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
-            print("=> loading checkpoint '{}'".format(args.resume))
+            print(f"=> loading checkpoint '{args.resume}'")
             checkpoint = torch.load(args.resume)
 
             args.start_epoch = checkpoint['epoch']
             model.load_state_dict(checkpoint['state_dict'])
-            print("=> loaded checkpoint {}".format(args.resume))
+            print(f"=> loaded checkpoint {args.resume}")
         else:
-            print("=> no checkpoint found at '{}'".format(args.resume))
+            print(f"=> no checkpoint found at '{args.resume}'")
 
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
 
     val_path = args.valpath
-    logger.info("Test path {}".format(val_path))
+    logger.info(f"Test path {val_path}")
     val_list = []
     val_labels = []
 
-    with open(val_path, "r") as f:
+    with open(val_path) as f:
         contents = f.read().splitlines()
         for content in contents:
             path, label = content.split()
@@ -171,7 +171,7 @@ def eval_worker(gpu, ngpus_per_node, args):
 
     auc = validate_model(val_loader, model, criterion, args)
 
-    logger.info("Model AUC {}".format(auc))
+    logger.info(f"Model AUC {auc}")
     return
 
 
@@ -181,9 +181,9 @@ def train_worker(gpu, ngpus_per_node, args):
     start_time = time.time()
 
     if args.gpu is not None:
-        print("Use GPU: {} for training".format(args.gpu))
+        print(f"Use GPU: {args.gpu} for training")
 
-    print("=> using pre-trained model '{}'".format(args.arch))
+    print(f"=> using pre-trained model '{args.arch}'")
     model = models.__dict__[args.arch](pretrained=True)
     model, input_size = initialize_model(args.arch, args.num_classes, args.num_unfreeze)
 
@@ -200,7 +200,7 @@ def train_worker(gpu, ngpus_per_node, args):
     train_path = args.trainpath
     train_list = []
     train_labels = []
-    with open(train_path, "r") as f:
+    with open(train_path) as f:
         contents = f.read().splitlines()
         for content in contents:
             path, label = content.split()
@@ -228,14 +228,14 @@ def train_worker(gpu, ngpus_per_node, args):
         num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
     args.validate = True if args.valpath else False
-    logger.info("Validate {}".format(args.validate))
+    logger.info(f"Validate {args.validate}")
     if args.validate:
         val_path = args.valpath
-        logger.info("Test path {}".format(val_path))
+        logger.info(f"Test path {val_path}")
         val_list = []
         val_labels = []
 
-        with open(val_path, "r") as f:
+        with open(val_path) as f:
             contents = f.read().splitlines()
             for content in contents:
                 path, label = content.split()
@@ -262,7 +262,7 @@ def train_worker(gpu, ngpus_per_node, args):
         [(targets == t).sum() for t in torch.unique(targets, sorted=True)])
     total_samples = sum(class_sample_count)
     class_weights = [1 - (float(x) / float(total_samples)) for x in class_sample_count]
-    logger.info("Total samples {} Class Weight {}".format(total_samples, class_weights))
+    logger.info(f"Total samples {total_samples} Class Weight {class_weights}")
     criterion = nn.CrossEntropyLoss(weight = torch.Tensor(class_weights), label_smoothing=0.1).cuda()
 
     # define loss function (criterion), optimizer, and learning rate scheduler
@@ -281,7 +281,7 @@ def train_worker(gpu, ngpus_per_node, args):
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
-            print("=> loading checkpoint '{}'".format(args.resume))
+            print(f"=> loading checkpoint '{args.resume}'")
             checkpoint = torch.load(args.resume)
 
             args.start_epoch = checkpoint['epoch']
@@ -291,7 +291,7 @@ def train_worker(gpu, ngpus_per_node, args):
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
         else:
-            print("=> no checkpoint found at '{}'".format(args.resume))
+            print(f"=> no checkpoint found at '{args.resume}'")
 
     epoch_count = 0
     args.break_epoch = args.epochs if args.break_epoch == -1 else args.break_epoch
@@ -303,7 +303,7 @@ def train_worker(gpu, ngpus_per_node, args):
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, args)
 
-        logger.info("Epoch {}".format(epoch))
+        logger.info(f"Epoch {epoch}")
         if args.validate:
             # evaluate on validation set
             acc1 = validate_model(val_loader, model, criterion, args)
@@ -311,7 +311,7 @@ def train_worker(gpu, ngpus_per_node, args):
             is_best = acc1 >= best_acc1
             best_acc1 = max(acc1, best_acc1)
             if is_best:
-                logger.info("Saving model AUC: {}".format(best_acc1))
+                logger.info(f"Saving model AUC: {best_acc1}")
                 save_checkpoint({
                     'epoch': epoch + 1,
                     'arch': args.arch,
@@ -357,7 +357,7 @@ def train_worker(gpu, ngpus_per_node, args):
 
     if args.validate:
         best_auc = validate_model(val_loader, model, criterion, args)
-        logger.info("Best TEST AUC {}".format(best_auc))
+        logger.info(f"Best TEST AUC {best_auc}")
 
     save_checkpoint({
         'epoch': epoch + 1,
@@ -508,9 +508,9 @@ def calculate_performance(y_true, y_pred):
     roc_auc = roc_auc_score(y_true, y_pred)
     precision, recall, _ = precision_recall_curve(y_true, y_pred)
     pr_auc = auc(recall, precision)
-    logger.info("AUC {}".format(ap))
-    logger.info("ROC AUC {}".format(roc_auc))
-    logger.info("PR AUC {}".format(pr_auc))
+    logger.info(f"AUC {ap}")
+    logger.info(f"ROC AUC {roc_auc}")
+    logger.info(f"PR AUC {pr_auc}")
     return ap
 
 
@@ -567,7 +567,7 @@ class Summary(Enum):
     SUM = 2
     COUNT = 3
 
-class AverageMeter(object):
+class AverageMeter:
     """Computes and stores the average and current value"""
     def __init__(self, name, fmt=':f', summary_type=Summary.AVERAGE):
         self.name = name

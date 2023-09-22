@@ -110,7 +110,7 @@ class FrameRetriever(Retriever):
                 image.save(content, format='JPEG', quality=85)
                 content = content.getvalue()
 
-                object_id = "/{}/collection/id/".format(label)+image_path
+                object_id = f"/{label}/collection/id/"+image_path
                 attributes = self.set_tile_attributes(object_id, label)
                 self._stats['retrieved_tiles'] += 1
 

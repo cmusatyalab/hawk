@@ -110,8 +110,8 @@ def configure_mission(filter_config):
         config = define_scope(config)
 
     bandwidth = config.get('bandwidth', "100")
-    assert int(bandwidth) in [100, 30, 12], "Fireqos script may not exist for {}".format(bandwidth)
-    config['bandwidth'] = ["[[-1, \"{}k\"]]".format(bandwidth) for _ in scouts]
+    assert int(bandwidth) in [100, 30, 12], f"Fireqos script may not exist for {bandwidth}"
+    config['bandwidth'] = [f"[[-1, \"{bandwidth}k\"]]" for _ in scouts]
 
     config['train_strategy']['type'] = filter_config['name']
     logger.info(f"Train strategy is: {config['train_strategy']}")
@@ -251,7 +251,7 @@ def label_Sample():
         tile_index = sample.split("/")[-1].split(".")[0]
         meta_path = meta_dir / f"{tile_index}.json"
         print(meta_path)
-        with open(meta_path, 'r') as f:
+        with open(meta_path) as f:
             meta_data = json.load(f)
         del meta_data['score']
         meta_data['imageLabel'] = label_nums[label]
@@ -286,7 +286,7 @@ def get_stat():
     json_logs = [log for log in logs if log.endswith(".json")]
     index = len(json_logs)
     file_name = f"stats-{index:06d}.json"
-    with open (os.path.join(log_dir,file_name), "r") as f:
+    with open (os.path.join(log_dir,file_name)) as f:
         data = json.load(f)
     print(file_name)
     print(data)

@@ -18,7 +18,7 @@ def conv_init(m):
 
 class wide_basic(nn.Module):
     def __init__(self, in_planes, planes, dropout_rate, stride=1):
-        super(wide_basic, self).__init__()
+        super().__init__()
         self.bn1 = nn.BatchNorm2d(in_planes)
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, padding=1, bias=True)
         self.dropout = nn.Dropout(p=dropout_rate)
@@ -40,7 +40,7 @@ class wide_basic(nn.Module):
 
 class Wide_ResNet(nn.Module):
     def __init__(self, depth, widen_factor, dropout_rate):
-        super(Wide_ResNet, self).__init__()
+        super().__init__()
         self.in_planes = 16
 
         assert ((depth-4)%6 ==0), 'Wide-resnet depth should be 6n+4'

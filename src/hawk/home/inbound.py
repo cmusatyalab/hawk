@@ -75,7 +75,7 @@ class InboundProcess:
                 }
 
                 if self._token:
-                    logger.info("\n\nReceived init sample from scout {}, total count is: {}".format(parent_scout, self._sample_count))
+                    logger.info(f"\n\nReceived init sample from scout {parent_scout}, total count is: {self._sample_count}")
                     if self._rotation_mode == 'round-robin':
                         self._per_scout_priority_queues[parent_scout].put((-score, temp_meta_data, data))
 
@@ -98,7 +98,7 @@ class InboundProcess:
                 else:
                     self.write_push(result_q, temp_meta_data, data_name, data, 0)
 
-        except (Exception, IOError, KeyboardInterrupt) as e:
+        except (Exception, OSError, KeyboardInterrupt) as e:
             logger.error(e)
 
     def write_push(self, result_queue, temp_meta_data, data_name, data, local_counter):

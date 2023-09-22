@@ -9,7 +9,7 @@ import zmq
 from ...ports import S2S_PORT
 
 
-class HawkStub(object):
+class HawkStub:
 
     def __init__(self, host, this_host):
 

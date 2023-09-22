@@ -53,7 +53,7 @@ class TopKSelector(SelectorBase):
                     self.version, i, self._k, result.id))
                 if self._mode != "oracle":
                     self.result_queue.put(result)
-                    logger.info("[Result] Id {} Score {}".format(result.id, result.score))
+                    logger.info(f"[Result] Id {result.id} Score {result.score}")
         self._batch_added -= self._batch_size
 
     @log_exceptions
@@ -68,19 +68,19 @@ class TopKSelector(SelectorBase):
             # Incrementing positives in stream
             if result.gt:
                 self.num_positives += 1
-                logger.info("Queueing {} Score {}".format(result.id, result.score))
+                logger.info(f"Queueing {result.id} Score {result.score}")
 
             if self._mode == "oracle":
                 if int(result.score) == 1:
                     self.result_queue.put(result)
-                    logger.info("[Result] Id {} Score {}".format(result.id, result.score))
+                    logger.info(f"[Result] Id {result.id} Score {result.score}")
 
             self._priority_queues[-1].put((-result.score, time_result, result))
             self._batch_added += 1
 
             # Logging for debugging
             if self._batch_added in self.log_counter:
-                logger.info("ADDED {}/{}".format(self._batch_added, self._batch_size))
+                logger.info(f"ADDED {self._batch_added}/{self._batch_size}")
 
             if self._batch_added >= self._batch_size or (self._clear_event.is_set() and self._batch_added != 0) :
                 self.select_tiles(self._k)
@@ -146,7 +146,7 @@ class TopKSelector(SelectorBase):
                     model, self._priority_queues, self._mission.start_time)
 
                 self._batch_added += num_revisited
-                logger.info("ADDING  Reexamined to result Queue {}".format(num_revisited))
+                logger.info(f"ADDING  Reexamined to result Queue {num_revisited}")
 
                 self.num_revisited += num_revisited
                 self.num_negatives_added = 0

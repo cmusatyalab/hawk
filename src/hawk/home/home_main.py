@@ -48,8 +48,8 @@ def main():
         config = define_scope(config)
 
     bandwidth = config.get('bandwidth', "100")
-    assert int(bandwidth) in [100, 30, 12], "Fireqos script may not exist for {}".format(bandwidth)
-    config['bandwidth'] = ["[[-1, \"{}k\"]]".format(bandwidth) for _ in scouts]
+    assert int(bandwidth) in [100, 30, 12], f"Fireqos script may not exist for {bandwidth}"
+    config['bandwidth'] = [f"[[-1, \"{bandwidth}k\"]]" for _ in scouts]
 
     # create local directories
     mission_dir = Path(config['home-params']['mission_dir'])
@@ -112,7 +112,7 @@ def main():
         labeler =  config.get('label-mode', 'ui')
         gt_dir = config['home-params'].get('label_dir', "")
         trainer = (config['train_strategy']['type']).lower()
-        logger.info("Trainer {}".format(trainer))
+        logger.info(f"Trainer {trainer}")
         label_mode = "classify"
 
         if trainer == "yolo":
@@ -123,7 +123,7 @@ def main():
         elif labeler == 'ui' or labeler == 'browser':
             home_labeler = UILabeler(mission_dir)
         else:
-            raise NotImplementedError("Labeler {} not implemented".format(labeler))
+            raise NotImplementedError(f"Labeler {labeler} not implemented")
 
         p = mp.Process(target=home_labeler.start_labeling, kwargs={'input_q': meta_q,
                                                                    'result_q': label_q,

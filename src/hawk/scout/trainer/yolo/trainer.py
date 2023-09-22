@@ -41,13 +41,13 @@ class YOLOTrainer(ModelTrainerBase):
 
         if self.args['test_dir']:
             self.test_dir = Path(self.args['test_dir'])
-            msg = "Test Path {} provided does not exist".format(self.test_dir)
+            msg = f"Test Path {self.test_dir} provided does not exist"
             assert self.test_dir.exists(), msg
 
         if self.args['mode'] == "notional":
             assert "notional_model_path" in self.args, "Missing keyword {}".format("notional_model_path")
             notional_model_path = Path(self.args['notional_model_path'])
-            msg = "Notional Model Path {} provided does not exist".format(notional_model_path)
+            msg = f"Notional Model Path {notional_model_path} provided does not exist"
             assert notional_model_path.exists(), msg
 
         logger.info("YOLO TRAINER CALLED")
@@ -68,7 +68,7 @@ class YOLOTrainer(ModelTrainerBase):
 
         self.prev_path = path
         self.context.stop_model()
-        logger.info(" Trainer Loading from path {}".format(path))
+        logger.info(f" Trainer Loading from path {path}")
         return YOLOModel(self.args, path, version,
                          mode=self.args['mode'],
                          context=self.context)
@@ -107,7 +107,7 @@ class YOLOTrainer(ModelTrainerBase):
         with open(trainpath, 'w') as f:
             for l in labels:
                 for path in train_samples[l]:
-                    f.write("{}\n".format(path))
+                    f.write(f"{path}\n")
 
         noval = True
         if self.args['test_dir']:
@@ -115,7 +115,7 @@ class YOLOTrainer(ModelTrainerBase):
             valpath = self.context.model_path(new_version, template="val-{}.txt")
             with open(valpath, 'w') as f:
                 for path in glob.glob(self.args['test_dir']+"/*/*"):
-                    f.write("{}\n".format(path))
+                    f.write(f"{path}\n")
 
 
         if new_version <= 0:
@@ -168,7 +168,7 @@ class YOLOTrainer(ModelTrainerBase):
         if self.args['test_dir']:
             cmd.extend(["--noval", "False"])
 
-        logger.info("TRAIN CMD \n {}".format(shlex.join(cmd)))
+        logger.info(f"TRAIN CMD \n {shlex.join(cmd)}")
         proc = subprocess.Popen(cmd)
         proc.communicate()
         if not model_savepath.exists():

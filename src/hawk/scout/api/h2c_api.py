@@ -12,7 +12,7 @@ from ...ports import H2C_PORT
 from ...proto.messages_pb2 import SendLabels
 
 
-class H2CSubscriber(object):
+class H2CSubscriber:
     @staticmethod
     def h2c_receive_labels(label_conn):
         """API call to receives labels from HOME

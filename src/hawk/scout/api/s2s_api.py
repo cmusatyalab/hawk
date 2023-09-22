@@ -39,7 +39,7 @@ def s2s_receive_request(s2s_input, s2s_output):
         logger.exception()
         raise e
 
-class S2SServicer(object):
+class S2SServicer:
 
     def __init__(self, mission):
         self._mission = mission

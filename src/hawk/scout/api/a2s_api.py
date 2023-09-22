@@ -64,7 +64,7 @@ from ..trainer.yolo.trainer import YOLOTrainer
 
 MODEL_FORMATS = ['pt', 'pth']
 
-class A2SAPI(object):
+class A2SAPI:
     """Admin to Scouts API Calls
 
     API calls from admin to scouts to configure missions, explicitly start / stop mission,
@@ -103,7 +103,7 @@ class A2SAPI(object):
             logger.info("Configured Successfully")
         except Exception as e:
             logger.exception(e)
-            reply = ("ERROR: {}".format(e)).encode()
+            reply = (f"ERROR: {e}").encode()
             #raise e
 
         return reply
@@ -181,7 +181,7 @@ class A2SAPI(object):
         """
         try:
             test_path = msg.decode("utf-8")
-            logger.info("Testing {}".format(test_path))
+            logger.info(f"Testing {test_path}")
             assert os.path.exists(test_path)
             reply = self._a2s_get_test_results(test_path)
             return reply
@@ -261,13 +261,13 @@ class A2SAPI(object):
 
                 trainer = FSLTrainer(mission, config.args)
             else:
-                raise NotImplementedError('unknown model: {}'.format(
-                    json_format.MessageToJson(model)))
+                raise NotImplementedError(
+                    f"unknown model: {json_format.MessageToJson(model)}"
+                )
 
             self._trainer = trainer
             mission.setup_trainer(trainer)
-            logger.info('Create mission with id {}'.format(
-                request.missionId))
+            logger.info(f"Create mission with id {request.missionId}")
 
             # Constricting bandwidth
             # Only supports one bandwidth
@@ -317,7 +317,7 @@ class A2SAPI(object):
             logger.info('Starting mission calling mission')
             mission = self._manager.get_mission()
             mission_id = mission.mission_id.value
-            logger.info('Starting mission with id {}'.format(mission_id))
+            logger.info(f'Starting mission with id {mission_id}')
             mission.start()
             if mission.enable_logfile:
                 mission.log_file.write("{:.3f} {} SEARCH STARTED\n".format(
@@ -325,7 +325,7 @@ class A2SAPI(object):
 
             reply = b"SUCCESS"
         except Exception as e:
-            reply = ("ERROR: {}".format(e)).encode()
+            reply = (f"ERROR: {e}").encode()
         return reply
 
     def _a2s_stop_mission(self):
@@ -341,7 +341,7 @@ class A2SAPI(object):
                 return b"ERROR: Mission does not exist"
 
             mission_id = mission.mission_id.value
-            logger.info('Stopping mission with id {}'.format(mission_id))
+            logger.info(f'Stopping mission with id {mission_id}')
             if mission.enable_logfile:
                 mission.log_file.write("{:.3f} {} SEARCH STOPPED\n".format(
                     time.time() - mission.start_time, mission.host_name))
@@ -349,7 +349,7 @@ class A2SAPI(object):
             self._manager.remove_mission()
             reply = b"SUCCESS"
         except Exception as e:
-            reply = ("ERROR: {}".format(e)).encode()
+            reply = (f"ERROR: {e}").encode()
         finally:
             # Stop fireqos
             bandwidth_cmd = ["fireqos", "stop"]
@@ -411,7 +411,7 @@ class A2SAPI(object):
 
             reply = reply.SerializeToString()
         except Exception as e:
-            reply = ("ERROR: {}".format(e)).encode()
+            reply = (f"ERROR: {e}").encode()
         return reply
 
 
@@ -438,7 +438,7 @@ class A2SAPI(object):
 
             reply = b"SUCCESS"
         except Exception as e:
-            reply = ("ERROR: {}".format(e)).encode()
+            reply = (f"ERROR: {e}").encode()
         return reply
 
     def _a2s_get_test_results(self, request: str):
@@ -475,7 +475,7 @@ class A2SAPI(object):
             for idx, path in enumerate(model_paths):
                 path = Path(path)
                 version = get_version(path, idx)
-                logger.info("model {} version {}".format(path, version))
+                logger.info(f"model {path} version {version}")
                 # create trainer and check
                 # model = mission.load_model(path, version=version)
                 model = self._trainer.load_model(path, version=version)
@@ -485,7 +485,7 @@ class A2SAPI(object):
             reply = MissionResults(results=results)
             reply = reply.SerializeToString()
         except Exception as e:
-            reply = ("ERROR: {}".format(e)).encode()
+            reply = (f"ERROR: {e}").encode()
         return reply
 
 
@@ -537,7 +537,7 @@ class A2SAPI(object):
 
         if selector.HasField('topk'):
             top_k_param = json_format.MessageToDict(selector.topk)
-            logger.info("TopK Params {}".format(top_k_param))
+            logger.info(f"TopK Params {top_k_param}")
             return TopKSelector(selector.topk.k, selector.topk.batchSize,
                                 self._get_reexamination_strategy(
                                     reexamination_strategy))
@@ -551,13 +551,14 @@ class A2SAPI(object):
                                     reexamination_strategy))
         elif selector.HasField('diversity'):
             top_k_param = json_format.MessageToDict(selector.diversity)
-            logger.info("TopK Params {}".format(top_k_param))
+            logger.info(f"TopK Params {top_k_param}")
             return DiversitySelector(selector.topk.k, selector.topk.batchSize,
                                 self._get_reexamination_strategy(
                                     reexamination_strategy))
         else:
-            raise NotImplementedError('unknown selector: {}'.format(
-                json_format.MessageToJson(selector)))
+            raise NotImplementedError(
+                f"unknown selector: {json_format.MessageToJson(selector)}"
+            )
 
     def _get_reexamination_strategy(self,
                                     reexamination_strategy: ReexaminationStrategyConfig) -> ReexaminationStrategy:
@@ -583,5 +584,6 @@ class A2SAPI(object):
         elif dataset.HasField('video'):
             return VideoRetriever(dataset.video)
         else:
-            raise NotImplementedError('unknown dataset: {}'.format(
-                json_format.MessageToJson(dataset)))
+            raise NotImplementedError(
+                f"unknown dataset: {json_format.MessageToJson(dataset)}"
+            )

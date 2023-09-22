@@ -8,7 +8,7 @@ from typing import Union
 from .mission import Mission
 
 
-class MissionManager(object):
+class MissionManager:
 
     def __init__(self):
         self._lock = threading.Lock()

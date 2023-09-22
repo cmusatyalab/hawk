@@ -68,8 +68,8 @@ class Mission(DataManagerContext, ModelContext):
         os.makedirs(self._model_dir, exist_ok=True)
         self.host_name = (get_server_ids()[0]).split('.')[0]
         self.home_ip = home_ip
-        self.log_file = open(self._log_dir / 'log-{}.txt'.format(self.host_name), "a")
-        self.result_path = str(self._log_dir / 'sent-{}.txt'.format(self.host_name))
+        self.log_file = open(self._log_dir / f'log-{self.host_name}.txt', "a")
+        self.result_path = str(self._log_dir / f'sent-{self.host_name}.txt')
         self.enable_logfile = True
         self.trainer = None
         self.trainer_type = None
@@ -129,7 +129,7 @@ class Mission(DataManagerContext, ModelContext):
         p = mp.Process(target=H2CSubscriber.h2c_receive_labels, args=(h2c_input,))
         self._label_thread = threading.Thread(target=self._get_labels, args=(h2c_output,), name='get-labels')
         p.start()
-        logger.info("SETTING UP S2S Server {}".format(self._scout_index))
+        logger.info(f"SETTING UP S2S Server {self._scout_index}")
         s2s_input, s2s_output = mp.Queue(), mp.Queue()
         p = mp.Process(target=s2s_receive_request, args=(s2s_input, s2s_output,))
         self._s2s_thread = threading.Thread(target=self._s2s_process,
@@ -138,10 +138,10 @@ class Mission(DataManagerContext, ModelContext):
 
         self.start_time = time.time()
         s2s_object = S2SServicer(self)
-        self.s2s_methods = dict((k.encode("utf-8"), getattr(s2s_object, k))
+        self.s2s_methods = {k.encode("utf-8"): getattr(s2s_object, k)
                     for k in dir(s2s_object)
                     if callable(getattr(s2s_object, k)) and
-                    k.startswith('s2s_'))
+                    k.startswith('s2s_')}
 
 
     def setup_trainer(self, trainer):
@@ -260,7 +260,7 @@ class Mission(DataManagerContext, ModelContext):
     def new_labels_callback(self, new_positives: int, new_negatives: int, retrain=True) -> None:
         if self._abort_event.is_set():
             return
-        logger.info("New labels call back has been called...positives: {}, negatives: {}".format(new_positives, new_negatives))
+        logger.info(f"New labels call back has been called...positives: {new_positives}, negatives: {new_negatives}")
         end_t = time.time()
 
         if retrain:
@@ -336,7 +336,7 @@ class Mission(DataManagerContext, ModelContext):
             starting_version = self._model.version if self._model is not None else None
             model = self._model
 
-        logger.info('Starting evaluation with model version {}'.format(starting_version))
+        logger.info(f'Starting evaluation with model version {starting_version}')
 
         while not self._abort_event.is_set():
             with self._model_lock:
@@ -478,16 +478,16 @@ class Mission(DataManagerContext, ModelContext):
             return
 
         with self._data_manager.get_examples(DatasetSplit.TRAIN) as train_dir:
-            logger.info("Train dir {}".format(train_dir))
+            logger.info(f"Train dir {train_dir}")
             model = self.trainer.train_model(train_dir)
 
         eval_start = time.time()
-        logger.info('Trained model in {:.3f} seconds'.format(eval_start - train_start))
+        logger.info(f'Trained model in {eval_start - train_start:.3f} seconds')
         if model is not None and self.enable_logfile:
             self.log_file.write("{:.3f} {}_{} TRAIN NEW MODEL in {} seconds\n".format( \
                     time.time() - self.start_time, self.host_name, model.version, eval_start - train_start))
         self._set_model(model, False)
-        logger.info('Evaluated model in {:.3f} seconds'.format(time.time() - eval_start))
+        logger.info(f'Evaluated model in {time.time() - eval_start:.3f} seconds')
 
     def _set_model(self, model: Model, should_stage: bool) -> None:
         """Evaluates the trained model on the test data. If distributed waits
@@ -511,7 +511,7 @@ class Mission(DataManagerContext, ModelContext):
                 logger.info("Stopping model")
                 self._model.stop()
             self._model = model
-            logger.info("Promoted New Model Version {}".format(self._model.version))
+            logger.info(f"Promoted New Model Version {self._model.version}")
             if self.enable_logfile:
                 self.log_file.write("{:.3f} {} {} Promoted New Model Version {}\n".format( \
                     time.time() - self.start_time, time.ctime(), self.host_name, model.version))
@@ -545,7 +545,7 @@ class Mission(DataManagerContext, ModelContext):
             if self._model and self._model.is_running():
                 self._model.stop()
             self._model = model
-            logger.info("Promoted New Model Version {}".format(self._model.version))
+            logger.info(f"Promoted New Model Version {self._model.version}")
             self._model_stats = model_stats
 
             self._last_trained_version = model.version
@@ -568,7 +568,7 @@ class Mission(DataManagerContext, ModelContext):
         with self._data_manager.get_examples(DatasetSplit.TRAIN) as train_dir:
             train_start = time.time()
             model = self.trainer.train_model(train_dir)
-            logger.info('Trained model in {:.3f} seconds'.format(time.time() - train_start))
+            logger.info(f'Trained model in {time.time() - train_start:.3f} seconds')
 
         if not self.trainer.should_sync_model:
             with self._staged_model_condition:
@@ -582,6 +582,6 @@ class Mission(DataManagerContext, ModelContext):
                     model = self._staged_models[model_version]
                     break
                 else:
-                    logger.info('Waiting for model version {}'.format(model_version))
+                    logger.info(f'Waiting for model version {model_version}')
                 self._staged_model_condition.wait()
         return model

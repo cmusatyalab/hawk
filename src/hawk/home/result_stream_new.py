@@ -71,7 +71,7 @@ class UILabeler:
                     image_number = image_name.split("/images/")[1].split('.')[0]
                     image_meta = image_number + ".json"
                     image_meta_path = os.path.join(self._meta_dir, image_meta)
-                    with open(image_meta_path, "r") as f:
+                    with open(image_meta_path) as f:
                         meta_data = json.load(f)
                     meta_orig_file = meta_data['objectId']
                     label = meta_orig_file.split("/")[1]

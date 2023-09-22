@@ -16,7 +16,7 @@ from ..core.utils import get_server_ids
 KEYS = ['total_objects', 'total_images', 'dropped_objects',
         'false_negatives', 'retrieved_images', 'retrieved_tiles']
 
-class RetrieverStats(object):
+class RetrieverStats:
 
     def __init__(self, dictionary):
         for key in dictionary:

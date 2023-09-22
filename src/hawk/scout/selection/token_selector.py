@@ -26,7 +26,7 @@ class TokenSelector(TopKSelector):
         for i in range(self._k):
             result = self._priority_queues[-1].get()[-1]
             self.result_queue.put(result)
-            logger.info("Put tile number {} into result queue.".format(self.sample_count))
+            logger.info(f"Put tile number {self.sample_count} into result queue.")
 
 
     @log_exceptions
@@ -49,12 +49,12 @@ class TokenSelector(TopKSelector):
             # Incrementing positives in stream
             if result.gt:
                 self.num_positives += 1
-                logger.info("Queueing {} Score {}".format(result.id, result.score))
+                logger.info(f"Queueing {result.id} Score {result.score}")
 
             if self._mode == "oracle":
                 if int(result.score) == 1:
                     self.result_queue.put(result)
-                    logger.info("[Result] Id {} Score {}".format(result.id, result.score))
+                    logger.info(f"[Result] Id {result.id} Score {result.score}")
 
             self._priority_queues[-1].put((-result.score, time_result, result))
             # pop the top 4 samples of the first 100 to populate the initial labeling queue at home.

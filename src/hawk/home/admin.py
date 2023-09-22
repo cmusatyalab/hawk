@@ -74,7 +74,7 @@ class Admin:
                 config = load_config(config_path)
                 self._setup_mission(config)
             else:
-                raise NotImplementedError("Unknown header {}".format(header))
+                raise NotImplementedError(f"Unknown header {header}")
 
 
     def _setup_mission(self, config):
@@ -138,7 +138,7 @@ class Admin:
                 )
             )
         else:
-            raise NotImplementedError("Unknown train strategy {}".format(train_type))
+            raise NotImplementedError(f"Unknown train strategy {train_type}")
 
         # retrainPolicy
         retrain_config = config['retrain_policy']
@@ -159,7 +159,7 @@ class Admin:
                     num_intervals=retrain_config['num_intervals'],
                      ))
         else:
-            raise NotImplementedError("Unknown retrain policy {}".format(retrain_type))
+            raise NotImplementedError(f"Unknown retrain policy {retrain_type}")
 
         # dataset
         dataset_config = config['dataset']
@@ -270,7 +270,7 @@ class Admin:
                 )
             )
         else:
-            raise NotImplementedError("Unknown selector {}".format(selector_type))
+            raise NotImplementedError(f"Unknown selector {selector_type}")
 
         # initialModel
         model_path = train_config.get('initial_model_path','')
@@ -374,10 +374,10 @@ class Admin:
         # Start Mission
 
         logger.info("Starting mission")
-        self.log_files = dict([
-            (index, self.log_dir.joinpath(f"get-stats-{index}.txt").open("a"))
+        self.log_files = {
+            index: self.log_dir.joinpath(f"get-stats-{index}.txt").open("a")
             for index in self.scout_stubs.keys()
-        ])
+        }
 
         self.start_time = time.time()
         for stub in self.scout_stubs.values():
@@ -473,7 +473,7 @@ class Admin:
             reply = stub.recv()
 
             if len(reply):
-                with open("mission_{}.zip".format(index), "wb") as f:
+                with open(f"mission_{index}.zip", "wb") as f:
                     f.write(reply)
         return
 
@@ -492,7 +492,7 @@ class Admin:
             hostname = self.scouts[index].split('.')[0]
             results_dir = (Path(self.log_dir.parent)/
                            "results" /
-                           "{}".format(hostname))
+                           f"{hostname}")
             results_dir.mkdir(parents=True, exist_ok=True)
             if len(reply):
                 try:
