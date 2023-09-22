@@ -24,7 +24,7 @@ class TokenSelector(TopKSelector):
         if self._mode == "oracle":
             return
 
-        for i in range(self._k):
+        for _i in range(self._k):
             result = self._priority_queues[-1].get()[-1]
             self.result_queue.put(result)
             logger.info(f"Put tile number {self.sample_count} into result queue.")

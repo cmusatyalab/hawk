@@ -85,10 +85,10 @@ class UILabeler:
     def reload_directory(self):
         files = None
         old_length = len(self.config["FILES"])
-        for dirpath, dirnames, filenames in walk(self.config["IMAGES"]):
+        for _, _, filenames in walk(self.config["IMAGES"]):
             files = sorted(filenames)
             break
-        if files == None:
+        if files is None:
             logger.error("No files")
             exit()
         self.config["FILES"] = files

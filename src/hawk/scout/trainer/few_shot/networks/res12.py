@@ -68,7 +68,7 @@ class BasicBlock(nn.Module):
         out = self.maxpool(out)
 
         if self.drop_rate > 0:
-            if self.drop_block == True:
+            if self.drop_block:
                 feat_size = out.size()[2]
                 keep_rate = max(
                     1.0 - self.drop_rate / (20 * 2000) * (self.num_batches_tracked),

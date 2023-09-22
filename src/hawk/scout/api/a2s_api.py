@@ -308,7 +308,7 @@ class A2SAPI:
         if bandwidth_list[0] == "0k":
             return
 
-        for time_stamp, bandwidth in bandwidth_list:
+        for _time_stamp, bandwidth in bandwidth_list:
             bandwidth_file = bandwidth_map.get(bandwidth.lower(), default_file)
 
         # start fireqos
@@ -544,7 +544,7 @@ class A2SAPI:
             with zipfile.ZipFile(
                 mission_archive, "w", compression=zipfile.ZIP_DEFLATED
             ) as zf:
-                for dirname, subdirs, files in os.walk(model_dir):
+                for dirname, _subdirs, files in os.walk(model_dir):
                     zf.write(dirname)
                     for filename in files:
                         zf.write(os.path.join(dirname, filename))

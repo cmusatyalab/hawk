@@ -19,8 +19,8 @@ def split_single_warp(name, split_base, extent):
 
 def GetFileFromThisRootDir(dir, ext=None):
     allfiles = []
-    needExtFilter = ext != None
-    for root, dirs, files in os.walk(dir):
+    needExtFilter = ext is not None
+    for root, _dirs, files in os.walk(dir):
         for filespath in files:
             filepath = os.path.join(root, filespath)
             extension = os.path.splitext(filepath)[1][1:]

@@ -37,7 +37,7 @@ class InboundProcess:
             self._rotation_mode = selector_field["token"]["rotation"]
             self._global_priority_queue = queue.PriorityQueue()
             self._per_scout_priority_queues = []
-            for i in range(self._num_scouts):
+            for _i in range(self._num_scouts):
                 self._per_scout_priority_queues.append(queue.PriorityQueue())
         ##########
 

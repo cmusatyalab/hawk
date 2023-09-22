@@ -30,7 +30,7 @@ class EndpointAction:
     def __call__(self, *args, **kwargs):
         # Perform the action
         response = self.action(*args, **kwargs)
-        if response != None:
+        if response is not None:
             return response
         else:
             return self.response
@@ -75,7 +75,7 @@ class UILabeler:
         for _, _, filenames in walk(self.app.config["IMAGES"]):
             files = sorted(filenames)
             break
-        if files == None:
+        if files is None:
             logger.error("No files")
             exit()
         else:
@@ -193,16 +193,16 @@ class UILabeler:
             label_text=label_text,
             boxes=self.image_boxes,
             stats=search_stats,
-            label_changed=int(condition_changed == True),
-            save=int(self.save_auto == True),
+            label_changed=int(condition_changed is True),
+            save=int(self.save_auto is True),
         )
 
     def reload_directory(self):
         old_length = len(self.app.config["FILES"])
-        for dirpath, dirnames, filenames in walk(self.app.config["IMAGES"]):
+        for _, _, filenames in walk(self.app.config["IMAGES"]):
             files = sorted(filenames)
             break
-        if files == None:
+        if files is None:
             logger.error("No files")
             exit()
         self.app.config["FILES"] = files
