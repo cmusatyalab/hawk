@@ -131,15 +131,15 @@ def configure_mission(filter_config):
         dim = (256, 256)
         image = image.resize(dim, Image.LANCZOS)
         image_path = (
-            "/home/eric/.hawk/current_mission.jpg"  ## This is the support set image.
+            "/home/eric/.hawk/current_mission.jpg"  # This is the support set image.
         )
         image.save(image_path)
         config["train_strategy"]["example_path"] = image_path
     elif filter_config["name"] == "dnn_classifier":
         # init_model = config['train_strategy']['bootstrap_path']
         pass
-        ### find the initial model
-        ### find the initial dataset
+        # - find the initial model
+        # - find the initial dataset
 
     else:
         raise NotImplementedError(
@@ -277,10 +277,12 @@ def label_Sample():
         label_q.put(label_path)
         print("put in out queue")
 
-        ## Still need to figure out a method to store positives and negatives labeled for stats
+        # Still need to figure out a method to store positives and negatives
+        # labeled for stats
 
-    ### now that i have the sign and labels,
-    ### Send label to outbound queue, save label in labels directory and any other admin tasks as in original ui labeler.
+    # now that i have the sign and labels,
+    # Send label to outbound queue, save label in labels directory and any
+    # other admin tasks as in original ui labeler.
 
     app_data["started"] = True
     return ("", 204)

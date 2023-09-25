@@ -329,7 +329,7 @@ class UILabeler:
         found_positive = False
         curr_id = self.app.config["HEAD"]
         new_id = curr_id
-        length_files = len(self.app.config["FILES"])
+        # length_files = len(self.app.config["FILES"])
 
         while not found_positive and new_id - 1 >= 0:
             new_id -= 1
@@ -440,8 +440,16 @@ class UILabeler:
         return stats
 
 
-# mission = "/home/shilpag/Documents/label_ui/dota-20-30k_swimming-pool_30_20221031-121302"
-# mission = "/home/eric/School_Bus_Hawk/Hawk_Mission_Data/test-hawk-school_bus_tiles_video_20221010-131323"
-# a = UILabeler(mission)
-# a.run()
-# python ui_labeler.py
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mission")
+    args = parser.parse_args()
+    a = UILabeler(args.mission)
+    a.run()
+
+# python -m hawk.home.ui_labeler \
+#     /home/shilpag/Documents/label_ui/dota-20-30k_swimming-pool_30_20221031-121302
+# python -m hawk.home.ui_labeler \
+#     School_Bus_Hawk/Hawk_Mission_Data/test-hawk-school_bus_tiles_video_20221010-131323

@@ -228,7 +228,7 @@ class Mission(DataManagerContext, ModelContext):
             model = self._model
             model_dump = model.serialize()
             model_version = model.version
-            train_examples = model.train_examples
+            # train_examples = model.train_examples
 
         with zipfile.ZipFile(memory_file, "w", compression=zipfile.ZIP_DEFLATED) as zf:
             zf.writestr("model", model_dump)
@@ -289,7 +289,8 @@ class Mission(DataManagerContext, ModelContext):
         if self._abort_event.is_set():
             return
         logger.info(
-            f"New labels call back has been called...positives: {new_positives}, negatives: {new_negatives}"
+            "New labels call back has been called... "
+            f"positives: {new_positives}, negatives: {new_negatives}"
         )
         end_t = time.time()
 
@@ -297,8 +298,9 @@ class Mission(DataManagerContext, ModelContext):
             self.positives += new_positives
             self.negatives += new_negatives
 
-        ## add line here to only call the function below if the retrain policy is not the sample interval policy
-        ## or simply use an if statement and feed the total number of retreived samples
+        # add line here to only call the function below if the retrain policy
+        # is not the sample interval policy or simply use an if statement and
+        # feed the total number of retreived samples
         if not isinstance(self._retrain_policy, SampleIntervalPolicy):
             self._retrain_policy.update(new_positives, new_negatives)
         if self.enable_logfile:
@@ -340,7 +342,7 @@ class Mission(DataManagerContext, ModelContext):
             self._s2s_thread.start()
 
             self.start_time = time.time()
-        except Exception as e:
+        except Exception:
             self.retriever.stop()
             self.selector.clear()
             self.stop()
@@ -389,13 +391,10 @@ class Mission(DataManagerContext, ModelContext):
                 )
                 return
             with self._model_lock:
-                retriever_object = (
-                    self.retriever.get_objects()
-                )  ## pops single retriever object from retriever result
-                # queue
-                model.add_requests(
-                    retriever_object
-                )  ## puts single retriever object into model inference request queue
+                # pop single retriever object from retriever result queue
+                retriever_object = self.retriever.get_objects()
+                # put single retriever object into model inference request queue
+                model.add_requests(retriever_object)
 
                 if isinstance(self._retrain_policy, SampleIntervalPolicy):
                     self._retrain_policy.interval_samples_retrieved += 1
@@ -432,13 +431,12 @@ class Mission(DataManagerContext, ModelContext):
                     self.selector.select_tiles(self.selector._k)
                 if self.selector.items_processed > self.retriever.total_tiles - 200:
                     logger.info(
-                        "Items retrieved, {}, sent to model: {}, total items processed: {}".format(
-                            self.retriever._stats["retrieved_tiles"],
-                            self._model.request_count,
-                            self.selector.items_processed,
-                        )
+                        f"Items retrieved, {self.retriever._stats['retrieved_tiles']},"
+                        f" sent to model: {self._model.request_count},"
+                        f" total items processed: {self.selector.items_processed}"
                     )
-                ## if total number selected == total number of tiles, then call select_tiles one last time.
+                # if total number selected == total number of tiles, then
+                # call select_tiles one last time.
         except Exception as e:
             logger.error(e)
             self.stop()
@@ -469,7 +467,7 @@ class Mission(DataManagerContext, ModelContext):
             while not self._abort_event.is_set():
                 try:
                     msg = pipe.recv()
-                except EOFError as e:
+                except EOFError:
                     continue
                 request = LabelWrapper()
                 request.ParseFromString(msg)

@@ -39,7 +39,7 @@ class VideoRetriever(Retriever):
             name="Frame Producer",
         )
         p.start()
-        ##then create new process and start producer function.
+        # then create new process and start producer function.
         self.tile_width = self._dataset.tile_width
         self.tile_height = self._dataset.tile_height
         self.video_sampling_rate = self._dataset.sampling_rate_fps
@@ -50,16 +50,16 @@ class VideoRetriever(Retriever):
         # if not os.path.exists(self.temp_image_dir):
         #   os.mkdir(self.temp_image_dir)
         if not os.path.exists(self.temp_tile_dir):
-            os.mkdir(
-                self.temp_tile_dir
-            )  ## create temp directory on scout to store carved tiles
+            # create temp directory on scout to store carved tiles
+            os.mkdir(self.temp_tile_dir)
 
         self._stats["total_objects"] = 1
         self._stats["total_images"] = 1
         # self.total_tiles = 192 * len(os.listdir(self.temp_image_dir))
-        self.total_tiles = (
-            192 * 600
-        )  # hardcoded for now, but needs to be # tiles per image x total expected images in video
+
+        # hardcoded for now, but needs to be
+        # number of tiles per image x total expected images in video
+        self.total_tiles = 192 * 600
 
     def save_tile(self, img, subimgname, left, up):
         dirname = self.temp_tile_dir
@@ -97,12 +97,17 @@ class VideoRetriever(Retriever):
                     + "_"
                     + str(row * self.tilesize)
                 )
-                # tile = self.save_tile(frame, subimgname, col*self.tilesize, row*self.tilesize)
+                # tile = self.save_tile(
+                #     frame, subimgname, col*self.tilesize, row*self.tilesize
+                # )
                 tile = frame[
                     row * self.tilesize : (row * self.tilesize + self.tilesize),
                     col * self.tilesize : (col * self.tilesize + self.tilesize),
                 ]
-                # tile = copy.deepcopy(frame[row * self.tilesize: (row * self.tilesize + self.tilesize), col * self.tilesize: (col * self.tilesize + self.tilesize)])
+                # tile = copy.deepcopy(
+                #     frame[row * self.tilesize: (row * self.tilesize + self.tilesize),
+                #           col * self.tilesize: (col * self.tilesize + self.tilesize)]
+                # )
                 outdir = os.path.join(
                     dirname,
                     self.video_file_path.split("/")[-1].split(".")[0]
@@ -174,7 +179,7 @@ class VideoRetriever(Retriever):
                     self._stats["retrieved_tiles"], self.total_tiles
                 )
             )
-            time_passed = time.time() - self._start_time
+            # time_passed = time.time() - self._start_time
             # if time_passed < self.timeout:
             #  time.sleep(self.timeout - time_passed)
 

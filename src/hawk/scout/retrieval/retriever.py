@@ -6,7 +6,7 @@ import queue
 import threading
 import time
 from abc import ABCMeta, abstractmethod
-from typing import Iterable, Sized
+from typing import Iterable, Optional, Sized
 
 from ...proto.messages_pb2 import HawkObject
 from ..context.data_manager_context import DataManagerContext
@@ -43,7 +43,9 @@ class RetrieverBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_object(self, object_id: str, attributes: Sized) -> HawkObject:
+    def get_object(
+        self, object_id: str, _attributes: Optional[Sized] = None
+    ) -> HawkObject:
         pass
 
     @abstractmethod
@@ -99,7 +101,9 @@ class Retriever(RetrieverBase):
     def get_objects(self) -> Iterable[ObjectProvider]:
         return self.result_queue.get()
 
-    def get_object(self, object_id: str, attributes: Sized = []) -> HawkObject:
+    def get_object(
+        self, object_id: str, attributes: Optional[Sized] = None
+    ) -> HawkObject:
         image_path = object_id.split("collection/id/")[-1]
         with open(image_path, "rb") as f:
             content = f.read()
@@ -109,7 +113,6 @@ class Retriever(RetrieverBase):
             "Device-Name": str.encode(self.server_id),
             "_ObjectID": str.encode(object_id),
         }
-
         return HawkObject(objectId=object_id, content=content, attributes=dct)
 
     def get_stats(self) -> RetrieverStats:

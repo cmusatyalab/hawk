@@ -74,9 +74,9 @@ class FrameRetriever(Retriever):
             while up < height:
                 if up + self.tilesize >= height:
                     up = max(height - self.tilesize, 0)
-                right = min(left + self.tilesize, weight - 1)
-                down = min(up + self.tilesize, height - 1)
-                subimgname = outbasename + str(left) + "___" + str(up) + "." + ext
+                # right = min(left + self.tilesize, weight - 1)
+                # down = min(up + self.tilesize, height - 1)
+                subimgname = f"{outbasename}{left}___{up}.{ext}"
                 tile = self.save_tile(image, frame, subimgname, left, up)
                 tiles.append(tile)
                 if up + self.tilesize >= height:

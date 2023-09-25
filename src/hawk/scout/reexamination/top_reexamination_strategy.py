@@ -64,7 +64,9 @@ class TopReexaminationStrategy(ReexaminationStrategy):
             prev_score = prev_result[0]
             score = result.score
             logger.info(
-                f"Reexamine score id: {obj_id} prev_score{prev_score} curr_score {score}"
+                f"Reexamine score id: {obj_id} "
+                f"prev_score{prev_score} "
+                f"curr_score {score}"
             )
             new_queue.put((-score, time_result, result))
 

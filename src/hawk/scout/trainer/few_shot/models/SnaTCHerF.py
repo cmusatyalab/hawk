@@ -108,6 +108,6 @@ class SnaTCHerF(FewShotModel):
         self.slf_attn = MultiHeadAttention(args, 1, hdim, hdim, hdim, dropout=0.5)
         self.hdim = hdim
 
-    def _forward(self, instance_embs, support_idx=[], query_idx=[]):
+    def _forward(self, instance_embs, _support_idx=None, _query_idx=None):
         self.probe_instance_embs = instance_embs
         return instance_embs

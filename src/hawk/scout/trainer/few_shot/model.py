@@ -108,7 +108,7 @@ class FewShotModel(ModelBase):
         self.emb_dim = support.shape[-1]
         support = support.contiguous()
         self.proto = support.mean(dim=1)  # Ntask x NK x d
-        s_proto = proto
+        s_proto = self.proto
         s_proto = self._model.slf_attn(s_proto, s_proto, s_proto)
         s_proto = s_proto[0]
         self.support_proto = s_proto
@@ -158,15 +158,15 @@ class FewShotModel(ModelBase):
         return model
 
     def get_predictions(self, inputs: torch.Tensor) -> List[float]:
-        if len(data.shape) == 3:
-            data = torch.unsqueeze(data, dim=0)
-        _ = self._model(data)
+        if len(inputs.shape) == 3:
+            inputs = torch.unsqueeze(inputs, dim=0)
+        _ = self._model(inputs)
         query = self._model.probe_instance_embs.contiguous()
-        qlogits = (
-            -(query.reshape(-1, 1, self.emb_dim) - self.support_proto).pow(2).sum(2)
-            / 64.0
-        )
-        batch_size = data.shape[0]
+        # qlogits = (
+        #    -(query.reshape(-1, 1, self.emb_dim) - self.support_proto).pow(2).sum(2)
+        #    / 64.0
+        # )
+        batch_size = inputs.shape[0]
         predictions = []
         with torch.no_grad():
             for j in range(batch_size):

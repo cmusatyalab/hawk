@@ -195,8 +195,8 @@ class DNNClassifierModel(ModelBase):
                     self.result_count += 1
                     self.result_queue.put(result)
                 requests = []
-                # logger.info("Total results inferenced by model: {}".format(self.result_count))
-                # logger.info("Request queue size: {}".format(self.request_queue.qsize()))
+                # logger.info(f"Total results inferenced by model: {self.result_count}")
+                # logger.info(f"Request queue size: {self.request_queue.qsize()}")
 
     def infer(self, requests: Iterable[ObjectProvider]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:

@@ -97,10 +97,10 @@ class Frame2TileSplitter:
             while up < height:
                 if up + self.tilesize >= height:
                     up = max(height - self.tilesize, 0)
-                right = min(left + self.tilesize, weight - 1)
-                down = min(up + self.tilesize, height - 1)
+                # right = min(left + self.tilesize, weight - 1)
+                # down = min(up + self.tilesize, height - 1)
                 subimgname = outbasename + str(left) + "___" + str(up)
-                # self.f_sub.write(name + ' ' + subimgname + ' ' + str(left) + ' ' + str(up) + '\n')
+                # self.f_sub.write(f"{name} {subimgname} {left} {up}\n")
                 tile = self.save_tile(image, subimgname, left, up)
                 tiles.append(tile)
                 if up + self.tilesize >= height:

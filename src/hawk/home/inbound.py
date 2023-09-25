@@ -23,7 +23,7 @@ class InboundProcess:
         self._save_attribute = "thumbnail.jpeg"
         self._count = 1
 
-        ### Extra token selector code to modify labeling process.
+        # --- Extra token selector code to modify labeling process.
         self.configuration = configuration
         selector_field = self.configuration["selector"]
         if selector_field["type"] == "token":
@@ -39,7 +39,7 @@ class InboundProcess:
             self._per_scout_priority_queues = []
             for _i in range(self._num_scouts):
                 self._per_scout_priority_queues.append(queue.PriorityQueue())
-        ##########
+        # ---
 
     def receive_data(self, result_q, stop_event):
         context = zmq.Context()
@@ -72,21 +72,24 @@ class InboundProcess:
 
                 if self._token:
                     logger.info(
-                        f"\n\nReceived init sample from scout {parent_scout}, total count is: {self._sample_count}"
+                        f"\n\nReceived init sample from scout {parent_scout},"
+                        f" total count is: {self._sample_count}"
                     )
                     if self._rotation_mode == "round-robin":
                         self._per_scout_priority_queues[parent_scout].put(
                             (-score, temp_meta_data, data)
                         )
 
-                        ## move this line to the toek thread that pops images from pri queues
+                        # move this line to the toek thread that pops images
+                        # from pri queues
 
                         # for num, i in enumerate(self._per_scout_priority_queues):
-                        # logger.info("Length of Pri Queue for Scout {} is: {}".format(num, i.qsize()))
+                        # logger.info(f"Length of Queue for Scout {num} is {i.qsize()}")
                     elif self._rotation_mode == "top":
                         self._global_priority_queue.put((-score, temp_meta_data, data))
-                    ## if aggregate priority queue length is less than total init samples, then continue
-                    ##otherwise, go ahead and get() and process with labeling process.
+                    # if aggregate priority queue length is less than total
+                    # init samples, then continue
+                    # otherwise, go ahead and get() and process with labeling process.
                     self._sample_count += 1
                     if self._sample_count == self.total_init_samples:
                         if self._rotation_mode == "round-robin":
@@ -118,11 +121,13 @@ class InboundProcess:
         # logger.info("Meta path top of write push: {}".format(meta_path))
 
         # label = 1 if '/1/' in object_id else 0
-        with open(self._tile_dir / f"{data_name}.jpeg", "wb") as f:
+        tile_jpeg = self._tile_dir.joinpath(data_name).with_suffix(".jpeg")
+        with open(tile_jpeg, "wb") as f:
             img_array = data[self._save_attribute]
             f.write(bytearray(img_array))
 
-        ### need to modify these attributes to what is actually being pulled from the queue.###
+        # need to modify these attributes to what is actually being pulled from
+        # the queue.
         meta_data = {
             "objectId": temp_meta_data["objectId"],
             "scoutIndex": temp_meta_data["scoutIndex"],
@@ -134,9 +139,11 @@ class InboundProcess:
             json.dump(meta_data, f)
 
         logger.info(
-            f"Received {temp_meta_data['objectId']} {temp_meta_data['scoutIndex']} {temp_meta_data['score']}"
+            f"Received {temp_meta_data['objectId']}"
+            f" {temp_meta_data['scoutIndex']}"
+            f" {temp_meta_data['score']}"
         )
-        logger.info("SAVING TILES {}".format(self._tile_dir / f"{data_name}.jpeg"))
+        logger.info(f"SAVING TILES {tile_jpeg}")
         result_queue.put(meta_path)
         self._count += 1
 
@@ -146,7 +153,7 @@ class InboundProcess:
         while not stop_event.is_set():
             if mode == "round-robin":
                 home_scout_token = local_counter % self._num_scouts
-                # logger.info("Home scout token is: {}".format(home_scout_token))
+                # logger.info(f"Home scout token is: {home_scout_token}")
                 if pri_queue[home_scout_token].qsize() > 0:
                     total_sample = pri_queue[home_scout_token].get()
                     local_sample_counter += 1
@@ -156,9 +163,9 @@ class InboundProcess:
                 total_sample = pri_queue.get()
             data = total_sample[2]
             meta_data = total_sample[1]
-            object_id = meta_data["objectId"]
-            parent_scout = meta_data["scoutIndex"]
-            score = meta_data["score"]
-            byte_size = meta_data["size"]
+            # object_id = meta_data["objectId"]
+            # parent_scout = meta_data["scoutIndex"]
+            # score = meta_data["score"]
+            # byte_size = meta_data["size"]
             local_counter += 1
             self.write_push(result_queue, meta_data, data_name, data, local_counter)

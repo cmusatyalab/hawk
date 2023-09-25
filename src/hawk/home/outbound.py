@@ -19,8 +19,10 @@ class OutboundProcess:
     def __init__(self, train_location: str = "scout") -> None:
         """Outbound messages from HOME to SCOUT
 
-        API calls from home to scouts to to send tile labels from home to coordinator scout.
-        Uses PUSH/PULL messaging protocol. The network is bandwidth constricted using FireQos.
+        API calls from home to scouts to to send tile labels from home to
+        coordinator scout.
+        Uses PUSH/PULL messaging protocol.
+        The network is bandwidth constricted using FireQos.
         """
         train_location = train_location.lower()
 

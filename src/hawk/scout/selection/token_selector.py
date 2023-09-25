@@ -67,7 +67,8 @@ class TokenSelector(TopKSelector):
                     logger.info(f"[Result] Id {result.id} Score {result.score}")
 
             self._priority_queues[-1].put((-result.score, time_result, result))
-            # pop the top 4 samples of the first 100 to populate the initial labeling queue at home.
+            # pop the top 4 samples of the first 100 to populate the initial
+            # labeling queue at home.
             # logger.info("Self.k parameter: {}".format(self._k))
             if self.sample_count == 1000:
                 self._initialize_queue()

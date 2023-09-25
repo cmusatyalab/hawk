@@ -45,7 +45,7 @@ class ThresholdSelector(SelectorBase):
     def _new_model(self, model: Optional[Model]) -> None:
         with self._insert_lock:
             if model is not None:
-                version = self.version
+                # version = self.version
                 self.version = model.version
                 self.model_examples = model.train_examples.get("1", 0)
                 (

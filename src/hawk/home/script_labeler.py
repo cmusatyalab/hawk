@@ -63,9 +63,8 @@ class ScriptLabeler:
         try:
             while not self.stop_event.is_set():
                 try:
-                    meta_path = (
-                        self.input_q.get()
-                    )  ## get the meta path for the next sample to label
+                    # get the meta path for the next sample to label
+                    meta_path = self.input_q.get()
                     self.received_samples += 1
                 except queue.Empty:
                     continue
@@ -76,7 +75,8 @@ class ScriptLabeler:
                 label_path = self._label_dir / f"{data_name}"
 
                 data = {}
-                with open(meta_path) as f:  ## get the data from the meta_data file
+                # get the data from the meta_data file
+                with open(meta_path) as f:
                     data = json.load(f)
 
                 image_label = "1" if "/1/" in data["objectId"] else "0"

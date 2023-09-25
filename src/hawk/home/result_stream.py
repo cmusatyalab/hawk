@@ -78,7 +78,7 @@ class UILabeler:
                     while not self.not_end:
                         time.sleep(5)
                         self.reload_directory()
-            except websockets.exceptions.ConnectionClosed as e:
+            except websockets.exceptions.ConnectionClosed:
                 print("Client Disconnected !")
                 break
 

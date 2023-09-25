@@ -165,7 +165,7 @@ def main():
 def eval_worker(gpu, ngpus_per_node, args):
     global best_acc1
     args.gpu = gpu
-    start_time = time.time()
+    # start_time = time.time()
 
     if args.gpu is not None:
         print(f"Use GPU: {args.gpu} for training")

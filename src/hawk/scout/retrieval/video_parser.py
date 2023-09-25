@@ -30,7 +30,7 @@ def produce_video_frames(producer_queue, video_source):
     sample_num = 0
     while status:
         frame_num += 1
-        if frame_num % 15 == 0:  ## add fps functionality later
+        if frame_num % 15 == 0:  # add fps functionality later
             sample_num += 1
             try:
                 frame = np.array(frame)

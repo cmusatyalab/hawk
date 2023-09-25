@@ -4,7 +4,8 @@ import torch.nn.functional as F
 from .dropblock import DropBlock
 
 # This ResNet network was designed following the practice of the following papers:
-# TADAM: Task dependent adaptive metric for improved few-shot learning (Oreshkin et al., in NIPS 2018) and
+# TADAM: Task dependent adaptive metric for improved few-shot learning
+# (Oreshkin et al., in NIPS 2018) and
 # A Simple Neural Attentive Meta-Learner (Mishra et al., in ICLR 2018).
 
 

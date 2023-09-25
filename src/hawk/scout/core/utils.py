@@ -41,7 +41,8 @@ class IntegerAttributeCodec:
 
 class AverageMeter:
     """Computes and stores the average and current value
-    Imported from https://github.com/pytorch/examples/blob/master/imagenet/main.py#L247-L262
+    Imported from
+        https://github.com/pytorch/examples/blob/master/imagenet/main.py#L247-L262
     """
 
     def __init__(self):
@@ -80,7 +81,9 @@ class ImageFromList(torch.utils.data.Dataset):
             self.loader = loader
 
         self.transform = transform
-        target_transform = lambda x: 1 if "/1/" in x else 0
+
+        def target_transform(x: str) -> int:
+            return 1 if "/1/" in x else 0
 
         labels = [target_transform(path) for path in image_list]
         self.classes = sorted(set(labels))
@@ -103,9 +106,10 @@ class ImageFromList(torch.utils.data.Dataset):
             self.imlist.append(img)
 
         logger.info(
-            "Number of Dataset(Limit {}): \n Targets {} \n Positives {} Labels {}".format(
-                limit, len(self.targets), sum(self.targets), set(self.targets)
-            )
+            f"Number of Dataset(Limit {limit}): \n"
+            f" Targets {len(self.targets)} \n"
+            f" Positives {sum(self.targets)}"
+            f" Labels {set(self.targets)}"
         )
 
     def image_loader(self, path):

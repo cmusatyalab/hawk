@@ -49,7 +49,6 @@ def parse_cookie(data):
     except TypeError:
         raise logger.error("Malformed signature")
     # Parse headers
-    blaster = None
     for line in header.splitlines():
         k, v = line.split(":", 1)
         v = v.strip()

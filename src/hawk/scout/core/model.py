@@ -158,7 +158,8 @@ class ModelBase(Model):
             else np.where(pred > 0, 1, 0)
         )
         logger.info(
-            f"Test classification report ({best_threshold} threshold):\n{classification_report(target, pred)}"
+            f"Test classification report ({best_threshold} threshold):\n"
+            f"{classification_report(target, pred)}"
         )
 
         stats = classification_report(target, pred, output_dict=True)

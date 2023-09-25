@@ -99,16 +99,18 @@ class YOLOTrainer(ModelTrainerBase):
         trainpath = self.context.model_path(new_version, template="train-{}.txt")
 
         labels = ["1"]
-        train_samples = {l: glob.glob(str(train_dir / l / "*")) for l in labels}
-        train_len = {l: len(train_samples[l]) for l in labels}
+        train_samples = {
+            label: glob.glob(str(train_dir / label / "*")) for label in labels
+        }
+        train_len = {label: len(train_samples[label]) for label in labels}
         if train_len["1"] == 0:
             logger.error(train_len)
-            logger.error([str(train_dir / l / "*") for l in labels])
+            logger.error([str(train_dir / label / "*") for label in labels])
             raise Exception
 
         with open(trainpath, "w") as f:
-            for l in labels:
-                for path in train_samples[l]:
+            for label in labels:
+                for path in train_samples[label]:
                     f.write(f"{path}\n")
 
         noval = True

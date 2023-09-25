@@ -68,8 +68,10 @@ MODEL_FORMATS = ["pt", "pth"]
 class A2SAPI:
     """Admin to Scouts API Calls
 
-    API calls from admin to scouts to configure missions, explicitly start / stop mission,
-    and other control calls. Uses Request-Response messaging. The network is not constricted.
+    API calls from admin to scouts to configure missions, explicitly start /
+    stop mission, and other control calls.
+    Uses Request-Response messaging.
+    The network is not constricted.
 
     Attributes
     ----------
@@ -537,7 +539,7 @@ class A2SAPI:
         """
         try:
             mission = self._manager.get_mission()
-            data_dir = mission.data_dir
+            # data_dir = mission.data_dir
             model_dir = mission.model_dir
 
             mission_archive = io.BytesIO()
@@ -553,7 +555,7 @@ class A2SAPI:
 
             mission_archive.seek(0)
             reply = mission_archive
-        except Exception as e:
+        except Exception:
             reply = Empty
         return reply
 

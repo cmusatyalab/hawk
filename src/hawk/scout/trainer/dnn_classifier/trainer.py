@@ -89,32 +89,36 @@ class DNNClassifierTrainer(ModelTrainerBase):
 
         # labels = [subdir.name for subdir in self._train_dir.iterdir()]
         labels = ["0", "1"]
-        train_samples = {l: glob.glob(str(train_dir / l / "*")) for l in labels}
-        train_len = {l: len(train_samples[l]) for l in labels}
+        train_samples = {
+            label: glob.glob(str(train_dir / label / "*")) for label in labels
+        }
+        train_len = {label: len(train_samples[label]) for label in labels}
         if train_len["1"] == 0:
             logger.error(train_len)
-            logger.error([str(train_dir / l / "*") for l in labels])
+            logger.error([str(train_dir / label / "*") for label in labels])
             raise Exception
 
         with open(trainpath, "w") as f:
-            for l in labels:
-                for path in train_samples[l]:
-                    f.write(f"{path} {l}\n")
+            for label in labels:
+                for path in train_samples[label]:
+                    f.write(f"{path} {label}\n")
 
         if self.context.check_create_test():
             valpath = self.context.model_path(new_version, template="val-{}.txt")
             val_dir = train_dir.parent / "test"
-            val_samples = {l: glob.glob(str(val_dir / l / "*")) for l in labels}
-            val_len = {l: len(val_samples[l]) for l in labels}
+            val_samples = {
+                label: glob.glob(str(val_dir / label / "*")) for label in labels
+            }
+            val_len = {label: len(val_samples[label]) for label in labels}
             if val_len["1"] == 0:
                 logger.error(val_len)
-                logger.error([str(val_dir / l / "*") for l in labels])
+                logger.error([str(val_dir / label / "*") for label in labels])
                 raise Exception
 
             with open(valpath, "w") as f:
-                for l in labels:
-                    for path in val_samples[l]:
-                        f.write(f"{path} {l}\n")
+                for label in labels:
+                    for path in val_samples[label]:
+                        f.write(f"{path} {label}\n")
 
             self.args["test_dir"] = valpath
 

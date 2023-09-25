@@ -124,7 +124,7 @@ class FSLModel(ModelBase):
         return model
 
     def get_predictions(self, inputs: torch.Tensor) -> List[float]:
-        probability = []
+        # probability = []
         with torch.no_grad():
             similarity = cosine_similarity(self.support, inputs)
             if similarity.shape[-1] == 1:

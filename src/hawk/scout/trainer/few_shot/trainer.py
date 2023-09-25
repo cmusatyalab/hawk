@@ -32,7 +32,7 @@ class FewShotTrainer(ModelTrainerBase):
             path = Path(path)
         assert path.is_file() or len(content)
         if not path.is_file():
-            path = self.context.model_path(new_version)
+            path = self.context.model_path(version)
             path.write_bytes(content)
 
         logger.info(f"Loading from path {path}")

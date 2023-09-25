@@ -68,9 +68,12 @@ class DiversitySelector(TopKSelector):
         pca = PCA(self.n_pca)
         embeddings = pca.fit_transform(embeddings)
 
-        # Desnity clustering
+        # Density clustering
         cluster_learner = DBSCAN(eps=2, min_samples=self.min_sample)
-        cluster_idxs = cluster_learner.fit_predict(embeddings)
+
+        # cluster_idxs = cluster_learner.fit_predict(embeddings)
+        cluster_learner.fit_predict(embeddings)
+
         logger.info("Found clusters")
         data_labels = cluster_learner.labels_
         unique_labels = set(data_labels)
@@ -90,7 +93,7 @@ class DiversitySelector(TopKSelector):
             num_samples = [1] * n
 
         q_idxs = set()
-        sampled = 0
+        # sampled = 0
         cluster_label_gen = itertools.cycle(cluster_labels)
 
         for num_sample in num_samples:
@@ -105,7 +108,7 @@ class DiversitySelector(TopKSelector):
         q_idxs = np.array(list(q_idxs))
         q_idxs = q_idxs.astype(int)
 
-        len_array = len(original)
+        # len_array = len(original)
         results = original[q_idxs]
 
         return results

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
+# SPDX-FileCopyrightText: 2022 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -66,7 +66,7 @@ class UILabeler:
                         current_files.remove(filename)
                         continue
                     print(f"New image file '{image_name}' arrived!")
-                    ### Get the label to feed into flutter
+                    # --- Get the label to feed into flutter
                     image_number = image_name.split("/images/")[1].split(".")[0]
                     image_meta = image_number + ".json"
                     image_meta_path = os.path.join(self._meta_dir, image_meta)
@@ -74,7 +74,7 @@ class UILabeler:
                         meta_data = json.load(f)
                     meta_orig_file = meta_data["objectId"]
                     label = meta_orig_file.split("/")[1]
-                    ###
+                    # ---
                     image = Image.open(image_name).convert("RGB")
                     image.thumbnail(size, Image.LANCZOS)
                     content = io.BytesIO()

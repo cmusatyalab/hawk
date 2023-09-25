@@ -71,18 +71,19 @@ class DataManager:
             stub.internal.send_multipart(msg)
             reply = stub.internal.recv()
             if not len(reply):
-                object = None
+                obj = None
             else:
-                object = HawkObject()
-                object.ParseFromString(reply)
-        else:  ##Local scout contains image of respective label received.
-            object = self._context.retriever.get_object(object_id=label.objectId)
+                obj = HawkObject()
+                obj.ParseFromString(reply)
+        else:
+            # Local scout contains image of respective label received.
+            obj = self._context.retriever.get_object(object_id=label.objectId)
 
-        if object is None:
+        if obj is None:
             return
         # Save labeled tile
         labeled_tile = LabeledTile(
-            object=object,
+            obj=obj,
             label=label,
         )
         self._context.store_labeled_tile(labeled_tile)
@@ -241,8 +242,8 @@ class DataManager:
                         old_dirs.append(label)
 
             for example in examples:
-                object = example.object
-                example_file = get_example_key(object.content)
+                obj = example.object
+                example_file = get_example_key(obj.content)
                 self._remove_old_paths(example_file, old_dirs)
 
                 label = example.label.imageLabel
@@ -258,7 +259,7 @@ class DataManager:
                     label_dir.mkdir(parents=True, exist_ok=True)
                     example_path = label_dir / example_file
                     with example_path.open("wb") as f:
-                        f.write(object.content)
+                        f.write(obj.content)
                     if bounding_boxes:
                         label_dir = self._staging_dir / example_subdir / "labels"
                         label_dir.mkdir(parents=True, exist_ok=True)

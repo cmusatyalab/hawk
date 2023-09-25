@@ -413,8 +413,7 @@ class Admin:
     def get_mission_stats(self):
         time.sleep(10)
         count = 1
-        prev_bytes = 0
-        prev_processed = 0
+        # prev_bytes = prev_processed = 0
         try:
             while not self.stop_event.is_set():
                 stats = self.accumulate_mission_stats()
@@ -445,10 +444,11 @@ class Admin:
                     break
 
                 if stats["processedObjects"] != 0:
-                    """if (stats['processedObjects'] == stats['totalObjects'] or
-                    (stats['retrieved_tiles'] == stats['totalObjects'] and
-                    prev_bytes == stats['bytes'] and prev_processed == stats['processedObjects'])):
-                    """
+                    # if stats['processedObjects'] == stats['totalObjects'] or (
+                    #     stats['retrieved_tiles'] == stats['totalObjects'] and
+                    #     prev_bytes == stats['bytes'] and
+                    #     prev_processed == stats['processedObjects']
+                    #   ):
                     if stats["processedObjects"] == stats["totalObjects"]:
                         time.sleep(60)
                         self.stop_event.set()
@@ -457,8 +457,8 @@ class Admin:
                             f.write("\n")
                         break
 
-                prev_bytes = stats["bytes"]
-                prev_processed = stats["processedObjects"]
+                # prev_bytes = stats["bytes"]
+                # prev_processed = stats["processedObjects"]
                 count += 1
                 time.sleep(LOG_INTERVAL)
         except (Exception, KeyboardInterrupt) as e:
