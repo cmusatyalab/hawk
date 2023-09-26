@@ -6,19 +6,17 @@ help = "Build sdist and wheel"
 cmd = "poetry build"
 
 [tool.poe.tasks.check]
-help = "Manually run some pre-commit jobs"
+help = "Manually run pre-commit jobs"
 sequence = [
-    "poetry run isort src",
-    #"poetry run black src",
-    #"poetry run flake8 src",
-    #"poetry run mypy",
+    "pre-commit run -a",
+    #"mypy",
 ]
 default_item_type = "cmd"
 
 [tool.poe.tasks.protoc]
 help = "Regenerate protocol buffer files"
 cmd = """
-poetry run python -m grpc_tools.protoc -I protos
+python -m grpc_tools.protoc -I protos
         --python_out=src/hawk/proto
         --mypy_out=src/hawk/proto
         messages.proto
