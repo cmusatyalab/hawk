@@ -187,7 +187,7 @@ message TileMetadata {
 }
 
 message LabeledTile {
-  HawkObject object = 1;
+  HawkObject obj = 1;
   LabelWrapper label = 2;
 }
 
