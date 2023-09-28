@@ -22,7 +22,6 @@ from google.protobuf import json_format
 from logzero import logger
 from PIL import Image
 
-from ...ports import S2S_PORT
 from ...proto import Empty
 from ...proto.messages_pb2 import (
     Dataset,
@@ -228,7 +227,7 @@ class A2SAPI:
             if request.retrainPolicy.HasField("sample"):
                 retrain_policy.num_interval_sample(retriever.total_tiles)
             this_host = request.scouts[request.scoutIndex]
-            scouts = [HawkStub(scout, S2S_PORT, this_host) for scout in request.scouts]
+            scouts = [HawkStub(scout, this_host) for scout in request.scouts]
 
             # Setting up Mission with config params
             logger.info("Start setting up mission")
