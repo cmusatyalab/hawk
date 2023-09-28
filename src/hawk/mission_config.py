@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import yaml
 
@@ -15,7 +15,7 @@ class MissionConfig:
     """Class representing a Hawk mission configuration."""
 
     config: Dict[str, Any]
-    deploy: Optional[DeployConfig]
+    deploy: DeployConfig
 
     # helpers to transition from dict to class
     def __getitem__(self, key) -> Any:
@@ -36,9 +36,14 @@ class MissionConfig:
 
 def load_config(config: Path) -> MissionConfig:
     config_dict = yaml.safe_load(config.read_text())
-    deploy_config = (
-        DeployConfig.from_dict(config_dict) if "deploy" in config_dict else None
-    )
+
+    if "deploy" not in config_dict:
+        config_dict["deploy"] = dict(
+            scouts=config_dict["scouts"],
+            dataset="/srv/diamond",
+        )
+    deploy_config = DeployConfig.from_dict(config_dict)
+
     return MissionConfig(config=config_dict, deploy=deploy_config)
 
 
