@@ -92,8 +92,6 @@ class S2SServicer:
             request.ParseFromString(msg)
 
             self._mission.store_labeled_tile(request)
-
-            return
         except Exception as e:
             logger.exception(e)
         return Empty
