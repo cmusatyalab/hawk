@@ -242,7 +242,7 @@ class DataManager:
                         old_dirs.append(label)
 
             for example in examples:
-                obj = example.object
+                obj = example.obj
                 example_file = get_example_key(obj.content)
                 self._remove_old_paths(example_file, old_dirs)
 
