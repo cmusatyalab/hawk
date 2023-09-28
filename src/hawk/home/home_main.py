@@ -176,7 +176,7 @@ def main():
             time.sleep(10)
 
         logger.info("Stop event is set")
-    except KeyboardInterrupt as e:
+    except BaseException as e:
         logger.error(e)
     finally:
         stop_event.set()
