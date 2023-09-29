@@ -2504,6 +2504,28 @@ tests = ["autopep8", "flake8", "isort", "numpy", "pytest", "scipy (>=1.7.1)"]
 tutorials = ["matplotlib", "pandas", "tabulate"]
 
 [[package]]
+name = "types-pillow"
+version = "10.0.0.3"
+description = "Typing stubs for Pillow"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-Pillow-10.0.0.3.tar.gz", hash = "sha256:ae0c877d363da349bbb82c5463c9e78037290cc07d3714cb0ceaf5d2f7f5c825"},
+    {file = "types_Pillow-10.0.0.3-py3-none-any.whl", hash = "sha256:54a49f3c6a3f5e95ebeee396d7773dde22ce2515d594f9c0596c0a983558f0d4"},
+]
+
+[[package]]
+name = "types-protobuf"
+version = "4.24.0.2"
+description = "Typing stubs for protobuf"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-protobuf-4.24.0.2.tar.gz", hash = "sha256:598bb2290b9b0ea65f4f63569a09deaa4475edd7bb0d8589057a38deb0b19f4f"},
+    {file = "types_protobuf-4.24.0.2-py3-none-any.whl", hash = "sha256:b86b0deefd1cb1582d355be4fd7a2a807cf49c993d9744d3c9fbe1cbf1e6b044"},
+]
+
+[[package]]
 name = "types-pyyaml"
 version = "6.0.12.10"
 description = "Typing stubs for PyYAML"
@@ -2512,6 +2534,31 @@ python-versions = "*"
 files = [
     {file = "types-PyYAML-6.0.12.10.tar.gz", hash = "sha256:ebab3d0700b946553724ae6ca636ea932c1b0868701d4af121630e78d695fc97"},
     {file = "types_PyYAML-6.0.12.10-py3-none-any.whl", hash = "sha256:662fa444963eff9b68120d70cda1af5a5f2aa57900003c2006d7626450eaae5f"},
+]
+
+[[package]]
+name = "types-requests"
+version = "2.31.0.6"
+description = "Typing stubs for requests"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "types-requests-2.31.0.6.tar.gz", hash = "sha256:cd74ce3b53c461f1228a9b783929ac73a666658f223e28ed29753771477b3bd0"},
+    {file = "types_requests-2.31.0.6-py3-none-any.whl", hash = "sha256:a2db9cb228a81da8348b49ad6db3f5519452dd20a9c1e1a868c83c5fe88fd1a9"},
+]
+
+[package.dependencies]
+types-urllib3 = "*"
+
+[[package]]
+name = "types-urllib3"
+version = "1.26.25.14"
+description = "Typing stubs for urllib3"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-urllib3-1.26.25.14.tar.gz", hash = "sha256:229b7f577c951b8c1b92c1bc2b2fdb0b49847bd2af6d1cc2a2e3dd340f3bda8f"},
+    {file = "types_urllib3-1.26.25.14-py3-none-any.whl", hash = "sha256:9683bbb7fb72e32bfe9d2be6e04875fbe1b3eeec3cbb4ea231435aa7fd6b4f0e"},
 ]
 
 [[package]]
@@ -2625,4 +2672,4 @@ scout = ["lovely-tensors", "multiprocessing-logging", "opencv-python-headless", 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "66d1483ff3110fb6cbb70740495364f17c4188b4d4fddd953d238221f51f42a2"
+content-hash = "bc6b298415032518f5e9852dbfa4ae9dd4d9c685ac46542173fb56763b365810"

@@ -59,7 +59,10 @@ mypy = "^1.2.0"
 mypy-protobuf = "^1.20"
 poethepoet = "^0.19.0"
 pre-commit = "^3.3.3"
+types-pillow = "^10.0.0.3"
+types-protobuf = "^4.24.0.2"
 types-pyyaml = "^6.0.12.10"
+types-requests = "^2.31.0.6"
 
 [tool.poetry.scripts]
 hawk_flutter = "hawk.home.home_flutter:main"
@@ -86,6 +89,21 @@ skip_glob = [
 [tool.mypy]
 strict = true
 files = ["src"]
+exclude = "^src/hawk/scout/trainer/yolo/yolov5/"
+
+[[tool.mypy.overrides]]
+# ignore missing type hints errors from untyped modules
+module = [
+    "albumentations.*",
+    "cv2.*",
+    "logzero.*",
+    "multiprocessing_logging.*",
+    "sklearn.*",
+    "torch.*",
+    "torchvision.*",
+    "websockets.*",
+]
+ignore_missing_imports = true
 
 [tool.poe]
 include = "tasks.toml"
