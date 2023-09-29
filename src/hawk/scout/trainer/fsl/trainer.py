@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import os
 import subprocess
 import sys
 import time
@@ -84,13 +83,13 @@ class FSLTrainer(ModelTrainerBase):
 
         model_savepath = self.context.model_path(new_version)
 
-        file_path = os.path.dirname(os.path.abspath(__file__))
         train_dataset = self.args["fsl_traindir"]
         support_path = self.args["support_path"]
 
         cmd = [
             sys.executable,
-            f"{file_path}/augment.py",
+            "-m",
+            "hawk.scout.trainer.fsl.augment",
             str(train_dataset),
             str(support_path),
         ]

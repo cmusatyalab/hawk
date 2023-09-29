@@ -4,7 +4,6 @@
 
 import glob
 import json
-import os
 import shlex
 import subprocess
 import sys
@@ -137,8 +136,6 @@ class YOLOTrainer(ModelTrainerBase):
             else:
                 num_epochs = int(online_epochs)
 
-        file_path = os.path.dirname(os.path.abspath(__file__))
-
         data_dict = {
             "path": str(self.context.model_dir),
             "train": str(trainpath),
@@ -160,7 +157,8 @@ class YOLOTrainer(ModelTrainerBase):
 
         cmd = [
             sys.executable,
-            f"{file_path}/yolov5/train.py",
+            "-m",
+            "hawk.scout.trainer.yolo.yolov5.train",
             "--savepath",
             str(model_savepath),
             "--epochs",
