@@ -140,9 +140,11 @@ class DNNClassifierTrainer(ModelTrainerBase):
 
         file_path = os.path.dirname(os.path.abspath(__file__))
 
+        
         cmd = [
             sys.executable,
-            f"{file_path}/train_model.py",
+            '-m',
+            "hawk.scout.trainer.dnn_classifier.train_model",
             "--trainpath",
             str(trainpath),
             "--arch",
