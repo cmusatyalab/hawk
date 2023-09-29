@@ -163,7 +163,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
             cmd.extend(["--resume", str(self.prev_path)])
 
         if self.args["test_dir"]:
-            cmd.extend(["--valpath", self.args["test_dir"]])
+            cmd.extend(["--valpath", str(self.args["test_dir"])])
 
         logger.info(f"TRAIN CMD \n {shlex.join(cmd)}")
         proc = subprocess.Popen(cmd)

@@ -91,8 +91,8 @@ class FSLTrainer(ModelTrainerBase):
         cmd = [
             sys.executable,
             f"{file_path}/augment.py",
-            train_dataset,
-            support_path,
+            str(train_dataset),
+            str(support_path),
         ]
         proc = subprocess.Popen(cmd)
         proc.communicate()
