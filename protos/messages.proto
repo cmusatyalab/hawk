@@ -149,6 +149,7 @@ message SelectiveConfig {
     TopKConfig topk = 1;
     ThresholdConfig threshold = 2;
     TokenConfig token = 3;
+    DiversityConfig diversity = 4;
   }
 }
 
@@ -164,6 +165,11 @@ message ThresholdConfig {
 message TokenConfig {
   int32 initial_samples = 1;
   int32 batch_size = 2;
+}
+
+message DiversityConfig {
+  int32 k = 1;
+  int32 batchSize = 2;
 }
 
 message ReexaminationStrategyConfig {

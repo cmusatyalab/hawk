@@ -608,10 +608,10 @@ class A2SAPI:
             )
         elif selector.HasField("diversity"):
             top_k_param = json_format.MessageToDict(selector.diversity)
-            logger.info(f"TopK Params {top_k_param}")
+            logger.info(f"Diversity Params {top_k_param}")
             return DiversitySelector(
-                selector.topk.k,
-                selector.topk.batchSize,
+                selector.diversity.k,
+                selector.diversity.batchSize,
                 self._get_reexamination_strategy(reexamination_strategy),
             )
         else:
