@@ -4,7 +4,6 @@
 
 import glob
 import json
-import os
 import shlex
 import subprocess
 import sys
@@ -138,12 +137,9 @@ class DNNClassifierTrainer(ModelTrainerBase):
             else:
                 num_epochs = int(online_epochs)
 
-        file_path = os.path.dirname(os.path.abspath(__file__))
-
-        
         cmd = [
             sys.executable,
-            '-m',
+            "-m",
             "hawk.scout.trainer.dnn_classifier.train_model",
             "--trainpath",
             str(trainpath),
