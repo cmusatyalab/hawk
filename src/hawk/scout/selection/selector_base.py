@@ -5,6 +5,7 @@
 import queue
 import threading
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass
 from typing import Optional
 
 from logzero import logger
@@ -14,15 +15,15 @@ from ..core.model import Model
 from ..core.result_provider import ResultProvider
 
 
+@dataclass
 class SelectorStats:
-    def __init__(self, dictionary):
-        assert "processed_objects" in dictionary, "Missing processed_objects attribute"
-        self.dropped_objects = 0
-        self.passed_objects = 0
-        self.false_negatives = 0
-
-        for key in dictionary:
-            setattr(self, key, dictionary[key])
+    processed_objects: int
+    items_revisited: int
+    positive_in_stream: int
+    train_positives: int
+    dropped_objects: int = 0
+    passed_objects: int = 0
+    false_negatives: int = 0
 
 
 class Selector(metaclass=ABCMeta):
@@ -58,7 +59,7 @@ class Selector(metaclass=ABCMeta):
 
 
 class SelectorBase(Selector):
-    def __init__(self):
+    def __init__(self) -> None:
         self.result_queue = queue.Queue(maxsize=100)
         self.stats_lock = threading.Lock()
         self.items_processed = 0
@@ -69,7 +70,7 @@ class SelectorBase(Selector):
 
         self._model_lock = threading.Lock()
         self._model_present = False
-        self._mission = None
+        self._mission: Optional[DataManagerContext] = None
         self.transmit_queue = None
 
         self._clear_event = threading.Event()
@@ -84,7 +85,7 @@ class SelectorBase(Selector):
         """Helper function specific to selection strategy"""
         pass
 
-    def add_context(self, context: DataManagerContext):
+    def add_context(self, context: DataManagerContext) -> None:
         self._mission = context
 
     def add_result(self, result: ResultProvider) -> None:
@@ -132,4 +133,4 @@ class SelectorBase(Selector):
                 "train_positives": self.model_examples,
             }
 
-        return SelectorStats(stats)
+        return SelectorStats(**stats)

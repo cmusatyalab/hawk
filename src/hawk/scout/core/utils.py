@@ -6,7 +6,7 @@ import hashlib
 import socket
 import struct
 from functools import wraps
-from typing import List
+from typing import List, TypeVar
 
 import numpy as np
 import torch
@@ -182,7 +182,10 @@ def get_weights(targets: List[int], num_classes=2) -> List[int]:
     return weight
 
 
-def log_exceptions(func):
+T = TypeVar("T")
+
+
+def log_exceptions(func: T) -> T:
     @wraps(func)
     def func_wrapper(*args, **kwargs):
         try:

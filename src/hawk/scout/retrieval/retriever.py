@@ -2,10 +2,12 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+import dataclasses
 import queue
 import threading
 import time
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass
 from typing import Iterable, Optional, Sized
 
 from ...proto.messages_pb2 import HawkObject
@@ -13,20 +15,15 @@ from ..context.data_manager_context import DataManagerContext
 from ..core.object_provider import ObjectProvider
 from ..core.utils import get_server_ids
 
-KEYS = [
-    "total_objects",
-    "total_images",
-    "dropped_objects",
-    "false_negatives",
-    "retrieved_images",
-    "retrieved_tiles",
-]
 
-
+@dataclass
 class RetrieverStats:
-    def __init__(self, dictionary):
-        for key in dictionary:
-            setattr(self, key, dictionary[key])
+    total_objects: int = 0
+    total_images: int = 0
+    dropped_objects: int = 0
+    false_negatives: int = 0
+    retrieved_images: int = 0
+    retrieved_tiles: int = 0
 
 
 class RetrieverBase(metaclass=ABCMeta):
@@ -63,10 +60,11 @@ class Retriever(RetrieverBase):
         self._start_event = threading.Event()
         self._stop_event = threading.Event()
         self._command_lock = threading.RLock()
-        self._stats = {x: 0 for x in KEYS}
+        self._stats = RetrieverStats()
         self._start_time = time.time()
         self.result_queue = queue.Queue()
         self.server_id = get_server_ids()[0]
+        self.total_tiles = 0
 
     def start(self) -> None:
         with self._command_lock:
@@ -119,6 +117,6 @@ class Retriever(RetrieverBase):
         self._start_event.wait()
 
         with self._command_lock:
-            stats = self._stats.copy()
+            stats = dataclasses.replace(self._stats)
 
-        return RetrieverStats(stats)
+        return stats
