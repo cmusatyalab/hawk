@@ -51,7 +51,4 @@ class FullReexaminationStrategy(ReexaminationStrategy):
             )
             new_queue.put((-score, time_result, result))
 
-        for result in model.infer(to_reexamine):
-            new_queue.put((-result.score, result.id, result))
-
         return old_queues + [new_queue], len(to_reexamine)
