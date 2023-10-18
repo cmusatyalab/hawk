@@ -46,8 +46,8 @@ class RandomRetriever(Retriever):
 
         # random.shuffle(keys)
         self.images = keys
-        self._stats["total_objects"] = self.total_tiles
-        self._stats["total_images"] = len(self.images)
+        self._stats.total_objects = self.total_tiles
+        self._stats.total_images = len(self.images)
 
     def stream_objects(self):
         super().stream_objects()
@@ -56,7 +56,7 @@ class RandomRetriever(Retriever):
             time_start = time.time()
             if self._stop_event.is_set():
                 break
-            self._stats["retrieved_images"] += 1
+            self._stats.retrieved_images += 1
             tiles = self.img_tile_map[key]
             logger.info(
                 "Retrieved Image:{} Tiles:{} @ {}".format(
@@ -81,7 +81,7 @@ class RandomRetriever(Retriever):
                 content = content.getvalue()
 
                 attributes = self.set_tile_attributes(object_id, label)
-                self._stats["retrieved_tiles"] += 1
+                self._stats.retrieved_tiles += 1
 
                 self.result_queue.put_nowait(
                     ObjectProvider(
@@ -92,11 +92,7 @@ class RandomRetriever(Retriever):
                     )
                 )
 
-            logger.info(
-                "{} / {} RETRIEVED".format(
-                    self._stats["retrieved_tiles"], self.total_tiles
-                )
-            )
+            logger.info(f"{self._stats.retrieved_tiles} / {self.total_tiles} RETRIEVED")
             time_passed = time.time() - time_start
             if time_passed < self._timeout:
                 time.sleep(self._timeout - time_passed)

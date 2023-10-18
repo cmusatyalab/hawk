@@ -121,15 +121,8 @@ class DiversitySelector(TopKSelector):
         for i in range(self._k):
             result = self._priority_queues[-1].get()[-1]
             if self._mission.enable_logfile:
-                self._mission.log_file.write(
-                    "{:.3f} {}_{} {}_{} SEL: FILE SELECTED {}\n".format(
-                        time.time() - self._mission.start_time,
-                        self._mission.host_name,
-                        self.version,
-                        i,
-                        self._k,
-                        result.id,
-                    )
+                self._mission.log(
+                    f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}"
                 )
                 if self._mode != "oracle":
                     # self.result_queue.put(result)

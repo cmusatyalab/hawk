@@ -1,5 +1,5 @@
 mission-name: "Hawk-Test" # Mission identifier
-train-location: scout 
+train-location: scout
 label-mode: script # type of labeling interface
 scouts: # list of addresses of scouts
 - scout1example.cscmu.edu
@@ -15,7 +15,7 @@ dataset:
   index_path: /path/to/index/file/on/scouts # path on scout of index file
   tiles_per_frame: 180 # number of tiles per frame if random sampling
 retrain_policy:
-  type: percentage # type of retrain condition 
+  type: percentage # type of retrain condition
   only_positives: true # if only positives are counted
   threshold: 0.33 # percentage of increment : 0.33
 train_strategy:

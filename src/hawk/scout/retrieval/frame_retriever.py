@@ -37,8 +37,8 @@ class FrameRetriever(Retriever):
         for content in contents:
             self.images.append(content)
 
-        self._stats["total_objects"] = len(self.images)
-        self._stats["total_images"] = len(self.images)
+        self._stats.total_objects = len(self.images)
+        self._stats.total_images = len(self.images)
 
     def save_tile(self, img, imagename, subimgname, left, up):
         dirname = os.path.dirname(imagename)
@@ -97,7 +97,7 @@ class FrameRetriever(Retriever):
             time_start = time.time()
             if self._stop_event.is_set():
                 break
-            self._stats["retrieved_images"] += 1
+            self._stats.retrieved_images += 1
             if self._context.enable_logfile:
                 self._context.log_file.write(
                     "{:.3f} {} RETRIEVE: File {}\n".format(
@@ -121,7 +121,7 @@ class FrameRetriever(Retriever):
 
                 object_id = f"/{label}/collection/id/" + image_path
                 attributes = self.set_tile_attributes(object_id, label)
-                self._stats["retrieved_tiles"] += 1
+                self._stats.retrieved_tiles += 1
 
                 self.result_queue.put_nowait(
                     ObjectProvider(
@@ -131,11 +131,7 @@ class FrameRetriever(Retriever):
                         int(label),
                     )
                 )
-            logger.info(
-                "{} / {} RETRIEVED".format(
-                    self._stats["retrieved_tiles"], self.total_tiles
-                )
-            )
+            logger.info(f"{self._stats.retrieved_tiles} / {self.total_tiles} RETRIEVED")
             time_passed = time.time() - time_start
             if time_passed < self._timeout:
                 time.sleep(self._timeout - time_passed)

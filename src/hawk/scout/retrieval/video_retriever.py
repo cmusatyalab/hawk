@@ -53,8 +53,8 @@ class VideoRetriever(Retriever):
             # create temp directory on scout to store carved tiles
             os.mkdir(self.temp_tile_dir)
 
-        self._stats["total_objects"] = 1
-        self._stats["total_images"] = 1
+        self._stats.total_objects = 1
+        self._stats.total_images = 1
         # self.total_tiles = 192 * len(os.listdir(self.temp_image_dir))
 
         # hardcoded for now, but needs to be
@@ -140,7 +140,7 @@ class VideoRetriever(Retriever):
                 break
 
             frame_count += 1
-            self._stats["retrieved_images"] += 1
+            self._stats.retrieved_images += 1
             num_retrieved_images += 1
             tiles = self.split_frame(frame_name, frame)
 
@@ -163,7 +163,7 @@ class VideoRetriever(Retriever):
                     ATTR_GT_LABEL: str.encode(str(label)),
                 }"""
                 attributes = self.set_tile_attributes(object_id, label)
-                self._stats["retrieved_tiles"] += 1
+                self._stats.retrieved_tiles += 1
 
                 self.result_queue.put_nowait(
                     ObjectProvider(
@@ -174,16 +174,12 @@ class VideoRetriever(Retriever):
                     )
                 )
             time.sleep(8)
-            logger.info(
-                "{} / {} RETRIEVED".format(
-                    self._stats["retrieved_tiles"], self.total_tiles
-                )
-            )
+            logger.info(f"{self._stats.retrieved_tiles} / {self.total_tiles} RETRIEVED")
             # time_passed = time.time() - self._start_time
             # if time_passed < self.timeout:
             #  time.sleep(self.timeout - time_passed)
 
-        self._stats["retrieved_images"] += 1
+        self._stats.retrieved_images += 1
         if self._context.enable_logfile:
             self._context.log_file.write(
                 "{:.3f} {} RETRIEVE: File # {}\n".format(

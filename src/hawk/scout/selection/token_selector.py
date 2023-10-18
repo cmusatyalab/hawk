@@ -45,15 +45,9 @@ class TokenSelector(TopKSelector):
         self.sample_count += 1
         with self._insert_lock:
             time_result = time.time() - self._mission.start_time
-            self._mission.log_file.write(
-                "{:.3f} {}_{} CLASSIFICATION: {} GT {} Score {:.4f}\n".format(
-                    time_result,
-                    self._mission.host_name,
-                    self.version,
-                    result.id,
-                    result.gt,
-                    result.score,
-                )
+            self._mission.log(
+                f"{self.version} CLASSIFICATION: {result.id} "
+                f"GT {result.gt} Score {result.score:.4f}"
             )
 
             # Incrementing positives in stream

@@ -360,7 +360,7 @@ class Mission(DataManagerContext, ModelContext):
         self.log_file.close()
         sys.exit(0)
 
-    def log(self, msg: str, end_t: Optional[int] = None) -> None:
+    def log(self, msg: str, end_t: Optional[float] = None) -> None:
         if not self.enable_logfile:
             return
         if end_t is None:
@@ -432,7 +432,7 @@ class Mission(DataManagerContext, ModelContext):
                     self.selector.select_tiles(self.selector._k)
                 if self.selector.items_processed > self.retriever.total_tiles - 200:
                     logger.info(
-                        f"Items retrieved, {self.retriever._stats['retrieved_tiles']},"
+                        f"Items retrieved, {self.retriever._stats.retrieved_tiles},"
                         f" sent to model: {self._model.request_count},"
                         f" total items processed: {self.selector.items_processed}"
                     )

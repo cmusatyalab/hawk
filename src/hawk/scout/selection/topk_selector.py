@@ -51,15 +51,8 @@ class TopKSelector(SelectorBase):
         for i in range(num_tiles):
             result = self._priority_queues[-1].get()[-1]
             if self._mission.enable_logfile:
-                self._mission.log_file.write(
-                    "{:.3f} {}_{} {}_{} SEL: FILE SELECTED {}\n".format(
-                        time.time() - self._mission.start_time,
-                        self._mission.host_name,
-                        self.version,
-                        i,
-                        self._k,
-                        result.id,
-                    )
+                self._mission.log(
+                    f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}"
                 )
                 if self._mode != "oracle":
                     self.result_queue.put(result)
@@ -70,15 +63,9 @@ class TopKSelector(SelectorBase):
     def _add_result(self, result: ResultProvider) -> None:
         with self._insert_lock:
             time_result = time.time() - self._mission.start_time
-            self._mission.log_file.write(
-                "{:.3f} {}_{} CLASSIFICATION: {} GT {} Score {:.4f}\n".format(
-                    time_result,
-                    self._mission.host_name,
-                    self.version,
-                    result.id,
-                    result.gt,
-                    result.score,
-                )
+            self._mission.log(
+                f"{self.version} CLASSIFICATION: {result.id} "
+                f"GT {result.gt} Score {result.score:.4f}"
             )
 
             # Incrementing positives in stream
