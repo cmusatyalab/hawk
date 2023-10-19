@@ -36,6 +36,9 @@ poetry install --extras home --extras scout
 
 Provide relevant data and model parameters in the [config file.](/configs/dota_sample_config.yml)  This config file is required to run a Hawk mission of any kind.  Currently, the mission configuration takes the form of a yaml file (.yml) but in the future a mission will be launched via the Flutter web gui.  The config file contains both administrative information (where data is located on a server) as well as more mission-focused parameters, such as the retraining policy, mode architecture to use, etc.  While most fields and subfields in the config file can be modified simply by changing a value, the specification of others require some small, additional administrative up front.
 
+- mission-name: mission identifier
+- train-location: scout or home (scout default)
+- label-mode: script (ui is the other option when using the Flutter GUI).  Use script for functional testing and pure automation (no human interaction required).
 - scouts: This field simply represents the list of server domain or IP addresses, e.g. scout1.mission.com, scout2.mission.com, etc.
 - scout-params: This field contains a mission directory path on each scout which tell sthe scouts where to store log files and mission artifacts.
 - home-params: the mission directory on home specifices where on the home station (from where the missino is launched) to aggregate and store mission logs from all scouts.
