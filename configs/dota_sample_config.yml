@@ -1,0 +1,40 @@
+mission-name: "Hawk-Test" # Mission identifier
+train-location: scout 
+label-mode: script # type of labeling interface
+scouts: # list of addresses of scouts
+- scout1example.cscmu.edu
+- scout2example.cs.cmu.edu
+- scout3example.cs.cmu.edu
+scout-params: # directory on scouts where data, models and logs of mission are saved
+  mission_dir: /path/to/mission_directory/on/scouts
+home-params:
+  mission_dir: /path/to/mission_directory/on/home # directory where inbound and outbound data stored @ home
+dataset:
+  type: random # type of input data
+  stream_path: /home/path/to/stream/file/stream.txt # path on home of stream path
+  index_path: /path/to/index/file/on/scouts # path on scout of index file
+  tiles_per_frame: 180 # number of tiles per frame if random sampling
+retrain_policy:
+  type: percentage # type of retrain condition 
+  only_positives: true # if only positives are counted
+  threshold: 0.33 # percentage of increment : 0.33
+train_strategy:
+  type: dnn_classifier # type of model training
+  initial_model_path:  /path/to/initial/model/init_model.pth # path to intial model on  home
+  bootstrap_path: /path/to/bootstrap/zip/on/home/bootstrap.zip  # path to compressed  bootstrapzipfile @ home (0/* and 1/*)
+  args:
+    mode: hawk # hawk / oracale/ notional
+    arch: resnet50 # DNN model architecture
+    unfreeze_layers: '3'
+    batch-size: '64'
+    online_epochs: "15"
+    initial_model_epochs: "15"
+selector:
+  type: topk # type of selective transmission
+  topk:
+    k: 4
+    batchSize: 1000
+reexamination:
+  type: top # type of reexamination strategy
+  k: 100
+bandwidth: 12
