@@ -11,7 +11,7 @@ import time
 import zipfile
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 from logzero import logger
 
@@ -37,6 +37,7 @@ from ..selection.token_selector import TokenSelector
 from .data_manager import DataManager
 from .hawk_stub import HawkStub
 from .model import Model
+from .model_trainer import ModelTrainer
 from .object_provider import ObjectProvider
 from .utils import get_server_ids, log_exceptions
 
@@ -168,7 +169,7 @@ class Mission(DataManagerContext, ModelContext):
             if callable(getattr(s2s_object, k)) and k.startswith("s2s_")
         }
 
-    def setup_trainer(self, trainer):
+    def setup_trainer(self, trainer: ModelTrainer) -> None:
         logger.info("Setting up trainer")
         self.trainer = trainer
         threading.Thread(target=self._train_thread, name="train-model").start()
@@ -206,7 +207,10 @@ class Mission(DataManagerContext, ModelContext):
         return TestResults(version=self._model.version)
 
     def load_model(
-        self, model_path: str = "", content: bytes = b"", model_version: int = -1
+        self,
+        model_path: Union[str, bytes, os.PathLike],
+        content: bytes = b"",
+        model_version: int = -1,
     ):
         logger.info("Loading model")
         model_path = Path(model_path)
@@ -304,17 +308,12 @@ class Mission(DataManagerContext, ModelContext):
         if not isinstance(self._retrain_policy, SampleIntervalPolicy):
             self._retrain_policy.update(new_positives, new_negatives)
         if self.enable_logfile:
-            self.log_file.write(
-                "{:.3f} {} {}_NEW Examples \
-                Positives {} Negatives {}\n".format(
-                    end_t - self.start_time,
-                    time.ctime(),
-                    self.host_name,
-                    self._retrain_policy.positives,
-                    self._retrain_policy.negatives,
-                )
+            self.log(
+                f"{time.ctime()} NEW Examples "
+                f"Positives {self._retrain_policy.positives} "
+                f"Negatives {self._retrain_policy.negatives}",
+                end_t,
             )
-
             self.log_file.flush()
 
         if not retrain:
@@ -350,13 +349,8 @@ class Mission(DataManagerContext, ModelContext):
     def stop(self) -> None:
         if not self._abort_event.is_set():
             if self._model is not None and self.enable_logfile:
-                self.log_file.write(
-                    "{:.3f} {}_{} SEARCH STOPPED\n".format(
-                        time.time() - self.start_time,
-                        self.host_name,
-                        self._model.version,
-                    )
-                )
+                self.log(f"{self._model.version} SEARCH STOPPED")
+
         # Stop Mission
         self.enable_logfile = False
         self._abort_event.set()
@@ -365,6 +359,13 @@ class Mission(DataManagerContext, ModelContext):
         logger.info("Selector clear called in mission.py...")
         self.log_file.close()
         sys.exit(0)
+
+    def log(self, msg: str, end_t: Optional[int] = None) -> None:
+        if not self.enable_logfile:
+            return
+        if end_t is None:
+            end_t = time.time()
+        self.log_file.write(f"{end_t - self.start_time:.3f} {self.host_name} {msg}\n")
 
     def get_example_directory(self, example_set: DatasetSplit):
         return self._data_manager.get_example_directory(example_set)
@@ -520,11 +521,7 @@ class Mission(DataManagerContext, ModelContext):
             model = self.trainer.load_model(content=self.initial_model.content)
             self._set_model(model, False)
             if self.enable_logfile:
-                self.log_file.write(
-                    "{:.3f} {}_{} Initial Model SET\n".format(
-                        time.time() - self.start_time, self.host_name, model.version
-                    )
-                )
+                self.log(f"{model.version} Initial Model SET")
             return
 
         with self._data_manager.get_examples(DatasetSplit.TRAIN) as train_dir:
@@ -534,13 +531,8 @@ class Mission(DataManagerContext, ModelContext):
         eval_start = time.time()
         logger.info(f"Trained model in {eval_start - train_start:.3f} seconds")
         if model is not None and self.enable_logfile:
-            self.log_file.write(
-                "{:.3f} {}_{} TRAIN NEW MODEL in {} seconds\n".format(
-                    time.time() - self.start_time,
-                    self.host_name,
-                    model.version,
-                    eval_start - train_start,
-                )
+            self.log(
+                f"{model.version} TRAIN NEW MODEL in {eval_start - train_start} seconds"
             )
         self._set_model(model, False)
         logger.info(f"Evaluated model in {time.time() - eval_start:.3f} seconds")
@@ -567,16 +559,9 @@ class Mission(DataManagerContext, ModelContext):
                 logger.info("Stopping model")
                 self._model.stop()
             self._model = model
-            logger.info(f"Promoted New Model Version {self._model.version}")
+            logger.info(f"Promoted New Model Version {model.version}")
             if self.enable_logfile:
-                self.log_file.write(
-                    "{:.3f} {} {} Promoted New Model Version {}\n".format(
-                        time.time() - self.start_time,
-                        time.ctime(),
-                        self.host_name,
-                        model.version,
-                    )
-                )
+                self.log(f"{time.ctime()} Promoted New Model Version {model.version}")
             self._model_stats = model_stats
             self._last_trained_version = model.version
 
@@ -607,18 +592,14 @@ class Mission(DataManagerContext, ModelContext):
             if self._model and self._model.is_running():
                 self._model.stop()
             self._model = model
-            logger.info(f"Promoted New Model Version {self._model.version}")
+            logger.info(f"Promoted New Model Version {model.version}")
             self._model_stats = model_stats
 
             self._last_trained_version = model.version
 
         self.selector.new_model(model)
         if self.enable_logfile:
-            self.log_file.write(
-                "{:.3f} {} Promoted New Model Version {}\n".format(
-                    time.time() - self.start_time, self.host_name, model.version
-                )
-            )
+            self.log(f"Promoted New Model Version {model.version}")
 
         if should_notify:
             self._initial_model_event.set()

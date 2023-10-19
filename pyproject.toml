@@ -21,7 +21,7 @@ logzero = "^1.5.0"
 numpy = "^1.18.1"
 protobuf = "^3.11.4"
 pyyaml = "^6.0"
-pyzmq = "^22.3.0"
+pyzmq = "^23.2.1"
 tqdm = "^4.66.1"
 
 flask = { version = "^2.2.3", optional = true }
