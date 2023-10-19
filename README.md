@@ -26,7 +26,7 @@ This is a developing project.
 ```bash
 cd ~/hawk
 # use extras to specify if you want dependencies for only home, scout, or both.
-poetry install --extras home --extras scout
+poetry install --extras home
 
 # you can run `poetry shell` to get a shell in the new environment and then you
 # will not have to prefix commands with 'poetry run' to execute in the environment.
@@ -57,7 +57,7 @@ Provide relevant data and model parameters in the [config file.](/configs/dota_s
     - bootstrap_path: This is the path to a .zip folder containing two directories: 0/ and 1/ where 1/ represents a directory of true positives (of the desired class) and 0/ represents the set of true negatives.  Common practice is to use 20 positives and 100 negatives, but any numbers can be used.  The bootstrap dataset is used to train the initial model if no valid path is given for intital_model_path.  The bootstrap dataset is also used for all future training iterations, so it is required.
     - args: additional arguments
         - mode: hawk / oracle / notional: hawk uses the inference score to prioritize (active learning) each sample for trasmission to home, oracle prioritizes each sample according to its ground truth label, and notional prioritizes according to its inference score, but does not iteratively retrain; uses a model pretrained on all data.
-        - arch: model architecture - many choices to pick from 
+        - arch: model architecture - many choices to pick from
         - unfreeze_layers: the number of layers that are retrained each iteration, has various performance tradeoffs.
         - batch-size: inference batch-size on the scouts
         - online_epochs: training epochs for each subsequent training iteration
@@ -77,17 +77,16 @@ Provide relevant data and model parameters in the [config file.](/configs/dota_s
 
 
 The stream file on home provided in [config file.](/configs/dota_sample_config.yml), dataset: stream_path, contains a list of input images with associated labels.  The script below assumes the stream file contains all possible samples desired for inference during a mission, with the format:
-<path/to/image1> <label_1> 
+<path/to/image1> <label_1>
 <path/to/image2> <label_2>
 ...
-where the labels are either 1 or 0 (pos or neg).  If using the DOTA dataset, all original images should be tiled to dimensions of 256x256, which can be done by referencing [DOTA Dev Kit](https://github.com/CAPTAIN-WHU/DOTA_devkit/tree/master).  This file thus points to data samples to be inferenced by the scouts.  
+where the labels are either 1 or 0 (pos or neg).  If using the DOTA dataset, all original images should be tiled to dimensions of 256x256, which can be done by referencing [DOTA Dev Kit](https://github.com/CAPTAIN-WHU/DOTA_devkit/tree/master).  This file thus points to data samples to be inferenced by the scouts.
 
 
 
 The user can specify the index file (dataset: index_path) that will be generated from running the split_data.py script below.
 Run the following cmd to split the dataset across participating scouts
 ```bash
-cd ~/hawk
 poetry run python scripts/split_data.py configs/dota_sample_config.yml
 ```
 After running this script, the list of all samples from the stream file  will be approximately evenly split across the number of scouts defined in the config file.  These new per-scout index files will be stored on each respective scout at the location specified by dataset: index_path in the config file.
@@ -95,6 +94,7 @@ After running this script, the list of all samples from the stream file  will be
 ### Step 4. Start Hawk on the Scout Servers
 
 ```bash
+poetry install --extras scout
 poetry run hawk_scout
 ```
 
@@ -109,8 +109,7 @@ The backend uses Flask REST API (Port:8000) to start and stop missions. The resu
 
 ### Step 1. Setting up Environment
 ```bash
-cd ~/hawk
-poetry install
+poetry install --extras home
 ```
 ### Step 2. ScopeCookie and Config
 
