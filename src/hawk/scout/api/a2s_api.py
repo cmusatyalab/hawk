@@ -15,7 +15,9 @@ import os
 import subprocess
 import time
 import zipfile
+from importlib.resources import entry_points
 from pathlib import Path
+from typing import Type
 
 import torch
 from google.protobuf import json_format
@@ -58,9 +60,6 @@ from ..selection.selector_base import Selector
 from ..selection.threshold_selector import ThresholdSelector
 from ..selection.token_selector import TokenSelector
 from ..selection.topk_selector import TopKSelector
-from ..trainer.dnn_classifier.trainer import DNNClassifierTrainer
-from ..trainer.fsl.trainer import FSLTrainer
-from ..trainer.yolo.trainer import YOLOTrainer
 
 MODEL_FORMATS = ["pt", "pth"]
 
@@ -237,29 +236,37 @@ class A2SAPI:
         logger.info("Finished setting up mission")
         self._manager.set_mission(mission)
 
-        # Setting up mission trainer
+        # Get reference to mission trainer
         model = request.trainStrategy
         if model.HasField("dnn_classifier"):
-            config = model.dnn_classifier
-            trainer: ModelTrainer = DNNClassifierTrainer(mission, dict(config.args))
+            train_type = "dnn_classifier"
+            train_config = dict(model.dnn_classifier.args)
         elif model.HasField("yolo"):
-            config = model.yolo
-            trainer = YOLOTrainer(mission, dict(config.args))
+            train_type = "yolo"
+            train_config = dict(model.yolo.args)
         elif model.HasField("fsl"):
-            config = model.fsl
-            support_path = config.args["support_path"]
+            train_type = "fsl"
+            train_config = dict(model.fsl.args)
 
             # Saving support image
-            support_data = config.args["support_data"]
+            support_path = train_config["support_path"]
+            support_data = train_config["support_data"]
             data = base64.b64decode(support_data.encode("utf8"))
             image = Image.open(io.BytesIO(data))
             image.save(support_path)
-
-            trainer = FSLTrainer(mission, dict(config.args))
         else:
             raise NotImplementedError(
                 f"unknown model: {json_format.MessageToJson(model)}"
             )
+
+        try:
+            (ep,) = entry_points(group="hawk.scout.trainer", name=train_type)
+            trainer_class: Type[ModelTrainer] = ep.load()
+        except (ImportError, ValueError):
+            raise NotImplementedError(f"unknown model: {train_type}")
+
+        # Load and start mission trainer
+        trainer = trainer_class(mission, train_config)
 
         mission.setup_trainer(trainer)
         logger.info(f"Create mission with id {request.missionId}")
