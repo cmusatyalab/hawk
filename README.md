@@ -44,17 +44,17 @@ Provide relevant data and model parameters in the [config file.](/configs/dota_s
 - home-params: the mission directory on home specifices where on the home station (from where the missino is launched) to aggregate and store mission logs from all scouts.
 - dataset: This field contains information that tells Hawk how to read incoming data
     - type: random, tile, and a few others.  Because all tiles were derived from original, larger images, random simply treats all tiles as independent of each other, even if two were derived from the same image, and are thus assigned to scouts randomly.
-    - stream_path: this is the path to the file (locally) that contains the entire list of image samples and associated labels to be read by the scouts.  Format is: <path/to/image.jpg> <label>
+    - stream_path: this is the path to the file (locally) that contains the entire list of image samples and associated labels to be read by the scouts.  Format is: <path/to/image.jpg> <label> An example stream file can be found here: [example_DOTA_stream_file](/configs/stream_example_DOTA_roundabout.txt) This file is used with the split_data.py script in a later step.
     - index_path: this is the path to the file on each individual scout that is read by the respective scout.  Thus, each the file located at this location on each scout is unique from those on other scouts.
     - tiles_per_frame: By default, each scout inferences an entire image's worth of tiles in 20 seconds.  Therefore, this number determines how many total tiles are inferenced for every 20 seconds, to simply control the rate of inference by the scouts.
 - retrain_policy: Logical conditions to determine when to retrain the existing model.
     - type: sepcifies the retraining mode (percentage, absolute)
     - only_positives: this flag specifies that only a certain increases positives affects retraining conditions, as opposed to positives and negatives.
-    - threshold: percentage or absolute threshold for retrain conditiosn to be met.
+    - threshold: percentage or absolute threshold for retrain conditions to be met.
 - train_strategy: Specifies training and model details.
     - type: dnn_classifier, yolo, etc. the type of model used
     - initial_model_path: This allows the user to specify a path to an initial model on the home machine or on the scout.  If the path is invalid, a new model will be trained on the scouts at the beginning of the mission, otherwise the model pointed to by the specified path will be used.
-    - bootstrap_path: This is the path to a .zip folder containing two directories: 0/ and 1/ where 1/ represents a directory of true positives (of the desired class) and 0/ represents the set of true negatives.  Common practice is to use 20 positives and 100 negatives, but any numbers can be used.  The bootstrap dataset is used to train the initial model if no valid path is given for intital_model_path.  The bootstrap dataset is also used for all future training iterations, so it is required.
+    - bootstrap_path: This is the path to a .zip folder containing two directories: 0/ and 1/ where 1/ represents a directory of true positives (of the desired class) and 0/ represents the set of true negatives.  Common practice is to use 20 positives and 100 negatives, but any numbers can be used.  The bootstrap dataset is used to train the initial model if no valid path is given for intital_model_path.  The bootstrap dataset is also used for all future training iterations, so it is required.  An example list of images and labels that is used to generate this bootstrap dataset for initial training can be found here: [example_DOTA_train_file](/configs/train_example_DOTA_roundabout.txt)
     - args: additional arguments
         - mode: hawk / oracle / notional: hawk uses the inference score to prioritize (active learning) each sample for trasmission to home, oracle prioritizes each sample according to its ground truth label, and notional prioritizes according to its inference score, but does not iteratively retrain; uses a model pretrained on all data.
         - arch: model architecture - many choices to pick from
