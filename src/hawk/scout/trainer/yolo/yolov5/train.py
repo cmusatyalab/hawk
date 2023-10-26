@@ -45,7 +45,7 @@ from utils.general import (LOGGER, check_dataset, check_file, check_img_size, ch
                            check_suffix, check_yaml, colorstr, get_latest_run, increment_path, init_seeds,
                            labels_to_class_weights, labels_to_image_weights, methods, one_cycle, print_args,
                            strip_optimizer)
-from utils.loggers import Loggers
+#from utils.loggers import Loggers
 from utils.loss import ComputeLoss
 from utils.metrics import fitness
 from utils.torch_utils import (EarlyStopping, ModelEMA, de_parallel, intersect_dicts, select_device,
@@ -87,19 +87,21 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
     data_dict = None
 
     # Loggers
+    '''
     if RANK in [-1, 0]:
         loggers = Loggers(save_dir, weights, opt, hyp, LOGGER)  # loggers instance
 
         # Register actions
         for k in methods(loggers):
             callbacks.register_action(k, callback=getattr(loggers, k))
-
+        '''
     # Config
     plots = not evolve  # create plots
     cuda = device.type != 'cpu'
     init_seeds(1 + RANK)
     with torch_distributed_zero_first(LOCAL_RANK):
         data_dict = data_dict or check_dataset(data)  # check if None
+    LOGGER.info("Data dict: {}".format(data_dict))
     train_path, val_path = data_dict['train'], data_dict.get('val', '')
     nc = 1 if single_cls else int(data_dict['nc'])  # number of classes
     names = ['positive'] if single_cls and len(data_dict['names']) != 1 else data_dict['names']  # class names
@@ -209,6 +211,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
         LOGGER.info('Using SyncBatchNorm()')
 
     # Trainloader
+    LOGGER.info("Train path: {}".format(train_path))
     train_loader, dataset = create_dataloader(train_path, imgsz, batch_size // WORLD_SIZE, gs, single_cls,
                                               hyp=hyp, augment=True, cache=opt.cache, rect=opt.rect, rank=LOCAL_RANK,
                                               workers=workers, image_weights=opt.image_weights, quad=opt.quad,
