@@ -10,13 +10,15 @@ import threading
 import time
 import zipfile
 from collections import defaultdict
+from multiprocessing.connection import _ConnectionBase
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 from logzero import logger
 
 from ...proto.messages_pb2 import (
     DatasetSplit,
+    DatasetSplitValue,
     LabeledTile,
     LabelWrapper,
     MissionId,
@@ -38,7 +40,6 @@ from .data_manager import DataManager
 from .hawk_stub import HawkStub
 from .model import Model
 from .model_trainer import ModelTrainer
-from .object_provider import ObjectProvider
 from .utils import get_server_ids, log_exceptions
 
 
@@ -80,7 +81,7 @@ class Mission(DataManagerContext, ModelContext):
         self.log_file = open(self._log_dir / f"log-{self.host_name}.txt", "a")
         self.result_path = str(self._log_dir / f"sent-{self.host_name}.txt")
         self.enable_logfile = True
-        self.trainer = None
+        self.trainer: Optional[ModelTrainer] = None
         self.trainer_type = None
 
         self._port = port
@@ -88,7 +89,9 @@ class Mission(DataManagerContext, ModelContext):
         self.retriever = retriever
         self.selector = selector
         self.bootstrap_zip = bootstrap_zip
-        self._retrain_policy.total_tiles = self.retriever.total_tiles
+
+        if isinstance(self._retrain_policy, SampleIntervalPolicy):
+            self._retrain_policy.total_tiles = self.retriever.total_tiles
 
         self.initial_model = initial_model
         self._validate = validate
@@ -131,7 +134,6 @@ class Mission(DataManagerContext, ModelContext):
             target=self._get_results, args=(s2h_input,), name="get-results"
         )
 
-        self._label_thread = None
         logger.info("SETTING UP H2C API")
         h2c_output, h2c_input = mp.Pipe(False)
         p = mp.Process(target=H2CSubscriber.h2c_receive_labels, args=(h2c_input,))
@@ -140,7 +142,8 @@ class Mission(DataManagerContext, ModelContext):
         )
         p.start()
         logger.info(f"SETTING UP S2S Server {self._scout_index}")
-        s2s_input, s2s_output = mp.Queue(), mp.Queue()
+        s2s_input: mp.Queue[bytes] = mp.Queue()
+        s2s_output: mp.Queue[bytes] = mp.Queue()
         p = mp.Process(
             target=s2s_receive_request,
             args=(
@@ -177,20 +180,20 @@ class Mission(DataManagerContext, ModelContext):
         while not self._model:
             pass
 
-    def check_initial_model(self):
+    def check_initial_model(self) -> bool:
         if self.initial_model is None:
             return False
-        return len(self.initial_model.content)
+        return len(self.initial_model.content) != 0
 
     def store_labeled_tile(self, tile: LabeledTile) -> None:
         self._data_manager.store_labeled_tile(tile)
-        return
 
     def distribute_label(self, label: LabelWrapper) -> None:
         self._data_manager.distribute_label(label)
-        return
 
-    def get_example(self, example_set: DatasetSplit, label: str, example: str) -> Path:
+    def get_example(
+        self, example_set: DatasetSplitValue, label: str, example: str
+    ) -> Path:
         return self._data_manager.get_example_path(example_set, label, example)
 
     def get_test_results(self) -> TestResults:
@@ -205,20 +208,19 @@ class Mission(DataManagerContext, ModelContext):
 
     def load_model(
         self,
-        model_path: Union[str, bytes, os.PathLike],
+        model_path: Path,
         content: bytes = b"",
         model_version: int = -1,
     ):
         logger.info("Loading model")
-        model_path = Path(model_path)
         assert model_path.exists() or len(content)
-        model = self.trainer.load_model(model_path, content, model_version)
-        return model
+        return self.trainer.load_model(model_path, content, model_version)
 
-    def import_model(self, model_path: str, content: bytes, model_version: int) -> None:
+    def import_model(
+        self, model_path: Path, content: bytes, model_version: int
+    ) -> None:
         model = self.load_model(model_path, content, model_version)
         self._set_model(model, False)
-        return
 
     def export_model(self) -> ModelArchive:
         assert self._scout_index == 0
@@ -275,11 +277,11 @@ class Mission(DataManagerContext, ModelContext):
     def model_dir(self) -> Path:
         return self._model_dir
 
-    def check_create_test(self):
+    def check_create_test(self) -> bool:
         return self._validate
 
     def new_labels_callback(
-        self, new_positives: int, new_negatives: int, retrain=True
+        self, new_positives: int, new_negatives: int, retrain: bool = True
     ) -> None:
         if self._abort_event.is_set():
             return
@@ -358,10 +360,10 @@ class Mission(DataManagerContext, ModelContext):
             end_t = time.time()
         self.log_file.write(f"{end_t - self.start_time:.3f} {self.host_name} {msg}\n")
 
-    def get_example_directory(self, example_set: DatasetSplit):
+    def get_example_directory(self, example_set: DatasetSplitValue) -> Path:
         return self._data_manager.get_example_directory(example_set)
 
-    def _objects_for_model_version(self) -> Iterable[Optional[ObjectProvider]]:
+    def _objects_for_model_version(self) -> None:
         if self._abort_event.is_set():
             return
 
@@ -396,8 +398,6 @@ class Mission(DataManagerContext, ModelContext):
                         self._retrain_policy.reset()
                         self._model_event.set()
 
-        return
-
     @log_exceptions
     def _retriever_thread(self) -> None:
         try:
@@ -419,7 +419,10 @@ class Mission(DataManagerContext, ModelContext):
             while not self._abort_event.is_set():
                 result = self._model.get_results()
                 self.selector.add_result(result)
-                if self.retriever.total_tiles == self.selector.items_processed:
+                if (
+                    isinstance(self.selector, TokenSelector)
+                    and self.retriever.total_tiles == self.selector.items_processed
+                ):
                     self.selector.select_tiles(self.selector._k)
                 if self.selector.items_processed > self.retriever.total_tiles - 200:
                     logger.info(
@@ -434,7 +437,7 @@ class Mission(DataManagerContext, ModelContext):
             self.stop()
 
     @log_exceptions
-    def _get_results(self, pipe) -> None:
+    def _get_results(self, pipe: _ConnectionBase) -> None:
         try:
             while True:  # not self._abort_event.is_set():
                 result = self.selector.get_result()
@@ -454,7 +457,7 @@ class Mission(DataManagerContext, ModelContext):
             # raise e
 
     @log_exceptions
-    def _get_labels(self, pipe) -> None:
+    def _get_labels(self, pipe: _ConnectionBase) -> None:
         try:
             while not self._abort_event.is_set():
                 try:
@@ -471,7 +474,9 @@ class Mission(DataManagerContext, ModelContext):
             self.stop()
 
     @log_exceptions
-    def _s2s_process(self, input_q, output_q) -> None:
+    def _s2s_process(
+        self, input_q: mp.Queue[Tuple[bytes, bytes]], output_q: mp.Queue[bytes]
+    ) -> None:
         try:
             while not self._abort_event.is_set():
                 (method, msg) = input_q.get()

@@ -27,7 +27,6 @@ class RandomRetriever(Retriever):
         self._resize = dataset.resizeTile
         logger.info("In RANDOM RETRIEVER INIT...")
         logger.info(f"Resize tile: {self._resize}")
-        self.img_tile_map = defaultdict(list)
 
         index_file = self._dataset.dataPath
         self._data_root = Path(index_file).parent.parent
@@ -51,7 +50,7 @@ class RandomRetriever(Retriever):
         self._stats.total_objects = self.total_tiles
         self._stats.total_images = len(self.images)
 
-    def stream_objects(self):
+    def stream_objects(self) -> None:
         super().stream_objects()
 
         for key in self.images:
@@ -66,7 +65,7 @@ class RandomRetriever(Retriever):
                 )
             )
             for tile in tiles:
-                content = io.BytesIO()
+                tmpfile = io.BytesIO()
                 parts = tile.split()
                 if len(parts) == 1:
                     image_path = parts[0]
@@ -79,8 +78,8 @@ class RandomRetriever(Retriever):
 
                 image_path = self._data_root / image_path
                 image = Image.open(image_path).convert("RGB")
-                image.save(content, format="JPEG", quality=85)
-                content = content.getvalue()
+                image.save(tmpfile, format="JPEG", quality=85)
+                content = tmpfile.getvalue()
 
                 attributes = self.set_tile_attributes(object_id, label)
                 self._stats.retrieved_tiles += 1

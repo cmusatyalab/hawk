@@ -8,7 +8,7 @@ import multiprocessing as mp
 import os
 import time
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List
+from typing import Callable, Dict, Iterable, List, Sequence
 
 import torch
 import torchvision.transforms as transforms
@@ -18,6 +18,7 @@ from sklearn.metrics import average_precision_score
 from torch.utils.data import DataLoader
 from torchvision import datasets
 
+from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.object_provider import ObjectProvider
@@ -90,7 +91,7 @@ class YOLOModel(ModelBase):
 
     def serialize(self) -> bytes:
         if self._model is None:
-            return None
+            return b""
 
         content = io.BytesIO()
         torch.save(
@@ -121,7 +122,7 @@ class YOLOModel(ModelBase):
             return probability
 
     @log_exceptions
-    def _infer_results(self):
+    def _infer_results(self) -> None:
         logger.info("INFER RESULTS THREAD STARTED")
 
         requests = []
@@ -149,9 +150,9 @@ class YOLOModel(ModelBase):
                     self.result_queue.put(result)
                 requests = []
 
-    def infer(self, requests: Iterable[ObjectProvider]) -> Iterable[ResultProvider]:
+    def infer(self, requests: Sequence[ObjectProvider]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:
-            return
+            return []
 
         output = []
         for i in range(0, len(requests), self._batch_size):
@@ -166,7 +167,7 @@ class YOLOModel(ModelBase):
 
     def infer_dir(
         self, directory: Path, callback_fn: Callable[[int, float], None]
-    ) -> None:
+    ) -> TestResults:
         dataset = datasets.ImageFolder(str(directory), transform=None)
         data_loader = DataLoader(
             dataset,
@@ -186,8 +187,9 @@ class YOLOModel(ModelBase):
                     predictions.append(prediction[i])
 
         callback_fn(targets, predictions)
+        return
 
-    def evaluate_model(self, test_path: Path) -> None:
+    def evaluate_model(self, test_path: Path) -> TestResults:
         def calculate_performance(y_true, y_pred):
             return average_precision_score(y_true, y_pred, average=None)
 
@@ -199,7 +201,7 @@ class YOLOModel(ModelBase):
                 # put request back in queue
                 for req in batch:
                     self.request_queue.put(req)
-            return
+            return []
 
         with self._model_lock:
             tensors = torch.stack([f[1] for f in batch]).to(self._device)
@@ -215,11 +217,11 @@ class YOLOModel(ModelBase):
                 batch[i][0].attributes.add({"score": str.encode(str(score))})
                 yield ResultProvider(batch[i][0], score, self.version)
 
-    def stop(self):
+    def stop(self) -> None:
         logger.info(f"Stopping model of version {self.version}")
         with self._model_lock:
             self._running = False
-            if self._model:
+            if self._model is not None:
                 del self._model
                 gc.collect()
                 torch.cuda.empty_cache()

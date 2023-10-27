@@ -2,20 +2,18 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import glob
 import json
 import shlex
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 import torch
 from logzero import logger
 
 from ...context.model_trainer_context import ModelContext
-from ...core.model import Model
 from ...core.model_trainer import ModelTrainerBase
 from .model import DNNClassifierModel
 
@@ -47,14 +45,13 @@ class DNNClassifierTrainer(ModelTrainerBase):
 
         logger.info("DNN CLASSIFIER TRAINER CALLED")
 
-    def load_model(self, path: Path = "", content: bytes = b"", version: int = -1):
-        if isinstance(path, str):
-            path = Path(path)
-
+    def load_model(
+        self, path: Optional[Path] = None, content: bytes = b"", version: int = -1
+    ) -> DNNClassifierModel:
         new_version = self.get_new_version()
 
-        assert path.is_file() or len(content)
-        if not path.is_file():
+        if path is None or not path.is_file():
+            assert len(content)
             path = self.context.model_path(new_version)
             path.write_bytes(content)
 
@@ -65,7 +62,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
             self.args, path, version, mode=self.args["mode"], context=self.context
         )
 
-    def train_model(self, train_dir) -> Model:
+    def train_model(self, train_dir: Path) -> DNNClassifierModel:
         # check mode if not hawk return model
         # EXPERIMENTAL
         if self.args["mode"] == "oracle":
@@ -79,7 +76,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
             while (time.time() - time_now) < time_sleep:
                 time.sleep(1)
 
-            return self.load_model(Path(notional_path), version=0)
+            return self.load_model(notional_path, version=0)
 
         new_version = self.get_new_version()
 
@@ -89,7 +86,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
         # labels = [subdir.name for subdir in self._train_dir.iterdir()]
         labels = ["0", "1"]
         train_samples = {
-            label: glob.glob(str(train_dir / label / "*")) for label in labels
+            label: list(train_dir.joinpath(label).glob("*")) for label in labels
         }
         train_len = {label: len(train_samples[label]) for label in labels}
         if train_len["1"] == 0:
@@ -106,7 +103,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
             valpath = self.context.model_path(new_version, template="val-{}.txt")
             val_dir = train_dir.parent / "test"
             val_samples = {
-                label: glob.glob(str(val_dir / label / "*")) for label in labels
+                label: list(val_dir.joinpath(label).glob("*")) for label in labels
             }
             val_len = {label: len(val_samples[label]) for label in labels}
             if val_len["1"] == 0:
@@ -119,7 +116,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
                     for path in val_samples[label]:
                         f.write(f"{path} {label}\n")
 
-            self.args["test_dir"] = valpath
+            self.args["test_dir"] = str(valpath)
 
         if new_version <= 0:
             self.train_initial_model = True
@@ -161,9 +158,9 @@ class DNNClassifierTrainer(ModelTrainerBase):
             cmd.extend(["--resume", str(self.prev_path)])
 
         if self.args["test_dir"]:
-            cmd.extend(["--valpath", str(self.args["test_dir"])])
+            cmd.extend(["--valpath", self.args["test_dir"]])
 
-        logger.info(f"TRAIN CMD \n {shlex.join(cmd)}")
+        logger.info(f"TRAIN CMD\n {shlex.join(cmd)}")
         proc = subprocess.Popen(cmd)
         proc.communicate()
 

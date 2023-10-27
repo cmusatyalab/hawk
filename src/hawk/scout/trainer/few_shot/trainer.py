@@ -3,13 +3,12 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 import torch
 from logzero import logger
 
 from ...context.model_trainer_context import ModelContext
-from ...core.model import Model
 from ...core.model_trainer import ModelTrainerBase
 from .model import FewShotModel
 
@@ -27,11 +26,11 @@ class FewShotTrainer(ModelTrainerBase):
 
         logger.info("FSL TRAINER CALLED")
 
-    def load_model(self, path: Path = "", content: bytes = b"", version: int = -1):
-        if isinstance(path, str):
-            path = Path(path)
-        assert path.is_file() or len(content)
-        if not path.is_file():
+    def load_model(
+        self, path: Optional[Path] = None, content: bytes = b"", version: int = -1
+    ) -> FewShotModel:
+        if path is None or not path.is_file():
+            assert len(content)
             path = self.context.model_path(version)
             path.write_bytes(content)
 
@@ -39,5 +38,5 @@ class FewShotTrainer(ModelTrainerBase):
         self._model_path = path
         return FewShotModel(self.args, path, version, context=self.context)
 
-    def train_model(self, train_dir) -> Model:
+    def train_model(self, train_dir: Path) -> FewShotModel:
         return self.load_model(self._model_path, version=self.version)

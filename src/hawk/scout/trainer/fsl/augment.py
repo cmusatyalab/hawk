@@ -42,13 +42,14 @@ train_transform = A.Compose(
 )
 
 
-def AugmentSave(image):
+def AugmentSave(pil_image: Image.Image) -> None:
+    image = np.array(pil_image)
     for _ in range(1, N_SHOT):
         transform = A.Compose([t for t in train_transform])
         image_transform = transform(image=image)["image"]
-        image_transform = Image.fromarray(image_transform)
-        image_transform.save(f"{train_dataset}/0/{str(uuid.uuid4())}.png")
+        transformed_img = Image.fromarray(image_transform)
+        transformed_img.save(f"{train_dataset}/0/{str(uuid.uuid4())}.png")
 
 
-image = np.array(Image.open(image_name))
+image = Image.open(image_name)
 AugmentSave(image)

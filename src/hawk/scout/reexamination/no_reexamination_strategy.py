@@ -6,7 +6,7 @@ import queue
 from typing import List, Tuple
 
 from ..core.model import Model
-from .reexamination_strategy import ReexaminationStrategy
+from .reexamination_strategy import ReexaminationQueueType, ReexaminationStrategy
 
 
 class NoReexaminationStrategy(ReexaminationStrategy):
@@ -15,6 +15,9 @@ class NoReexaminationStrategy(ReexaminationStrategy):
         return False
 
     def get_new_queues(
-        self, model: Model, old_queues: List[queue.PriorityQueue], start_time: float = 0
-    ) -> Tuple[List[queue.PriorityQueue], int]:
+        self,
+        model: Model,
+        old_queues: List[ReexaminationQueueType],
+        start_time: float = 0,
+    ) -> Tuple[List[ReexaminationQueueType], int]:
         return old_queues + [queue.PriorityQueue()], 0

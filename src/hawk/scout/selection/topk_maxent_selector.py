@@ -16,7 +16,7 @@ class MaxEntropySelector(TopKSelector):
         super().__init__(k, batch_size, reexamination_strategy)
 
     def _add_result(self, result: ResultProvider) -> None:
-        def calc_score(score):
+        def calc_score(score: float) -> float:
             return abs(0.5 - score)
 
         with self._insert_lock:

@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import multiprocessing as mp
 import queue
 import time
 from typing import List, Tuple
@@ -11,22 +10,26 @@ from logzero import logger
 
 from ..core.model import Model
 from ..core.object_provider import ObjectProvider
-from .reexamination_strategy import ReexaminationStrategy
+from .reexamination_strategy import ReexaminationQueueType, ReexaminationStrategy
 
 
 class TopReexaminationStrategy(ReexaminationStrategy):
     def __init__(self, k: int):
         self._k = k
-        self.reexamined = mp.Queue()
 
     @property
     def reexamines_old_results(self) -> bool:
         return True
 
     def get_new_queues(
-        self, model: Model, old_queues: List[queue.PriorityQueue], start_time: float = 0
-    ) -> Tuple[List[queue.PriorityQueue], int]:
-        new_queue = queue.PriorityQueue()  # To start a new priority queue
+        self,
+        model: Model,
+        old_queues: List[ReexaminationQueueType],
+        start_time: float = 0,
+    ) -> Tuple[List[ReexaminationQueueType], int]:
+        new_queue: ReexaminationQueueType = (
+            queue.PriorityQueue()
+        )  # To start a new priority queue
         # new_queue =  old_queues[-1] # Reuse the same queue
 
         to_reexamine = []

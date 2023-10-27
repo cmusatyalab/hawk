@@ -3,9 +3,8 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import itertools
-import queue
-import threading
 import time
+from typing import List
 
 import numpy as np
 from logzero import logger
@@ -13,6 +12,7 @@ from sklearn.cluster import DBSCAN
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
+from ..core.result_provider import ResultProvider
 from ..core.utils import log_exceptions
 from ..reexamination.reexamination_strategy import ReexaminationStrategy
 from .topk_selector import TopKSelector
@@ -27,40 +27,30 @@ class DiversitySelector(TopKSelector):
         add_negatives: bool = False,
     ):
         assert k < batch_size
-        super().__init__()
+        super().__init__(k, batch_size, reexamination_strategy, add_negatives)
 
-        self.version = 0
-        self.model_train_time = 0
         self._div_k = int(k / 3)
         self._k = k - self._div_k
-        self._result_list = []
+        self._result_list: List[ResultProvider] = []
 
-        self._batch_size = batch_size
-        self._reexamination_strategy = reexamination_strategy
-
-        self._priority_queues = [queue.PriorityQueue()]
-        self._batch_added = 0
-        self._insert_lock = threading.Lock()
-        self._mode = "hawk"
         self._model = None
         self.n_pca = 5
         self.min_sample = 3
-        self.log_counter = [int(i / 3.0 * self._batch_size) for i in range(1, 4)]
 
-    def diversity_sample(self):
+    def diversity_sample(self) -> List[ResultProvider]:
         logger.info("Diversity start")
         objects = []
         original = np.array(list(self._result_list))
-        results = []
+        results: List[ResultProvider] = []
 
         for result in self._result_list:
             objects.append(result)
 
         logger.info("Starting embeddings")
-        if self._model is not None:
-            embeddings = self._model.get_embeddings(objects)
-        else:
+        if self._model is None:
             return results
+
+        embeddings = self._model.get_embeddings(objects)
         logger.info("Found embeddings")
 
         # Dimensionality reduction
@@ -114,7 +104,9 @@ class DiversitySelector(TopKSelector):
         return results
 
     @log_exceptions
-    def select_tiles(self):
+    def select_tiles(self, _num_tiles: int) -> None:
+        assert self._mission is not None
+
         # TopK sampling
         results = []
         logger.info("TopK call")

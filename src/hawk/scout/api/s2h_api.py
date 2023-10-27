@@ -5,6 +5,8 @@
 """Scout to Home internal api calls
 """
 
+from multiprocessing.connection import _ConnectionBase
+
 import zmq
 from logzero import logger
 
@@ -13,7 +15,7 @@ from ...ports import S2H_PORT
 
 class S2HPublisher:
     @staticmethod
-    def s2h_send_tiles(home_ip, result_conn):
+    def s2h_send_tiles(home_ip: str, result_conn: _ConnectionBase) -> None:
         """API call to send results to HOME
 
         Uses ZeroMQ PUSH/PULL protocol for async result transfer

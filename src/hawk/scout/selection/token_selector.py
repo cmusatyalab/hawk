@@ -6,6 +6,7 @@ import time
 
 from logzero import logger
 
+from ...proto.messages_pb2 import LabelWrapper
 from ..core.result_provider import ResultProvider
 from ..core.utils import log_exceptions
 from ..reexamination.reexamination_strategy import ReexaminationStrategy
@@ -31,7 +32,7 @@ class TokenSelector(TopKSelector):
         self.sample_count = 0
 
     @log_exceptions
-    def _initialize_queue(self):
+    def _initialize_queue(self) -> None:
         if self._mode == "oracle":
             return
 
@@ -41,12 +42,11 @@ class TokenSelector(TopKSelector):
             logger.info(f"Put tile number {self.sample_count} into result queue.")
 
     @log_exceptions
-    def receive_token_message(self, label):
-        logger.info("In receive token message in token selector...")
+    def receive_token_message(self, label: LabelWrapper) -> None:
         logger.info(
-            "Index and label of received label: {} ... {} \n".format(
-                label.scoutIndex, label.imageLabel
-            )
+            "In receive token message in token selector...\n"
+            "Index and label of received label: "
+            f"{label.scoutIndex} ... {label.imageLabel}\n"
         )
         result = self._priority_queues[-1].get()[-1]
         self.result_queue.put(result)

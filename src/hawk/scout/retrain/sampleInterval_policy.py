@@ -19,7 +19,7 @@ class SampleIntervalPolicy(RetrainPolicyBase):
         self.total_tiles = 0
         self.retrain_num = 1
 
-    def num_interval_sample(self, total_tiles) -> int:
+    def num_interval_sample(self, total_tiles: int) -> None:
         self.num_interval_samples = int(total_tiles / self.num_intervals)
 
     def update(self, new_positives: int, new_negatives: int) -> None:

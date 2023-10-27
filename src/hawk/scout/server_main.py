@@ -7,6 +7,7 @@ import signal
 import sys
 import threading
 import traceback
+from typing import Any
 
 import logzero
 import multiprocessing_logging
@@ -22,11 +23,11 @@ logzero.loglevel(logging.INFO)
 torchvision.set_image_backend("accimage")
 
 
-def handler_signals(signum, frame):
+def handler_signals(signum: int, _frame: Any) -> None:
     sys.exit(0)
 
 
-def dumpstacks(_, __):
+def dumpstacks(_: Any, __: Any) -> None:
     traceback.print_stack()
     id2name = {th.ident: th.name for th in threading.enumerate()}
     code = []
@@ -40,7 +41,7 @@ def dumpstacks(_, __):
 
 
 @log_exceptions
-def main():
+def main() -> None:
     multiprocessing_logging.install_mp_handler()
 
     learning_module_api = A2SAPI(A2S_PORT)
@@ -57,13 +58,13 @@ def main():
     try:
         while True:
             method, req = socket.recv_multipart()
-            logger.info(f"Received A2S call {method} {len(req)}")
+            logger.info(f"Received A2S call {method.decode()} {len(req)}")
             reply = a2s_methods[method](req)
             socket.send(reply)
     except KeyboardInterrupt:
         pass
     except Exception as e:
-        logger.exception()
+        logger.exception(e)
         raise e
 
 
