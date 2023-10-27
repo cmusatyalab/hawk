@@ -16,6 +16,7 @@ import subprocess
 import time
 import zipfile
 from pathlib import Path
+from typing import Dict
 
 import torch
 from google.protobuf import json_format
@@ -33,6 +34,7 @@ from ...proto.messages_pb2 import (
     RetrainPolicyConfig,
     ScoutConfiguration,
     SelectiveConfig,
+    TestResults,
 )
 from ..core.hawk_stub import HawkStub
 from ..core.mission import Mission
@@ -400,7 +402,7 @@ class A2SAPI:
         """
         mission = self._manager.get_mission()
         model = request.model
-        path = request.path
+        path = Path(request.path)
         version = model.version
         mission.import_model(path, model.content, version)
         logger.info("[IMPORT] FINISHED Model Import")
@@ -435,7 +437,7 @@ class A2SAPI:
                 version = idx
             return version
 
-        results = {}
+        results: Dict[int, TestResults] = {}
         for idx, filename in enumerate(model_paths):
             path = Path(filename)
             version = get_version(path, idx)

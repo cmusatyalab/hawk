@@ -6,6 +6,7 @@ import io
 import os
 import time
 import zipfile
+from argparse import Namespace
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
@@ -146,8 +147,6 @@ class FewShotModel(ModelBase):
         return content.getvalue()
 
     def load_model(self, model_path: Path):
-        from argparse import Namespace
-
         args = Namespace(
             backbone_class="Res12", closed_way=5, gpu="0", multi_gpu=False, shot=5
         )

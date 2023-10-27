@@ -9,7 +9,7 @@ from abc import ABCMeta, abstractmethod
 
 
 class RetrainPolicyBase(metaclass=ABCMeta):
-    def __init__(self):
+    def __init__(self) -> None:
         self.positives = 0
         self.negatives = 0
 

@@ -5,6 +5,9 @@
 """Scout to Scout internal api calls
 """
 
+from multiprocessing import Queue
+from typing import TYPE_CHECKING, Tuple
+
 import zmq
 from logzero import logger
 
@@ -12,8 +15,13 @@ from ...ports import S2S_PORT
 from ...proto import Empty
 from ...proto.messages_pb2 import LabeledTile, LabelWrapper
 
+if TYPE_CHECKING:
+    from ..core.mission import Mission
 
-def s2s_receive_request(s2s_input, s2s_output):
+
+def s2s_receive_request(
+    s2s_input: Queue[Tuple[bytes, bytes]], s2s_output: Queue[bytes]
+) -> None:
     """Function to receive and invoke S2S api calls
 
     Uses Request-Response messaging protocol
@@ -41,10 +49,10 @@ def s2s_receive_request(s2s_input, s2s_output):
 
 
 class S2SServicer:
-    def __init__(self, mission):
+    def __init__(self, mission: Mission):
         self._mission = mission
 
-    def s2s_get_tile(self, msg: str):
+    def s2s_get_tile(self, msg: bytes) -> bytes:
         """API call to fetch contents of requested tile ids
 
         Call made by COORDINATOR to (PARENT) scout where image is present
@@ -79,7 +87,7 @@ class S2SServicer:
             response = Empty
         return response
 
-    def s2s_add_tile_and_label(self, msg: str):
+    def s2s_add_tile_and_label(self, msg: bytes) -> bytes:
         """API call to add tile content and labels
 
         Call made by COORDINATOR to non-PARENT scouts

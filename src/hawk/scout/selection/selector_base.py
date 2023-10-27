@@ -66,7 +66,9 @@ class Selector(metaclass=ABCMeta):
 
 class SelectorBase(Selector):
     def __init__(self) -> None:
-        self.result_queue = queue.Queue(maxsize=100)
+        self.result_queue: queue.Queue[Optional[ResultProvider]] = queue.Queue(
+            maxsize=100
+        )
         self.stats_lock = threading.Lock()
         self.items_processed = 0
         self.num_revisited = 0

@@ -9,14 +9,13 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 import torch
 import yaml
 from logzero import logger
 
 from ...context.model_trainer_context import ModelContext
-from ...core.model import Model
 from ...core.model_trainer import ModelTrainerBase
 from ...core.utils import log_exceptions
 from .model import YOLOModel
@@ -56,18 +55,19 @@ class YOLOTrainer(ModelTrainerBase):
         logger.info("YOLO TRAINER CALLED")
 
     @log_exceptions
-    def load_model(self, path: Path = "", content: bytes = b"", version: int = -1):
-        if isinstance(path, str):
-            path = Path(path)
-
+    def load_model(
+        self, path: Optional[Path] = None, content: bytes = b"", version: int = -1
+    ) -> YOLOModel:
         if version == -1:
             version = self.get_new_version()
 
         if self.args["mode"] != "oracle":
-            assert path.is_file() or len(content)
-            if not path.is_file():
+            if path is None or not path.is_file():
+                assert len(content)
                 path = self.context.model_path(version, template="model-{}.pt")
                 path.write_bytes(content)
+
+        assert path is not None
 
         self.prev_path = path
         self.context.stop_model()
@@ -77,11 +77,11 @@ class YOLOTrainer(ModelTrainerBase):
         )
 
     @log_exceptions
-    def train_model(self, train_dir) -> Model:
+    def train_model(self, train_dir: Path) -> YOLOModel:
         # check mode if not hawk return model
         # EXPERIMENTAL
         if self.args["mode"] == "oracle":
-            return self.load_model(Path(""), version=0)
+            return self.load_model(version=0)
         elif self.args["mode"] == "notional":
             notional_path = self.args["notional_model_path"]
             # sleep for training time
@@ -151,7 +151,7 @@ class YOLOTrainer(ModelTrainerBase):
             yaml.dump(data_dict, outfile, default_flow_style=False)
 
         if self.train_initial_model:
-            weights = "yolov5s.pt"
+            weights = Path("yolov5s.pt")
         else:
             weights = self.prev_path
 

@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import io
-import os
 import time
 from collections import defaultdict
+from pathlib import Path
+from typing import Dict, List
 
 from logzero import logger
 from PIL import Image
@@ -23,24 +24,24 @@ class TileRetriever(Retriever):
         self._dataset = dataset
         self._timeout = dataset.timeout
         self._resize = dataset.resizeTile
-        index_file = self._dataset.dataPath
-        contents = open(index_file).read().splitlines()
-        self.img_tile_map = defaultdict(list)
+        index_file = Path(self._dataset.dataPath)
+        self.img_tile_map: Dict[str, List[str]] = defaultdict(list)
 
         self.images = []
-        for content in contents:
-            # content = "<path> <label>"
-            path, label = content.split()
-            key = os.path.basename(path).split("_")[0]
+        contents = index_file.read_text().splitlines()
+        for line in contents:
+            # line = "<path> <label>"
+            path, _ = line.split()
+            key = Path(path).name.split("_")[0]
             if key not in self.img_tile_map:
                 self.images.append(key)
-            self.img_tile_map[key].append(content)
+            self.img_tile_map[key].append(line)
 
         self.total_tiles = len(contents)
         self._stats.total_objects = self.total_tiles
         self._stats.total_images = len(self.images)
 
-    def stream_objects(self):
+    def stream_objects(self) -> None:
         super().stream_objects()
 
         for key in self.images:
@@ -48,28 +49,20 @@ class TileRetriever(Retriever):
             if self._stop_event.is_set():
                 break
             self._stats.retrieved_images += 1
-            if self._context.enable_logfile:
-                self._context.log_file.write(
-                    "{:.3f} {} RETRIEVE: File {}\n".format(
-                        time.time() - self._context.start_time,
-                        self._context.host_name,
-                        key,
-                    )
-                )
+            self._context.log(f"RETRIEVE: File {key}")
+
             tiles = self.img_tile_map[key]
-            logger.info(
-                "Retrieved Image:{} Tiles:{} @ {}".format(
-                    key, len(tiles), time.time() - self._start_time
-                )
-            )
+            delta_t = time.time() - self._start_time
+            logger.info(f"Retrieved Image:{key} Tiles:{len(tiles)} @ {delta_t}")
+
             for tile in tiles:
-                content = io.BytesIO()
+                tmpfile = io.BytesIO()
                 image_path, label = tile.split()
                 image = Image.open(image_path).convert("RGB")
-                image.save(content, format="JPEG", quality=85)
-                content = content.getvalue()
+                image.save(tmpfile, format="JPEG", quality=85)
+                content = tmpfile.getvalue()
 
-                object_id = f"/{label}/collection/id/" + image_path
+                object_id = f"/{label}/collection/id/{image_path}"
                 attributes = self.set_tile_attributes(object_id, label)
                 self._stats.retrieved_tiles += 1
 
@@ -77,7 +70,9 @@ class TileRetriever(Retriever):
                     ObjectProvider(
                         object_id,
                         content,
-                        HawkAttributeProvider(attributes, image_path, self._resize),
+                        HawkAttributeProvider(
+                            attributes, Path(image_path), self._resize
+                        ),
                         int(label),
                     )
                 )

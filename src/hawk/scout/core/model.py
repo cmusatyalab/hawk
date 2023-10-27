@@ -8,7 +8,7 @@ import threading
 import time
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import Dict, Iterable, List
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 from logzero import logger
@@ -24,10 +24,13 @@ from .object_provider import ObjectProvider
 from .result_provider import ResultProvider
 from .utils import log_exceptions
 
+if TYPE_CHECKING:
+    import torch
+
 
 class Model(metaclass=ABCMeta):
     @abstractmethod
-    def infer(self, requests: Iterable[ObjectProvider]) -> Iterable[ResultProvider]:
+    def infer(self, requests: Sequence[ObjectProvider]) -> Iterable[ResultProvider]:
         pass
 
     @abstractmethod
@@ -35,7 +38,7 @@ class Model(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def evaluate_model(self, test_path: Path) -> None:
+    def evaluate_model(self, test_path: Path) -> TestResults:
         pass
 
     @abstractmethod
@@ -62,7 +65,7 @@ class Model(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def train_examples(self) -> Dict:
+    def train_examples(self) -> Dict[str, int]:
         pass
 
     @property
@@ -72,7 +75,12 @@ class Model(metaclass=ABCMeta):
 
 
 class ModelBase(Model):
-    def __init__(self, args: Dict, model_path: Path, context: ModelContext = None):
+    def __init__(
+        self,
+        args: Dict[str, Any],
+        model_path: Path,
+        context: Optional[ModelContext] = None,
+    ):
         self.context = context
         self.request_count = 0
         self.result_count = 0
@@ -101,7 +109,7 @@ class ModelBase(Model):
         return self._mode
 
     @property
-    def train_examples(self) -> Dict:
+    def train_examples(self) -> Dict[str, int]:
         return self._train_examples
 
     @property
@@ -109,27 +117,28 @@ class ModelBase(Model):
         return self._train_time
 
     @log_exceptions
-    def preprocess(self, request):
-        return request
+    def preprocess(
+        self, request: ObjectProvider
+    ) -> Tuple[ObjectProvider, Optional[torch.Tensor]]:
+        return (request, None)
 
     @log_exceptions
-    def add_requests(self, request):
+    def add_requests(self, request: ObjectProvider) -> None:
         if self.context is None:
             return
         self.request_count += 1
         self.request_queue.put(self.preprocess(request))
         if self.request_count == 1:
             threading.Thread(target=self._infer_results, name="model-infer").start()
-        return
 
     @log_exceptions
-    def get_results(self):
+    def get_results(self) -> Optional[ResultProvider]:
         if self.context is None:
-            return
+            return None
         return self.result_queue.get()
 
     @log_exceptions
-    def _infer_results(self):
+    def _infer_results(self) -> None:
         while True:
             time.sleep(5)
 
@@ -138,11 +147,14 @@ class ModelBase(Model):
 
     @staticmethod
     def calculate_performance(
-        version: int, target: List[int], pred: List[float], is_probability: bool = True
+        version: int,
+        target_list: List[int],
+        pred_list: List[float],
+        is_probability: bool = True,
     ) -> TestResults:
-        assert len(target) == len(pred)
-        pred = np.array(pred)
-        target = np.array(target)
+        assert len(target_list) == len(pred_list)
+        pred = np.array(pred_list)
+        target = np.array(target_list)
 
         ap = average_precision_score(target, pred, average=None)
         precision, recall, thresholds = precision_recall_curve(target, pred)
@@ -187,6 +199,3 @@ class ModelBase(Model):
             # recalls=[item.item() for item in recall],
             version=version,
         )
-
-    def evaluate_model(self, test_path: Path) -> None:
-        pass

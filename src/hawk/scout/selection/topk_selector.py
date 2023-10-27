@@ -16,7 +16,10 @@ from logzero import logger
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
 from ..core.utils import get_example_key, log_exceptions
-from ..reexamination.reexamination_strategy import ReexaminationStrategy
+from ..reexamination.reexamination_strategy import (
+    ReexaminationQueueType,
+    ReexaminationStrategy,
+)
 from .selector_base import SelectorBase
 
 
@@ -45,7 +48,7 @@ class TopKSelector(SelectorBase):
         self.num_countermeasures = total_countermeasures
         self._reexamination_strategy = reexamination_strategy
 
-        self._priority_queues = [queue.PriorityQueue()]
+        self._priority_queues: List[ReexaminationQueueType] = [queue.PriorityQueue()]
         self._batch_added = 0
         self._insert_lock = threading.Lock()
         self._mode = "hawk"
@@ -53,7 +56,7 @@ class TopKSelector(SelectorBase):
         self.log_counter = [int(i / 3.0 * self._batch_size) for i in range(1, 4)]
 
     @log_exceptions
-    def select_tiles(self, num_tiles):
+    def select_tiles(self, num_tiles: int) -> None:
         for i in range(num_tiles):
             result = self._priority_queues[-1].get()[-1]
             self._mission.log(
@@ -103,7 +106,7 @@ class TopKSelector(SelectorBase):
         negative_path = path / "-1"
         os.makedirs(str(negative_path), exist_ok=True)
 
-        result_queue = queue.PriorityQueue()
+        result_queue: ReexaminationQueueType = queue.PriorityQueue()
         with self._insert_lock:
             result_queue.queue = copy.deepcopy(self._priority_queues[-1].queue)
 
@@ -138,7 +141,7 @@ class TopKSelector(SelectorBase):
             with self._insert_lock:
                 self.easy_negatives[self.version].append(example_path)
 
-    def delete_examples(self, examples: List) -> None:
+    def delete_examples(self, examples: List[Path]) -> None:
         for path in examples:
             if path.exists():
                 path.unlink()
@@ -163,7 +166,7 @@ class TopKSelector(SelectorBase):
                 )
 
                 self._batch_added += num_revisited
-                logger.info(f"ADDING  Reexamined to result Queue {num_revisited}")
+                logger.info(f"ADDING Reexamined to result Queue {num_revisited}")
 
                 self.num_revisited += num_revisited
                 self.num_negatives_added = 0
@@ -171,5 +174,3 @@ class TopKSelector(SelectorBase):
                 # this is a reset, discard everything
                 self._priority_queues = [queue.PriorityQueue()]
                 self._batch_added = 0
-
-            self._mission.log_file.flush()

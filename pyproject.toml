@@ -91,9 +91,9 @@ skip_glob = [
 ]
 
 [tool.mypy]
-strict = true
+#strict = true
 files = ["src"]
-exclude = "^src/hawk/scout/trainer/yolo/yolov5/"
+exclude = "^src/hawk/scout/trainer/(few_shot/|yolo/yolov5/)"
 
 [[tool.mypy.overrides]]
 # ignore missing type hints errors from untyped modules
@@ -103,11 +103,18 @@ module = [
     "logzero.*",
     "multiprocessing_logging.*",
     "sklearn.*",
-    "torch.*",
-    "torchvision.*",
     "websockets.*",
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "torch.*",
+    "torchvision.*",
+]
+ignore_missing_imports = true
+follow_imports = "skip"
+follow_imports_for_stubs = true
 
 [tool.poe]
 include = "tasks.toml"

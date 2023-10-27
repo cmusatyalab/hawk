@@ -5,7 +5,7 @@
 import io
 import time
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -73,7 +73,7 @@ class FSLModel(ModelBase):
         support = Image.open(support_path).convert("RGB")
         self.support = self.get_embed(support)
 
-    def get_embed(self, im):
+    def get_embed(self, im: Image.Image) -> np.NDArray[np.uint8]:
         im = im.resize((224, 224))
         im = torch.unsqueeze(self._test_transforms(im), dim=0)
         with torch.no_grad():
@@ -102,7 +102,7 @@ class FSLModel(ModelBase):
 
     def serialize(self) -> bytes:
         if self._model is None:
-            return None
+            return b""
 
         content = io.BytesIO()
         torch.save(
@@ -134,7 +134,7 @@ class FSLModel(ModelBase):
             return similarity
 
     @log_exceptions
-    def _infer_results(self):
+    def _infer_results(self) -> None:
         logger.info("INFER RESULTS THREAD STARTED")
 
         requests = []
@@ -162,9 +162,9 @@ class FSLModel(ModelBase):
                     self.result_queue.put(result)
                 requests = []
 
-    def infer(self, requests: Iterable[ObjectProvider]) -> Iterable[ResultProvider]:
+    def infer(self, requests: Sequence[ObjectProvider]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:
-            return
+            return []
 
         output = []
         for i in range(0, len(requests), self._batch_size):
@@ -201,7 +201,7 @@ class FSLModel(ModelBase):
                 batch[i][0].attributes.add({"score": str.encode(str(score))})
                 yield ResultProvider(batch[i][0], score, self.version)
 
-    def stop(self):
+    def stop(self) -> None:
         logger.info(f"Stopping model of version {self.version}")
         with self._model_lock:
             self._running = False
