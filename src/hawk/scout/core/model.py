@@ -53,6 +53,18 @@ class Model(metaclass=ABCMeta):
     def stop(self) -> None:
         pass
 
+    @abstractmethod
+    def add_requests(self, request: ObjectProvider) -> None:
+        pass
+
+    @abstractmethod
+    def get_results(self) -> Optional[ResultProvider]:
+        pass
+
+    @abstractmethod
+    def get_request_count(self) -> int:
+        pass
+
     @property
     @abstractmethod
     def version(self) -> int:
@@ -130,6 +142,9 @@ class ModelBase(Model):
         self.request_queue.put(self.preprocess(request))
         if self.request_count == 1:
             threading.Thread(target=self._infer_results, name="model-infer").start()
+
+    def get_request_count(self) -> int:
+        return self.request_count
 
     @log_exceptions
     def get_results(self) -> Optional[ResultProvider]:
