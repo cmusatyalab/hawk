@@ -110,9 +110,6 @@ class Mission(DataManagerContext, ModelContext):
         self._test_results: Dict[int, List[List[Tuple[int, float]]]] = defaultdict(list)
         self._results_condition = mp.Condition()
 
-        self._staged_models: Dict[int, Model] = {}
-        self._staged_model_condition = mp.Condition()
-
         self._abort_event = threading.Event()
 
         self._data_manager = DataManager(self)
@@ -239,12 +236,6 @@ class Mission(DataManagerContext, ModelContext):
 
         memory_file.seek(0)
         return ModelArchive(content=memory_file.getvalue(), version=model_version)
-
-    def train_model(self, trainer_index: int = 0) -> None:
-        assert self._scout_index != 0
-        threading.Thread(
-            target=self._train_model_slave_thread, name="train-model"
-        ).start()
 
     def reset(self, train_only: bool) -> None:
         self._data_manager.reset(train_only)
@@ -603,30 +594,3 @@ class Mission(DataManagerContext, ModelContext):
 
         if should_notify:
             self._initial_model_event.set()
-
-    @log_exceptions
-    def _train_model_slave_thread(self) -> None:
-        logger.info("Executing train request")
-        with self._model_lock:
-            model = self._model
-
-        with self._data_manager.get_examples(DatasetSplit.TRAIN) as train_dir:
-            train_start = time.time()
-            model = self.trainer.train_model(train_dir)
-            logger.info(f"Trained model in {time.time() - train_start:.3f} seconds")
-
-        if not self.trainer.should_sync_model:
-            with self._staged_model_condition:
-                self._staged_models[model.version] = model
-                self._staged_model_condition.notify_all()
-
-    def _get_staging_model(self, model_version: int) -> Model:
-        while not self._abort_event.is_set():
-            with self._staged_model_condition:
-                if model_version in self._staged_models:
-                    model = self._staged_models[model_version]
-                    break
-                else:
-                    logger.info(f"Waiting for model version {model_version}")
-                self._staged_model_condition.wait()
-        return model
