@@ -551,46 +551,11 @@ class Mission(DataManagerContext, ModelContext):
                 self._model.stop()
             self._model = model
             logger.info(f"Promoted New Model Version {model.version}")
-            if self.enable_logfile:
-                self.log(f"{time.ctime()} Promoted New Model Version {model.version}")
+            self.log(f"{time.ctime()} Promoted New Model Version {model.version}")
             self._model_stats = model_stats
             self._last_trained_version = model.version
 
         self.selector.new_model(model)
-
-        if should_notify:
-            self._initial_model_event.set()
-
-    def _score_and_set_model(self, model: Model, should_stage: bool) -> None:
-        """Evaluates the trained model on the test data. If distributed waits
-        for results from all scouts.  Based on condition promotes the trained
-        model to the current version.  If ``only_use_better_models` then check
-        the AUC scores to decide.
-
-        Args:
-            model (Model): Trained model
-            should stage (bool): True, if the model needs to be shared
-
-        """
-        logger.info("SCORE & SET MODEL")
-
-        model_stats = None
-
-        model_stats = TestResults(version=model.version)
-
-        with self._model_lock:
-            should_notify = self._model is None
-            if self._model and self._model.is_running():
-                self._model.stop()
-            self._model = model
-            logger.info(f"Promoted New Model Version {model.version}")
-            self._model_stats = model_stats
-
-            self._last_trained_version = model.version
-
-        self.selector.new_model(model)
-        if self.enable_logfile:
-            self.log(f"Promoted New Model Version {model.version}")
 
         if should_notify:
             self._initial_model_event.set()
