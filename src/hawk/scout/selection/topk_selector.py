@@ -9,7 +9,7 @@ import threading
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from logzero import logger
 
@@ -36,7 +36,8 @@ class TopKSelector(SelectorBase):
 
         self.version = 0
         self.add_negatives = add_negatives
-        self.easy_negatives = defaultdict(list)
+        self.easy_negatives: Dict[int, List[Path]] = defaultdict(list)
+        self.num_negatives_added = 0
 
         self._k = k
         self._batch_size = batch_size
