@@ -34,7 +34,7 @@ class SelectorStats:
 
 class Selector(metaclass=ABCMeta):
     @abstractmethod
-    def add_result(self, result: ResultProvider) -> None:
+    def add_result(self, result: Optional[ResultProvider]) -> int:
         """Add processed results from model to selector"""
         pass
 
@@ -104,8 +104,12 @@ class SelectorBase(Selector):
     def add_context(self, context: DataManagerContext) -> None:
         self._mission = context
 
-    def add_result(self, result: ResultProvider) -> None:
+    def add_result(self, result: Optional[ResultProvider]) -> int:
         """Add processed results from model to selection strategy"""
+        if result is None:
+            with self.stats_lock:
+                return self.items_processed
+
         with self._model_lock:
             model_present = self._model_present
 
@@ -145,7 +149,8 @@ class SelectorBase(Selector):
         with self.stats_lock:
             self.items_processed += 1
             """if self.items_processed % 10 == 0:
-                logger.info("Total items processed: {}".format(self.items_processed))"""
+                logger.info(f"Total items processed: {self.items_processed}")"""
+            return self.items_processed
 
     def new_model(self, model: Optional[Model]) -> None:
         """New model generation is available from trainer"""
@@ -182,5 +187,4 @@ class SelectorBase(Selector):
                 "surv_threat_not_neut": self.surv_threat_not_neut,
                 "num_countermeasures_remain": self.num_countermeasures,
             }
-
         return SelectorStats(**stats)

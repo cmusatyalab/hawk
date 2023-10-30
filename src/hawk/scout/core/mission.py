@@ -211,7 +211,7 @@ class Mission(DataManagerContext, ModelContext):
         model_path: Path,
         content: bytes = b"",
         model_version: int = -1,
-    ):
+    ) -> Model:
         logger.info("Loading model")
         assert model_path.exists() or len(content)
         return self.trainer.load_model(model_path, content, model_version)
@@ -418,17 +418,18 @@ class Mission(DataManagerContext, ModelContext):
 
             while not self._abort_event.is_set():
                 result = self._model.get_results()
-                self.selector.add_result(result)
+                items_processed = self.selector.add_result(result)
                 if (
                     isinstance(self.selector, TokenSelector)
-                    and self.retriever.total_tiles == self.selector.items_processed
+                    and self.retriever.total_tiles == items_processed
                 ):
                     self.selector.select_tiles(self.selector._k)
-                if self.selector.items_processed > self.retriever.total_tiles - 200:
+                if items_processed > self.retriever.total_tiles - 200:
+                    sent_to_model = self._model.get_request_count()
                     logger.info(
-                        f"Items retrieved, {self.retriever._stats.retrieved_tiles},"
-                        f" sent to model: {self._model.request_count},"
-                        f" total items processed: {self.selector.items_processed}"
+                        f"Items retrieved, {self.retriever._stats.retrieved_tiles}, "
+                        f"sent to model: {sent_to_model}, "
+                        f"total items processed: {items_processed}"
                     )
                 # if total number selected == total number of tiles, then
                 # call select_tiles one last time.
