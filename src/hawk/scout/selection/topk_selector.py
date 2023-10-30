@@ -55,13 +55,12 @@ class TopKSelector(SelectorBase):
     def select_tiles(self, num_tiles):
         for i in range(num_tiles):
             result = self._priority_queues[-1].get()[-1]
-            if self._mission.enable_logfile:
-                self._mission.log(
-                    f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}"
-                )
-                if self._mode != "oracle":
-                    self.result_queue.put(result)
-                    logger.info(f"[Result] Id {result.id} Score {result.score}")
+            self._mission.log(
+                f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}"
+            )
+            if self._mode != "oracle":
+                self.result_queue.put(result)
+                logger.info(f"[Result] Id {result.id} Score {result.score}")
         self._batch_added -= self._batch_size
 
     @log_exceptions
