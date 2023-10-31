@@ -200,11 +200,12 @@ class Mission(DataManagerContext, ModelContext):
         # We assume that the master is the source of truth
         with self._model_lock:
             stats = self._model_stats
+            version = self._model.version if self._model is not None else -1
 
         if stats is not None:
             return stats
 
-        return TestResults(version=self._model.version)
+        return TestResults(version=version)
 
     def load_model(
         self,
@@ -368,25 +369,28 @@ class Mission(DataManagerContext, ModelContext):
             return
 
         with self._model_lock:
-            starting_version = self._model.version if self._model is not None else None
             model = self._model
 
+        # no current model, loop and try again. We really should have a
+        # condition variable here to avoid busy looping.
+        if model is None:
+            return
+
+        starting_version = model.version
         logger.info(f"Starting evaluation with model version {starting_version}")
 
         while not self._abort_event.is_set():
             with self._model_lock:
-                version = self._model.version if self._model is not None else None
-            if version != starting_version:
-                logger.info(
-                    "Done evaluating with model version {}  \
-                    (new version {} available)".format(
-                        starting_version, version
+                if self._model is not None and self._model.version != starting_version:
+                    logger.info(
+                        f"Done evaluating with model version {starting_version} "
+                        f"(new version {self._model.version} available)"
                     )
-                )
-                return
-            with self._model_lock:
+                    return
+
                 # pop single retriever object from retriever result queue
                 retriever_object = self.retriever.get_objects()
+
                 # put single retriever object into model inference request queue
                 model.add_requests(retriever_object)
 
@@ -501,7 +505,7 @@ class Mission(DataManagerContext, ModelContext):
     def stop_model(self) -> None:
         with self._model_lock:
             logger.info("Stopping model")
-            if self._model and self._model.is_running():
+            if self._model is not None and self._model.is_running():
                 self._model.stop()
 
     def _train_model(self) -> None:
@@ -552,15 +556,15 @@ class Mission(DataManagerContext, ModelContext):
 
         with self._model_lock:
             should_notify = self._model is None
-            if self._model and self._model.is_running():
+            if self._model is not None and self._model.is_running():
                 logger.info("Stopping model")
                 self._model.stop()
             self._model = model
-            logger.info(f"Promoted New Model Version {model.version}")
-            self.log(f"{time.ctime()} Promoted New Model Version {model.version}")
             self._model_stats = model_stats
             self._last_trained_version = model.version
 
+        logger.info(f"Promoted New Model Version {model.version}")
+        self.log(f"{time.ctime()} Promoted New Model Version {model.version}")
         self.selector.new_model(model)
 
         if should_notify:
