@@ -17,6 +17,12 @@ from ..core.result_provider import ResultProvider
 
 @dataclass
 class SelectorStats:
+    surv_TPs: int
+    surv_TNs: int
+    surv_FPs: int
+    surv_FNs: int
+    surv_threat_not_neut: int
+    num_countermeasures_remain: int
     processed_objects: int
     items_revisited: int
     positive_in_stream: int
@@ -67,6 +73,14 @@ class SelectorBase(Selector):
         self.num_positives = 0
         self.model_train_time = 0
         self.model_examples = 0
+        self.countermeasure_threshold = 0.5  ## make this configurable from config file
+        self.surv_TPs = 10
+        self.surv_FPs = 20
+        self.surv_FNs = 30
+        self.surv_TNs = 40
+        self.surv_threat_not_neut = 15  ## increment this number by 1 for every FN
+        ## this will get incremeneted by 1 upon every TP when countermeasures = 0
+        self.num_countermeasures = 50
 
         self._model_lock = threading.Lock()
         self._model_present = False
@@ -97,6 +111,31 @@ class SelectorBase(Selector):
             self.result_queue.put(result)  # pass through
         else:
             self._add_result(result)
+            # logger.info(f"Label: {result.gt}, Score: {result.score}, ID: {result.id}")
+            perceived_truth = result.score >= self.countermeasure_threshold
+            if result.gt:
+                if perceived_truth:
+                    self.surv_TPs += 1
+                    if self.num_countermeasures == 0:
+                        self.surv_threat_not_neut += 1
+                    else:
+                        self.num_countermeasures -= 1
+                else:
+                    self.surv_FNs += 1
+
+            else:
+                if perceived_truth:
+                    self.surv_FPs += 1
+                    if self.num_countermeasures > 0:
+                        self.num_countermeasures -= 1
+                else:
+                    self.surv_TNs += 1
+
+            ## HEre is where well compare threshold to round truth and actual score to determine TP, TN, FP, FN
+
+            ## Deploy countermeasure if sample is TP or FP
+
+            ## Decrement number of countermeausures if TP or FP
 
         with self.stats_lock:
             self.items_processed += 1
@@ -131,6 +170,12 @@ class SelectorBase(Selector):
                 "items_revisited": self.num_revisited,
                 "positive_in_stream": self.num_positives,
                 "train_positives": self.model_examples,
+                "surv_TPs": self.surv_TPs,
+                "surv_TNs": self.surv_TNs,
+                "surv_FPs": self.surv_FPs,
+                "surv_FNs": self.surv_FNs,
+                "surv_threat_not_neut": self.surv_threat_not_neut,
+                "num_countermeasures_remain": self.num_countermeasures,
             }
 
         return SelectorStats(**stats)
