@@ -68,7 +68,7 @@ class S2SServicer:
             request.ParseFromString(msg)
             label = request
             # Fetch data from dataretriever
-            obj = self._mission.retriever.get_object(object_id=label.objectId)
+            obj = self._mission.retriever.get_object(label.objectId)
             # Assuming data requirement in Distribute positives
             if label.imageLabel != "0":
                 # Transmit data to coordinator

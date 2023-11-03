@@ -20,7 +20,7 @@ from ...proto.messages_pb2 import (
     LabeledTile,
     LabelWrapper,
 )
-from ..context.data_manager_context import DataManagerContext
+from ..core.mission import Mission
 from .utils import get_example_key
 
 TMP_DIR = "test-0"
@@ -29,7 +29,7 @@ TRAIN_TO_TEST_RATIO = 4
 
 
 class DataManager:
-    def __init__(self, context: DataManagerContext):
+    def __init__(self, context: Mission):
         self._context = context
         self._staging_dir = self._context.data_dir / "examples-staging"
         self._staging_dir.mkdir(parents=True, exist_ok=True)
@@ -67,7 +67,7 @@ class DataManager:
             self._negatives += 1
         else:
             self._positives += 1
-        if int(scout_index) != int(self._context.scout_index):
+        if scout_index != self._context.scout_index:
             logger.info(f"Fetch {label.objectId} from {scout_index}")
             stub = self._context.scouts[scout_index]
             msg = [
@@ -83,7 +83,7 @@ class DataManager:
                 obj.ParseFromString(reply)
         else:
             # Local scout contains image of respective label received.
-            obj = self._context.retriever.get_object(object_id=label.objectId)
+            obj = self._context.retriever.get_object(label.objectId)
 
         if obj is None:
             return
