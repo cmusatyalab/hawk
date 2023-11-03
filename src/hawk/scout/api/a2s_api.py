@@ -220,6 +220,9 @@ class A2SAPI:
         this_host = request.scouts[request.scoutIndex]
         scouts = [HawkStub(scout, this_host) for scout in request.scouts]
 
+        reexamination_strategy = self._get_reexamination_strategy(request.reexamination)
+        selector = self._get_selector(request.selector, reexamination_strategy)
+
         # Setting up Mission with config params
         logger.info("Start setting up mission")
         mission = Mission(
@@ -231,7 +234,7 @@ class A2SAPI:
             root_dir / mission_id.value,
             self._port,
             retriever,
-            self._get_selector(request.selector, request.reexamination),
+            selector,
             request.bootstrapZip,
             request.initialModel,
             request.validate,
@@ -499,7 +502,7 @@ class A2SAPI:
     def _get_selector(
         self,
         selector: SelectiveConfig,
-        reexamination_strategy: ReexaminationStrategyConfig,
+        reexamination_strategy: ReexaminationStrategy,
     ) -> Selector:
         if selector.HasField("topk"):
             top_k_param = json_format.MessageToDict(selector.topk)
@@ -509,7 +512,7 @@ class A2SAPI:
                 selector.topk.batchSize,
                 selector.topk.countermeasure_threshold,
                 selector.topk.total_countermeasures,
-                self._get_reexamination_strategy(reexamination_strategy),
+                reexamination_strategy,
             )
         elif selector.HasField("token"):
             return TokenSelector(
@@ -517,12 +520,12 @@ class A2SAPI:
                 selector.token.batch_size,
                 selector.token.countermeasure_threshold,
                 selector.token.total_countermeasures,
-                self._get_reexamination_strategy(reexamination_strategy),
+                reexamination_strategy,
             )
         elif selector.HasField("threshold"):
             return ThresholdSelector(
                 selector.threshold.threshold,
-                self._get_reexamination_strategy(reexamination_strategy),
+                reexamination_strategy,
             )
         elif selector.HasField("diversity"):
             top_k_param = json_format.MessageToDict(selector.diversity)
@@ -530,7 +533,7 @@ class A2SAPI:
             return DiversitySelector(
                 selector.diversity.k,
                 selector.diversity.batchSize,
-                self._get_reexamination_strategy(reexamination_strategy),
+                reexamination_strategy,
             )
         else:
             raise NotImplementedError(
