@@ -343,10 +343,9 @@ class A2SAPI:
         if mission is None:
             raise Exception("Mission does not exist")
 
-        time_now = time.time() - mission.start_time
+        time_now = mission.mission_time()
 
-        if mission.enable_logfile:
-            mission.log("SEARCH STATS (collecting...)")
+        mission.log("SEARCH STATS (collecting...)")
 
         retriever_stats = mission.retriever.get_stats()
         selector_stats = mission.selector.get_stats()

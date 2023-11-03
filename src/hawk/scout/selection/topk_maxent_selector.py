@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import time
-
 from ..core.result_provider import ResultProvider
 from ..reexamination.reexamination_strategy import ReexaminationStrategy
 from .topk_selector import TopKSelector
@@ -20,7 +18,7 @@ class MaxEntropySelector(TopKSelector):
             return abs(0.5 - score)
 
         with self._insert_lock:
-            time_result = time.time() - self._mission.start_time
+            time_result = self._mission.mission_time()
             self._priority_queues[-1].put(
                 (calc_score(result.score), time_result, result)
             )

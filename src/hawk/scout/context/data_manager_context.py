@@ -8,6 +8,7 @@
 
 from abc import abstractmethod
 from pathlib import Path
+from typing import Optional
 
 from ...proto.messages_pb2 import MissionId
 from .context_base import ContextBase
@@ -49,4 +50,9 @@ class DataManagerContext(ContextBase):
     @abstractmethod
     def check_create_test(self) -> bool:
         """Checks if TEST dataset needs to be created"""
+        pass
+
+    @abstractmethod
+    def log(self, msg: str, end_t: Optional[float] = None) -> None:
+        """When logging is enabled, logs 'msg' to the logfile"""
         pass

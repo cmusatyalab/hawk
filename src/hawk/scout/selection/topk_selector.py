@@ -6,7 +6,6 @@ import copy
 import os
 import queue
 import threading
-import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -70,7 +69,7 @@ class TopKSelector(SelectorBase):
     @log_exceptions
     def _add_result(self, result: ResultProvider) -> None:
         with self._insert_lock:
-            time_result = time.time() - self._mission.start_time
+            time_result = self._mission.mission_time()
             self._mission.log(
                 f"{self.version} CLASSIFICATION: {result.id} "
                 f"GT {result.gt} Score {result.score:.4f}"

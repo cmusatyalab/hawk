@@ -4,7 +4,6 @@
 
 import queue
 import threading
-import time
 from typing import List, Optional
 
 from logzero import logger
@@ -39,7 +38,7 @@ class ThresholdSelector(SelectorBase):
             self.result_queue.put(result)
         elif self._reexamination_strategy.reexamines_old_results:
             with self._insert_lock:
-                time_result = time.time() - self._mission.start_time
+                time_result = self._mission.mission_time()
                 self._discard_queue[-1].put((-result.score, time_result, result))
         else:
             with self.stats_lock:
