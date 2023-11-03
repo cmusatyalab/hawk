@@ -8,7 +8,7 @@ import time
 import zipfile
 from argparse import Namespace
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 import numpy as np
 import torch
@@ -33,7 +33,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 class FewShotModel(ModelBase):
     def __init__(
         self,
-        args: Dict,
+        args: Dict[str, Any],
         model_path: Path,
         version: int,
         mode: str,

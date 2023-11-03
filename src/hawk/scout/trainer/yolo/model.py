@@ -8,7 +8,7 @@ import multiprocessing as mp
 import os
 import time
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Sequence
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import torch
 import torchvision.transforms as transforms
@@ -32,7 +32,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 class YOLOModel(ModelBase):
     def __init__(
         self,
-        args: Dict,
+        args: Dict[str, Any],
         model_path: Path,
         version: int,
         mode: str,
@@ -68,9 +68,9 @@ class YOLOModel(ModelBase):
         self._train_examples = args["train_examples"]
         self._batch_size = args["test_batch_size"]
 
-        self._model = self.load_model(model_path)
+        model = self.load_model(model_path)
         self._device = torch.device("cuda")
-        self._model = self._model.to(self._device)
+        self._model: Optional[torch.nn.Module] = model.to(self._device)
         self._model.eval()
         self._running = True
 
@@ -78,7 +78,9 @@ class YOLOModel(ModelBase):
     def version(self) -> int:
         return self._version
 
-    def preprocess(self, request: ObjectProvider):
+    def preprocess(
+        self, request: ObjectProvider
+    ) -> Tuple[ObjectProvider, torch.Tensor]:
         try:
             image = Image.open(io.BytesIO(request.content))
 
@@ -104,7 +106,7 @@ class YOLOModel(ModelBase):
 
         return content.getvalue()
 
-    def load_model(self, model_path: Path):
+    def load_model(self, model_path: Path) -> torch.nn.Module:
         model = torch.hub.load(
             self.yolo_repo,
             "custom",
@@ -113,7 +115,8 @@ class YOLOModel(ModelBase):
         )
         return model
 
-    def get_predictions(self, inputs) -> List[float]:
+    def get_predictions(self, inputs: torch.Tensor) -> List[float]:
+        assert self._model is not None
         with torch.no_grad():
             output = self._model(inputs, detection=True).pred
             predictions = [out.cpu().numpy() for out in output]
@@ -166,7 +169,9 @@ class YOLOModel(ModelBase):
         return output
 
     def infer_dir(
-        self, directory: Path, callback_fn: Callable[[int, float], None]
+        self,
+        directory: Path,
+        callback_fn: Callable[[Sequence[int], Sequence[float]], float],
     ) -> TestResults:
         dataset = datasets.ImageFolder(str(directory), transform=None)
         data_loader = DataLoader(
@@ -190,12 +195,16 @@ class YOLOModel(ModelBase):
         return
 
     def evaluate_model(self, test_path: Path) -> TestResults:
-        def calculate_performance(y_true, y_pred):
+        def calculate_performance(
+            y_true: Sequence[int], y_pred: Sequence[float]
+        ) -> float:
             return average_precision_score(y_true, y_pred, average=None)
 
         return self.infer_dir(test_path, calculate_performance)
 
-    def _process_batch(self, batch) -> Iterable[ResultProvider]:
+    def _process_batch(
+        self, batch: Sequence[Tuple[ObjectProvider, torch.Tensor]]
+    ) -> Iterable[ResultProvider]:
         if self._model is None:
             if len(batch) > 0:
                 # put request back in queue

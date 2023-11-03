@@ -67,7 +67,9 @@ class FSLTrainer(ModelTrainerBase):
             support_path=self.args["support_path"],
         )
 
-    def train_batch(self, model, data, optimizer, criterion):
+    def train_batch(
+        self, model: torch.nn.Module, data, optimizer: torch.optim.Optimizer, criterion
+    ):
         imgsA, imgsB, labels = (t.to(device) for t in data)
         optimizer.zero_grad()
         codesA, codesB = model(imgsA, imgsB)
@@ -81,7 +83,7 @@ class FSLTrainer(ModelTrainerBase):
 
         model_savepath = self.context.model_path(new_version)
 
-        train_dataset = self.args["fsl_traindir"]
+        train_dataset = Path(self.args["fsl_traindir"])
         support_path = self.args["support_path"]
 
         cmd = [
@@ -132,7 +134,7 @@ class FSLTrainer(ModelTrainerBase):
         epochs = 2
         for epoch in range(epochs):
             model.train()
-            epoch_loss = 0.0
+            epoch_loss = torch.Tensor(0.0)
             for data in train_loader:
                 optimizer.zero_grad()
                 x1, x2, x3 = data

@@ -25,13 +25,14 @@ class ModelTrainer(metaclass=ABCMeta):
 
 
 class ModelTrainerBase(ModelTrainer):
-    def __init__(self, args: Dict[str, Any]):
+    def __init__(self, args: Dict[str, str]):
         torch.manual_seed(42)
         torch.cuda.manual_seed(42)
         self._latest_version = -1
         self._version_lock = threading.Lock()
-        self.args = dict(args)
-        self.args["mode"] = self.args.get("mode", "hawk")
+
+        self.args: Dict[str, Any] = dict(mode="hawk")
+        self.args.update(args)
 
     def parse_args(self) -> None:
         raise NotImplementedError("Parse Args")

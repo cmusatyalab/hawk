@@ -6,7 +6,7 @@ import io
 import multiprocessing as mp
 import time
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Sequence, Tuple
 
 import torch
 import torchvision.transforms as transforms
@@ -29,7 +29,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 class DNNClassifierModel(ModelBase):
     def __init__(
         self,
-        args: Dict,
+        args: Dict[str, Any],
         model_path: Path,
         version: int,
         mode: str,
@@ -37,7 +37,7 @@ class DNNClassifierModel(ModelBase):
     ):
         logger.info(f"Loading DNN Model from {model_path}")
         assert model_path.is_file()
-        args["input_size"] = args.get("input_size", 224)
+        args["input_size"] = int(args.get("input_size", 224))
         test_transforms = transforms.Compose(
             [
                 transforms.Resize(args["input_size"] + 32),
@@ -62,7 +62,7 @@ class DNNClassifierModel(ModelBase):
         self._test_transforms = test_transforms
         self._batch_size = args["test_batch_size"]
 
-        self._model = self.load_model(model_path)
+        self._model: torch.nn.Module = self.load_model(model_path)
         self._device = torch.device("cpu")
         self._model.to(self._device)
         self._model.eval()
@@ -95,14 +95,13 @@ class DNNClassifierModel(ModelBase):
         )
         return content.getvalue()
 
-    def load_model(self, model_path: Path):
+    def load_model(self, model_path: Path) -> torch.nn.Module:
         model = self.initialize_model(self._arch)
         checkpoint = torch.load(model_path)
         model.load_state_dict(checkpoint["state_dict"])
         return model
 
-    def initialize_model(self, arch, num_classes=2):
-        model_ft = None
+    def initialize_model(self, arch: str, num_classes: int = 2) -> torch.nn.Module:
         model_ft = models.__dict__[arch](pretrained=True)
 
         if "resnet" in arch:
@@ -153,14 +152,14 @@ class DNNClassifierModel(ModelBase):
 
         return model_ft
 
-    def get_predictions(self, inputs: torch.Tensor) -> List[float]:
+    def get_predictions(self, inputs: torch.Tensor) -> Sequence[float]:
         with torch.no_grad():
             inputs = inputs.to(self._device)
             output = self._model(inputs)
 
-            probability = torch.softmax(output, dim=1)
-            probability = probability.cpu().numpy()[:, 1]
-            return probability
+            probability: torch.Tensor = torch.softmax(output, dim=1)
+            predictions: Sequence[float] = probability.cpu().numpy()[:, 1]
+            return predictions
 
     @log_exceptions
     def _infer_results(self) -> None:
@@ -217,8 +216,8 @@ class DNNClassifierModel(ModelBase):
             num_workers=mp.cpu_count(),
         )
 
-        targets = []
-        predictions = []
+        targets: List[int] = []
+        predictions: List[float] = []
         with torch.no_grad():
             for inputs, target in data_loader:
                 prediction = self.get_predictions(inputs)
@@ -254,8 +253,8 @@ class DNNClassifierModel(ModelBase):
             num_workers=mp.cpu_count(),
         )
 
-        targets = []
-        predictions = []
+        targets: List[int] = []
+        predictions: List[float] = []
         with torch.no_grad():
             for inputs, target in data_loader:
                 prediction = self.get_predictions(inputs)
