@@ -6,13 +6,15 @@ import queue
 import threading
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from logzero import logger
 
-from ..context.data_manager_context import DataManagerContext
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
+
+if TYPE_CHECKING:
+    from ..core.mission import Mission
 
 
 @dataclass
@@ -44,7 +46,7 @@ class Selector(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def add_context(self, context: DataManagerContext) -> None:
+    def add_context(self, context: Mission) -> None:
         """Add data manager context"""
         pass
 
@@ -86,7 +88,7 @@ class SelectorBase(Selector):
 
         self._model_lock = threading.Lock()
         self._model_present = False
-        self._mission: Optional[DataManagerContext] = None
+        self._mission: Optional[Mission] = None
         self.transmit_queue = None
 
         self._clear_event = threading.Event()
@@ -101,7 +103,7 @@ class SelectorBase(Selector):
         """Helper function specific to selection strategy"""
         pass
 
-    def add_context(self, context: DataManagerContext) -> None:
+    def add_context(self, context: Mission) -> None:
         self._mission = context
 
     def add_result(self, result: Optional[ResultProvider]) -> int:
