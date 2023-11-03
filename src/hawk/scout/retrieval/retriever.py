@@ -8,7 +8,8 @@ import threading
 import time
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, Optional, Sized
+from pathlib import Path
+from typing import Dict, Optional
 
 from ...proto.messages_pb2 import HawkObject
 from ..context.data_manager_context import DataManagerContext
@@ -40,9 +41,7 @@ class RetrieverBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_object(
-        self, object_id: str, _attributes: Optional[Sized] = None
-    ) -> HawkObject:
+    def get_object(self, object_id: str) -> Optional[HawkObject]:
         pass
 
     @abstractmethod
@@ -56,7 +55,7 @@ class RetrieverBase(metaclass=ABCMeta):
 
 class Retriever(RetrieverBase):
     def __init__(self) -> None:
-        self._context = None
+        self._context: Optional[DataManagerContext] = None
         self._context_event = threading.Event()
         self._start_event = threading.Event()
         self._stop_event = threading.Event()
@@ -101,12 +100,12 @@ class Retriever(RetrieverBase):
     def get_objects(self) -> ObjectProvider:
         return self.result_queue.get()
 
-    def get_object(
-        self, object_id: str, attributes: Optional[Sized] = None
-    ) -> HawkObject:
-        image_path = object_id.split("collection/id/")[-1]
-        with open(image_path, "rb") as f:
-            content = f.read()
+    def get_object(self, object_id: str) -> Optional[HawkObject]:
+        image_path = Path(object_id.split("collection/id/")[-1])
+        if not image_path.exists():
+            return None
+
+        content = image_path.read_bytes()
 
         # Return object attributes
         dct = {
