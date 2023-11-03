@@ -67,17 +67,6 @@ class FSLTrainer(ModelTrainerBase):
             support_path=self.args["support_path"],
         )
 
-    def train_batch(
-        self, model: torch.nn.Module, data, optimizer: torch.optim.Optimizer, criterion
-    ):
-        imgsA, imgsB, labels = (t.to(device) for t in data)
-        optimizer.zero_grad()
-        codesA, codesB = model(imgsA, imgsB)
-        loss, acc = criterion(codesA, codesB, labels)
-        loss.backward()
-        optimizer.step()
-        return loss.item(), acc.item()
-
     def train_model(self, train_dir: Path) -> FSLModel:
         new_version = self.get_new_version()
 
