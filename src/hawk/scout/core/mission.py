@@ -357,9 +357,8 @@ class Mission(DataManagerContext, ModelContext):
     def log(self, msg: str, end_t: Optional[float] = None) -> None:
         if not self.enable_logfile:
             return
-        if end_t is None:
-            end_t = time.time()
-        self.log_file.write(f"{end_t - self.start_time:.3f} {self.host_name} {msg}\n")
+        mission_time = self.mission_time(end_t)
+        self.log_file.write(f"{mission_time:.3f} {self.host_name} {msg}\n")
 
     def get_example_directory(self, example_set: DatasetSplitValue) -> Path:
         return self._data_manager.get_example_directory(example_set)

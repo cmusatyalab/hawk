@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import time
-
 from logzero import logger
 
 from ...proto.messages_pb2 import LabelWrapper
@@ -55,7 +53,7 @@ class TokenSelector(TopKSelector):
     def _add_result(self, result: ResultProvider) -> None:
         self.sample_count += 1
         with self._insert_lock:
-            time_result = time.time() - self._mission.start_time
+            time_result = self._mission.mission_time()
             self._mission.log(
                 f"{self.version} CLASSIFICATION: {result.id} "
                 f"GT {result.gt} Score {result.score:.4f}"
