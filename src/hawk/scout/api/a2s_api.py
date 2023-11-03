@@ -307,21 +307,16 @@ class A2SAPI:
         mission_id = mission.mission_id.value
         logger.info(f"Starting mission with id {mission_id}")
         mission.start()
-        if mission.enable_logfile:
-            mission.log("SEARCH STARTED")
+        mission.log("SEARCH STARTED")
 
     @log_exceptions
     def _a2s_stop_mission(self) -> None:
         """Function to stop mission"""
         try:
             mission = self._manager.get_mission()
-            if mission is None:
-                raise Exception("Mission does not exist")
-
             mission_id = mission.mission_id.value
             logger.info(f"Stopping mission with id {mission_id}")
-            if mission.enable_logfile:
-                mission.log("SEARCH STOPPED")
+            mission.log("SEARCH STOPPED")
             mission.stop()
             self._manager.remove_mission()
         finally:
@@ -340,11 +335,7 @@ class A2SAPI:
             MissionStats
         """
         mission = self._manager.get_mission()
-        if mission is None:
-            raise Exception("Mission does not exist")
-
         time_now = mission.mission_time()
-
         mission.log("SEARCH STATS (collecting...)")
 
         retriever_stats = mission.retriever.get_stats()
@@ -408,8 +399,7 @@ class A2SAPI:
         version = model.version
         mission.import_model(path, model.content, version)
         logger.info("[IMPORT] FINISHED Model Import")
-        if mission.enable_logfile:
-            mission.log("IMPORT MODEL")
+        mission.log("IMPORT MODEL")
 
     @log_exceptions
     def _a2s_get_test_results(self, request: str) -> MissionResults:
