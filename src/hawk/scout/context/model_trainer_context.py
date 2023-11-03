@@ -35,5 +35,10 @@ class ModelContext(ContextBase):
     def stop_model(self) -> None:
         pass
 
+    @abstractmethod
+    def check_create_test(self) -> bool:
+        """Checks if TEST dataset needs to be created"""
+        pass
+
     def model_path(self, version: int, template: str = "model-{}.pth") -> Path:
         return self.model_dir / template.format(str(version).zfill(3))

@@ -5,7 +5,7 @@
 import io
 import time
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Sequence, Tuple, cast
 
 import numpy as np
 import torch
@@ -29,7 +29,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 class FSLModel(ModelBase):
     def __init__(
         self,
-        args: Dict,
+        args: Dict[str, Any],
         model_path: Path,
         version: int,
         mode: str,
@@ -73,13 +73,12 @@ class FSLModel(ModelBase):
         support = Image.open(support_path).convert("RGB")
         self.support = self.get_embed(support)
 
-    def get_embed(self, im: Image.Image) -> np.NDArray[np.uint8]:
+    def get_embed(self, im: Image.Image) -> Sequence[float]:
         im = im.resize((224, 224))
-        im = torch.unsqueeze(self._test_transforms(im), dim=0)
+        im_tensor = torch.unsqueeze(self._test_transforms(im), dim=0)
         with torch.no_grad():
-            preds = self._model(im.to(device))
-            preds = np.array([preds[0].cpu().numpy()])
-            return preds
+            preds = self._model(im_tensor.to(device))
+            return cast(Sequence[float], np.array([preds[0].cpu().numpy()]))
 
     @property
     def version(self) -> int:
@@ -87,8 +86,7 @@ class FSLModel(ModelBase):
 
     def preprocess(
         self, request: ObjectProvider
-    ) -> Tuple[ObjectProvider, torch.Tensor]:
-        embed = []
+    ) -> Tuple[ObjectProvider, Sequence[float]]:
         try:
             image = Image.open(io.BytesIO(request.content))
 
@@ -115,7 +113,7 @@ class FSLModel(ModelBase):
 
         return content.getvalue()
 
-    def load_model(self, model_path: Path):
+    def load_model(self, model_path: Path) -> torch.nn.Module:
         logger.info("Starting model load")
         model = models.resnet18().cuda()
         checkpoint = torch.load(model_path)
@@ -123,15 +121,15 @@ class FSLModel(ModelBase):
         logger.info("Starting model complete")
         return model
 
-    def get_predictions(self, inputs: torch.Tensor) -> List[float]:
+    def get_predictions(self, inputs: torch.Tensor) -> Sequence[float]:
         # probability = []
         with torch.no_grad():
             similarity = cosine_similarity(self.support, inputs)
             if similarity.shape[-1] == 1:
-                similarity = [float(similarity)]
+                predictions = [float(similarity)]
             else:
-                similarity = np.squeeze(similarity)
-            return similarity
+                predictions = np.squeeze(similarity)
+            return predictions
 
     @log_exceptions
     def _infer_results(self) -> None:

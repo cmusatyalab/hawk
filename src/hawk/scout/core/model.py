@@ -103,11 +103,12 @@ class ModelBase(Model):
             self.request_queue = self.context.model_input_queue
             self.result_queue = self.context.model_output_queue
 
-        self._model = None
-        self._version = args.get("version", 0)
-        self._mode = args.get("mode", "hawk")
-        self._train_examples = args.get("train_examples", {"1": 0, "0": 0})
-        self._train_time = args.get("train_time", 0)
+        self._version = int(args.get("version", 0))
+        self._mode = str(args.get("mode", "hawk"))
+        self._train_examples: Dict[str, int] = args.get(
+            "train_examples", {"1": 0, "0": 0}
+        )
+        self._train_time = int(args.get("train_time", 0))
 
         if self._mode != "oracle" and not model_path.exists():
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), model_path)

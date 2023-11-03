@@ -9,7 +9,7 @@ import time
 import warnings
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -476,7 +476,7 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
     )
 
 
-def set_parameter_requires_grad(model, unfreeze=0):
+def set_parameter_requires_grad(model: nn.Module, unfreeze: int = 0) -> None:
     len_layers = len(list(model.children()))
     num_freeze = len_layers - unfreeze
     if unfreeze == -1:
@@ -493,7 +493,9 @@ def set_parameter_requires_grad(model, unfreeze=0):
             print("The following layer will be retrained:\n", child)
 
 
-def initialize_model(arch, num_classes, unfreeze=0):
+def initialize_model(
+    arch: str, num_classes: int, unfreeze: int = 0
+) -> Tuple[nn.Module, int]:
     model_ft = None
     input_size = 0
     model_ft = models.__dict__[arch](pretrained=True)
@@ -561,7 +563,14 @@ def initialize_model(arch, num_classes, unfreeze=0):
     return model_ft, input_size
 
 
-def train(train_loader, model, criterion, optimizer, epoch, args):
+def train(
+    train_loader: torch.utils.data.DataLoader,
+    model: nn.Module,
+    criterion: nn._Loss,
+    optimizer: torch.optim.Optimizer,
+    epoch: int,
+    args: argparse.Namespace,
+) -> None:
     batch_time = AverageMeter("Time", ":6.3f")
     data_time = AverageMeter("Data", ":6.3f")
     losses = AverageMeter("Loss", ":.4e")
@@ -595,7 +604,12 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         end = time.time()
 
 
-def adjust_learning_rate(optimizer, scheduler, epoch, args):
+def adjust_learning_rate(
+    optimizer: torch.optim.Optimizer,
+    scheduler: torch.optim.lr_scheduler.LRScheduler,
+    epoch: int,
+    args: argparse.Namespace,
+) -> None:
     # lr = args.lr * (0.1 ** (epoch // 20))
     # for param_group in optimizer.param_groups:
     # param_group['lr'] = lr
@@ -608,8 +622,8 @@ def adjust_learning_rate(optimizer, scheduler, epoch, args):
     scheduler.step()
 
 
-def calculate_performance(y_true, y_pred):
-    ap = average_precision_score(y_true, y_pred, average=None)
+def calculate_performance(y_true: Sequence[int], y_pred: Sequence[float]) -> float:
+    ap: float = average_precision_score(y_true, y_pred, average=None)
     roc_auc = roc_auc_score(y_true, y_pred)
     precision, recall, _ = precision_recall_curve(y_true, y_pred)
     pr_auc = auc(recall, precision)
@@ -619,7 +633,12 @@ def calculate_performance(y_true, y_pred):
     return ap
 
 
-def validate_model(val_loader, model, criterion, args):
+def validate_model(
+    val_loader: torch.utils.data.DataLoader,
+    model: nn.Module,
+    criterion: nn._Loss,
+    args: argparse.Namespace,
+) -> float:
     batch_time = AverageMeter("Time", ":6.3f", Summary.NONE)
     losses = AverageMeter("Loss", ":.4e", Summary.NONE)
 
