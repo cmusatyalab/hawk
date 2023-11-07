@@ -117,6 +117,7 @@ class YOLOModel(ModelBase):
             output = self._model(inputs, detection=True).pred
             predictions = [out.cpu().numpy() for out in output]
             probability = [max(pred[:, 4]) if len(pred) else 0 for pred in predictions]
+            logger.info(f"Returning probability:{probability}")
             return probability
 
     @log_exceptions

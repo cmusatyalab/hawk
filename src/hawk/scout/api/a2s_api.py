@@ -387,7 +387,6 @@ class A2SAPI:
             ),
             others=mission_stats,
         )
-
         if mission.enable_logfile:
             mission.log("SEARCH STATS")
         return reply
@@ -506,12 +505,16 @@ class A2SAPI:
             return TopKSelector(
                 selector.topk.k,
                 selector.topk.batchSize,
+                selector.topk.countermeasure_threshold,
+                selector.topk.total_countermeasures,
                 self._get_reexamination_strategy(reexamination_strategy),
             )
         elif selector.HasField("token"):
             return TokenSelector(
                 selector.token.initial_samples,
                 selector.token.batch_size,
+                selector.token.countermeasure_threshold,
+                selector.token.total_countermeasures,
                 self._get_reexamination_strategy(reexamination_strategy),
             )
         elif selector.HasField("threshold"):

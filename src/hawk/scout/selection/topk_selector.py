@@ -25,9 +25,12 @@ class TopKSelector(SelectorBase):
         self,
         k: int,
         batch_size: int,
+        countermeasure_threshold: float,
+        total_countermeasures: int,
         reexamination_strategy: ReexaminationStrategy,
         add_negatives: bool = True,
-    ):
+        ):
+        logger.info("K: {}, batchsize: {}".format(k, batch_size))
         assert k < batch_size
         super().__init__()
 
@@ -37,6 +40,8 @@ class TopKSelector(SelectorBase):
 
         self._k = k
         self._batch_size = batch_size
+        self.countermeasure_threshold = countermeasure_threshold
+        self.num_countermeasures = total_countermeasures
         self._reexamination_strategy = reexamination_strategy
 
         self._priority_queues = [queue.PriorityQueue()]

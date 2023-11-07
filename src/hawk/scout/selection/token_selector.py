@@ -14,9 +14,10 @@ from .topk_selector import TopKSelector
 
 class TokenSelector(TopKSelector):
     def __init__(
-        self, k: int, batch_size: int, reexamination_strategy: ReexaminationStrategy
+        self, k: int, batch_size: int, countermeasure_threshold: float,
+        total_countermeasures: int, reexamination_strategy: ReexaminationStrategy
     ):
-        super().__init__(k, batch_size, reexamination_strategy)
+        super().__init__(k, batch_size, countermeasure_threshold, total_countermeasures, reexamination_strategy)
         self.sample_count = 0
 
     @log_exceptions

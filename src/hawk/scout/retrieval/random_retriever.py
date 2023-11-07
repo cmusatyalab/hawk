@@ -26,7 +26,7 @@ class RandomRetriever(Retriever):
         self._timeout = dataset.timeout
         self._resize = dataset.resizeTile
         logger.info("In RANDOM RETRIEVER INIT...")
-        logger.info("Resize tile: {}".format(self._resize))
+        logger.info(f"Resize tile: {self._resize}")
         self.img_tile_map = defaultdict(list)
 
         index_file = self._dataset.dataPath
@@ -78,7 +78,7 @@ class RandomRetriever(Retriever):
                 object_id = f"/{label}/collection/id/" + str(image_path)
 
                 image_path = self._data_root / image_path
-                image = Image.open(image_path).convert("RGB")                
+                image = Image.open(image_path).convert("RGB")
                 image.save(content, format="JPEG", quality=85)
                 content = content.getvalue()
 

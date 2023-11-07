@@ -156,6 +156,8 @@ message SelectiveConfig {
 message TopKConfig {
   int32 k = 1;
   int32 batchSize = 2;
+  double countermeasure_threshold = 3;
+  int32 total_countermeasures = 4;
 }
 
 message ThresholdConfig {
@@ -165,6 +167,8 @@ message ThresholdConfig {
 message TokenConfig {
   int32 initial_samples = 1;
   int32 batch_size = 2;
+  double countermeasure_threshold = 3;
+  int32 total_countermeasures = 4;
 }
 
 message DiversityConfig {
