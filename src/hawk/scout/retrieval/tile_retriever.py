@@ -43,6 +43,7 @@ class TileRetriever(Retriever):
 
     def stream_objects(self) -> None:
         super().stream_objects()
+        assert self._context is not None
 
         for key in self.images:
             time_start = time.time()

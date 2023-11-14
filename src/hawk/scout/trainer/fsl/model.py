@@ -15,6 +15,7 @@ from PIL import Image, ImageFile
 from sklearn.metrics.pairwise import cosine_similarity
 from torchvision import models
 
+from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.object_provider import ObjectProvider
@@ -198,6 +199,10 @@ class FSLModel(ModelBase):
                         score = 1
                 batch[i][0].attributes.add({"score": str.encode(str(score))})
                 yield ResultProvider(batch[i][0], score, self.version)
+
+    def evaluate_model(self, test_path: Path) -> TestResults:
+        # raise Exception(f"ERROR: fsl.model.evaluate_model not implemented")
+        return
 
     def stop(self) -> None:
         logger.info(f"Stopping model of version {self.version}")

@@ -25,6 +25,8 @@ class MaxEntropySelector(TopKSelector):
         )
 
     def _add_result(self, result: ResultProvider) -> None:
+        assert self._mission is not None
+
         def calc_score(score: float) -> float:
             return abs(0.5 - score)
 

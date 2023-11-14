@@ -60,6 +60,7 @@ class TopKSelector(SelectorBase):
 
     @log_exceptions
     def select_tiles(self, num_tiles: int) -> None:
+        assert self._mission is not None
         for i in range(num_tiles):
             result = self._priority_queues[-1].get()[-1]
             self._mission.log(
@@ -72,6 +73,7 @@ class TopKSelector(SelectorBase):
 
     @log_exceptions
     def _add_result(self, result: ResultProvider) -> None:
+        assert self._mission is not None
         with self._insert_lock:
             time_result = self._mission.mission_time()
             self._mission.log(
@@ -106,6 +108,7 @@ class TopKSelector(SelectorBase):
         if not self.add_negatives:
             return
 
+        assert self._mission is not None
         negative_path = path / "-1"
         os.makedirs(str(negative_path), exist_ok=True)
 
@@ -150,6 +153,7 @@ class TopKSelector(SelectorBase):
                 path.unlink()
 
     def _new_model(self, model: Model | None) -> None:
+        assert self._mission is not None
         with self._insert_lock:
             if model is not None:
                 version = self.version

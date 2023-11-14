@@ -41,6 +41,7 @@ class ThresholdSelector(SelectorBase):
         if result.score > self._threshold:
             self.result_queue.put(result)
         elif self._reexamination_strategy.reexamines_old_results:
+            assert self._mission is not None
             with self._insert_lock:
                 time_result = self._mission.mission_time()
                 self._discard_queue[-1].put((-result.score, time_result, result))
@@ -51,6 +52,7 @@ class ThresholdSelector(SelectorBase):
                     self._false_negatives += 1
 
     def _new_model(self, model: Model | None) -> None:
+        assert self._mission is not None
         with self._insert_lock:
             if model is not None:
                 # version = self.version

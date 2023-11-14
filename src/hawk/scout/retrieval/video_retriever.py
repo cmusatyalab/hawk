@@ -119,6 +119,7 @@ class VideoRetriever(Retriever):
     def stream_objects(self) -> None:
         # wait for mission context to be added
         super().stream_objects()
+        assert self._context is not None
 
         self._start_time = time.time()
         logger.info(self.video_file_path)

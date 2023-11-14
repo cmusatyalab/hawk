@@ -69,6 +69,7 @@ class DataManager:
         if scout_index != self._context.scout_index:
             logger.info(f"Fetch {label.objectId} from {scout_index}")
             stub = self._context.scouts[scout_index]
+            assert stub.internal is not None
             msg = [
                 b"s2s_get_tile",
                 label.SerializeToString(),
@@ -98,6 +99,7 @@ class DataManager:
         for i, stub in enumerate(self._context.scouts):
             if i in [self._context.scout_index, scout_index]:
                 continue
+            assert stub.internal is not None
             msg = [
                 b"s2s_add_tile_and_label",
                 labeled_tile.SerializeToString(),

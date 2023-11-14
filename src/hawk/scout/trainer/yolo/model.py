@@ -8,7 +8,7 @@ import multiprocessing as mp
 import os
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, cast
 
 import torch
 import torchvision.transforms as transforms
@@ -198,8 +198,9 @@ class YOLOModel(ModelBase):
         def calculate_performance(
             y_true: Sequence[int], y_pred: Sequence[float]
         ) -> float:
-            return average_precision_score(y_true, y_pred, average=None)
+            return cast(float, average_precision_score(y_true, y_pred, average=None))
 
+        # raise Exception(f"ERROR: yolo.model.evaluate_model should return TestResults")
         return self.infer_dir(test_path, calculate_performance)
 
     def _process_batch(

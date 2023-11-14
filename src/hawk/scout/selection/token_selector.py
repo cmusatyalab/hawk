@@ -51,6 +51,7 @@ class TokenSelector(TopKSelector):
         logger.info("Sent new sample as a result of token message...")
 
     def _add_result(self, result: ResultProvider) -> None:
+        assert self._mission is not None
         self.sample_count += 1
         with self._insert_lock:
             time_result = self._mission.mission_time()

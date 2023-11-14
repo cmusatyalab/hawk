@@ -94,7 +94,7 @@ skip_glob = [
 ]
 
 [tool.mypy]
-#strict = true
+strict = true
 files = ["src"]
 exclude = "^src/hawk/scout/trainer/(few_shot/|yolo/yolov5/)"
 

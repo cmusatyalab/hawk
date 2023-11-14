@@ -141,7 +141,7 @@ class SelectorBase(Selector):
                 else:
                     self.surv_TNs += 1
 
-            # Here is where well compare threshold to round truth and actual
+            # Here is where we'll compare threshold to ground truth and actual
             # score to determine TP, TN, FP, FN
 
             # Deploy countermeasure if sample is TP or FP

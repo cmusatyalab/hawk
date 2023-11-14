@@ -219,6 +219,7 @@ class Mission(DataManagerContext, ModelContext):
     ) -> Model:
         logger.info("Loading model")
         assert model_path.exists() or len(content)
+        assert self.trainer is not None
         return self.trainer.load_model(model_path, content, model_version)
 
     def import_model(
@@ -422,6 +423,7 @@ class Mission(DataManagerContext, ModelContext):
         try:
             if self._has_initial_examples:
                 self._initial_model_event.wait()
+            assert self._model is not None
 
             while not self._abort_event.is_set():
                 result = self._model.get_results()
