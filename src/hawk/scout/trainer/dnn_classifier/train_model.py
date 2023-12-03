@@ -340,6 +340,11 @@ def train_worker(gpu, ngpus_per_node, args):
     )
     total_samples = sum(class_sample_count)
     class_weights = [1 - (float(x) / float(total_samples)) for x in class_sample_count]
+    #class_weight_neg = class_weights[0]/2
+    #class_weight_pos = 1 - class_weight_neg
+    #class_weights = [class_weight_neg, class_weight_pos]
+    #class_weights = [1/21,20/21]
+
     logger.info(f"Total samples {total_samples} Class Weight {class_weights}")
     criterion = nn.CrossEntropyLoss(
         weight=torch.Tensor(class_weights), label_smoothing=0.1

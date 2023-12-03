@@ -79,7 +79,7 @@ class Admin:
         self._mission_name = config["mission-name"]
         self.log_dir = Path(config["home-params"]["log_dir"])
         self.end_file = self.log_dir / "end"
-        self.end_time = int(config.get("end-time", 5000))
+        self.end_time = int(config.get("end-time", 4100))
 
         self.scouts = config.scouts
 
