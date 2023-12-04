@@ -149,7 +149,8 @@ def main():
             "This will turn on the CUDNN deterministic setting, "
             "which can slow down your training considerably! "
             "You may see unexpected behavior when restarting "
-            "from checkpoints."
+            "from checkpoints.",
+            stacklevel=1,
         )
 
     ngpus_per_node = torch.cuda.device_count()
@@ -340,10 +341,10 @@ def train_worker(gpu, ngpus_per_node, args):
     )
     total_samples = sum(class_sample_count)
     class_weights = [1 - (float(x) / float(total_samples)) for x in class_sample_count]
-    #class_weight_neg = class_weights[0]/2
-    #class_weight_pos = 1 - class_weight_neg
-    #class_weights = [class_weight_neg, class_weight_pos]
-    #class_weights = [1/21,20/21]
+    # class_weight_neg = class_weights[0]/2
+    # class_weight_pos = 1 - class_weight_neg
+    # class_weights = [class_weight_neg, class_weight_pos]
+    # class_weights = [1/21,20/21]
 
     logger.info(f"Total samples {total_samples} Class Weight {class_weights}")
     criterion = nn.CrossEntropyLoss(

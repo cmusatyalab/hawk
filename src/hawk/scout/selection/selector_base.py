@@ -73,13 +73,13 @@ class SelectorBase(Selector):
         self.num_positives = 0
         self.model_train_time = 0
         self.model_examples = 0
-        self.countermeasure_threshold = 0.5  ## make this configurable from config file
+        self.countermeasure_threshold = 0.5  # make this configurable from config file
         self.surv_TPs = 0
         self.surv_FPs = 0
         self.surv_FNs = 0
         self.surv_TNs = 0
-        self.surv_threat_not_neut = 0  ## increment this number by 1 for every FN
-        ## this will get incremeneted by 1 upon every TP when countermeasures = 0
+        self.surv_threat_not_neut = 0  # increment this number by 1 for every FN
+        # this will get incremeneted by 1 upon every TP when countermeasures = 0
         self.num_countermeasures = 50
 
         self._model_lock = threading.Lock()
@@ -112,8 +112,8 @@ class SelectorBase(Selector):
         else:
             self._add_result(result)
             # logger.info(f"Label: {result.gt}, Score: {result.score}, ID: {result.id}")
-            #logger.info("Countermeasure threshold: {}".format(self.countermeasure_threshold))
-            #logger.info("Total countermeasures: {}".format(self.num_countermeasures))
+            # logger.info(f"Countermeasure threshold: {self.countermeasure_threshold}")
+            # logger.info(f"Total countermeasures: {self.num_countermeasures}")
             perceived_truth = result.score >= self.countermeasure_threshold
             if result.gt:
                 if perceived_truth:
@@ -133,11 +133,12 @@ class SelectorBase(Selector):
                 else:
                     self.surv_TNs += 1
 
-            ## HEre is where well compare threshold to round truth and actual score to determine TP, TN, FP, FN
+            # Here is where well compare threshold to round truth and actual
+            # score to determine TP, TN, FP, FN
 
-            ## Deploy countermeasure if sample is TP or FP
+            # Deploy countermeasure if sample is TP or FP
 
-            ## Decrement number of countermeausures if TP or FP
+            # Decrement number of countermeausures if TP or FP
 
         with self.stats_lock:
             self.items_processed += 1

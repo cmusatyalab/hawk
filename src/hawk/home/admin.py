@@ -257,24 +257,29 @@ class Admin:
             topk_config = selector_config.get("topk", {})
             k_value = topk_config.get("k", 10)
             batch_size = topk_config.get("batchSize", 1000)
-            countermeasure_threshold = topk_config.get("countermeasure_threshold",0.5)
+            countermeasure_threshold = topk_config.get("countermeasure_threshold", 0.5)
             total_countermeasures = topk_config.get("total_countermeasures", 700)
             selector = SelectiveConfig(
                 topk=TopKConfig(
                     k=k_value,
                     batchSize=batch_size,
-                    countermeasure_threshold=countermeasure_threshold, 
-                    total_countermeasures=total_countermeasures
+                    countermeasure_threshold=countermeasure_threshold,
+                    total_countermeasures=total_countermeasures,
                 )
             )
         elif selector_type == "token":
             token_config = selector_config.get("token", {})
             init_samples = token_config.get("initial_samples")
             batch_size = token_config.get("batch_size")
-            countermeasure_threshold = token_config.get("countermeasure_threshold",0.5)
+            countermeasure_threshold = token_config.get("countermeasure_threshold", 0.5)
             total_countermeasures = token_config.get("total_countermeasures", 700)
             selector = SelectiveConfig(
-                token=TokenConfig(initial_samples=init_samples, batch_size=batch_size, countermeasure_threshold=countermeasure_threshold, total_countermeasures=total_countermeasures)
+                token=TokenConfig(
+                    initial_samples=init_samples,
+                    batch_size=batch_size,
+                    countermeasure_threshold=countermeasure_threshold,
+                    total_countermeasures=total_countermeasures,
+                )
             )
         else:
             raise NotImplementedError(f"Unknown selector {selector_type}")

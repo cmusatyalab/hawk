@@ -29,8 +29,8 @@ class TopKSelector(SelectorBase):
         total_countermeasures: int,
         reexamination_strategy: ReexaminationStrategy,
         add_negatives: bool = True,
-        ):
-        logger.info("K: {}, batchsize: {}".format(k, batch_size))
+    ):
+        logger.info(f"K: {k}, batchsize: {batch_size}")
         assert k < batch_size
         super().__init__()
 
