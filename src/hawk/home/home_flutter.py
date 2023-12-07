@@ -78,7 +78,7 @@ def get_results():
             sys.executable,
             "-m",
             "hawk.home.result_stream_new",
-            app_data["image-dir"].parent,
+            str(app_data["image-dir"].parent),
         ]
     )
     logger.info(result_cmd)
