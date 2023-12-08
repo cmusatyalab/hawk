@@ -23,11 +23,20 @@ class DiversitySelector(TopKSelector):
         self,
         k: int,
         batch_size: int,
+        countermeasure_threshold: float,
+        total_countermeasures: int,
         reexamination_strategy: ReexaminationStrategy,
         add_negatives: bool = False,
     ):
         assert k < batch_size
-        super().__init__(k, batch_size, reexamination_strategy, add_negatives)
+        super().__init__(
+            k,
+            batch_size,
+            countermeasure_threshold,
+            total_countermeasures,
+            reexamination_strategy,
+            add_negatives,
+        )
 
         self._div_k = int(k / 3)
         self._k = k - self._div_k

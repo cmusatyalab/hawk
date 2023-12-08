@@ -522,6 +522,8 @@ class A2SAPI:
             return DiversitySelector(
                 selector.diversity.k,
                 selector.diversity.batchSize,
+                selector.diversity.countermeasure_threshold,
+                selector.diversity.total_countermeasures,
                 reexamination_strategy,
             )
         else:
