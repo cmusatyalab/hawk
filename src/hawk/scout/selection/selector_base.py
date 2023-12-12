@@ -2,16 +2,21 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import queue
 import threading
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from logzero import logger
 
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
+
+if TYPE_CHECKING:
+    from ..core.mission import Mission
 
 
 @dataclass
@@ -33,7 +38,7 @@ class SelectorStats:
 
 class Selector(metaclass=ABCMeta):
     @abstractmethod
-    def add_result(self, result: Optional[ResultProvider]) -> int:
+    def add_result(self, result: ResultProvider | None) -> int:
         """Add processed results from model to selector"""
         pass
 
@@ -43,17 +48,17 @@ class Selector(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def add_context(self, context) -> None:
+    def add_context(self, context: Mission) -> None:
         """Add data manager context"""
         pass
 
     @abstractmethod
-    def get_result(self) -> Optional[ResultProvider]:
+    def get_result(self) -> ResultProvider | None:
         """Transmit selected results"""
         pass
 
     @abstractmethod
-    def new_model(self, model: Optional[Model]) -> None:
+    def new_model(self, model: Model | None) -> None:
         """Triggered when a new model is available"""
         pass
 
@@ -65,9 +70,7 @@ class Selector(metaclass=ABCMeta):
 
 class SelectorBase(Selector):
     def __init__(self) -> None:
-        self.result_queue: queue.Queue[Optional[ResultProvider]] = queue.Queue(
-            maxsize=100
-        )
+        self.result_queue: queue.Queue[ResultProvider | None] = queue.Queue(maxsize=100)
         self.stats_lock = threading.Lock()
         self.items_processed = 0
         self.num_revisited = 0
@@ -85,7 +88,7 @@ class SelectorBase(Selector):
 
         self._model_lock = threading.Lock()
         self._model_present = False
-        self._mission = None
+        self._mission: Mission | None = None
         self.transmit_queue = None
 
         self._clear_event = threading.Event()
@@ -96,14 +99,14 @@ class SelectorBase(Selector):
         pass
 
     @abstractmethod
-    def _new_model(self, model: Optional[Model]) -> None:
+    def _new_model(self, model: Model | None) -> None:
         """Helper function specific to selection strategy"""
         pass
 
-    def add_context(self, context) -> None:
+    def add_context(self, context: Mission) -> None:
         self._mission = context
 
-    def add_result(self, result: Optional[ResultProvider]) -> int:
+    def add_result(self, result: ResultProvider | None) -> int:
         """Add processed results from model to selection strategy"""
         if result is None:
             with self.stats_lock:
@@ -151,7 +154,7 @@ class SelectorBase(Selector):
                 logger.info(f"Total items processed: {self.items_processed}")"""
             return self.items_processed
 
-    def new_model(self, model: Optional[Model]) -> None:
+    def new_model(self, model: Model | None) -> None:
         """New model generation is available from trainer"""
         with self._model_lock:
             self._model_present = model is not None
@@ -164,7 +167,7 @@ class SelectorBase(Selector):
         self._clear_event.set()
         self.result_queue.put(None)
 
-    def get_result(self) -> Optional[ResultProvider]:
+    def get_result(self) -> ResultProvider | None:
         """Returns result for transmission when available"""
         while True:
             try:

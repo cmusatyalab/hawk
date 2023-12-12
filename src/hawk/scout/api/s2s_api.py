@@ -5,6 +5,11 @@
 """Scout to Scout internal api calls
 """
 
+from __future__ import annotations
+
+from multiprocessing import Queue
+from typing import TYPE_CHECKING
+
 import zmq
 from logzero import logger
 
@@ -12,8 +17,13 @@ from ...ports import S2S_PORT
 from ...proto import Empty
 from ...proto.messages_pb2 import LabeledTile, LabelWrapper
 
+if TYPE_CHECKING:
+    from ..core.mission import Mission
 
-def s2s_receive_request(s2s_input, s2s_output) -> None:
+
+def s2s_receive_request(
+    s2s_input: Queue[tuple[bytes, bytes]], s2s_output: Queue[bytes]
+) -> None:
     """Function to receive and invoke S2S api calls
 
     Uses Request-Response messaging protocol
@@ -41,7 +51,7 @@ def s2s_receive_request(s2s_input, s2s_output) -> None:
 
 
 class S2SServicer:
-    def __init__(self, mission):
+    def __init__(self, mission: Mission):
         self._mission = mission
 
     def s2s_get_tile(self, msg: bytes) -> bytes:

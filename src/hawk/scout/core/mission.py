@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import io
 import multiprocessing as mp
 import os
@@ -12,7 +14,7 @@ import zipfile
 from collections import defaultdict
 from multiprocessing.connection import _ConnectionBase
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING
 
 from logzero import logger
 
@@ -41,13 +43,16 @@ from .model import Model
 from .model_trainer import ModelTrainer
 from .utils import get_server_ids, log_exceptions
 
+if TYPE_CHECKING:
+    from ...proto.messages_pb2 import DatasetSplitValue
+
 
 class Mission(DataManagerContext, ModelContext):
     def __init__(
         self,
         mission_id: MissionId,
         scout_index: int,
-        scouts: List[HawkStub],
+        scouts: list[HawkStub],
         home_ip: str,
         retrain_policy: RetrainPolicyBase,
         root_dir: Path,
@@ -80,7 +85,7 @@ class Mission(DataManagerContext, ModelContext):
         self.log_file = open(self._log_dir / f"log-{self.host_name}.txt", "a")
         self.result_path = str(self._log_dir / f"sent-{self.host_name}.txt")
         self.enable_logfile = True
-        self.trainer: Optional[ModelTrainer] = None
+        self.trainer: ModelTrainer | None = None
         self.trainer_type = None
 
         self._port = port
@@ -100,7 +105,7 @@ class Mission(DataManagerContext, ModelContext):
         # inference results until its underlying model is trained
         self._has_initial_examples = True
 
-        self._model: Optional[Model] = None
+        self._model: Model | None = None
 
         self._model_stats = TestResults(version=-1)
         self._model_lock = threading.Lock()
@@ -109,7 +114,7 @@ class Mission(DataManagerContext, ModelContext):
         self._last_trained_version = -1
         self._object_model_excess = 2000
 
-        self._test_results: Dict[int, List[List[Tuple[int, float]]]] = defaultdict(list)
+        self._test_results: dict[int, list[list[tuple[int, float]]]] = defaultdict(list)
         self._results_condition = mp.Condition()
 
         self._abort_event = threading.Event()
@@ -190,7 +195,9 @@ class Mission(DataManagerContext, ModelContext):
     def distribute_label(self, label: LabelWrapper) -> None:
         self._data_manager.distribute_label(label)
 
-    def get_example(self, example_set, label: str, example: str) -> Path:
+    def get_example(
+        self, example_set: DatasetSplitValue, label: str, example: str
+    ) -> Path:
         return self._data_manager.get_example_path(example_set, label, example)
 
     def get_test_results(self) -> TestResults:
@@ -256,7 +263,7 @@ class Mission(DataManagerContext, ModelContext):
         return self._scout_index
 
     @property
-    def scouts(self) -> List[HawkStub]:
+    def scouts(self) -> list[HawkStub]:
         return self._scouts
 
     @property
@@ -351,13 +358,13 @@ class Mission(DataManagerContext, ModelContext):
         self.log_file.close()
         sys.exit(0)
 
-    def log(self, msg: str, end_t: Optional[float] = None) -> None:
+    def log(self, msg: str, end_t: float | None = None) -> None:
         if not self.enable_logfile:
             return
         mission_time = self.mission_time(end_t)
         self.log_file.write(f"{mission_time:.3f} {self.host_name} {msg}\n")
 
-    def get_example_directory(self, example_set) -> Path:
+    def get_example_directory(self, example_set: DatasetSplitValue) -> Path:
         return self._data_manager.get_example_directory(example_set)
 
     def _objects_for_model_version(self) -> None:
@@ -475,7 +482,9 @@ class Mission(DataManagerContext, ModelContext):
             self.stop()
 
     @log_exceptions
-    def _s2s_process(self, input_q, output_q) -> None:
+    def _s2s_process(
+        self, input_q: mp.Queue[tuple[bytes, bytes]], output_q: mp.Queue[bytes]
+    ) -> None:
         try:
             while not self._abort_event.is_set():
                 (method, msg) = input_q.get()

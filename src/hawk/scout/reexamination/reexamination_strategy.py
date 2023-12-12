@@ -2,10 +2,17 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
+import queue
 from abc import ABCMeta, abstractmethod
-from typing import Any, List, Tuple
+from typing import TYPE_CHECKING, Tuple
 
 from ..core.model import Model
+from ..core.result_provider import ResultProvider
+
+if TYPE_CHECKING:
+    ReexaminationQueueType = queue.PriorityQueue[Tuple[float, float, ResultProvider]]
 
 
 class ReexaminationStrategy(metaclass=ABCMeta):
@@ -19,8 +26,8 @@ class ReexaminationStrategy(metaclass=ABCMeta):
     def get_new_queues(
         self,
         model: Model,
-        old_queues: List[Any],
+        old_queues: list[ReexaminationQueueType],
         start_time: float = 0,
-    ) -> Tuple[List[Any], int]:
+    ) -> tuple[list[ReexaminationQueueType], int]:
         """Generates a new queue with reexamined results"""
         pass

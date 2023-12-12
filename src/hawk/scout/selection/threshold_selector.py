@@ -2,16 +2,23 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import queue
 import threading
-from typing import Any, List, Optional
+from typing import TYPE_CHECKING
 
 from logzero import logger
 
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
-from ..reexamination.reexamination_strategy import ReexaminationStrategy
 from .selector_base import SelectorBase
+
+if TYPE_CHECKING:
+    from ..reexamination.reexamination_strategy import (
+        ReexaminationQueueType,
+        ReexaminationStrategy,
+    )
 
 
 class ThresholdSelector(SelectorBase):
@@ -21,7 +28,7 @@ class ThresholdSelector(SelectorBase):
         self._threshold = threshold
         self._reexamination_strategy = reexamination_strategy
 
-        self._discard_queue: List[Any] = [queue.PriorityQueue()]
+        self._discard_queue: list[ReexaminationQueueType] = [queue.PriorityQueue()]
         self._insert_lock = threading.Lock()
         self._items_dropped = 0
         self._false_negatives = 0
@@ -43,7 +50,7 @@ class ThresholdSelector(SelectorBase):
                 if result.gt:
                     self._false_negatives += 1
 
-    def _new_model(self, model: Optional[Model]) -> None:
+    def _new_model(self, model: Model | None) -> None:
         with self._insert_lock:
             if model is not None:
                 # version = self.version

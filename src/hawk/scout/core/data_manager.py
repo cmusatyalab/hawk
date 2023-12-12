@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import io
 import os
 import threading
@@ -9,12 +11,16 @@ import zipfile
 from collections import defaultdict
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable, Dict, Iterable, Iterator, List, Optional, Tuple
+from typing import TYPE_CHECKING, Callable, Iterable, Iterator
 
 from logzero import logger
 
 from ...proto.messages_pb2 import DatasetSplit, HawkObject, LabeledTile, LabelWrapper
 from .utils import get_example_key
+
+if TYPE_CHECKING:
+    from ...proto.messages_pb2 import DatasetSplitValue
+    from ..core.mission import Mission
 
 TMP_DIR = "test-0"
 IGNORE_FILE = ["ignore", "-1", "labels"]
@@ -22,7 +28,7 @@ TRAIN_TO_TEST_RATIO = 4
 
 
 class DataManager:
-    def __init__(self, context):
+    def __init__(self, context: Mission):
         self._context = context
         self._staging_dir = self._context.data_dir / "examples-staging"
         self._staging_dir.mkdir(parents=True, exist_ok=True)
@@ -34,7 +40,7 @@ class DataManager:
         self._examples_lock = threading.Lock()
         self._tmp_dir = self._examples_dir / TMP_DIR
         self._tmp_dir.mkdir(parents=True, exist_ok=True)
-        self._example_counts: Dict[str, int] = defaultdict(int)
+        self._example_counts: dict[str, int] = defaultdict(int)
         self._validate = self._context.check_create_test()
         bootstrap_zip = self._context.bootstrap_zip
         if bootstrap_zip is not None and len(bootstrap_zip):
@@ -46,7 +52,7 @@ class DataManager:
         self._positives = 0
         self._negatives = 0
 
-    def get_example_directory(self, example_set) -> Path:
+    def get_example_directory(self, example_set: DatasetSplitValue) -> Path:
         return self._examples_dir / self._to_dir(example_set)
 
     def store_labeled_tile(self, tile: LabeledTile) -> None:
@@ -180,7 +186,7 @@ class DataManager:
         self._context.new_labels_callback(new_positives, new_negatives, retrain=retrain)
 
     @contextmanager
-    def get_examples(self, example_set) -> Iterator[Path]:
+    def get_examples(self, example_set: DatasetSplitValue) -> Iterator[Path]:
         with self._examples_lock:
             if self._context.scout_index != 0:
                 yield self._examples_dir / self._to_dir(example_set)
@@ -202,7 +208,9 @@ class DataManager:
                 else:
                     yield example_dir
 
-    def get_example_path(self, example_set, label: str, example: str) -> Path:
+    def get_example_path(
+        self, example_set: DatasetSplitValue, label: str, example: str
+    ) -> Path:
         # assert self._examples_lock.locked()
         assert self._context.scout_index == 0
         locked = self._examples_lock.locked()
@@ -229,7 +237,7 @@ class DataManager:
     def _store_labeled_examples(
         self,
         examples: Iterable[LabeledTile],
-        callback: Optional[Callable[[LabeledTile], None]],
+        callback: Callable[[LabeledTile], None] | None,
     ) -> None:
         with self._staging_lock:
             old_dirs = []
@@ -319,7 +327,9 @@ class DataManager:
             except Exception as e:
                 logger.exception(e)
 
-    def _promote_staging_examples_dir(self, subdir: Path, set_dirs) -> Tuple[int, int]:
+    def _promote_staging_examples_dir(
+        self, subdir: Path, set_dirs: dict[DatasetSplitValue, list[Path]]
+    ) -> tuple[int, int]:
         assert (
             subdir.name == self._to_dir(DatasetSplit.TRAIN)
             or subdir.name == self._to_dir(DatasetSplit.TEST)
@@ -368,14 +378,16 @@ class DataManager:
 
         return new_positives, new_negatives
 
-    def _get_example_count(self, example_set, label: str) -> int:
+    def _get_example_count(self, example_set: DatasetSplitValue, label: str) -> int:
         return self._example_counts[f"{DatasetSplit.Name(example_set)}_{label}"]
 
-    def _increment_example_count(self, example_set, label: str, delta: int) -> None:
+    def _increment_example_count(
+        self, example_set: DatasetSplitValue, label: str, delta: int
+    ) -> None:
         self._example_counts[f"{DatasetSplit.Name(example_set)}_{label}"] += delta
 
     @staticmethod
-    def _remove_old_paths(example_file: str, old_dirs: List[Path]) -> Optional[Path]:
+    def _remove_old_paths(example_file: str, old_dirs: list[Path]) -> Path | None:
         for old_path in old_dirs:
             old_example_path = old_path / example_file
             if old_example_path.exists():
@@ -386,5 +398,5 @@ class DataManager:
         return None
 
     @staticmethod
-    def _to_dir(example_set) -> str:
+    def _to_dir(example_set: DatasetSplitValue) -> str:
         return DatasetSplit.Name(example_set).lower()

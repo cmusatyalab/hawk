@@ -2,15 +2,20 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import queue
 import time
-from typing import Any, List, Tuple
+from typing import TYPE_CHECKING
 
 from logzero import logger
 
 from ..core.model import Model
 from ..core.object_provider import ObjectProvider
 from .reexamination_strategy import ReexaminationStrategy
+
+if TYPE_CHECKING:
+    from .reexamination_strategy import ReexaminationQueueType
 
 
 class TopReexaminationStrategy(ReexaminationStrategy):
@@ -24,10 +29,12 @@ class TopReexaminationStrategy(ReexaminationStrategy):
     def get_new_queues(
         self,
         model: Model,
-        old_queues: List[Any],
+        old_queues: list[ReexaminationQueueType],
         start_time: float = 0,
-    ) -> Tuple[List[Any], int]:
-        new_queue = queue.PriorityQueue()  # To start a new priority queue
+    ) -> tuple[list[ReexaminationQueueType], int]:
+        new_queue: ReexaminationQueueType = (
+            queue.PriorityQueue()
+        )  # To start a new priority queue
         # new_queue =  old_queues[-1] # Reuse the same queue
 
         to_reexamine = []

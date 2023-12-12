@@ -8,9 +8,10 @@ import threading
 import time
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
+import torch
 from logzero import logger
 from sklearn.metrics import (
     average_precision_score,
@@ -127,7 +128,9 @@ class ModelBase(Model):
         return self._train_time
 
     @log_exceptions
-    def preprocess(self, request: ObjectProvider):
+    def preprocess(
+        self, request: ObjectProvider
+    ) -> Tuple[ObjectProvider, Optional[torch.Tensor]]:
         return (request, None)
 
     @log_exceptions

@@ -2,21 +2,28 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import copy
 import os
 import queue
 import threading
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING
 
 from logzero import logger
 
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
 from ..core.utils import get_example_key, log_exceptions
-from ..reexamination.reexamination_strategy import ReexaminationStrategy
 from .selector_base import SelectorBase
+
+if TYPE_CHECKING:
+    from ..reexamination.reexamination_strategy import (
+        ReexaminationQueueType,
+        ReexaminationStrategy,
+    )
 
 
 class TopKSelector(SelectorBase):
@@ -35,7 +42,7 @@ class TopKSelector(SelectorBase):
 
         self.version = 0
         self.add_negatives = add_negatives
-        self.easy_negatives: Dict[int, List[Path]] = defaultdict(list)
+        self.easy_negatives: dict[int, list[Path]] = defaultdict(list)
         self.num_negatives_added = 0
 
         self._k = k
@@ -44,7 +51,7 @@ class TopKSelector(SelectorBase):
         self.num_countermeasures = total_countermeasures
         self._reexamination_strategy = reexamination_strategy
 
-        self._priority_queues: List[Any] = [queue.PriorityQueue()]
+        self._priority_queues: list[ReexaminationQueueType] = [queue.PriorityQueue()]
         self._batch_added = 0
         self._insert_lock = threading.Lock()
         self._mode = "hawk"
@@ -102,7 +109,7 @@ class TopKSelector(SelectorBase):
         negative_path = path / "-1"
         os.makedirs(str(negative_path), exist_ok=True)
 
-        result_queue = queue.PriorityQueue()
+        result_queue: ReexaminationQueueType = queue.PriorityQueue()
         with self._insert_lock:
             result_queue.queue = copy.deepcopy(self._priority_queues[-1].queue)
 
@@ -137,12 +144,12 @@ class TopKSelector(SelectorBase):
             with self._insert_lock:
                 self.easy_negatives[self.version].append(example_path)
 
-    def delete_examples(self, examples: List[Path]) -> None:
+    def delete_examples(self, examples: list[Path]) -> None:
         for path in examples:
             if path.exists():
                 path.unlink()
 
-    def _new_model(self, model: Optional[Model]) -> None:
+    def _new_model(self, model: Model | None) -> None:
         with self._insert_lock:
             if model is not None:
                 version = self.version
