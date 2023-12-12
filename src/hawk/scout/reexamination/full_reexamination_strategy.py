@@ -4,13 +4,13 @@
 
 import queue
 import time
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 from logzero import logger
 
 from ..core.model import Model
 from ..core.object_provider import ObjectProvider
-from .reexamination_strategy import ReexaminationQueueType, ReexaminationStrategy
+from .reexamination_strategy import ReexaminationStrategy
 
 
 class FullReexaminationStrategy(ReexaminationStrategy):
@@ -21,10 +21,10 @@ class FullReexaminationStrategy(ReexaminationStrategy):
     def get_new_queues(
         self,
         model: Model,
-        old_queues: List[ReexaminationQueueType],
+        old_queues: List[Any],
         start_time: float = 0,
-    ) -> Tuple[List[ReexaminationQueueType], int]:
-        new_queue: ReexaminationQueueType = queue.PriorityQueue()
+    ) -> Tuple[List[Any], int]:
+        new_queue = queue.PriorityQueue()
 
         to_reexamine = []
         for priority_queue in old_queues:

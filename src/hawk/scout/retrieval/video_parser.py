@@ -3,12 +3,9 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import time
-from multiprocessing import Queue
-from typing import Tuple
 
 import cv2
 import numpy as np
-import numpy.typing as npt
 from logzero import logger
 
 """
@@ -21,9 +18,7 @@ class VideoFrameProducer:
 """
 
 
-def produce_video_frames(
-    producer_queue: Queue[Tuple[str, npt.NDArray[np.uint8]]], video_source: str
-) -> None:
+def produce_video_frames(producer_queue, video_source: str) -> None:
     logger.info("About to load the video file...")
     capture = cv2.VideoCapture(video_source)
     logger.info("Finished loading video file...")

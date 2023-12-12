@@ -8,7 +8,7 @@ import threading
 import time
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 import numpy as np
 from logzero import logger
@@ -23,9 +23,6 @@ from ..context.model_trainer_context import ModelContext
 from .object_provider import ObjectProvider
 from .result_provider import ResultProvider
 from .utils import log_exceptions
-
-if TYPE_CHECKING:
-    import torch
 
 
 class Model(metaclass=ABCMeta):
@@ -130,9 +127,7 @@ class ModelBase(Model):
         return self._train_time
 
     @log_exceptions
-    def preprocess(
-        self, request: ObjectProvider
-    ) -> Tuple[ObjectProvider, Optional[torch.Tensor]]:
+    def preprocess(self, request: ObjectProvider):
         return (request, None)
 
     @log_exceptions

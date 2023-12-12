@@ -7,24 +7,12 @@ import socket
 import struct
 from functools import wraps
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    TypeVar,
-    cast,
-)
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar, cast
 
 import numpy as np
 from logzero import logger
 from PIL import Image
-
-if TYPE_CHECKING:
-    from torch.utils.data import Dataset
+from torch.utils.data import Dataset
 
 
 class StringAttributeCodec:

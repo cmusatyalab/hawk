@@ -4,16 +4,13 @@
 
 import queue
 import threading
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from logzero import logger
 
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
-from ..reexamination.reexamination_strategy import (
-    ReexaminationQueueType,
-    ReexaminationStrategy,
-)
+from ..reexamination.reexamination_strategy import ReexaminationStrategy
 from .selector_base import SelectorBase
 
 
@@ -24,7 +21,7 @@ class ThresholdSelector(SelectorBase):
         self._threshold = threshold
         self._reexamination_strategy = reexamination_strategy
 
-        self._discard_queue: List[ReexaminationQueueType] = [queue.PriorityQueue()]
+        self._discard_queue: List[Any] = [queue.PriorityQueue()]
         self._insert_lock = threading.Lock()
         self._items_dropped = 0
         self._false_negatives = 0

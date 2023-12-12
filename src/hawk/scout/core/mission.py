@@ -18,7 +18,6 @@ from logzero import logger
 
 from ...proto.messages_pb2 import (
     DatasetSplit,
-    DatasetSplitValue,
     LabeledTile,
     LabelWrapper,
     MissionId,
@@ -191,9 +190,7 @@ class Mission(DataManagerContext, ModelContext):
     def distribute_label(self, label: LabelWrapper) -> None:
         self._data_manager.distribute_label(label)
 
-    def get_example(
-        self, example_set: DatasetSplitValue, label: str, example: str
-    ) -> Path:
+    def get_example(self, example_set, label: str, example: str) -> Path:
         return self._data_manager.get_example_path(example_set, label, example)
 
     def get_test_results(self) -> TestResults:
@@ -360,7 +357,7 @@ class Mission(DataManagerContext, ModelContext):
         mission_time = self.mission_time(end_t)
         self.log_file.write(f"{mission_time:.3f} {self.host_name} {msg}\n")
 
-    def get_example_directory(self, example_set: DatasetSplitValue) -> Path:
+    def get_example_directory(self, example_set) -> Path:
         return self._data_manager.get_example_directory(example_set)
 
     def _objects_for_model_version(self) -> None:
@@ -478,9 +475,7 @@ class Mission(DataManagerContext, ModelContext):
             self.stop()
 
     @log_exceptions
-    def _s2s_process(
-        self, input_q: mp.Queue[Tuple[bytes, bytes]], output_q: mp.Queue[bytes]
-    ) -> None:
+    def _s2s_process(self, input_q, output_q) -> None:
         try:
             while not self._abort_event.is_set():
                 (method, msg) = input_q.get()

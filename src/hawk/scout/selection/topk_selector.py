@@ -8,17 +8,14 @@ import queue
 import threading
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from logzero import logger
 
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
 from ..core.utils import get_example_key, log_exceptions
-from ..reexamination.reexamination_strategy import (
-    ReexaminationQueueType,
-    ReexaminationStrategy,
-)
+from ..reexamination.reexamination_strategy import ReexaminationStrategy
 from .selector_base import SelectorBase
 
 
@@ -47,7 +44,7 @@ class TopKSelector(SelectorBase):
         self.num_countermeasures = total_countermeasures
         self._reexamination_strategy = reexamination_strategy
 
-        self._priority_queues: List[ReexaminationQueueType] = [queue.PriorityQueue()]
+        self._priority_queues: List[Any] = [queue.PriorityQueue()]
         self._batch_added = 0
         self._insert_lock = threading.Lock()
         self._mode = "hawk"
@@ -105,7 +102,7 @@ class TopKSelector(SelectorBase):
         negative_path = path / "-1"
         os.makedirs(str(negative_path), exist_ok=True)
 
-        result_queue: ReexaminationQueueType = queue.PriorityQueue()
+        result_queue = queue.PriorityQueue()
         with self._insert_lock:
             result_queue.queue = copy.deepcopy(self._priority_queues[-1].queue)
 

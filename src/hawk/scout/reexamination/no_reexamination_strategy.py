@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import queue
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 from ..core.model import Model
-from .reexamination_strategy import ReexaminationQueueType, ReexaminationStrategy
+from .reexamination_strategy import ReexaminationStrategy
 
 
 class NoReexaminationStrategy(ReexaminationStrategy):
@@ -17,7 +17,7 @@ class NoReexaminationStrategy(ReexaminationStrategy):
     def get_new_queues(
         self,
         model: Model,
-        old_queues: List[ReexaminationQueueType],
+        old_queues: List[Any],
         start_time: float = 0,
-    ) -> Tuple[List[ReexaminationQueueType], int]:
+    ) -> Tuple[List[Any], int]:
         return old_queues + [queue.PriorityQueue()], 0
