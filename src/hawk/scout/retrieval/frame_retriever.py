@@ -4,6 +4,7 @@
 
 import copy
 import io
+import os
 import time
 from pathlib import Path
 from typing import Iterable
@@ -55,7 +56,7 @@ class FrameRetriever(Retriever):
             outimg[0:h, 0:w, :] = subimg
         else:
             outimg = subimg
-        cv2.imwrite(outpath, outimg)
+        cv2.imwrite(os.fspath(outpath), outimg)
         return outpath
 
     def split_frame(self, frame: Path) -> Iterable[Path]:
