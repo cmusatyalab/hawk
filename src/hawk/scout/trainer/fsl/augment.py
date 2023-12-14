@@ -10,6 +10,7 @@ import shutil
 import sys
 import uuid
 import warnings
+from pathlib import Path
 
 import albumentations as A
 import numpy as np
@@ -20,16 +21,6 @@ warnings.simplefilter("ignore")
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 N_SHOT = 5
-train_dataset = sys.argv[1]
-image_name = sys.argv[2]
-assert os.path.exists(image_name)
-
-# Target class '0'
-# Create directory for results
-if os.path.exists(f"{train_dataset}/0"):
-    shutil.rmtree(f"{train_dataset}/0")
-os.mkdir(f"{train_dataset}/0")
-shutil.copy(image_name, f"{train_dataset}/0")
 
 train_transform = A.Compose(
     [
@@ -42,14 +33,33 @@ train_transform = A.Compose(
 )
 
 
-def AugmentSave(pil_image: Image.Image) -> None:
+def AugmentSave(destdir: Path, pil_image: Image.Image) -> None:
     image = np.array(pil_image)
     for _ in range(1, N_SHOT):
         transform = A.Compose([t for t in train_transform])
         image_transform = transform(image=image)["image"]
         transformed_img = Image.fromarray(image_transform)
-        transformed_img.save(f"{train_dataset}/0/{str(uuid.uuid4())}.png")
+        transformed_name = destdir.joinpath(str(uuid.uuid4())).with_suffix(".png")
+        transformed_img.save(os.fspath(transformed_name))
 
 
-image = Image.open(image_name)
-AugmentSave(image)
+def main() -> None:
+    train_dataset = Path(sys.argv[1])
+    image_name = Path(sys.argv[2])
+    assert image_name.exists()
+
+    # Target class '0'
+    target_class = train_dataset / "0"
+
+    # Create directory for results
+    if target_class.exists():
+        shutil.rmtree(target_class)
+    target_class.mkdir()
+    shutil.copy(image_name, target_class)
+
+    image = Image.open(os.fspath(image_name))
+    AugmentSave(target_class, image)
+
+
+if __name__ == "__main__":
+    main()
