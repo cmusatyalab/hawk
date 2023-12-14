@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 # Source: https://github.com/pytorch/examples/blob/main/imagenet/main.py
+
+from __future__ import annotations
+
 import argparse
 import os
 import random
@@ -9,7 +12,7 @@ import time
 import warnings
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, Tuple
+from typing import Any, Sequence
 
 import numpy as np
 import torch
@@ -495,7 +498,7 @@ def set_parameter_requires_grad(model: nn.Module, unfreeze: int = 0) -> None:
 
 def initialize_model(
     arch: str, num_classes: int, unfreeze: int = 0
-) -> Tuple[nn.Module, int]:
+) -> tuple[nn.Module, int]:
     model_ft = None
     input_size = 0
     model_ft = models.__dict__[arch](pretrained=True)
@@ -683,7 +686,7 @@ def validate_model(
     return auc
 
 
-def save_checkpoint(state: Dict[str, Any], path: Optional[Path] = None) -> None:
+def save_checkpoint(state: dict[str, Any], path: Path | None = None) -> None:
     filename = "checkpoint.pth" if path is None else str(path)
     torch.save(state, filename)
 
