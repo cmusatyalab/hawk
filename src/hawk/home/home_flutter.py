@@ -15,7 +15,7 @@ import threading
 from datetime import datetime
 from pathlib import Path
 from pprint import pprint
-from typing import Iterable
+from typing import Any, Dict, Iterable
 
 import zmq
 from flask import Flask, jsonify, make_response, request
@@ -32,7 +32,7 @@ from .utils import define_scope, get_ip
 REMOTE_USER = "root"
 CONFIG = Path.home().joinpath(".hawk", "config.yml")  # PUT this in ~/.hawk
 home_path = Path(__file__).resolve().parent
-app_data = {}
+app_data: Dict[str, Any] = {}
 app = Flask(__name__)
 
 
@@ -362,10 +362,9 @@ def stopMission():
 
 
 if __name__ == "__main__":
-    filter_config = {}
     signal.signal(signal.SIGINT, handler_signals)
     signal.signal(signal.SIGTERM, handler_signals)
-    # filter_config['name'] = 'dnn_classifier'
+    # filter_config = dict(name="dnn_classifier")
     # configure_mission(filter_config)
     app.run(host="0.0.0.0", port=8000)
     print("Executed app.run...")

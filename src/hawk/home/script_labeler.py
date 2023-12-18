@@ -21,9 +21,8 @@ class ScriptLabeler:
     ) -> None:
         self._label_dir = label_dir
         self._gt_path = Path(gt_path)
-        self.ordered_queue = queue.PriorityQueue()
         self._token = False
-        self._label_time = 0
+        self._label_time = 0.0
         # Token selector code to modify labeling process.
         self.configuration = configuration
         selector_field = self.configuration["selector"]

@@ -6,12 +6,18 @@ import json
 import queue
 import threading
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 import zmq
 from logzero import logger
 
 from ..ports import S2H_PORT
 from ..proto.messages_pb2 import SendTiles
+
+if TYPE_CHECKING:
+    InboundQueueType = queue.PriorityQueue[
+        Tuple[float, Dict[str, Any], Dict[str, bytes]]
+    ]
 
 
 class InboundProcess:
@@ -35,8 +41,8 @@ class InboundProcess:
             self._label_time = int(selector_field["token"]["label_time"])
             self._sample_count = 0
             self._rotation_mode = selector_field["token"]["rotation"]
-            self._global_priority_queue = queue.PriorityQueue()
-            self._per_scout_priority_queues = []
+            self._global_priority_queue: InboundQueueType = queue.PriorityQueue()
+            self._per_scout_priority_queues: List[InboundQueueType] = []
             for _i in range(self._num_scouts):
                 self._per_scout_priority_queues.append(queue.PriorityQueue())
         # ---

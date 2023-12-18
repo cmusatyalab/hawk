@@ -12,6 +12,7 @@ import threading
 import time
 from collections import defaultdict
 from pathlib import Path
+from typing import Dict
 
 import zmq
 from google.protobuf.json_format import MessageToDict
@@ -51,7 +52,7 @@ class Admin:
         self._mission_id = mission_id
         self.explicit_start = explicit_start
         self.zmq_context = None
-        self.scout_stubs = {}
+        self.scout_stubs: Dict[int, zmq.Socket] = {}
         self.test_path = ""
 
     def receive_from_home(self, stop_event, stats_q):
