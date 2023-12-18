@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import base64
 import binascii
 import re
@@ -10,13 +12,15 @@ from pathlib import Path
 
 from logzero import logger
 
+from ..mission_config import MissionConfig
+
 BOUNDARY_START = "-----BEGIN OPENDIAMOND SCOPECOOKIE-----\n"
 BOUNDARY_END = "-----END OPENDIAMOND SCOPECOOKIE-----\n"
 COOKIE_VERSION = 1
 BASE64_RE = "[A-Za-z0-9+/=\n]+"
 
 
-def parse_cookie(data):
+def parse_cookie(data: str) -> tuple[str, list[str]]:
     """Parse a (single) scope cookie string and return a ScopeCookie
 
     Arguments:
@@ -45,7 +49,7 @@ def parse_cookie(data):
         raise logger.error("Malformed cookie")
     # Decode signature
     try:
-        signature = binascii.unhexlify(signature)
+        binascii.unhexlify(signature)
     except TypeError:
         raise logger.error("Malformed signature")
     # Parse headers
@@ -62,7 +66,7 @@ def parse_cookie(data):
     return scopeurl, servers
 
 
-def define_scope(config):
+def define_scope(config: MissionConfig) -> MissionConfig:
     cookie_path = Path.home().joinpath(".hawk", "NEWSCOPE")
     cookie_data = cookie_path.read_text()
     index_path, scouts = parse_cookie(cookie_data)
@@ -71,13 +75,13 @@ def define_scope(config):
     return config
 
 
-def get_ip():
+def get_ip() -> str:
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.settimeout(0)
     try:
         # doesn't even have to be reachable
         s.connect(("10.255.255.255", 1))
-        IP = s.getsockname()[0]
+        IP: str = s.getsockname()[0]
     except Exception:
         IP = "127.0.0.1"
     finally:

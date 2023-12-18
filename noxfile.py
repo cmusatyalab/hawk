@@ -10,7 +10,7 @@
 from nox_poetry import session
 
 
-@session(python=["3.10", "3.9", "3.8"])
+@session(python=["3.8", "3.9", "3.10"])
 def tests(session):
     session.install("pytest", ".[home,scout]")
     session.run("pytest")

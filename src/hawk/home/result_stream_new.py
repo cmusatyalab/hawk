@@ -6,47 +6,37 @@ import asyncio
 import base64
 import io
 import json
-import os
 import sys
+from pathlib import Path
+from typing import Set
 
-# import aiofiles
-import websockets
 from PIL import Image
 
+# import aiofiles
+from websockets.server import WebSocketServerProtocol, serve
 
-class UILabeler:
-    def __init__(self, mission_dir):
-        self.config = {}
-        mission_dir = str(mission_dir)
-        self._image_dir = os.path.join(mission_dir, "images")
-        self._meta_dir = os.path.join(mission_dir, "meta")
-        self._label_dir = os.path.join(mission_dir, "labels")
 
-        directory = self._image_dir
-        if directory[len(directory) - 1] != "/":
-            directory += "/"
-        self.config["IMAGES"] = directory
-        self.config["LABELS"] = []
-        self.config["HEAD"] = -1
-        self.config["FILES"] = []
-        # self.reload_directory()
-        self.not_end = True
-        self.total_images_sent = 0
+class ResultStreamer:
+    def __init__(self, mission_dir: Path):
+        self._image_dir = mission_dir / "images"
+        self._meta_dir = mission_dir / "meta"
 
-    def run(self, host, port):
-        start_server = websockets.serve(self.watch_directory, host=host, port=port)
+    def run(self, host: str, port: int) -> None:
+        start_server = serve(self.watch_directory, host=host, port=port)
         asyncio.get_event_loop().run_until_complete(start_server)
         asyncio.get_event_loop().run_forever()
 
-    async def watch_directory(self, websocket):
+    async def watch_directory(self, websocket: WebSocketServerProtocol) -> None:
         # Create a set to store the filenames of existing files in the directory
         # existing_files = set(os.listdir(self._image_dir))
-        existing_files = set()
+        existing_files: Set[str] = set()
         size = (100, 100)
 
         while True:
             # Get the list of current files in the directory
-            current_files = set(os.listdir(self._image_dir))
+            current_files = {
+                file.name for file in self._image_dir.iterdir() if file.is_file()
+            }
 
             # Find the new files by comparing the current files with the existing files
             new_files = current_files - existing_files
@@ -54,37 +44,36 @@ class UILabeler:
             # Process new files
             for filename in new_files:
                 await asyncio.sleep(0.1)
+                image_path = self._image_dir / filename
                 # Check if the file is an image file
-                if filename.lower().endswith((".jpg", ".jpeg", ".png", ".gif")):
-                    image_name = os.path.join(self._image_dir, filename)
+                if image_path.suffix in [".jpg", ".jpeg", ".png", ".gif"]:
                     # async with aiofiles.open(file_path, mode='rb') as file:
                     # Perform your image processing logic here
                     # Example: Read the file contents
                     # contents = await file.read()
-                    if os.stat(image_name).st_size == 0:
+                    if image_path.stat().st_size == 0:
                         print("Skipping empty file")
                         current_files.remove(filename)
                         continue
-                    print(f"New image file '{image_name}' arrived!")
+                    print(f"New image file '{image_path}' arrived!")
                     # --- Get the label to feed into flutter
-                    image_number = image_name.split("/images/")[1].split(".")[0]
-                    image_meta = image_number + ".json"
-                    image_meta_path = os.path.join(self._meta_dir, image_meta)
+                    image_number = str(image_path).split("/images/")[1].split(".")[0]
+                    image_meta_path = self._meta_dir / f"{image_number}.json"
                     with open(image_meta_path) as f:
                         meta_data = json.load(f)
                     meta_orig_file = meta_data["objectId"]
                     label = meta_orig_file.split("/")[1]
                     # ---
-                    image = Image.open(image_name).convert("RGB")
+                    image = Image.open(image_path).convert("RGB")
                     image.thumbnail(size, Image.LANCZOS)
-                    content = io.BytesIO()
-                    image.save(content, format="JPEG", quality=75)
-                    content = content.getvalue()
+                    tmpfile = io.BytesIO()
+                    image.save(tmpfile, format="JPEG", quality=75)
+                    content = tmpfile.getvalue()
                     encoded_img = base64.b64encode(content).decode("utf8")
 
                     data = json.dumps(
                         {
-                            "name": image_name + " " + label,
+                            "name": image_path.name + " " + label,
                             "image": encoded_img,
                         }
                     )
@@ -119,9 +108,9 @@ class UILabeler:
     """
 
 
-def main():
-    mission = sys.argv[1]
-    server = UILabeler(mission)
+def main() -> None:
+    mission = Path(sys.argv[1])
+    server = ResultStreamer(mission)
     server.run(host="0.0.0.0", port=5000)
 
 

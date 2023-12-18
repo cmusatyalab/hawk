@@ -2,17 +2,22 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import json
 import queue
 import threading
+from multiprocessing.synchronize import Event
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Tuple, cast
 
 import zmq
 from logzero import logger
 
+from ..mission_config import MissionConfig
 from ..ports import S2H_PORT
 from ..proto.messages_pb2 import SendTiles
+from .typing import MetaQueueType
 
 if TYPE_CHECKING:
     InboundQueueType = queue.PriorityQueue[
@@ -21,7 +26,9 @@ if TYPE_CHECKING:
 
 
 class InboundProcess:
-    def __init__(self, tile_dir: Path, meta_dir: Path, configuration: dict) -> None:
+    def __init__(
+        self, tile_dir: Path, meta_dir: Path, configuration: MissionConfig
+    ) -> None:
         self._tile_dir = tile_dir
         self._meta_dir = meta_dir
         self._token = False
@@ -42,12 +49,12 @@ class InboundProcess:
             self._sample_count = 0
             self._rotation_mode = selector_field["token"]["rotation"]
             self._global_priority_queue: InboundQueueType = queue.PriorityQueue()
-            self._per_scout_priority_queues: List[InboundQueueType] = []
+            self._per_scout_priority_queues: list[InboundQueueType] = []
             for _i in range(self._num_scouts):
                 self._per_scout_priority_queues.append(queue.PriorityQueue())
         # ---
 
-    def receive_data(self, result_q, stop_event):
+    def receive_data(self, result_q: MetaQueueType, stop_event: Event) -> None:
         context = zmq.Context()
         socket = context.socket(zmq.PULL)
         socket.bind(f"tcp://*:{S2H_PORT}")
@@ -64,7 +71,7 @@ class InboundProcess:
                 print(object_id, parent_scout)
                 data_name = f"{self._count:06}"
 
-                data = request.attributes
+                data = cast(Dict[str, bytes], request.attributes)
                 byte_size = request.ByteSize()
 
                 assert self._save_attribute in data
@@ -101,7 +108,7 @@ class InboundProcess:
                         if self._rotation_mode == "round-robin":
                             pri_q = self._per_scout_priority_queues
                         else:
-                            pri_q = self._global_priority_queue
+                            pri_q = [self._global_priority_queue]
                         token_th = threading.Thread(
                             target=self.token_thread,
                             args=(
@@ -120,7 +127,14 @@ class InboundProcess:
         except (Exception, KeyboardInterrupt) as e:
             logger.error(e)
 
-    def write_push(self, result_queue, temp_meta_data, data_name, data, local_counter):
+    def write_push(
+        self,
+        result_queue: MetaQueueType,
+        temp_meta_data: dict[str, Any],
+        data_name: str,
+        data: dict[str, bytes],
+        local_counter: int,
+    ) -> None:
         if self._token:
             data_name = f"{local_counter:06}"
         meta_path = self._meta_dir / f"{data_name}.json"
@@ -150,10 +164,17 @@ class InboundProcess:
             f" {temp_meta_data['score']}"
         )
         logger.info(f"SAVING TILES {tile_jpeg}")
-        result_queue.put(meta_path)
+        result_queue.put(str(meta_path))
         self._count += 1
 
-    def token_thread(self, pri_queue, result_queue, mode, data_name, stop_event):
+    def token_thread(
+        self,
+        pri_queue: list[InboundQueueType],
+        result_queue: MetaQueueType,
+        mode: str,
+        data_name: str,
+        stop_event: Event,
+    ) -> None:
         local_counter = 0
         local_sample_counter = 0
         while not stop_event.is_set():
@@ -165,8 +186,8 @@ class InboundProcess:
                     local_sample_counter += 1
                 else:
                     continue
-            elif self._rotation_mode == "top":
-                total_sample = pri_queue.get()
+            elif mode == "top":
+                total_sample = pri_queue[0].get()
             data = total_sample[2]
             meta_data = total_sample[1]
             # object_id = meta_data["objectId"]

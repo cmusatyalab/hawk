@@ -20,12 +20,13 @@ from .admin import Admin
 from .inbound import InboundProcess
 from .outbound import OutboundProcess
 from .script_labeler import ScriptLabeler
+from .typing import Labeler, LabelQueueType, MetaQueueType, StatsQueueType
 from .ui_labeler import UILabeler
 from .utils import define_scope, get_ip
 
 
 # Usage: python -m hawk.home.home_main config/config.yml
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "config", type=Path, default=Path.cwd().joinpath("configs", "config.yml")
@@ -85,9 +86,9 @@ def main():
 
     processes = []
     stop_event = mp.Event()
-    meta_q = mp.Queue()
-    label_q = mp.Queue()
-    stats_q = mp.Queue()
+    meta_q: MetaQueueType = mp.Queue()
+    label_q: LabelQueueType = mp.Queue()
+    stats_q: StatsQueueType = mp.Queue()
     stats_q.put((0, 0, 0))
 
     try:
@@ -130,7 +131,7 @@ def main():
             label_mode = "detect"
 
         if labeler == "script":
-            home_labeler = ScriptLabeler(label_dir, config, gt_dir, label_mode)
+            home_labeler: Labeler = ScriptLabeler(label_dir, config, gt_dir, label_mode)
         elif labeler == "ui" or labeler == "browser":
             home_labeler = UILabeler(mission_dir)
         else:

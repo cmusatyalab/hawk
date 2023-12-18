@@ -2,20 +2,25 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import json
 import queue
 import time
+from multiprocessing.synchronize import Event
 from pathlib import Path
-from typing import Dict
 
 from logzero import logger
 
+from ..mission_config import MissionConfig
+from .typing import Labeler, LabelQueueType, MetaQueueType, StatsQueueType
 
-class ScriptLabeler:
+
+class ScriptLabeler(Labeler):
     def __init__(
         self,
         label_dir: Path,
-        configuration: Dict,
+        configuration: MissionConfig,
         gt_path: str = "",
         label_mode: str = "classify",
     ) -> None:
@@ -41,7 +46,13 @@ class ScriptLabeler:
         else:
             raise NotImplementedError(f"Labeling mode not known {label_mode}")
 
-    def start_labeling(self, input_q, result_q, stats_q, stop_event):
+    def start_labeling(
+        self,
+        input_q: MetaQueueType,
+        result_q: LabelQueueType,
+        stats_q: StatsQueueType,
+        stop_event: Event,
+    ) -> None:
         self.input_q = input_q
         self.result_q = result_q
         self.stop_event = stop_event
@@ -56,14 +67,14 @@ class ScriptLabeler:
         except KeyboardInterrupt as e:
             raise e
 
-    def classify(self):
+    def classify(self) -> None:
         # Object ID contains label
         # if /1/ in Id then label = 1 else 0
         try:
             while not self.stop_event.is_set():
                 try:
                     # get the meta path for the next sample to label
-                    meta_path = self.input_q.get()
+                    meta_path = Path(self.input_q.get())
                     self.received_samples += 1
                 except queue.Empty:
                     continue
@@ -98,7 +109,7 @@ class ScriptLabeler:
                 with open(label_path, "w") as f:
                     json.dump(label, f)
 
-                self.result_q.put(label_path)
+                self.result_q.put(str(label_path))
                 logger.info(
                     "({}, {}) Labeled {}".format(
                         self.positives, self.negatives, data["objectId"]
@@ -108,13 +119,13 @@ class ScriptLabeler:
         except (OSError, KeyboardInterrupt) as e:
             logger.error(e)
 
-    def detect(self):
+    def detect(self) -> None:
         assert self._gt_path.exists(), "GT Dir does not exist"
         # Takes labels from file: _gt_path/<basename>.txt
         try:
             while not self.stop_event.is_set():
                 try:
-                    meta_path = self.input_q.get()
+                    meta_path = Path(self.input_q.get())
                 except queue.Empty:
                     continue
 
@@ -154,7 +165,7 @@ class ScriptLabeler:
                 with open(label_path, "w") as f:
                     json.dump(label, f)
 
-                self.result_q.put(label_path)
+                self.result_q.put(str(label_path))
                 logger.info(
                     "({}, {}) Labeled {}".format(
                         self.positives, self.negatives, data["objectId"]

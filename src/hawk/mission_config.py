@@ -1,9 +1,11 @@
 # SPDX-FileCopyrightText: 2023 Carnegie Mellon University
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import yaml
 
@@ -14,23 +16,23 @@ from .deploy_config import DeployConfig
 class MissionConfig:
     """Class representing a Hawk mission configuration."""
 
-    config: Dict[str, Any]
+    config: dict[str, Any]
     deploy: DeployConfig
 
     # helpers to transition from dict to class
-    def __getitem__(self, key) -> Any:
+    def __getitem__(self, key: str) -> Any:
         return self.config[key]
 
-    def __setitem__(self, key, value) -> None:
+    def __setitem__(self, key: str, value: Any) -> None:
         self.config[key] = value
 
-    def get(self, key, default=None) -> Any:
+    def get(self, key: str, default: Any = None) -> Any:
         return self.config.get(key, default)
 
     @property
-    def scouts(self) -> List[str]:
+    def scouts(self) -> list[str]:
         if "scouts" in self.config:
-            return self.config["scouts"]
+            return [str(scout) for scout in self.config["scouts"]]
         return [scout.host for scout in self.deploy.scouts]
 
 

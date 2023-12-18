@@ -5,14 +5,18 @@
 """Home Outbound process: sending labels from HOME to SCOUTS
 """
 
+from __future__ import annotations
+
 import json
 import queue
+from multiprocessing.synchronize import Event
 
 import zmq
 from logzero import logger
 
 from ..proto import Empty
 from ..proto.messages_pb2 import LabelWrapper, SendLabels
+from .typing import LabelQueueType
 
 
 class OutboundProcess:
@@ -33,7 +37,13 @@ class OutboundProcess:
                 f"Training Location {train_location} Not Implemented"
             )
 
-    def send_labels(self, scout_ips, h2c_port, result_q, stop_event):
+    def send_labels(
+        self,
+        scout_ips: list[str],
+        h2c_port: int,
+        result_q: LabelQueueType,
+        stop_event: Event,
+    ) -> None:
         """API call to send messages from Home to Scouts"""
 
         self.scout_ips = scout_ips
@@ -52,7 +62,7 @@ class OutboundProcess:
         except KeyboardInterrupt as e:
             raise e
 
-    def scout_send_labels(self):
+    def scout_send_labels(self) -> tuple[bytes, list[int | None]]:
         """Function to serialize labels for transmission"""
         msg = Empty
         scout_index = None

@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import base64
 import io
 import json
@@ -15,10 +17,10 @@ import threading
 from datetime import datetime
 from pathlib import Path
 from pprint import pprint
-from typing import Any, Dict, Iterable
+from typing import Any, Iterable
 
 import zmq
-from flask import Flask, jsonify, make_response, request
+from flask import Flask, Response, jsonify, make_response, request
 from logzero import logger
 from PIL import Image
 
@@ -27,16 +29,17 @@ from ..ports import H2A_PORT
 from .admin import Admin
 from .inbound import InboundProcess
 from .outbound import OutboundProcess
+from .typing import LabelQueueType, MetaQueueType, StatsQueueType
 from .utils import define_scope, get_ip
 
 REMOTE_USER = "root"
 CONFIG = Path.home().joinpath(".hawk", "config.yml")  # PUT this in ~/.hawk
 home_path = Path(__file__).resolve().parent
-app_data: Dict[str, Any] = {}
+app_data: dict[str, Any] = {}
 app = Flask(__name__)
 
 
-def restart_scouts(scouts: Iterable[str]):
+def restart_scouts(scouts: Iterable[str]) -> None:
     host_file = home_path / "hosts"
     host_file.write_text("\n".join(scouts))
     restart_file = home_path / "scout-restart.sh"
@@ -45,10 +48,9 @@ def restart_scouts(scouts: Iterable[str]):
         -l {REMOTE_USER} -P -I<{restart_file} > /dev/null"
     os.system(scout_startup_cmd)
     logger.info("Restarting scouts")
-    return
 
 
-def stop_mission():
+def stop_mission() -> None:
     global app_data
 
     if "started" in app_data:
@@ -64,15 +66,14 @@ def stop_mission():
             p.terminate()
 
     app_data = {}
-    return
 
 
-def handler_signals(signum, frame):
+def handler_signals(signum: int, frame: Any) -> None:
     stop_mission()
     sys.exit(0)
 
 
-def get_results():
+def get_results() -> None:
     result_cmd = shlex.join(
         [
             sys.executable,
@@ -83,10 +84,9 @@ def get_results():
     )
     logger.info(result_cmd)
     os.system(result_cmd)
-    return
 
 
-def configure_mission(filter_config):
+def configure_mission(filter_config: dict[str, Any]) -> None:
     # Stop previous missions
     stop_mission()
 
@@ -151,15 +151,14 @@ def configure_mission(filter_config):
     mission_dir = mission_dir / mission_id
     logger.info(mission_dir)
 
-    global log_dir
     log_dir = mission_dir / "logs"
     config["home-params"]["log_dir"] = str(log_dir)
 
-    global meta_dir, label_dir
     image_dir = mission_dir / "images"
     meta_dir = mission_dir / "meta"
     label_dir = mission_dir / "labels"
 
+    app_data["log-dir"] = log_dir
     app_data["image-dir"] = image_dir
     app_data["meta-dir"] = meta_dir
     app_data["label-dir"] = label_dir
@@ -182,11 +181,12 @@ def configure_mission(filter_config):
     processes = []
     stop_event = mp.Event()
 
-    meta_q = mp.Queue()
-    global label_q
-    label_q = mp.Queue()
-    stats_q = mp.Queue()
+    meta_q: MetaQueueType = mp.Queue()
+    label_q: LabelQueueType = mp.Queue()
+    stats_q: StatsQueueType = mp.Queue()
     stats_q.put((0, 0, 0))
+
+    app_data["label-queue"] = label_q
 
     thread = threading.Thread(target=get_results)
     thread.start()
@@ -251,16 +251,19 @@ def configure_mission(filter_config):
 
 
 @app.route("/hawk_push_labels", methods=["POST"])
-def label_Sample():
+def label_Sample() -> tuple[str, int]:
     label_nums = {"positive": "1", "negative": "0"}
     print("In label function...")
-    request_data = request.data  # getting the response data
-    request_data = json.loads(request_data.decode("utf-8"))
+    request_data = json.loads(request.data.decode("utf-8"))
     # label_sign = request_data['label_sign']
     # image_strings = request_data['label_strings']
     for key, val in request_data.items():
         print(key, val)
     # response = f'{label_sign}'
+
+    meta_dir = app_data["meta-dir"]
+    label_dir = app_data["label-dir"]
+    label_q = app_data["label-queue"]
     for sample, label in request_data.items():
         print(sample)
         tile_index = sample.split("/")[-1].split(".")[0]
@@ -289,22 +292,22 @@ def label_Sample():
 
 
 @app.errorhandler(500)
-def internal_error(error):
+def internal_error(error: Any) -> str:
     return "500 error"
 
 
 @app.route("/get_stats", methods=["GET"])
-def get_stat():
+def get_stat() -> Response:
     print("In stats_function...")
     # request_data = request.data #getting the response data
     # request_data = json.loads(request_data.decode('utf-8'))
     # label_sign = request_data['label_sign']
     # image_strings = request_data['label_strings']
-    logs = os.listdir(log_dir)
-    json_logs = [log for log in logs if log.endswith(".json")]
+    log_dir = app_data["log-dir"]
+    json_logs = [log for log in log_dir.iterdir() if log.suffix == ".json"]
     index = len(json_logs)
     file_name = f"stats-{index:06d}.json"
-    with open(os.path.join(log_dir, file_name)) as f:
+    with open(log_dir / file_name) as f:
         data = json.load(f)
     print(file_name)
     print(data)
@@ -314,11 +317,10 @@ def get_stat():
 
 
 @app.route("/start", methods=["POST"])
-def startMission():
+def startMission() -> Response:
     print("In start mission...")
     name_dict = {"fsl": "fsl", "hawk": "dnn_classifier"}
-    request_data = request.data  # getting the response data
-    request_data = json.loads(request_data.decode("utf-8"))
+    request_data = json.loads(request.data.decode("utf-8"))
     print(request_data["name"])
     request_data["name"] = name_dict[request_data["name"]]
     configure_mission(request_data)
@@ -350,9 +352,8 @@ def startMission():
 
 
 @app.route("/stop", methods=["POST"])
-def stopMission():
-    request_data = request.data
-    request_data = json.loads(request_data.decode("utf-8"))
+def stopMission() -> tuple[str, int]:
+    request_data = json.loads(request.data.decode("utf-8"))
     name = request_data["name"]
     logger.info(f"stop mission {name}")
     if "home-admin" in app_data:
