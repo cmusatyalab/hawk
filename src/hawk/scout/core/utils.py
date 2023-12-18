@@ -91,7 +91,7 @@ class BaseImageFromList(Dataset[T]):  # type: ignore[misc]
         self.transform = transform
 
         def target_transform(x: Path) -> int:
-            return 1 if "1" in x.parents else 0
+            return 1 if "1" in x.parts[:-1] else 0
 
         labels = [target_transform(path) for path in image_list]
         self.classes = sorted(set(labels))
