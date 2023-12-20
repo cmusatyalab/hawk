@@ -192,7 +192,7 @@ class YOLOModel(ModelBase):
                     predictions.append(prediction[i])
 
         callback_fn(targets, predictions)
-        return
+        raise Exception("ERROR: yolo.model.evaluate_model should return TestResults")
 
     def evaluate_model(self, test_path: Path) -> TestResults:
         def calculate_performance(
@@ -200,7 +200,6 @@ class YOLOModel(ModelBase):
         ) -> float:
             return cast(float, average_precision_score(y_true, y_pred, average=None))
 
-        # raise Exception(f"ERROR: yolo.model.evaluate_model should return TestResults")
         return self.infer_dir(test_path, calculate_performance)
 
     def _process_batch(

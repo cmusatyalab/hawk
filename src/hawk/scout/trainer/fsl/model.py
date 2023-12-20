@@ -201,8 +201,7 @@ class FSLModel(ModelBase):
                 yield ResultProvider(batch[i][0], score, self.version)
 
     def evaluate_model(self, test_path: Path) -> TestResults:
-        # raise Exception(f"ERROR: fsl.model.evaluate_model not implemented")
-        return
+        raise Exception("ERROR: fsl.model.evaluate_model not implemented")
 
     def stop(self) -> None:
         logger.info(f"Stopping model of version {self.version}")
