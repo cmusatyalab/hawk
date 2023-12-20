@@ -9,7 +9,7 @@ cmd = "poetry build"
 help = "Manually run pre-commit jobs"
 sequence = [
     "pre-commit run -a",
-    #"mypy",
+    "mypy",
 ]
 default_item_type = "cmd"
 
