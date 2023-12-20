@@ -29,7 +29,7 @@ from ..ports import H2A_PORT
 from .admin import Admin
 from .inbound import InboundProcess
 from .outbound import OutboundProcess
-from .typing import LabelQueueType, MetaQueueType, StatsQueueType
+from .typing import LabelQueueType, LabelStats, MetaQueueType
 from .utils import define_scope, get_ip
 
 REMOTE_USER = "root"
@@ -183,8 +183,7 @@ def configure_mission(filter_config: dict[str, Any]) -> None:
 
     meta_q: MetaQueueType = mp.Queue()
     label_q: LabelQueueType = mp.Queue()
-    stats_q: StatsQueueType = mp.Queue()
-    stats_q.put((0, 0, 0))
+    labelstats = LabelStats()
 
     app_data["label-queue"] = label_q
 
@@ -204,7 +203,7 @@ def configure_mission(filter_config: dict[str, Any]) -> None:
         home_admin = Admin(home_ip, mission_id)  # , explicit_start=True)
         p = mp.Process(
             target=home_admin.receive_from_home,
-            kwargs={"stop_event": stop_event, "stats_q": stats_q},
+            kwargs={"stop_event": stop_event, "labelstats": labelstats},
         )
         app_data["home-admin"] = home_admin
         processes.append(p)

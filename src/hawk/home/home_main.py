@@ -20,7 +20,7 @@ from .admin import Admin
 from .inbound import InboundProcess
 from .outbound import OutboundProcess
 from .script_labeler import ScriptLabeler
-from .typing import Labeler, LabelQueueType, MetaQueueType, StatsQueueType
+from .typing import Labeler, LabelQueueType, LabelStats, MetaQueueType
 from .ui_labeler import UILabeler
 from .utils import define_scope, get_ip
 
@@ -88,8 +88,7 @@ def main() -> None:
     stop_event = mp.Event()
     meta_q: MetaQueueType = mp.Queue()
     label_q: LabelQueueType = mp.Queue()
-    stats_q: StatsQueueType = mp.Queue()
-    stats_q.put((0, 0, 0))
+    labelstats = LabelStats()
 
     try:
         # Starting home to admin conn
@@ -104,7 +103,7 @@ def main() -> None:
         home_admin = Admin(home_ip, mission_id)
         p = mp.Process(
             target=home_admin.receive_from_home,
-            kwargs={"stop_event": stop_event, "stats_q": stats_q},
+            kwargs={"stop_event": stop_event, "labelstats": labelstats},
         )
         processes.append(p)
         p.start()
@@ -142,7 +141,7 @@ def main() -> None:
             kwargs={
                 "input_q": meta_q,
                 "result_q": label_q,
-                "stats_q": stats_q,
+                "labelstats": labelstats,
                 "stop_event": stop_event,
             },
         )

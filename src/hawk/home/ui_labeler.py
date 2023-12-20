@@ -27,7 +27,7 @@ from flask.typing import ResponseReturnValue
 from logzero import logger
 from werkzeug import Response as WerkzeugResponse
 
-from .typing import Labeler, LabelQueueType, MetaQueueType, StatsQueueType
+from .typing import Labeler, LabelQueueType, LabelStats, MetaQueueType
 
 
 @dataclass
@@ -103,13 +103,13 @@ class UILabeler(Labeler):
         self,
         input_q: MetaQueueType,
         result_q: LabelQueueType,
-        stats_q: StatsQueueType,
+        labelstats: LabelStats,
         stop_event: Event,
     ) -> None:
         self.input_q = input_q
         self.result_q = result_q
         self.stop_event = stop_event
-        self.stats_q = stats_q
+        self.labelstats = labelstats
         self.positives = 0
         self.negatives = 0
         self.bytes = 0
@@ -121,7 +121,7 @@ class UILabeler(Labeler):
 
     def run(self) -> None:
         self.result_q = mp.Queue()
-        self.stats_q = mp.Queue()
+        self.labelstats = LabelStats()
         self.positives = 0
         self.negatives = 0
         self.bytes = 0
@@ -295,7 +295,7 @@ class UILabeler(Labeler):
                 self.positives, self.negatives, data["objectId"]
             )
         )
-        self.stats_q.put((self.positives, self.negatives, self.bytes))
+        self.labelstats.update(self.positives, self.negatives, self.bytes)
         self.label_changed = False
 
     def save(self) -> WerkzeugResponse:

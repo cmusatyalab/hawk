@@ -8,7 +8,6 @@ import base64
 import io
 import json
 import os
-import queue
 import socket
 import threading
 import time
@@ -43,7 +42,7 @@ from ..proto.messages_pb2 import (
     TopKConfig,
     TrainConfig,
 )
-from .typing import StatsQueueType
+from .typing import LabelStats
 
 LOG_INTERVAL = 15
 
@@ -54,14 +53,14 @@ class Admin:
     ) -> None:
         self._home_ip = home_ip
         self._start_event = threading.Event()
-        self.last_stats = (0, 0, 0)
+        self.last_stats = LabelStats()
         self._mission_id = mission_id
         self.explicit_start = explicit_start
         self.scout_stubs: dict[int, zmq.Socket[Literal[zmq.SocketType.REP]]] = {}
         self.test_path = ""
 
-    def receive_from_home(self, stop_event: Event, stats_q: StatsQueueType) -> None:
-        self.stats_q = stats_q
+    def receive_from_home(self, stop_event: Event, labelstats: LabelStats) -> None:
+        self.labelstats = labelstats
         self.stop_event = stop_event
 
         # Bind H2A Server
@@ -423,20 +422,12 @@ class Admin:
         try:
             while not self.stop_event.is_set():
                 stats = self.accumulate_mission_stats()
-                last_stats = None
-                while True:
-                    try:
-                        last_stats = self.stats_q.get_nowait()
-                    except queue.Empty:
-                        break
 
-                if last_stats is None:
-                    last_stats = self.last_stats
-                else:
-                    self.last_stats = last_stats
-                keys = ["positives", "negatives", "bytes"]
-                for key, value in zip(keys, last_stats):
-                    stats[key] = value
+                self.labelstats.resync()
+
+                stats["positives"] = self.labelstats.positives
+                stats["negatives"] = self.labelstats.negatives
+                stats["bytes"] = self.labelstats.total_bytes
 
                 log_path = self.log_dir / f"stats-{count:06}.json"
                 with open(log_path, "w") as f:
