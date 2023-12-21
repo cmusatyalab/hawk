@@ -40,15 +40,12 @@ class HawkAttributeProvider(AttributeProvider):
         self.thumbnail_size = (256, 256)
         self.resize = resize
         self._image_provider = image_provider
-        self.thumbnail = io.BytesIO()
-        self.set_thumbnail()
 
-    def set_thumbnail(self) -> None:
+        self.thumbnail = io.BytesIO()
         image = Image.open(self._image_provider).convert("RGB")
         image = image.copy()
         if self.resize:
             image.resize(self.thumbnail_size)
-        self.thumbnail = io.BytesIO()
         image.save(self.thumbnail, "JPEG")
 
     def get_image(self) -> Image.Image:

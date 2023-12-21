@@ -122,7 +122,7 @@ class BaseImageFromList(Dataset[T]):  # type: ignore[misc]
 
     def image_loader(self, path: Path) -> Image.Image:
         try:
-            image = Image.open(str(path)).convert("RGB")
+            image = Image.open(path).convert("RGB")
         except Exception as e:
             logger.error(e)
             logger.error(path)

@@ -66,7 +66,6 @@ class RandomRetriever(Retriever):
                 )
             )
             for tile in tiles:
-                tmpfile = io.BytesIO()
                 parts = tile.split()
                 if len(parts) == 1:
                     image_path = parts[0]
@@ -78,6 +77,8 @@ class RandomRetriever(Retriever):
                 object_id = f"/{label}/collection/id/" + str(image_path)
 
                 image_path = self._data_root / image_path
+
+                tmpfile = io.BytesIO()
                 image = Image.open(image_path).convert("RGB")
                 image.save(tmpfile, format="JPEG", quality=85)
                 content = tmpfile.getvalue()

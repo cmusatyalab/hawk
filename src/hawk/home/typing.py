@@ -6,13 +6,14 @@ from __future__ import annotations
 
 import queue
 from dataclasses import dataclass
-from multiprocessing.queues import Queue
+from multiprocessing import Queue
+from multiprocessing.queues import Queue as QueueType
 from multiprocessing.synchronize import Event
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    MetaQueueType = Queue[str]
-    LabelQueueType = Queue[str]
+    MetaQueueType = QueueType[str]
+    LabelQueueType = QueueType[str]
 else:
     MetaQueueType = Queue
     LabelQueueType = Queue
@@ -25,7 +26,7 @@ class LabelStats:
     total_bytes: int = 0  # sum of meta_data["size"]
 
     def __post_init__(self) -> None:
-        self.queue: Queue[tuple[int, int, int]] = Queue()
+        self.queue: QueueType[tuple[int, int, int]] = Queue()
 
     def update(self, positives: int, negatives: int, total_bytes: int) -> None:
         """Used in another thread to queue updated values"""
