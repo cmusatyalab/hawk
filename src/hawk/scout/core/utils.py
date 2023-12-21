@@ -115,7 +115,9 @@ class ImageFromList(torch.utils.data.Dataset):
     def image_loader(self, path):
         assert isinstance(path, str), f"Loader error {path}"
         try:
-            image = Image.open(path).convert("RGB")
+            if path.split('.')[-1] == 'npy':
+                image = np.load(path)
+            else: image = Image.open(path).convert("RGB")
         except Exception as e:
             logger.error(e)
             logger.error(path)
@@ -127,6 +129,12 @@ class ImageFromList(torch.utils.data.Dataset):
         impath = self.imlist[idx]
         target = self.targets[idx]
         img = self.loader(impath)
+        #if impath.endswith('.npy'):
+        #   img = torch.from_numpy(img)
+        img = img/np.max(img)
+        #logger.info("SHAPE OF ARRAY IS:{}".format(img.shape))
+        img = Image.fromarray((img*255).astype(np.uint8))
+        
         img = self.transform(img)
         return img, target
 
@@ -163,8 +171,8 @@ def get_server_ids():
     return list(names)
 
 
-def get_example_key(content) -> str:
-    return hashlib.sha1(content).hexdigest() + ".jpg"
+def get_example_key(content, extension=".jpg") -> str:
+    return hashlib.sha1(content).hexdigest() + extension  ## Will need to modify this in order to save the .npy file to scout dir
 
 
 def get_weights(targets: List[int], num_classes=2) -> List[int]:

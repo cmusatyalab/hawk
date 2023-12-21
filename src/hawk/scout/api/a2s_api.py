@@ -59,6 +59,7 @@ from ..selection.threshold_selector import ThresholdSelector
 from ..selection.token_selector import TokenSelector
 from ..selection.topk_selector import TopKSelector
 from ..trainer.dnn_classifier.trainer import DNNClassifierTrainer
+from ..trainer.dnn_classifier_radar.trainer import DNNClassifierTrainerRadar
 from ..trainer.fsl.trainer import FSLTrainer
 from ..trainer.yolo.trainer import YOLOTrainer
 
@@ -239,7 +240,10 @@ class A2SAPI:
 
         # Setting up mission trainer
         model = request.trainStrategy
-        if model.HasField("dnn_classifier"):
+        if model.HasField("dnn_classifier_radar"):
+            config = model.dnn_classifier_radar
+            trainer: ModelTrainer = DNNClassifierTrainerRadar(mission, dict(config.args))
+        elif model.HasField("dnn_classifier"):
             config = model.dnn_classifier
             trainer: ModelTrainer = DNNClassifierTrainer(mission, dict(config.args))
         elif model.HasField("yolo"):

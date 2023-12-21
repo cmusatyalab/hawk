@@ -78,9 +78,16 @@ class RandomRetriever(Retriever):
                 object_id = f"/{label}/collection/id/" + str(image_path)
 
                 image_path = self._data_root / image_path
-                image = Image.open(image_path).convert("RGB")
-                image.save(content, format="JPEG", quality=85)
-                content = content.getvalue()
+
+                ## if .npy extension
+                ## use content = np.load(image_path)
+                ## 
+                if str(image_path).split(".")[-1] == "npy":
+                    content = np.load(image_path)
+                else:
+                    image = Image.open(image_path).convert("RGB")
+                    image.save(content, format="JPEG", quality=85)
+                    content = content.getvalue()
 
                 attributes = self.set_tile_attributes(object_id, label)
                 self._stats.retrieved_tiles += 1

@@ -5,6 +5,9 @@
 import io
 from abc import ABCMeta, abstractmethod
 from typing import Dict, Mapping, Union
+from logzero import logger
+import numpy as np
+import pickle
 
 from PIL import Image
 
@@ -39,16 +42,24 @@ class HawkAttributeProvider(AttributeProvider):
         self.thumbnail_size = (256, 256)
         self.resize = resize
         self._image_provider = image_provider
+        self._is_npy = False
+        if str(self._image_provider).split(".")[-1] == "npy": 
+            self._is_npy = True
         self.thumbnail = None
         self.set_thumbnail()
 
     def set_thumbnail(self):
-        image = Image.open(self._image_provider).convert("RGB")
-        image = image.copy()
         self.thumbnail = io.BytesIO()
-        if self.resize:
-            image.resize(self.thumbnail_size)
-        image.save(self.thumbnail, "JPEG")
+        if self._is_npy:
+            arr = np.load(self._image_provider)
+            pickle.dump(arr, self.thumbnail)
+        else:
+            image = Image.open(self._image_provider).convert("RGB")
+            image = image.copy()
+            
+            if self.resize:
+                image.resize(self.thumbnail_size)
+            image.save(self.thumbnail, "JPEG")
         return
 
     def get_image(self):
@@ -64,10 +75,14 @@ class HawkAttributeProvider(AttributeProvider):
 
     def get(self) -> Mapping[str, bytes]:
         attributes = dict(self._attributes)
-
-        image = Image.open(self._image_provider).convert("RGB")
-        width, height = image.size
-
-        attributes["thumbnail.jpeg"] = self.thumbnail.getvalue()
+        if self._is_npy:
+            self.thumbnail.seek(0)
+            #image = pickle.load(self.thumbnail)
+            image = self.thumbnail.read()
+            attributes["thumbnail.jpeg"] = image
+        else:
+            image = Image.open(self._image_provider).convert("RGB")
+            width, height = image.size
+            attributes["thumbnail.jpeg"] = self.thumbnail.getvalue()
 
         return attributes

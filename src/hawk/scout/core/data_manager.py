@@ -37,6 +37,7 @@ class DataManager:
         self._tmp_dir.mkdir(parents=True, exist_ok=True)
         self._example_counts = defaultdict(int)
         self._validate = self._context.check_create_test()
+        self._is_npy = False
         bootstrap_zip = self._context.bootstrap_zip
         if bootstrap_zip is not None and len(bootstrap_zip):
             self.add_initial_examples(bootstrap_zip)
@@ -46,6 +47,7 @@ class DataManager:
         ).start()
         self._positives = 0
         self._negatives = 0
+        
 
     def get_example_directory(self, example_set: DatasetSplit) -> Path:
         return self._examples_dir / self._to_dir(example_set)
@@ -110,10 +112,11 @@ class DataManager:
             except ValueError:
                 return False
 
-        image_extensions = (".png", ".jpeg", ".jpg")
+        image_extensions = (".png", ".jpeg", ".jpg", ".npy")
         labels = []
         with zipfile.ZipFile(io.BytesIO(zip_content), "r") as zf:
             example_files = zf.namelist()
+            #logger.info("Exmaple file:".format(example_files))
             for filename in example_files:
                 basename = Path(filename).name
                 parent_name = Path(filename).parent.name
@@ -121,7 +124,13 @@ class DataManager:
                 if basename.endswith(image_extensions) and name_is_integer(parent_name):
                     label = str(parent_name)
                     content = zf.read(filename)
-                    example_file = get_example_key(content)
+                    #logger.info(f"FILE NAME: {filename}")
+                    if filename.split('.')[-1] == 'npy':
+                        example_file = get_example_key(content, extension='.npy')
+                        self._is_npy = True
+                        #logger.info("CHANGED NPY TO TRUE")
+                    else:
+                        example_file = get_example_key(content)
                     if self._validate and (
                         self._get_example_count(DatasetSplit.TEST, label)
                         * TRAIN_TO_TEST_RATIO
@@ -243,7 +252,12 @@ class DataManager:
 
             for example in examples:
                 obj = example.obj
-                example_file = get_example_key(obj.content)
+                if self._is_npy:
+                    #logger.info("SELF NPY IS TRUE!")
+                    example_file = get_example_key(obj.content, extension=".npy")
+                else:
+                    example_file = get_example_key(obj.content)
+                logger.info("EXAMPLE FILE: {}".format(example_file))
                 self._remove_old_paths(example_file, old_dirs)
 
                 label = example.label.imageLabel
@@ -258,6 +272,7 @@ class DataManager:
                     label_dir = self._staging_dir / example_subdir / label
                     label_dir.mkdir(parents=True, exist_ok=True)
                     example_path = label_dir / example_file
+                    #logger.info("EXAMPLE PATH: {}".format(example_path))
                     with example_path.open("wb") as f:
                         f.write(obj.content)
                     if bounding_boxes:
