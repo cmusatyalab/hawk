@@ -74,14 +74,17 @@ class RandomRetriever(Retriever):
                     image_path = parts[0]
                     label = parts[1]
 
-                object_id = f"/{label}/collection/id/" + str(image_path)
+                object_id = f"/{label}/collection/id/{image_path}"
 
                 image_path = self._data_root / image_path
 
-                tmpfile = io.BytesIO()
-                image = Image.open(image_path).convert("RGB")
-                image.save(tmpfile, format="JPEG", quality=85)
-                content = tmpfile.getvalue()
+                if image_path.suffix == ".npy":
+                    content = np.load(image_path)
+                else:
+                    tmpfile = io.BytesIO()
+                    image = Image.open(image_path).convert("RGB")
+                    image.save(tmpfile, format="JPEG", quality=85)
+                    content = tmpfile.getvalue()
 
                 attributes = self.set_tile_attributes(object_id, label)
                 self._stats.retrieved_tiles += 1

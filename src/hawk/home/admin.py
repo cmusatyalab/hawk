@@ -115,6 +115,18 @@ class Admin:
                     args=train_config.get("args", default_args),
                 )
             )
+        elif train_type == "dnn_classifier_radar":
+            default_args = {
+                "mode": "hawk",
+                "unfreeze_layers": "3",
+                "arch": "resnet50",
+                "online_epochs": "[[10,0],[15,100]]",
+            }
+            train_strategy = TrainConfig(
+                dnn_classifier_radar=ModelConfig(
+                    args=train_config.get("args", default_args),
+                )
+            )
         elif train_type == "yolo":
             default_args = {"mode": "hawk", "online_epochs": "[[10,0],[15,100]]"}
             train_strategy = TrainConfig(

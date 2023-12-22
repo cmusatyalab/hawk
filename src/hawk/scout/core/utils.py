@@ -2,14 +2,17 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import hashlib
 import socket
 import struct
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar, cast
+from typing import Any, Callable, Tuple, TypeVar, cast
 
 import numpy as np
+import numpy.typing as npt
 from logzero import logger
 from PIL import Image
 from torch.utils.data import Dataset
@@ -67,7 +70,7 @@ class Dict2Obj:
     Turns a dictionary into a class
     """
 
-    def __init__(self, dictionary: Dict[str, Any]) -> None:
+    def __init__(self, dictionary: dict[str, Any]) -> None:
         for key in dictionary:
             setattr(self, key, dictionary[key])
 
@@ -80,11 +83,11 @@ class BaseImageFromList(Dataset[T]):  # type: ignore[misc]
 
     def __init__(
         self,
-        image_list: List[Path],
+        image_list: list[Path],
         transform: Callable[[Image.Image], Image.Image],
-        label_list: Optional[List[int]] = None,
-        limit: Optional[int] = None,
-        loader: Optional[Callable[[Path], Image.Image]] = None,
+        label_list: list[int] | None = None,
+        limit: int | None = None,
+        loader: Callable[[Path], Image.Image] | None = None,
     ):
         self.loader = loader if loader is not None else self.image_loader
 
@@ -120,8 +123,11 @@ class BaseImageFromList(Dataset[T]):  # type: ignore[misc]
             f" Labels {set(self.targets)}"
         )
 
-    def image_loader(self, path: Path) -> Image.Image:
+    def image_loader(self, path: Path) -> Image.Image | npt.NDArray[Any]:
         try:
+            if path.suffix == ".npy":
+                return cast(npt.NDArray[Any], np.load(path))
+
             image = Image.open(path).convert("RGB")
         except Exception as e:
             logger.error(e)
@@ -134,10 +140,17 @@ class BaseImageFromList(Dataset[T]):  # type: ignore[misc]
 
 
 class ImageFromList(BaseImageFromList[Tuple[Image.Image, int]]):
-    def __getitem__(self, idx: int) -> Tuple[Image.Image, int]:
+    def __getitem__(self, idx: int) -> tuple[Image.Image, int]:
         impath = self.imlist[idx]
         target = self.targets[idx]
         img = self.loader(impath)
+        # if impath.endswith('.npy'):
+        #   img = torch.from_numpy(img)
+        if not isinstance(img, Image.Image):
+            img /= np.max(img)
+            # logger.info("SHAPE OF ARRAY IS:{}".format(img.shape))
+            img = Image.fromarray((img * 255).astype(np.uint8))
+
         img = self.transform(img)
         return img, target
 
@@ -147,23 +160,28 @@ class ImageWithPath(BaseImageFromList[Tuple[Path, Image.Image, int]]):
 
     def __init__(
         self,
-        image_list: List[Path],
+        image_list: list[Path],
         transform: Callable[[Image.Image], Image.Image],
-        label_list: Optional[List[int]] = None,
+        label_list: list[int] | None = None,
     ):
         self.img_paths = image_list
         super().__init__(image_list, transform, label_list)
 
-    def __getitem__(self, idx: int) -> Tuple[Path, Image.Image, int]:
+    def __getitem__(self, idx: int) -> tuple[Path, Image.Image, int]:
         path = self.img_paths[idx]
         impath = self.imlist[idx]
         img = self.loader(impath)
+        if not isinstance(img, Image.Image):
+            img /= np.max(img)
+            # logger.info("SHAPE OF ARRAY IS:{}".format(img.shape))
+            img = Image.fromarray((img * 255).astype(np.uint8))
+
         img = self.transform(img)
         label = self.targets[idx]
         return path, img, label
 
 
-def get_server_ids() -> List[str]:
+def get_server_ids() -> list[str]:
     names = set()
     hostname = socket.getfqdn()
     try:
@@ -179,11 +197,13 @@ def get_server_ids() -> List[str]:
     return list(names)
 
 
-def get_example_key(content: bytes) -> str:
-    return hashlib.sha1(content).hexdigest() + ".jpg"
+def get_example_key(content: bytes, extension: str = ".jpg") -> str:
+    return (
+        hashlib.sha1(content).hexdigest() + extension
+    )  # Will need to modify this in order to save the .npy file to scout dir
 
 
-def get_weights(targets: List[int], num_classes: int = 2) -> List[float]:
+def get_weights(targets: list[int], num_classes: int = 2) -> list[float]:
     class_weights = [0.0] * num_classes
     classes, counts = np.unique(targets, return_counts=True)
     for class_id, count in zip(classes, counts):

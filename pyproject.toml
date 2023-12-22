@@ -80,8 +80,8 @@ hawk_scout = "hawk.scout.server_main:main"
 target-version = ["py38"]
 extend-exclude = '''
 (
-  ^/src/hawk/scout/trainer/yolo/yolov5/ # exclude yolov5 code
-| .*_pb2.pyi?                       # exclude protobuf stubs
+  ^/src/hawk/scout/trainer/yolo.*/yolov5.*/ # exclude yolov5 code
+| .*_pb2.pyi?                               # exclude protobuf stubs
 )
 '''
 
@@ -91,12 +91,13 @@ profile = "black"
 skip_glob = [
     "src/hawk/proto/*",
     "src/hawk/scout/trainer/yolo/yolov5/*",
+    "src/hawk/scout/trainer/yolo_radar/yolov5_radar/*",
 ]
 
 [tool.mypy]
 strict = true
 files = ["src"]
-exclude = "^src/hawk/scout/trainer/(few_shot/|yolo/yolov5/)"
+exclude = "^src/hawk/scout/trainer/(few_shot/|yolo.*/yolov5.*/)"
 
 [[tool.mypy.overrides]]
 # ignore missing type hints errors from untyped modules

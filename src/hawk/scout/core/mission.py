@@ -451,6 +451,8 @@ class Mission(DataManagerContext, ModelContext):
         try:
             while True:  # not self._abort_event.is_set():
                 result = self.selector.get_result()
+                # logger.info("Successfully reutrned result to mission.py...")
+                # logger.info("Attributes".format(result.attributes.get()))
                 if result is None:
                     break
                 tile = SendTiles(
@@ -460,7 +462,9 @@ class Mission(DataManagerContext, ModelContext):
                     version=result.model_version,
                     attributes=result.attributes.get(),
                 )
+                # logger.info("Successfully created the tile message...")
                 pipe.send(tile.SerializeToString())
+                # logger.info("Successfully send over the pipe...")
         except Exception as e:
             logger.error(e)
             self.stop()
