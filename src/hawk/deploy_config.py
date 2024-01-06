@@ -32,6 +32,9 @@ class SshHost:
         port = "" if self.port == 22 else f":{self.port}"
         return f"{user}{self.host}{port}"
 
+    def __repr__(self) -> str:
+        return str(self)
+
     @classmethod
     def from_str(cls, ssh_host: str) -> "SshHost":
         user, host_port = ([None] + ssh_host.split("@", 1))[-2:]
@@ -53,7 +56,6 @@ class DeployConfig:
     """Class representing the deployment part of the Hawk config file."""
 
     scouts: List[SshHost]
-    dataset: Path
     scout_port: Optional[int] = None
     bandwidth: Optional[Bandwidth] = None
 

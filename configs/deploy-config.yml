@@ -1,0 +1,19 @@
+deploy:
+  scouts: # list of ssh [user@]host[:port] addresses for scouts
+    - hawk@agra.diamond.cs.cmu.edu
+    - hawk@briolette.diamond.cs.cmu.edu
+    - hawk@cullinan.diamond.cs.cmu.edu
+    - hawk@dresden.diamond.cs.cmu.edu
+    - hawk@indore.diamond.cs.cmu.edu
+    - hawk@kimberly.diamond.cs.cmu.edu
+    - host: patiala.diamond.cs.cmu.edu
+      user: hawk
+      port: 22
+    - host: transvaal.diamond.cs.cmu.edu
+      user: hawk
+  scout_port: 7700
+  #bandwidth:
+  #  scout2scout_speed: 1000 # speed in kbit/s
+  #  scout2client_speed: 100 # speed in kbit/s
+  #  scout2client_delay: 1000 # latency in ms
+  #bandwidth: 12k  # bandwidth preset (12k, 30k, 100k, 1M)

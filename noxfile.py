@@ -7,10 +7,12 @@
 #   pipx inject nox nox-poetry
 #   nox
 
+import nox
 from nox_poetry import session
 
 
 @session(python=["3.8", "3.9", "3.10"])
-def tests(session):
-    session.install("pytest", ".[home,scout]")
-    session.run("pytest")
+@nox.parametrize("component", ["deploy", "home", "scout"])
+def tests(session, component):
+    session.install(f".[{component}]", "pytest")
+    session.run("pytest", f"tests/test_entrypoints_{component}.py")

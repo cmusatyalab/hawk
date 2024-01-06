@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+import argparse
 import logging
 import signal
 import sys
@@ -42,9 +43,13 @@ def dumpstacks(_: Any, __: Any) -> None:
 
 @log_exceptions
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--a2s-port", type=int, default=A2S_PORT)
+    args = parser.parse_args()
+
     multiprocessing_logging.install_mp_handler()
 
-    learning_module_api = A2SAPI(A2S_PORT)
+    learning_module_api = A2SAPI(args.a2s_port)
     a2s_methods = {
         k.encode("utf-8"): getattr(learning_module_api, k)
         for k in dir(learning_module_api)
@@ -53,7 +58,7 @@ def main() -> None:
 
     context = zmq.Context()
     socket = context.socket(zmq.REP)
-    socket.bind(f"tcp://0.0.0.0:{A2S_PORT}")
+    socket.bind(f"tcp://0.0.0.0:{args.a2s_port}")
     logger.info("Starting Hawk server")
     try:
         while True:
