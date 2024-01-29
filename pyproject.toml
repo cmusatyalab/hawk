@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "hawk"
+name = "cmuhawk"
 version = "0.1.0"
 description = "Hawk: Low-Bandwidth Remote Sensing of Rare Events"
 authors = [
