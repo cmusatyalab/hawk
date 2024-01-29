@@ -21,6 +21,8 @@ def _start_hawk_scout(conn: ThreadingGroup, config: DeployConfig) -> None:
         [
             "tmux",
             "new-session",
+            "-s",
+            f"hawk_scout_{config.a2s_port}",
             "-d",
             "hawk-venv/bin/hawk_scout",
             "--a2s-port",
@@ -30,8 +32,16 @@ def _start_hawk_scout(conn: ThreadingGroup, config: DeployConfig) -> None:
     conn.run(cmd, hide="out", echo=True, warn=True, disown=True)
 
 
-def _stop_hawk_scout(conn: ThreadingGroup) -> None:
-    conn.run("killall hawk_scout", hide="both", warn=True, echo=True)
+def _stop_hawk_scout(conn: ThreadingGroup, config: DeployConfig) -> None:
+    cmd = shlex.join(
+        [
+            "tmux",
+            "kill-session",
+            "-t",
+            f"hawk_scout_{config.a2s_port}",
+        ],
+    )
+    conn.run(cmd, hide="both", echo=True, warn=True)
 
 
 def deploy(
@@ -40,7 +50,7 @@ def deploy(
     dist_requirements: Optional[Path] = None,
 ) -> int:
     with _connect(config) as c:
-        _stop_hawk_scout(c)
+        _stop_hawk_scout(c, config)
 
         # make sure venv exists
         cmd = shlex.join(
@@ -105,7 +115,7 @@ def deploy(
 def restart_deployment(config: DeployConfig) -> int:
     """Stop previously deployed scouts."""
     with _connect(config) as c:
-        _stop_hawk_scout(c)
+        _stop_hawk_scout(c, config)
         _start_hawk_scout(c, config)
     return 0
 
@@ -113,7 +123,7 @@ def restart_deployment(config: DeployConfig) -> int:
 def stop_deployment(config: DeployConfig) -> int:
     """Stop previously deployed scouts."""
     with _connect(config) as c:
-        _stop_hawk_scout(c)
+        _stop_hawk_scout(c, config)
     return 0
 
 
