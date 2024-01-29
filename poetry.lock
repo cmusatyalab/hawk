@@ -3235,11 +3235,10 @@ docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.link
 testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy (>=0.9.1)", "pytest-ruff"]
 
 [extras]
-deploy = ["decorator", "fabric"]
-home = ["flask", "logzero", "numpy", "pillow", "protobuf", "python-dateutil", "pyzmq", "websockets"]
+home = ["decorator", "fabric", "flask", "logzero", "numpy", "pillow", "protobuf", "python-dateutil", "pyzmq", "websockets"]
 scout = ["albumentations", "logzero", "lovely-tensors", "multiprocessing-logging", "numpy", "opencv-python-headless", "protobuf", "pyzmq", "scikit-learn", "tensorboard", "torch", "torchvision"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "8962f825cc18bbf3751f07fc2c5bf9bbfbd91d1ca25515e69c03524309778141"
+content-hash = "22dc6d97f8ca42589f225cea987596a6b92c549073303a68c715c996732f67e1"
