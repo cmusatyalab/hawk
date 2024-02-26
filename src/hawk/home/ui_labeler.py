@@ -27,7 +27,7 @@ from flask.typing import ResponseReturnValue
 from logzero import logger
 from werkzeug import Response as WerkzeugResponse
 
-from .typing import Labeler, LabelQueueType, LabelStats, MetaQueueType
+from .hawk_typing import Labeler, LabelQueueType, LabelStats, MetaQueueType
 
 
 @dataclass

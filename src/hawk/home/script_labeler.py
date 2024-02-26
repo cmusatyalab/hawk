@@ -14,7 +14,7 @@ from typing import Any, Literal
 from logzero import logger
 
 from ..mission_config import MissionConfig
-from .typing import Labeler, LabelQueueType, LabelStats, MetaQueueType
+from .hawk_typing import Labeler, LabelQueueType, LabelStats, MetaQueueType
 
 LabelClass = Literal["0", "1"]
 

@@ -42,7 +42,7 @@ from ..proto.messages_pb2 import (
     TopKConfig,
     TrainConfig,
 )
-from .typing import LabelStats
+from .hawk_typing import LabelStats
 
 LOG_INTERVAL = 15
 

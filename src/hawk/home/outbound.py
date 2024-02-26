@@ -16,7 +16,7 @@ from logzero import logger
 
 from ..proto import Empty
 from ..proto.messages_pb2 import LabelWrapper, SendLabels
-from .typing import LabelQueueType
+from .hawk_typing import LabelQueueType
 
 
 class OutboundProcess:

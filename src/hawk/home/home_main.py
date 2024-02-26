@@ -17,10 +17,10 @@ from logzero import logger
 from ..mission_config import load_config, write_config
 from ..ports import H2A_PORT
 from .admin import Admin
+from .hawk_typing import Labeler, LabelQueueType, LabelStats, MetaQueueType
 from .inbound import InboundProcess
 from .outbound import OutboundProcess
 from .script_labeler import ScriptLabeler
-from .typing import Labeler, LabelQueueType, LabelStats, MetaQueueType
 from .ui_labeler import UILabeler
 from .utils import define_scope, get_ip
 

@@ -17,7 +17,7 @@ from logzero import logger
 from ..mission_config import MissionConfig
 from ..ports import S2H_PORT
 from ..proto.messages_pb2 import SendTiles
-from .typing import MetaQueueType
+from .hawk_typing import MetaQueueType
 
 if TYPE_CHECKING:
     InboundQueueType = queue.PriorityQueue[
