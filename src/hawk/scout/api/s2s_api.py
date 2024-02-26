@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 import zmq
 from logzero import logger
 
-from ...ports import S2S_PORT
 from ...proto import Empty
 from ...proto.messages_pb2 import LabeledTile, LabelWrapper
 
@@ -22,7 +21,7 @@ if TYPE_CHECKING:
 
 
 def s2s_receive_request(
-    s2s_input: Queue[tuple[bytes, bytes]], s2s_output: Queue[bytes]
+    s2s_input: Queue[tuple[bytes, bytes]], s2s_output: Queue[bytes], s2s_port: int
 ) -> None:
     """Function to receive and invoke S2S api calls
 
@@ -37,7 +36,7 @@ def s2s_receive_request(
     """
     context = zmq.Context()
     socket = context.socket(zmq.REP)
-    socket.bind(f"tcp://0.0.0.0:{S2S_PORT}")
+    socket.bind(f"tcp://0.0.0.0:{s2s_port}")
     try:
         while True:
             method, req = socket.recv_multipart()

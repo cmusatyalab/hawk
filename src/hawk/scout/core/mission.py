@@ -140,7 +140,10 @@ class Mission(DataManagerContext, ModelContext):
 
         logger.info("SETTING UP H2C API")
         h2c_output, h2c_input = mp.Pipe(False)
-        p = mp.Process(target=H2CSubscriber.h2c_receive_labels, args=(h2c_input,))
+        h2c_port = port + 1
+        p = mp.Process(
+            target=H2CSubscriber.h2c_receive_labels, args=(h2c_input, h2c_port)
+        )
         self._label_thread = threading.Thread(
             target=self._get_labels, args=(h2c_output,), name="get-labels"
         )
@@ -148,11 +151,13 @@ class Mission(DataManagerContext, ModelContext):
         logger.info(f"SETTING UP S2S Server {self._scout_index}")
         s2s_input: mp.Queue[bytes] = mp.Queue()
         s2s_output: mp.Queue[bytes] = mp.Queue()
+        s2s_port = port + 2
         p = mp.Process(
             target=s2s_receive_request,
             args=(
                 s2s_input,
                 s2s_output,
+                s2s_port,
             ),
         )
         self._s2s_thread = threading.Thread(
