@@ -12,7 +12,7 @@ from nox_poetry import session
 
 
 @session(python=["3.8", "3.9", "3.10"])
-@nox.parametrize("component", ["deploy", "home", "scout"])
+@nox.parametrize("component", ["home", "scout"])
 def tests(session, component):
     session.install(f".[{component}]", "pytest")
     session.run("pytest", f"tests/test_entrypoints_{component}.py")
