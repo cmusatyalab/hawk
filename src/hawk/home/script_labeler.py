@@ -4,133 +4,114 @@
 
 from __future__ import annotations
 
-import json
-import queue
+import sys
 import time
-from multiprocessing.synchronize import Event
+from contextlib import suppress
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, List, Tuple, cast
 
+import pandas as pd
 from logzero import logger
 
-from ..mission_config import MissionConfig
-from .hawk_typing import Labeler, LabelQueueType, LabelStats, MetaQueueType
+from hawk.home.label_utils import MissionResults
 
-LabelClass = Literal["0", "1"]
+if TYPE_CHECKING:
+    from hawk.mission_config import MissionConfig
+
+BBoxes = List[Tuple[float, float, float, float]]
 
 
-class ScriptLabeler(Labeler):
-    def __init__(
-        self,
-        label_dir: Path,
-        configuration: MissionConfig,
-        gt_path: str = "",
-        label_mode: str = "classify",
-    ) -> None:
-        self._label_dir = label_dir
-        self._gt_path = Path(gt_path)
-        self._token = False
-        self._label_time = 0.0
-        # Token selector code to modify labeling process.
-        self.configuration = configuration
-        selector_field = self.configuration["selector"]
-        if selector_field["type"] == "token":
-            self._token = True
-            init_samples = selector_field["token"]["initial_samples"]
-            num_scouts = len(self.configuration.scouts)
-            self.total_init_samples = int(init_samples * int(num_scouts))
-            self._label_time = float(selector_field["token"]["label_time"])
-        ##########
+@dataclass
+class ScriptLabeler:
+    mission_dir: Path
+    label_time: float = 0.0
+    detect: bool = False
+    gt_path: Path | None = None
 
-        if label_mode == "classify":
-            self.labeling_func = self.classify
-        elif label_mode == "detect":
-            self.labeling_func = self.detect
-            assert self._gt_path.exists(), "GT Dir does not exist"
-        else:
-            raise NotImplementedError(f"Labeling mode not known {label_mode}")
+    def __post_init__(self) -> None:
+        if self.detect:
+            assert self.gt_path is not None, "Ground Truth directory not specified"
+            assert self.gt_path.exists(), "Ground Truth directory does not exist"
 
-    def start_labeling(
-        self,
-        input_q: MetaQueueType,
-        result_q: LabelQueueType,
-        labelstats: LabelStats,
-        stop_event: Event,
-    ) -> None:
-        self.input_q = input_q
-        self.result_q = result_q
-        self.labelstats = labelstats
-        self.positives = 0
-        self.negatives = 0
-        self.bytes = 0
-        self.received_samples = 0
+        self.labeling_func = self.classify_func if not self.detect else self.detect_func
 
-        try:
-            while not stop_event.is_set():
-                try:
-                    # get the meta path for the next sample to label
-                    meta_path = Path(self.input_q.get())
-                    self.received_samples += 1
-                except queue.Empty:
-                    continue
+    def classify_func(self, objectId: str) -> tuple[int, BBoxes]:
+        return 0 if objectId.startswith("/0/") else 1, []
 
-                logger.info(meta_path.name)
+    def detect_func(self, objectId: str) -> tuple[int, BBoxes]:
+        assert self.gt_path is not None
+        gt_name = Path(objectId).with_suffix(".txt").name
+        gt_file = self.gt_path / gt_name
+        if not gt_file.exists():
+            return 0, []
 
-                # get the data from the meta_data file
-                with open(meta_path) as f:
-                    data = json.load(f)
+        bounding_boxes = cast(
+            BBoxes,
+            [
+                tuple(float(c) for c in line.split(" ", 5)[1:])
+                for line in gt_file.read_text().splitlines()
+            ],
+        )
+        labelClass = 1 if len(bounding_boxes) else 0
+        return labelClass, bounding_boxes
 
-                image_label, bounding_boxes = self.labeling_func(data)
+    def run(self) -> None:
+        self.mission_data = MissionResults(self.mission_dir, sync_labels=True)
+        with suppress(KeyboardInterrupt):
+            logger.debug("Waiting for data to label")
+            for new_data in self.mission_data:
+                new_data = new_data[new_data.imageLabel.isna()]
+                logger.debug(f"Received {new_data.index.size} results to label")
+                self.label_data(new_data)
 
-                if image_label == "1":
-                    self.positives += 1
-                else:
-                    self.negatives += 1
+    def label_data(self, data: pd.DataFrame) -> None:
+        for index, objectId in data.objectId.items():
+            imageLabel, boundingBoxes = self.labeling_func(objectId)
 
-                self.bytes += data["size"]
+            new_label = pd.Series([imageLabel], index=[index], dtype=int)
+            # new_bboxes = pd.Series([boundingBoxes], index=[index])
 
-                label = {
-                    "objectId": data["objectId"],
-                    "scoutIndex": data["scoutIndex"],
-                    "imageLabel": image_label,
-                    "boundingBoxes": bounding_boxes,
-                }
+            time.sleep(self.label_time)
 
-                label_path = self._label_dir / f"{meta_path.name}"
-                with open(label_path, "w") as f:
-                    json.dump(label, f)
+            logger.info(f"Labeling {index:06} {imageLabel} {objectId}")
+            self.mission_data.save_new_labels(new_label)
 
-                self.result_q.put(str(label_path))
-                logger.info(
-                    "({}, {}) Labeled {}".format(
-                        self.positives, self.negatives, data["objectId"]
-                    )
-                )
-                self.labelstats.update(self.positives, self.negatives, self.bytes)
+    @classmethod
+    def from_mission_config(
+        cls,
+        config: MissionConfig,
+        mission_dir: Path,
+    ) -> ScriptLabeler:
+        label_time = 0.0
 
-        except (OSError, KeyboardInterrupt) as e:
-            logger.error(e)
+        selector = config.get("selector", {})
+        if selector.get("type") == "token":
+            label_time = float(selector["token"].get("label-time", 1.0))
 
-    def classify(self, data: dict[str, Any]) -> tuple[LabelClass, list[str]]:
-        # Object ID contains label
-        # if /1/ in Id then label = 1 else 0
+        trainer = (config["train_strategy"]["type"]).lower()
+        label_mode = "classify" if trainer != "yolo" else "detect"
 
-        time.sleep(self._label_time)
+        gt_dir = config["home-params"].get("label_dir", "")
 
-        image_label: LabelClass = "1" if "/1/" in data["objectId"] else "0"
+        return cls(mission_dir, label_time, label_mode == "detect", gt_dir)
 
-        return image_label, []
 
-    def detect(self, data: dict[str, Any]) -> tuple[LabelClass, list[str]]:
-        # Takes labels from file: _gt_path/<basename>.txt
+def main() -> int:
+    import argparse
 
-        basename = data["objectId"].split("/")[-1].split(".")[0]
-        label_file = self._gt_path / f"{basename}.txt"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--label-time", type=float, default=0.0)
+    parser.add_argument("--detect", action="store_true")
+    parser.add_argument("--gt-path", type=Path)
+    parser.add_argument("mission_directory", type=Path, nargs="?", default=".")
+    args = parser.parse_args()
 
-        bounding_boxes = []
-        if label_file.exists():
-            bounding_boxes = open(label_file).read().splitlines()
+    ScriptLabeler(
+        args.mission_directory, args.label_time, args.detect, args.gt_path
+    ).run()
+    return 0
 
-        image_label: LabelClass = "1" if len(bounding_boxes) else "0"
 
-        return image_label, bounding_boxes
+if __name__ == "__main__":
+    sys.exit(main())

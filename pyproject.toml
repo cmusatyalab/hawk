@@ -29,8 +29,11 @@ tqdm = "^4.66.1"
 decorator = { version = "^5.1.1", optional = true }
 fabric = { version = "^3.0.1", optional = true }
 flask = { version = "^2.2.3", optional = true }
+pandas = {version = "^2.0", optional = true}
 pillow = { version = "^9.5.0", optional = true }
 python-dateutil = { version = "^2.8.1", optional = true }
+streamlit = {version = "^1.30.0", optional = true, python = "!=3.9.7"}
+streamlit-autorefresh = { version = "^1.0.1", optional = true, python = "!=3.9.7" }
 websockets = { version = "^11.0.3", optional = true }
 
 # scout
@@ -63,9 +66,11 @@ priority = "explicit"
 home = [
     "decorator",
     "fabric",
-    "flask",
+    "pandas",
     "pillow",
     "python-dateutil",
+    "streamlit",
+    "streamlit-autorefresh",
     "websockets",
 ]
 scout = [
@@ -85,6 +90,7 @@ grpcio-tools = "~1.48.2"
 isort = "^5.12.0"
 mypy = "^1.2.0"
 mypy-protobuf = "^1.20"
+pandas-stubs = "^2.0"
 poethepoet = "^0.19.0"
 pre-commit = "^3.3.3"
 pytest = "^7.4.3"
@@ -100,8 +106,10 @@ types-tqdm = "^4.66.0.2"
 [tool.poetry.scripts]
 hawk_deploy = "hawk.deploy.__main__:main"
 hawk_flutter = "hawk.home.home_flutter:main"
+hawk_gui = "hawk.gui.__main__:main"
 hawk_home = "hawk.home.home_main:main"
 hawk_scout = "hawk.scout.server_main:main"
+hawk_script_labeler = "hawk.home.script_labeler:main"
 
 [tool.black]
 target-version = ["py38"]
@@ -136,6 +144,7 @@ module = [
     "logzero.*",
     "multiprocessing_logging.*",
     "sklearn.*",
+    "streamlit_autorefresh",
     "websockets.*",
 ]
 ignore_missing_imports = true

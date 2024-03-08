@@ -4,8 +4,6 @@
 
 import argparse
 import multiprocessing as mp
-import os
-import signal
 import socket
 import time
 from datetime import datetime
@@ -17,11 +15,10 @@ from logzero import logger
 from ..mission_config import load_config, write_config
 from ..ports import H2A_PORT
 from .admin import Admin
-from .hawk_typing import Labeler, LabelQueueType, LabelStats, MetaQueueType
+from .hawk_typing import LabelStats
 from .inbound import InboundProcess
 from .outbound import OutboundProcess
 from .script_labeler import ScriptLabeler
-from .ui_labeler import UILabeler
 from .utils import define_scope, get_ip
 
 
@@ -32,6 +29,13 @@ def main() -> None:
         "config", type=Path, default=Path.cwd().joinpath("configs", "config.yml")
     )
     args = parser.parse_args()
+
+    # handle running from existing mission directory
+    if args.config.is_dir():
+        mission_dir = args.config
+        args.config = mission_dir / "mission_config.yml"
+    else:
+        mission_dir = None
 
     config = load_config(args.config)
 
@@ -59,25 +63,26 @@ def main() -> None:
     ], f"Fireqos script may not exist for {bandwidth}"
     config["bandwidth"] = [f'[[-1, "{bandwidth}k"]]' for _ in scouts]
 
-    # create local directories
-    mission_dir = Path(config["home-params"]["mission_dir"])
-    mission_dir = mission_dir / mission_id
+    # create new mission directory if we've been started with a config.yml
+    if mission_dir is None:
+        mission_dir = Path(config["home-params"]["mission_dir"])
+        mission_dir = mission_dir / mission_id
     logger.info(mission_dir)
 
+    # create local directories
     log_dir = mission_dir / "logs"
     config["home-params"]["log_dir"] = str(log_dir)
     end_file = log_dir / "end"
 
-    image_dir = mission_dir / "images"
-    meta_dir = mission_dir / "meta"
-    label_dir = mission_dir / "labels"
-
     log_dir.mkdir(parents=True)
-    image_dir.mkdir(parents=True)
-    meta_dir.mkdir(parents=True)
-    label_dir.mkdir(parents=True)
 
-    # Save config file to log_dir
+    results_jsonl = mission_dir / "unlabeled.jsonl"
+    labeled_jsonl = mission_dir / "labeled.jsonl"
+
+    # Save final config file to log_dir
+    # this includes scope derived parameters, normalized bandwidth, and
+    # home-params.log_dir
+    # TODO some of this could move into initializers of a config dataclass
     config_path = log_dir / "hawk.yml"
     write_config(config, config_path)
 
@@ -86,8 +91,6 @@ def main() -> None:
 
     processes = []
     stop_event = mp.Event()
-    meta_q: MetaQueueType = mp.Queue()
-    label_q: LabelQueueType = mp.Queue()
     labelstats = LabelStats()
 
     try:
@@ -108,57 +111,42 @@ def main() -> None:
         processes.append(p)
         p.start()
 
+        # Start labeler process
+        labeler = config.get("label-mode", "ui")
+        if labeler == "script":
+            logger.info("Starting Labeler Process")
+            labeler = ScriptLabeler.from_mission_config(config, mission_dir)
+
+            p = mp.Process(target=labeler.run)
+            p.start()
+            processes.append(p)
+
         # Start inbound process
         logger.info("Starting Inbound Process")
-        home_inbound = InboundProcess(image_dir, meta_dir, config)
-        p = mp.Process(
-            target=home_inbound.receive_data,
-            kwargs={"result_q": meta_q, "stop_event": stop_event},
+        strategy = config.get("label-queue-strategy", "fifo")
+        label_queue_max = config.get("label-queue-max", 0)
+        label_sem = mp.BoundedSemaphore(label_queue_max) if label_queue_max else None
+        home_inbound = InboundProcess(
+            results_jsonl, strategy, len(config.deploy.scouts)
         )
-        processes.append(p)
-        p.start()
-
-        # Start labeler process
-        logger.info("Starting Labeler Process")
-        labeler = config.get("label-mode", "ui")
-        gt_dir = config["home-params"].get("label_dir", "")
-        trainer = (config["train_strategy"]["type"]).lower()
-        logger.info(f"Trainer {trainer}")
-        label_mode = "classify"
-
-        if trainer == "yolo":
-            label_mode = "detect"
-
-        if labeler == "script":
-            home_labeler: Labeler = ScriptLabeler(label_dir, config, gt_dir, label_mode)
-        elif labeler == "ui" or labeler == "browser":
-            home_labeler = UILabeler(mission_dir)
-        else:
-            raise NotImplementedError(f"Labeler {labeler} not implemented")
-
         p = mp.Process(
-            target=home_labeler.start_labeling,
-            kwargs={
-                "input_q": meta_q,
-                "result_q": label_q,
-                "labelstats": labelstats,
-                "stop_event": stop_event,
-            },
+            target=home_inbound.scout_to_labeler,
+            kwargs={"next_label": label_sem, "stop_event": stop_event},
         )
         p.start()
         processes.append(p)
 
         # start outbound process
         logger.info("Starting Outbound Process")
-        h2c_port = config.deploy.h2c_port
-        home_outbound = OutboundProcess()
+        home_outbound = OutboundProcess(
+            scout_ips, config.deploy.h2c_port, labeled_jsonl
+        )
         p = mp.Process(
-            target=home_outbound.send_labels,
+            target=home_outbound.labeler_to_scout,
             kwargs={
-                "scout_ips": scout_ips,
-                "h2c_port": h2c_port,
-                "result_q": label_q,
+                "next_label": label_sem,
                 "stop_event": stop_event,
+                "labelstats": labelstats,
             },
         )
         p.start()
@@ -176,6 +164,8 @@ def main() -> None:
             time.sleep(10)
 
         logger.info("Stop event is set")
+    except KeyboardInterrupt:
+        logger.info("Stopping mission")
     except BaseException as e:
         logger.error(e)
     finally:
@@ -184,8 +174,10 @@ def main() -> None:
         time.sleep(10)
         for p in processes:
             p.terminate()
-        pid = os.getpid()
-        os.kill(pid, signal.SIGKILL)
+        logger.info("Mission stopped")
+
+        # pid = os.getpid()
+        # os.kill(pid, signal.SIGKILL)
 
         # Uncomment to delete mission dir after mission
 

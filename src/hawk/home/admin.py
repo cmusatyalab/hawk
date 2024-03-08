@@ -12,9 +12,9 @@ import socket
 import threading
 import time
 from collections import defaultdict
-from multiprocessing.synchronize import Event
+from contextlib import suppress
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import zmq
 from google.protobuf.json_format import MessageToDict
@@ -44,6 +44,9 @@ from ..proto.messages_pb2 import (
 )
 from .hawk_typing import LabelStats
 
+if TYPE_CHECKING:
+    from multiprocessing.synchronize import Event
+
 LOG_INTERVAL = 15
 
 
@@ -60,25 +63,27 @@ class Admin:
         self.test_path = ""
 
     def receive_from_home(self, stop_event: Event, labelstats: LabelStats) -> None:
-        self.labelstats = labelstats
-        self.stop_event = stop_event
+        with suppress(KeyboardInterrupt):
+            self.labelstats = labelstats
+            self.stop_event = stop_event
 
-        # Bind H2A Server
-        context = zmq.Context()
-        socket = context.socket(zmq.REP)
-        socket.bind(f"tcp://127.0.0.1:{H2A_PORT}")
+            # Bind H2A Server
+            context = zmq.Context()
+            socket = context.socket(zmq.REP)
+            socket.bind(f"tcp://127.0.0.1:{H2A_PORT}")
 
-        while not stop_event.is_set():
-            msg_string = socket.recv_string()
-            header, body = msg_string.split()
-            socket.send_string("RECEIVED")
+            while not stop_event.is_set():
+                msg_string = socket.recv_string()
+                header, body = msg_string.split()
+                socket.send_string("RECEIVED")
 
-            if header == "config":
-                config_path = Path(body)
-                config = load_config(config_path)
-                self._setup_mission(config)
-            else:
-                raise NotImplementedError(f"Unknown header {header}")
+                if header == "config":
+                    config_path = Path(body)
+                    config = load_config(config_path)
+                    self._setup_mission(config)
+                else:
+                    msg = f"Unknown header {header}"
+                    raise NotImplementedError(msg)
 
     def _setup_mission(self, config: MissionConfig) -> None:
         self._mission_name = config["mission-name"]
@@ -155,7 +160,8 @@ class Admin:
                 )
             )
         else:
-            raise NotImplementedError(f"Unknown train strategy {train_type}")
+            errmsg = f"Unknown train strategy {train_type}"
+            raise NotImplementedError(errmsg)
 
         # retrainPolicy
         retrain_config = config["retrain_policy"]
@@ -181,7 +187,8 @@ class Admin:
                 )
             )
         else:
-            raise NotImplementedError(f"Unknown retrain policy {retrain_type}")
+            errmsg = f"Unknown retrain policy {retrain_type}"
+            raise NotImplementedError(errmsg)
 
         # dataset
         dataset_config = config["dataset"]
@@ -208,15 +215,7 @@ class Admin:
                         timeout=timeout,
                     )
                 )
-            elif dataset_type == "random":
-                dataset = Dataset(
-                    random=FileDataset(
-                        dataPath=dataset_config["index_path"],
-                        numTiles=int(dataset_config.get("tiles_per_frame", 200)),
-                        timeout=timeout,
-                    )
-                )
-            elif dataset_type == "cookie":
+            elif dataset_type == "random" or dataset_type == "cookie":
                 dataset = Dataset(
                     random=FileDataset(
                         dataPath=dataset_config["index_path"],
@@ -237,7 +236,8 @@ class Admin:
                     )
                 )
             else:
-                raise NotImplementedError(f"Unknown dataset {dataset_type}")
+                errmsg = f"Unknown dataset {dataset_type}"
+                raise NotImplementedError(errmsg)
             datasets[index] = dataset
 
         # reexamination
@@ -256,7 +256,8 @@ class Admin:
                 type=reexamination_type,
             )
         else:
-            raise NotImplementedError(f"Unknown reexamination {reexamination_type}")
+            errmsg = f"Unknown reexamination {reexamination_type}"
+            raise NotImplementedError(errmsg)
 
         # selector
         selector_config = config["selector"]
@@ -291,7 +292,8 @@ class Admin:
                 )
             )
         else:
-            raise NotImplementedError(f"Unknown selector {selector_type}")
+            errmsg = f"Unknown selector {selector_type}"
+            raise NotImplementedError(errmsg)
 
         # initialModel
         model_path = train_config.get("initial_model_path", "")
@@ -317,9 +319,7 @@ class Admin:
         bandwidth_config = config["bandwidth"]
         assert len(self.scouts) == len(
             bandwidth_config
-        ), "Length Bandwidth {} does not match {}".format(
-            len(bandwidth_config), len(self.scouts)
-        )
+        ), f"Length Bandwidth {len(bandwidth_config)} does not match {len(self.scouts)}"
         bandwidth_func = {}
         for i, _b in enumerate(bandwidth_config):
             bandwidth_func[int(i)] = str(_b)
@@ -396,7 +396,7 @@ class Admin:
         logger.info("Starting mission")
         self.log_files = {
             index: self.log_dir.joinpath(f"get-stats-{index}.txt").open("a")
-            for index in self.scout_stubs.keys()
+            for index in self.scout_stubs
         }
 
         self.start_time = time.time()
@@ -445,6 +445,15 @@ class Admin:
                 with open(log_path, "w") as f:
                     stats["home_time"] = time.time() - self.start_time
                     json.dump(stats, f, indent=4, sort_keys=True)
+
+                # update a symlink pointing at the new stats-00000N.json file
+                # for the streamlit gui, using a temporary link and rename to
+                # update the link atomically.
+                mission_stats = self.log_dir / "mission-stats.json"
+                tmplink = mission_stats.with_suffix(".tmp")
+                tmplink.unlink(missing_ok=True)
+                tmplink.symlink_to(log_path.name, target_is_directory=False)
+                tmplink.replace(mission_stats)
 
                 if stats["home_time"] > self.end_time:
                     logger.info("End mission")
