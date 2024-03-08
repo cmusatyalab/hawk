@@ -7,16 +7,10 @@ from __future__ import annotations
 import queue
 from dataclasses import dataclass
 from multiprocessing import Queue
-from multiprocessing.queues import Queue as QueueType
-from multiprocessing.synchronize import Event
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    MetaQueueType = QueueType[str]
-    LabelQueueType = QueueType[str]
-else:
-    MetaQueueType = Queue
-    LabelQueueType = Queue
+    from multiprocessing.queues import Queue as QueueType
 
 
 @dataclass
@@ -43,14 +37,3 @@ class LabelStats:
                 ) = self.queue.get_nowait()
         except queue.Empty:
             pass
-
-
-class Labeler:
-    def start_labeling(
-        self,
-        input_q: MetaQueueType,
-        result_q: LabelQueueType,
-        labelstats: LabelStats,
-        stop_event: Event,
-    ) -> None:
-        ...

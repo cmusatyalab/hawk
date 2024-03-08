@@ -12,11 +12,13 @@ import yaml
 from .ports import A2S_PORT, H2C_PORT, S2S_PORT
 
 BANDWIDTH_PRESETS: Dict[str, Dict[str, int]] = {
-    "12k": dict(scout2client_speed=12, scout2client_delay=2000),
-    "30k": dict(scout2client_speed=30, scout2client_delay=2000),
-    "100k": dict(scout2client_speed=100, scout2client_delay=1000),
-    "1M": dict(scout2client_speed=1000, scout2client_delay=100),
+    "12k": {"scout2client_speed": 12, "scout2client_delay": 2000},
+    "30k": {"scout2client_speed": 30, "scout2client_delay": 2000},
+    "100k": {"scout2client_speed": 100, "scout2client_delay": 1000},
+    "1M": {"scout2client_speed": 1000, "scout2client_delay": 100},
 }
+
+SSH_DEFAULT_PORT = 22
 
 
 @dataclass
@@ -25,11 +27,11 @@ class SshHost:
 
     host: str
     user: Optional[str] = None
-    port: int = 22
+    port: int = SSH_DEFAULT_PORT
 
     def __str__(self) -> str:
         user = "" if self.user is None else f"{self.user}@"
-        port = "" if self.port == 22 else f":{self.port}"
+        port = "" if self.port == SSH_DEFAULT_PORT else f":{self.port}"
         return f"{user}{self.host}{port}"
 
     def __repr__(self) -> str:
@@ -37,9 +39,9 @@ class SshHost:
 
     @classmethod
     def from_str(cls, ssh_host: str) -> "SshHost":
-        user, host_port = ([None] + ssh_host.split("@", 1))[-2:]
+        user, host_port = ([None, *ssh_host.split("@", 1)])[-2:]
         assert host_port is not None
-        host, port = (host_port.rsplit(":", 1) + [22])[:2]
+        host, port = ([*host_port.rsplit(":", 1), f"{SSH_DEFAULT_PORT}"])[:2]
         assert isinstance(host, str)
         return cls(host=host, user=user, port=int(port))
 
