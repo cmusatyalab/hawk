@@ -116,7 +116,6 @@ class DataManager:
         labels = []
         with zipfile.ZipFile(io.BytesIO(zip_content), "r") as zf:
             example_files = zf.namelist()
-            #logger.info("Exmaple file:".format(example_files))
             for filename in example_files:
                 basename = Path(filename).name
                 parent_name = Path(filename).parent.name
@@ -253,11 +252,9 @@ class DataManager:
             for example in examples:
                 obj = example.obj
                 if self._is_npy:
-                    #logger.info("SELF NPY IS TRUE!")
                     example_file = get_example_key(obj.content, extension=".npy")
                 else:
                     example_file = get_example_key(obj.content)
-                logger.info("EXAMPLE FILE: {}".format(example_file))
                 self._remove_old_paths(example_file, old_dirs)
 
                 label = example.label.imageLabel
@@ -272,7 +269,6 @@ class DataManager:
                     label_dir = self._staging_dir / example_subdir / label
                     label_dir.mkdir(parents=True, exist_ok=True)
                     example_path = label_dir / example_file
-                    #logger.info("EXAMPLE PATH: {}".format(example_path))
                     with example_path.open("wb") as f:
                         f.write(obj.content)
                     if bounding_boxes:

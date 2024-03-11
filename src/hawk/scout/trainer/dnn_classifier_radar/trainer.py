@@ -165,7 +165,6 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
 
         if self.args["test_dir"]:
             cmd.extend(["--valpath", str(self.args["test_dir"])])
-        logger.info(f"{cmd}")
         logger.info(f"TRAIN CMD \n {shlex.join(cmd)}")
         proc = subprocess.Popen(cmd)
         proc.communicate()
