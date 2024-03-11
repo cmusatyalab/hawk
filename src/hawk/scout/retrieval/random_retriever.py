@@ -7,6 +7,7 @@ import math
 import time
 from collections import defaultdict
 from pathlib import Path
+import hashlib
 
 import numpy as np
 from logzero import logger
@@ -84,6 +85,9 @@ class RandomRetriever(Retriever):
                 ## 
                 if str(image_path).split(".")[-1] == "npy":
                     content = np.load(image_path)
+                    #image = np.load(image_path)
+                    #np.save(content, image)
+                    #content = content.getvalue()
                 else:
                     image = Image.open(image_path).convert("RGB")
                     image.save(content, format="JPEG", quality=85)

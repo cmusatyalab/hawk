@@ -75,6 +75,7 @@ class ImageFromList(torch.utils.data.Dataset):
     """Load dataset from path list"""
 
     def __init__(self, image_list, transform, label_list=None, limit=None, loader=None):
+        logger.info("Length of label list: {}, {}".format(len(label_list), label_list[:3]))
         if loader is None:
             self.loader = self.image_loader
         else:
@@ -83,10 +84,13 @@ class ImageFromList(torch.utils.data.Dataset):
         self.transform = transform
 
         def target_transform(x: str) -> int:
+            #logger.info("X here: {}".format(x)) ## add new code here to convert classes from "car", "truck" to 0,1,2, etc.
             return 1 if "/1/" in x else 0
 
         labels = [target_transform(path) for path in image_list]
-        self.classes = sorted(set(labels))
+        #self.classes = sorted(set(labels))
+        self.classes = sorted(set(label_list))
+        logger.info(f"CLasses: {self.classes}")
         if label_list is None:
             label_list = labels
 
@@ -129,12 +133,9 @@ class ImageFromList(torch.utils.data.Dataset):
         impath = self.imlist[idx]
         target = self.targets[idx]
         img = self.loader(impath)
-        #if impath.endswith('.npy'):
-        #   img = torch.from_numpy(img)
-        img = img/np.max(img)
-        #logger.info("SHAPE OF ARRAY IS:{}".format(img.shape))
-        img = Image.fromarray((img*255).astype(np.uint8))
-        
+        if isinstance(img, np.ndarray):
+            img = img/np.max(img)
+            img = Image.fromarray((img*255).astype(np.uint8))
         img = self.transform(img)
         return img, target
 

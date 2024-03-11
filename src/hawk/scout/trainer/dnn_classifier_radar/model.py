@@ -8,7 +8,6 @@ import multiprocessing as mp
 import time
 from pathlib import Path
 from typing import Callable, Dict, Iterable, List, Tuple
-
 import torch
 import torchvision.transforms as transforms
 from logzero import logger
@@ -39,19 +38,18 @@ class DNNClassifierModelRadar(ModelBase):
         logger.info(f"Loading DNN Model from {model_path}")
         assert model_path.is_file()
         args["input_size"] = args.get("input_size", 224)
+        radar_normalize = transforms.Normalize(
+        mean=[0.111, 0.110, 0.111], std=[0.052, 0.050, 0.052]
+        )
         test_transforms = transforms.Compose(
             [
-                #transforms.Resize(args["input_size"] + 32),
-                #transforms.CenterCrop(args["input_size"]),
-                #transforms.ToTensor(),
-                transforms.Pad(padding=(0,80), fill=0, padding_mode='constant'),
-                transforms.CenterCrop((224,224)),
+                transforms.Pad(padding=(80,0), fill=0, padding_mode='constant'),
+                transforms.Resize(args['input_size']),
                 transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                ),
+                radar_normalize,
             ]
         )
+        
         args["test_batch_size"] = args.get("test_batch_size", 64)
         args["version"] = version
         args["arch"] = args.get("arch", "resnet50")
@@ -81,9 +79,10 @@ class DNNClassifierModelRadar(ModelBase):
     ) -> Tuple[ObjectProvider, torch.Tensor]:
         try:
             try:
+                #image = np.load(io.BytesIO(request.content))
                 image = request.content
                 image = image/np.max(image)
-                image = Image.fromarray((image*255).astype(np.uint8))
+                image = Image.fromarray((image*255).astype(np.uint8))                
             except:
                 image = Image.open(io.BytesIO(request.content))
 
@@ -111,6 +110,7 @@ class DNNClassifierModelRadar(ModelBase):
 
     def load_model(self, model_path: Path):
         model = self.initialize_model(self._arch)
+        logger.info("Loading new model from path..,{}".format(model_path))
         checkpoint = torch.load(model_path)
         model.load_state_dict(checkpoint["state_dict"])
         return model
@@ -171,7 +171,6 @@ class DNNClassifierModelRadar(ModelBase):
         with torch.no_grad():
             inputs = inputs.to(self._device)
             output = self._model(inputs)
-
             probability = torch.softmax(output, dim=1)
             probability = probability.cpu().numpy()[:, 1]
             return probability
@@ -204,8 +203,7 @@ class DNNClassifierModelRadar(ModelBase):
                     self.result_count += 1
                     self.result_queue.put(result)
                 requests = []
-                # logger.info(f"Total results inferenced by model: {self.result_count}")
-                # logger.info(f"Request queue size: {self.request_queue.qsize()}")
+                
 
     def infer(self, requests: Iterable[ObjectProvider]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:

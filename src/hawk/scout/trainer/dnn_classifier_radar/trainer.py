@@ -45,7 +45,7 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
             msg = f"Test Path {self.test_dir} provided does not exist"
             assert self.test_dir.exists(), msg
 
-        logger.info("DNN CLASSIFIER TRAINER CALLED")
+        logger.info("DNN CLASSIFIER TRAINER RADAR CALLED")
 
     def load_model(self, path: Path = "", content: bytes = b"", version: int = -1):
         if isinstance(path, str):
@@ -121,9 +121,9 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
                         f.write(f"{path} {label}\n")
 
             self.args["test_dir"] = valpath
-
         if new_version <= 0:
             self.train_initial_model = True
+
             num_epochs = self.args["initial_model_epochs"]
         else:
             online_epochs = json.loads(self.args["online_epochs"])
@@ -141,10 +141,11 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
         cmd = [
             sys.executable,
             "-m",
-            "hawk.scout.trainer.dnn_classifier.train_model",
+            "hawk.scout.trainer.dnn_classifier_radar.train_model",
             "--trainpath",
             str(trainpath),
             "--arch",
+            
             self.args["arch"],
             "--savepath",
             str(model_savepath),
@@ -156,6 +157,7 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
             str(self.args["batch-size"]),
         ]
 
+
         if self.train_initial_model:
             self.train_initial_model = False
         else:
@@ -163,7 +165,7 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
 
         if self.args["test_dir"]:
             cmd.extend(["--valpath", str(self.args["test_dir"])])
-
+        logger.info(f"{cmd}")
         logger.info(f"TRAIN CMD \n {shlex.join(cmd)}")
         proc = subprocess.Popen(cmd)
         proc.communicate()

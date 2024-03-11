@@ -8,7 +8,6 @@ import random
 import time
 import warnings
 from enum import Enum
-
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
@@ -20,11 +19,13 @@ import torch.utils.data.distributed
 import torchvision.models as models
 import torchvision.transforms as transforms
 from logzero import logger
+from sklearn.preprocessing import label_binarize
 from sklearn.metrics import (
     auc,
     average_precision_score,
     precision_recall_curve,
     roc_auc_score,
+    confusion_matrix,
 )
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
@@ -135,7 +136,7 @@ parser.add_argument(
 parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
 
 best_acc1 = 0
-
+base_model_path = None ## Change this to the path on the scout where the base model is located (after downloading from Git repo).  Will add this to config file later.
 
 def main():
     args = parser.parse_args()
@@ -194,8 +195,9 @@ def eval_worker(gpu, ngpus_per_node, args):
         else:
             print(f"=> no checkpoint found at '{args.resume}'")
 
-    normalize = transforms.Normalize(
-        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+ 
+    radar_normalize = transforms.Normalize(
+        mean=[0.111, 0.110, 0.111], std=[0.052, 0.050, 0.052]
     )
 
     val_path = args.valpath
@@ -214,10 +216,10 @@ def eval_worker(gpu, ngpus_per_node, args):
         val_list,
         transforms.Compose(
             [
-                transforms.Resize(input_size + 32),
-                transforms.CenterCrop(input_size),
+                transforms.Pad(padding=(80,0), fill=0, padding_mode='constant'),
+                transforms.Resize(input_size),
                 transforms.ToTensor(),
-                normalize,
+                radar_normalize,
             ]
         ),
         label_list=val_labels,
@@ -267,23 +269,20 @@ def train_worker(gpu, ngpus_per_node, args):
             path, label = content.split()
             train_list.append(path)
             train_labels.append(int(label))
+    logger.info("Length of train labels: {}".format(len(train_labels)))
 
-    normalize = transforms.Normalize(
-        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+    radar_normalize = transforms.Normalize(
+        mean=[0.111, 0.110, 0.111], std=[0.052, 0.050, 0.052]
     )
 
     train_dataset = ImageFromList(
         train_list,
         transforms.Compose(
             [
-                #transforms.ToPILImage(),
-                transforms.Pad(padding=(0,80), fill=0, padding_mode='constant'),
-                transforms.CenterCrop((224,224)),
-                #transforms.RandomResizedCrop(input_size),
-                #transforms.RandomHorizontalFlip(),
+                transforms.Pad(padding=(80,0), fill=0, padding_mode='constant'),
+                transforms.Resize(input_size),
                 transforms.ToTensor(),
-                #transforms.Lambda(lambda arr: torch.Tensor(arr)),
-                normalize,
+                radar_normalize,
             ]
         ),
         label_list=train_labels,
@@ -320,10 +319,11 @@ def train_worker(gpu, ngpus_per_node, args):
             val_list,
             transforms.Compose(
                 [
-                    transforms.Resize(input_size + 32),
-                    transforms.CenterCrop(input_size),
+                    transforms.Pad(padding=(80,0), fill=0, padding_mode='constant'),
+                    transforms.Resize(input_size),
+                    #transforms.CenterCrop(input_size),
                     transforms.ToTensor(),
-                    normalize,
+                    radar_normalize,
                 ]
             ),
             label_list=val_labels,
@@ -342,8 +342,12 @@ def train_worker(gpu, ngpus_per_node, args):
     class_sample_count = torch.tensor(
         [(targets == t).sum() for t in torch.unique(targets, sorted=True)]
     )
+    logger.info("CLass sample count: {}".format(class_sample_count))
     total_samples = sum(class_sample_count)
-    class_weights = [1 - (float(x) / float(total_samples)) for x in class_sample_count]
+    #class_weights = [1 - (float(x) / float(total_samples)) for x in class_sample_count]
+    class_weights_temp = [1/float(x) for x in class_sample_count]
+    class_weights = [x / sum(class_weights_temp) for x in class_weights_temp]
+
     logger.info(f"Total samples {total_samples} Class Weight {class_weights}")
     criterion = nn.CrossEntropyLoss(
         weight=torch.Tensor(class_weights), label_smoothing=0.1
@@ -384,7 +388,7 @@ def train_worker(gpu, ngpus_per_node, args):
                 )
             )
         else:
-            print(f"=> no checkpoint found at '{args.resume}'")
+            logger.info(f"=> no checkpoint found at '{args.resume}'")
 
     epoch_count = 0
     args.break_epoch = args.epochs if args.break_epoch == -1 else args.break_epoch
@@ -394,6 +398,7 @@ def train_worker(gpu, ngpus_per_node, args):
             train_sampler.set_seed()
 
         # train for one epoch
+        logger.info("Above train...")
         train(train_loader, model, criterion, optimizer, epoch, args)
 
         logger.info(f"Epoch {epoch}")
@@ -491,6 +496,13 @@ def initialize_model(arch, num_classes, unfreeze=0):
     model_ft = None
     input_size = 0
     model_ft = models.__dict__[arch](pretrained=True)
+    ## Radar code
+    logger.info("Loading initial radar checkpoint!!!")
+    radar_checkpoint = torch.load(base_model_path) 
+    num_ftrs = model_ft.fc.in_features    
+    model_ft.fc = nn.Linear(num_ftrs, 5) ## only for training the binay model from 5 to 2 classes.
+    model_ft.load_state_dict(radar_checkpoint['state_dict'])
+    
 
     if "resnet" in arch:
         """Resnet"""
@@ -564,7 +576,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
     model.train()
 
     end = time.time()
-    for images, target in train_loader:
+    for images, target in tqdm(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
 
@@ -587,6 +599,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
+    logger.info(f"Loss at epoch {epoch}: {losses}")
 
 
 def adjust_learning_rate(optimizer, scheduler, epoch, args):
@@ -603,13 +616,19 @@ def adjust_learning_rate(optimizer, scheduler, epoch, args):
 
 
 def calculate_performance(y_true, y_pred):
-    ap = average_precision_score(y_true, y_pred, average=None)
-    roc_auc = roc_auc_score(y_true, y_pred)
-    precision, recall, _ = precision_recall_curve(y_true, y_pred)
-    pr_auc = auc(recall, precision)
+    
+    #ap_by_class = average_precision_score(label_binarize(y_true,classes=[0,1,2,3,4]), y_pred, average=None)
+    #logger.info("AUC across all classes: {}".format(average_precision_score(label_binarize(y_true,classes=[0,1,2,3,4]), y_pred, average=None)))
+    #ap_by_class = average_precision_score(y_true, y_pred, average=None)
+    ap = average_precision_score(label_binarize(y_true,classes=[0,1,2,3,4]), y_pred, average='macro')
+    #confusion = confusion_matrix(y_true, y_pred)
+    #logger.info("COnfusion matrix: {}".format(confusion))
+    #roc_auc = roc_auc_score(y_true, y_pred)
+    #precision, recall, _ = precision_recall_curve(y_true, y_pred)
+    #pr_auc = auc(recall, precision)
     logger.info(f"AUC {ap}")
-    logger.info(f"ROC AUC {roc_auc}")
-    logger.info(f"PR AUC {pr_auc}")
+    #logger.info(f"ROC AUC {roc_auc}")
+    #logger.info(f"PR AUC {pr_auc}")
     return ap
 
 
@@ -622,7 +641,9 @@ def validate_model(val_loader, model, criterion, args):
 
     y_true = []
     y_pred = []
-
+    total_pred = 0
+    total_target = 0
+    pos_list = []
     with torch.no_grad():
         end = time.time()
         for images, target in tqdm(val_loader):
@@ -632,13 +653,26 @@ def validate_model(val_loader, model, criterion, args):
 
             # compute output
             output = model(images)
+            #logger.info("Output size: {}".format(output.size()))
 
             loss = criterion(output, target)
 
             probability = torch.nn.functional.softmax(output, dim=1)
             probability = np.squeeze(probability.cpu().numpy())
+            '''
+            pos = np.where(target.cpu().numpy()==1)
+            if target[pos].sum() > 0:
+                logger.info(f"Positives: {np.where(target.cpu().numpy()==1)}")
+                logger.info("Pos Probs: {}, {}".format(probability[pos], target[pos]))
+            total_pred += probability[pos][:,1].sum()
+            pos_list.extend(list(probability[pos][:,1]))
+            total_target += target[pos].sum()
+            average = total_pred/total_target
+            if target[pos].sum() > 0:
+                logger.info(f"Running average pos score: {total_pred}, {total_target}, {average}")
+            '''
             try:
-                probability = probability[:, 1]
+                #probability = probability[:, 1] ## Comment this line out if using multiclass (initial base model training for radar)
                 y_pred.extend(probability)
                 y_true.extend(target.cpu())
             except Exception:
@@ -652,8 +686,9 @@ def validate_model(val_loader, model, criterion, args):
             # measure elapsed time
             batch_time.update(time.time() - end)
             end = time.time()
-
+    logger.info(f"Pred list scores: {sorted(pos_list)}")
     auc = calculate_performance(y_true, y_pred)
+
 
     return auc
 
