@@ -42,7 +42,7 @@ from ..proto.messages_pb2 import (
     TopKConfig,
     TrainConfig,
 )
-from .hawk_typing import LabelStats
+from .stats import LabelStats
 
 if TYPE_CHECKING:
     from multiprocessing.synchronize import Event
