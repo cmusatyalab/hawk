@@ -5,16 +5,17 @@
 """Home to Scouts internal api calls
 """
 
+from multiprocessing.connection import _ConnectionBase
+
 import zmq
 from logzero import logger
 
-from ...ports import H2C_PORT
 from ...proto.messages_pb2 import SendLabels
 
 
 class H2CSubscriber:
     @staticmethod
-    def h2c_receive_labels(label_conn):
+    def h2c_receive_labels(label_conn: _ConnectionBase, h2c_port: int) -> None:
         """API call to receives labels from HOME
 
         Uses ZeroMQ PUSH/PULL protocol for async label transfer
@@ -28,14 +29,14 @@ class H2CSubscriber:
         """
         context = zmq.Context()
         socket = context.socket(zmq.PULL)
-        socket.bind(f"tcp://*:{H2C_PORT}")
+        socket.bind(f"tcp://*:{h2c_port}")
         try:
             while True:
                 msg = socket.recv()
                 resp = SendLabels()
                 resp.ParseFromString(msg)
-                msg = resp.label
-                label_conn.send(msg.SerializeToString())
+                label = resp.label.SerializeToString()
+                label_conn.send(label)
         except Exception as e:
             logger.exception(e)
             raise e

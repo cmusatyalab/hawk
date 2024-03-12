@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import io
 import multiprocessing as mp
 import os
@@ -10,8 +12,9 @@ import threading
 import time
 import zipfile
 from collections import defaultdict
+from multiprocessing.connection import _ConnectionBase
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING
 
 from logzero import logger
 
@@ -38,8 +41,10 @@ from .data_manager import DataManager
 from .hawk_stub import HawkStub
 from .model import Model
 from .model_trainer import ModelTrainer
-from .object_provider import ObjectProvider
 from .utils import get_server_ids, log_exceptions
+
+if TYPE_CHECKING:
+    from ...proto.messages_pb2 import DatasetSplitValue
 
 
 class Mission(DataManagerContext, ModelContext):
@@ -47,7 +52,7 @@ class Mission(DataManagerContext, ModelContext):
         self,
         mission_id: MissionId,
         scout_index: int,
-        scouts: List[HawkStub],
+        scouts: list[HawkStub],
         home_ip: str,
         retrain_policy: RetrainPolicyBase,
         root_dir: Path,
@@ -80,7 +85,7 @@ class Mission(DataManagerContext, ModelContext):
         self.log_file = open(self._log_dir / f"log-{self.host_name}.txt", "a")
         self.result_path = str(self._log_dir / f"sent-{self.host_name}.txt")
         self.enable_logfile = True
-        self.trainer = None
+        self.trainer: ModelTrainer | None = None
         self.trainer_type = None
 
         self._port = port
@@ -88,7 +93,9 @@ class Mission(DataManagerContext, ModelContext):
         self.retriever = retriever
         self.selector = selector
         self.bootstrap_zip = bootstrap_zip
-        self._retrain_policy.total_tiles = self.retriever.total_tiles
+
+        if isinstance(self._retrain_policy, SampleIntervalPolicy):
+            self._retrain_policy.total_tiles = self.retriever.total_tiles
 
         self.initial_model = initial_model
         self._validate = validate
@@ -98,7 +105,7 @@ class Mission(DataManagerContext, ModelContext):
         # inference results until its underlying model is trained
         self._has_initial_examples = True
 
-        self._model: Optional[Model] = None
+        self._model: Model | None = None
 
         self._model_stats = TestResults(version=-1)
         self._model_lock = threading.Lock()
@@ -107,11 +114,8 @@ class Mission(DataManagerContext, ModelContext):
         self._last_trained_version = -1
         self._object_model_excess = 2000
 
-        self._test_results: Dict[int, List[List[Tuple[int, float]]]] = defaultdict(list)
+        self._test_results: dict[int, list[list[tuple[int, float]]]] = defaultdict(list)
         self._results_condition = mp.Condition()
-
-        self._staged_models: Dict[int, Model] = {}
-        self._staged_model_condition = mp.Condition()
 
         self._abort_event = threading.Event()
 
@@ -134,21 +138,26 @@ class Mission(DataManagerContext, ModelContext):
             target=self._get_results, args=(s2h_input,), name="get-results"
         )
 
-        self._label_thread = None
         logger.info("SETTING UP H2C API")
         h2c_output, h2c_input = mp.Pipe(False)
-        p = mp.Process(target=H2CSubscriber.h2c_receive_labels, args=(h2c_input,))
+        h2c_port = port + 1
+        p = mp.Process(
+            target=H2CSubscriber.h2c_receive_labels, args=(h2c_input, h2c_port)
+        )
         self._label_thread = threading.Thread(
             target=self._get_labels, args=(h2c_output,), name="get-labels"
         )
         p.start()
         logger.info(f"SETTING UP S2S Server {self._scout_index}")
-        s2s_input, s2s_output = mp.Queue(), mp.Queue()
+        s2s_input: mp.Queue[bytes] = mp.Queue()
+        s2s_output: mp.Queue[bytes] = mp.Queue()
+        s2s_port = port + 2
         p = mp.Process(
             target=s2s_receive_request,
             args=(
                 s2s_input,
                 s2s_output,
+                s2s_port,
             ),
         )
         self._s2s_thread = threading.Thread(
@@ -180,48 +189,49 @@ class Mission(DataManagerContext, ModelContext):
         while not self._model:
             pass
 
-    def check_initial_model(self):
+    def check_initial_model(self) -> bool:
         if self.initial_model is None:
             return False
-        return len(self.initial_model.content)
+        return len(self.initial_model.content) != 0
 
     def store_labeled_tile(self, tile: LabeledTile) -> None:
         self._data_manager.store_labeled_tile(tile)
-        return
 
     def distribute_label(self, label: LabelWrapper) -> None:
         self._data_manager.distribute_label(label)
-        return
 
-    def get_example(self, example_set: DatasetSplit, label: str, example: str) -> Path:
+    def get_example(
+        self, example_set: DatasetSplitValue, label: str, example: str
+    ) -> Path:
         return self._data_manager.get_example_path(example_set, label, example)
 
     def get_test_results(self) -> TestResults:
         # We assume that the master is the source of truth
         with self._model_lock:
             stats = self._model_stats
+            version = self._model.version if self._model is not None else -1
 
         if stats is not None:
             return stats
 
-        return TestResults(version=self._model.version)
+        return TestResults(version=version)
 
     def load_model(
         self,
-        model_path: Union[str, bytes, os.PathLike],
+        model_path: Path,
         content: bytes = b"",
         model_version: int = -1,
-    ):
+    ) -> Model:
         logger.info("Loading model")
-        model_path = Path(model_path)
         assert model_path.exists() or len(content)
-        model = self.trainer.load_model(model_path, content, model_version)
-        return model
+        assert self.trainer is not None
+        return self.trainer.load_model(model_path, content, model_version)
 
-    def import_model(self, model_path: str, content: bytes, model_version: int) -> None:
+    def import_model(
+        self, model_path: Path, content: bytes, model_version: int
+    ) -> None:
         model = self.load_model(model_path, content, model_version)
         self._set_model(model, False)
-        return
 
     def export_model(self) -> ModelArchive:
         assert self._scout_index == 0
@@ -239,12 +249,6 @@ class Mission(DataManagerContext, ModelContext):
 
         memory_file.seek(0)
         return ModelArchive(content=memory_file.getvalue(), version=model_version)
-
-    def train_model(self, trainer_index: int = 0) -> None:
-        assert self._scout_index != 0
-        threading.Thread(
-            target=self._train_model_slave_thread, name="train-model"
-        ).start()
 
     def reset(self, train_only: bool) -> None:
         self._data_manager.reset(train_only)
@@ -265,7 +269,7 @@ class Mission(DataManagerContext, ModelContext):
         return self._scout_index
 
     @property
-    def scouts(self) -> List[HawkStub]:
+    def scouts(self) -> list[HawkStub]:
         return self._scouts
 
     @property
@@ -284,11 +288,11 @@ class Mission(DataManagerContext, ModelContext):
     def model_dir(self) -> Path:
         return self._model_dir
 
-    def check_create_test(self):
+    def check_create_test(self) -> bool:
         return self._validate
 
     def new_labels_callback(
-        self, new_positives: int, new_negatives: int, retrain=True
+        self, new_positives: int, new_negatives: int, retrain: bool = True
     ) -> None:
         if self._abort_event.is_set():
             return
@@ -360,40 +364,42 @@ class Mission(DataManagerContext, ModelContext):
         self.log_file.close()
         sys.exit(0)
 
-    def log(self, msg: str, end_t: Optional[float] = None) -> None:
+    def log(self, msg: str, end_t: float | None = None) -> None:
         if not self.enable_logfile:
             return
-        if end_t is None:
-            end_t = time.time()
-        self.log_file.write(f"{end_t - self.start_time:.3f} {self.host_name} {msg}\n")
+        mission_time = self.mission_time(end_t)
+        self.log_file.write(f"{mission_time:.3f} {self.host_name} {msg}\n")
 
-    def get_example_directory(self, example_set: DatasetSplit):
+    def get_example_directory(self, example_set: DatasetSplitValue) -> Path:
         return self._data_manager.get_example_directory(example_set)
 
-    def _objects_for_model_version(self) -> Iterable[Optional[ObjectProvider]]:
+    def _objects_for_model_version(self) -> None:
         if self._abort_event.is_set():
             return
 
         with self._model_lock:
-            starting_version = self._model.version if self._model is not None else None
             model = self._model
 
+        # no current model, loop and try again. We really should have a
+        # condition variable here to avoid busy looping.
+        if model is None:
+            return
+
+        starting_version = model.version
         logger.info(f"Starting evaluation with model version {starting_version}")
 
         while not self._abort_event.is_set():
             with self._model_lock:
-                version = self._model.version if self._model is not None else None
-            if version != starting_version:
-                logger.info(
-                    "Done evaluating with model version {}  \
-                    (new version {} available)".format(
-                        starting_version, version
+                if self._model is not None and self._model.version != starting_version:
+                    logger.info(
+                        f"Done evaluating with model version {starting_version} "
+                        f"(new version {self._model.version} available)"
                     )
-                )
-                return
-            with self._model_lock:
+                    return
+
                 # pop single retriever object from retriever result queue
                 retriever_object = self.retriever.get_objects()
+
                 # put single retriever object into model inference request queue
                 model.add_requests(retriever_object)
 
@@ -404,8 +410,6 @@ class Mission(DataManagerContext, ModelContext):
                         logger.info("Reached Retrain sample policy...")
                         self._retrain_policy.reset()
                         self._model_event.set()
-
-        return
 
     @log_exceptions
     def _retriever_thread(self) -> None:
@@ -424,17 +428,22 @@ class Mission(DataManagerContext, ModelContext):
         try:
             if self._has_initial_examples:
                 self._initial_model_event.wait()
+            assert self._model is not None
 
             while not self._abort_event.is_set():
                 result = self._model.get_results()
-                self.selector.add_result(result)
-                if self.retriever.total_tiles == self.selector.items_processed:
+                items_processed = self.selector.add_result(result)
+                if (
+                    isinstance(self.selector, TokenSelector)
+                    and self.retriever.total_tiles == items_processed
+                ):
                     self.selector.select_tiles(self.selector._k)
-                if self.selector.items_processed > self.retriever.total_tiles - 200:
+                if items_processed > self.retriever.total_tiles - 200:
+                    sent_to_model = self._model.get_request_count()
                     logger.info(
-                        f"Items retrieved, {self.retriever._stats.retrieved_tiles},"
-                        f" sent to model: {self._model.request_count},"
-                        f" total items processed: {self.selector.items_processed}"
+                        f"Items retrieved, {self.retriever._stats.retrieved_tiles}, "
+                        f"sent to model: {sent_to_model}, "
+                        f"total items processed: {items_processed}"
                     )
                 # if total number selected == total number of tiles, then
                 # call select_tiles one last time.
@@ -443,12 +452,12 @@ class Mission(DataManagerContext, ModelContext):
             self.stop()
 
     @log_exceptions
-    def _get_results(self, pipe) -> None:
+    def _get_results(self, pipe: _ConnectionBase) -> None:
         try:
             while True:  # not self._abort_event.is_set():
                 result = self.selector.get_result()
-                #logger.info("Successfully reutrned result to mission.py...")
-                #logger.info("Attributes".format(result.attributes.get()))
+                # logger.info("Successfully reutrned result to mission.py...")
+                # logger.info("Attributes".format(result.attributes.get()))
                 if result is None:
                     break
                 tile = SendTiles(
@@ -458,16 +467,16 @@ class Mission(DataManagerContext, ModelContext):
                     version=result.model_version,
                     attributes=result.attributes.get(),
                 )
-                #logger.info("Successfully created the tile message...")
+                # logger.info("Successfully created the tile message...")
                 pipe.send(tile.SerializeToString())
-                #logger.info("Successfully send over the pipe...")
+                # logger.info("Successfully send over the pipe...")
         except Exception as e:
             logger.error(e)
             self.stop()
             # raise e
 
     @log_exceptions
-    def _get_labels(self, pipe) -> None:
+    def _get_labels(self, pipe: _ConnectionBase) -> None:
         try:
             while not self._abort_event.is_set():
                 try:
@@ -484,7 +493,9 @@ class Mission(DataManagerContext, ModelContext):
             self.stop()
 
     @log_exceptions
-    def _s2s_process(self, input_q, output_q) -> None:
+    def _s2s_process(
+        self, input_q: mp.Queue[tuple[bytes, bytes]], output_q: mp.Queue[bytes]
+    ) -> None:
         try:
             while not self._abort_event.is_set():
                 (method, msg) = input_q.get()
@@ -508,7 +519,7 @@ class Mission(DataManagerContext, ModelContext):
     def stop_model(self) -> None:
         with self._model_lock:
             logger.info("Stopping model")
-            if self._model and self._model.is_running():
+            if self._model is not None and self._model.is_running():
                 self._model.stop()
 
     def _train_model(self) -> None:
@@ -559,78 +570,16 @@ class Mission(DataManagerContext, ModelContext):
 
         with self._model_lock:
             should_notify = self._model is None
-            if self._model and self._model.is_running():
+            if self._model is not None and self._model.is_running():
                 logger.info("Stopping model")
                 self._model.stop()
             self._model = model
-            logger.info(f"Promoted New Model Version {model.version}")
-            if self.enable_logfile:
-                self.log(f"{time.ctime()} Promoted New Model Version {model.version}")
             self._model_stats = model_stats
             self._last_trained_version = model.version
 
+        logger.info(f"Promoted New Model Version {model.version}")
+        self.log(f"{time.ctime()} Promoted New Model Version {model.version}")
         self.selector.new_model(model)
 
         if should_notify:
             self._initial_model_event.set()
-
-    def _score_and_set_model(self, model: Model, should_stage: bool) -> None:
-        """Evaluates the trained model on the test data. If distributed waits
-        for results from all scouts.  Based on condition promotes the trained
-        model to the current version.  If ``only_use_better_models` then check
-        the AUC scores to decide.
-
-        Args:
-            model (Model): Trained model
-            should stage (bool): True, if the model needs to be shared
-
-        """
-        logger.info("SCORE & SET MODEL")
-
-        model_stats = None
-
-        model_stats = TestResults(version=model.version)
-
-        with self._model_lock:
-            should_notify = self._model is None
-            if self._model and self._model.is_running():
-                self._model.stop()
-            self._model = model
-            logger.info(f"Promoted New Model Version {model.version}")
-            self._model_stats = model_stats
-
-            self._last_trained_version = model.version
-
-        self.selector.new_model(model)
-        if self.enable_logfile:
-            self.log(f"Promoted New Model Version {model.version}")
-
-        if should_notify:
-            self._initial_model_event.set()
-
-    @log_exceptions
-    def _train_model_slave_thread(self) -> None:
-        logger.info("Executing train request")
-        with self._model_lock:
-            model = self._model
-
-        with self._data_manager.get_examples(DatasetSplit.TRAIN) as train_dir:
-            train_start = time.time()
-            model = self.trainer.train_model(train_dir)
-            logger.info(f"Trained model in {time.time() - train_start:.3f} seconds")
-
-        if not self.trainer.should_sync_model:
-            with self._staged_model_condition:
-                self._staged_models[model.version] = model
-                self._staged_model_condition.notify_all()
-
-    def _get_staging_model(self, model_version: int) -> Model:
-        while not self._abort_event.is_set():
-            with self._staged_model_condition:
-                if model_version in self._staged_models:
-                    model = self._staged_models[model_version]
-                    break
-                else:
-                    logger.info(f"Waiting for model version {model_version}")
-                self._staged_model_condition.wait()
-        return model

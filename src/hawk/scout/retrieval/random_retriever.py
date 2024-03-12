@@ -7,7 +7,6 @@ import math
 import time
 from collections import defaultdict
 from pathlib import Path
-import hashlib
 
 import numpy as np
 from logzero import logger
@@ -28,7 +27,6 @@ class RandomRetriever(Retriever):
         self._resize = dataset.resizeTile
         logger.info("In RANDOM RETRIEVER INIT...")
         logger.info(f"Resize tile: {self._resize}")
-        self.img_tile_map = defaultdict(list)
 
         index_file = self._dataset.dataPath
         self._data_root = Path(index_file).parent.parent
@@ -52,8 +50,9 @@ class RandomRetriever(Retriever):
         self._stats.total_objects = self.total_tiles
         self._stats.total_images = len(self.images)
 
-    def stream_objects(self):
+    def stream_objects(self) -> None:
         super().stream_objects()
+        assert self._context is not None
 
         for key in self.images:
             time_start = time.time()
@@ -67,7 +66,6 @@ class RandomRetriever(Retriever):
                 )
             )
             for tile in tiles:
-                content = io.BytesIO()
                 parts = tile.split()
                 if len(parts) == 1:
                     image_path = parts[0]
@@ -80,18 +78,13 @@ class RandomRetriever(Retriever):
 
                 image_path = self._data_root / image_path
 
-                ## if .npy extension
-                ## use content = np.load(image_path)
-                ## 
-                if str(image_path).split(".")[-1] == "npy":
+                if image_path.suffix == ".npy":
                     content = np.load(image_path)
-                    #image = np.load(image_path)
-                    #np.save(content, image)
-                    #content = content.getvalue()
                 else:
+                    tmpfile = io.BytesIO()
                     image = Image.open(image_path).convert("RGB")
-                    image.save(content, format="JPEG", quality=85)
-                    content = content.getvalue()
+                    image.save(tmpfile, format="JPEG", quality=85)
+                    content = tmpfile.getvalue()
 
                 attributes = self.set_tile_attributes(object_id, label)
                 self._stats.retrieved_tiles += 1

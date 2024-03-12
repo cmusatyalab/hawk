@@ -6,8 +6,9 @@ import io
 import os
 import time
 import zipfile
+from argparse import Namespace
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 import numpy as np
 import torch
@@ -32,7 +33,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 class FewShotModel(ModelBase):
     def __init__(
         self,
-        args: Dict,
+        args: Dict[str, Any],
         model_path: Path,
         version: int,
         mode: str,
@@ -146,8 +147,6 @@ class FewShotModel(ModelBase):
         return content.getvalue()
 
     def load_model(self, model_path: Path):
-        from argparse import Namespace
-
         args = Namespace(
             backbone_class="Res12", closed_way=5, gpu="0", multi_gpu=False, shot=5
         )

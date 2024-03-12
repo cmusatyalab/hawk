@@ -16,6 +16,7 @@ import subprocess
 import time
 import zipfile
 from pathlib import Path
+from typing import Dict
 
 import torch
 from google.protobuf import json_format
@@ -33,6 +34,7 @@ from ...proto.messages_pb2 import (
     RetrainPolicyConfig,
     ScoutConfiguration,
     SelectiveConfig,
+    TestResults,
 )
 from ..core.hawk_stub import HawkStub
 from ..core.mission import Mission
@@ -219,6 +221,9 @@ class A2SAPI:
         this_host = request.scouts[request.scoutIndex]
         scouts = [HawkStub(scout, this_host) for scout in request.scouts]
 
+        reexamination_strategy = self._get_reexamination_strategy(request.reexamination)
+        selector = self._get_selector(request.selector, reexamination_strategy)
+
         # Setting up Mission with config params
         logger.info("Start setting up mission")
         mission = Mission(
@@ -230,7 +235,7 @@ class A2SAPI:
             root_dir / mission_id.value,
             self._port,
             retriever,
-            self._get_selector(request.selector, request.reexamination),
+            selector,
             request.bootstrapZip,
             request.initialModel,
             request.validate,
@@ -242,10 +247,12 @@ class A2SAPI:
         model = request.trainStrategy
         if model.HasField("dnn_classifier_radar"):
             config = model.dnn_classifier_radar
-            trainer: ModelTrainer = DNNClassifierTrainerRadar(mission, dict(config.args))
+            trainer: ModelTrainer = DNNClassifierTrainerRadar(
+                mission, dict(config.args)
+            )
         elif model.HasField("dnn_classifier"):
             config = model.dnn_classifier
-            trainer: ModelTrainer = DNNClassifierTrainer(mission, dict(config.args))
+            trainer = DNNClassifierTrainer(mission, dict(config.args))
         elif model.HasField("yolo"):
             config = model.yolo
             trainer = YOLOTrainer(mission, dict(config.args))
@@ -306,21 +313,16 @@ class A2SAPI:
         mission_id = mission.mission_id.value
         logger.info(f"Starting mission with id {mission_id}")
         mission.start()
-        if mission.enable_logfile:
-            mission.log("SEARCH STARTED")
+        mission.log("SEARCH STARTED")
 
     @log_exceptions
     def _a2s_stop_mission(self) -> None:
         """Function to stop mission"""
         try:
             mission = self._manager.get_mission()
-            if mission is None:
-                raise Exception("Mission does not exist")
-
             mission_id = mission.mission_id.value
             logger.info(f"Stopping mission with id {mission_id}")
-            if mission.enable_logfile:
-                mission.log("SEARCH STOPPED")
+            mission.log("SEARCH STOPPED")
             mission.stop()
             self._manager.remove_mission()
         finally:
@@ -339,13 +341,8 @@ class A2SAPI:
             MissionStats
         """
         mission = self._manager.get_mission()
-        if mission is None:
-            raise Exception("Mission does not exist")
-
-        time_now = time.time() - mission.start_time
-
-        if mission.enable_logfile:
-            mission.log("SEARCH STATS (collecting...)")
+        time_now = mission.mission_time()
+        mission.log("SEARCH STATS (collecting...)")
 
         retriever_stats = mission.retriever.get_stats()
         selector_stats = mission.selector.get_stats()
@@ -404,12 +401,11 @@ class A2SAPI:
         """
         mission = self._manager.get_mission()
         model = request.model
-        path = request.path
+        path = Path(request.path)
         version = model.version
         mission.import_model(path, model.content, version)
         logger.info("[IMPORT] FINISHED Model Import")
-        if mission.enable_logfile:
-            mission.log("IMPORT MODEL")
+        mission.log("IMPORT MODEL")
 
     @log_exceptions
     def _a2s_get_test_results(self, request: str) -> MissionResults:
@@ -439,7 +435,7 @@ class A2SAPI:
                 version = idx
             return version
 
-        results = {}
+        results: Dict[int, TestResults] = {}
         for idx, filename in enumerate(model_paths):
             path = Path(filename)
             version = get_version(path, idx)
@@ -501,7 +497,7 @@ class A2SAPI:
     def _get_selector(
         self,
         selector: SelectiveConfig,
-        reexamination_strategy: ReexaminationStrategyConfig,
+        reexamination_strategy: ReexaminationStrategy,
     ) -> Selector:
         if selector.HasField("topk"):
             top_k_param = json_format.MessageToDict(selector.topk)
@@ -511,7 +507,7 @@ class A2SAPI:
                 selector.topk.batchSize,
                 selector.topk.countermeasure_threshold,
                 selector.topk.total_countermeasures,
-                self._get_reexamination_strategy(reexamination_strategy),
+                reexamination_strategy,
             )
         elif selector.HasField("token"):
             return TokenSelector(
@@ -519,12 +515,12 @@ class A2SAPI:
                 selector.token.batch_size,
                 selector.token.countermeasure_threshold,
                 selector.token.total_countermeasures,
-                self._get_reexamination_strategy(reexamination_strategy),
+                reexamination_strategy,
             )
         elif selector.HasField("threshold"):
             return ThresholdSelector(
                 selector.threshold.threshold,
-                self._get_reexamination_strategy(reexamination_strategy),
+                reexamination_strategy,
             )
         elif selector.HasField("diversity"):
             top_k_param = json_format.MessageToDict(selector.diversity)
@@ -532,7 +528,9 @@ class A2SAPI:
             return DiversitySelector(
                 selector.diversity.k,
                 selector.diversity.batchSize,
-                self._get_reexamination_strategy(reexamination_strategy),
+                selector.diversity.countermeasure_threshold,
+                selector.diversity.total_countermeasures,
+                reexamination_strategy,
             )
         else:
             raise NotImplementedError(

@@ -2,22 +2,28 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import copy
 import os
 import queue
 import threading
-import time
 from collections import defaultdict
 from pathlib import Path
-from typing import List, Optional
+from typing import TYPE_CHECKING
 
 from logzero import logger
 
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
 from ..core.utils import get_example_key, log_exceptions
-from ..reexamination.reexamination_strategy import ReexaminationStrategy
 from .selector_base import SelectorBase
+
+if TYPE_CHECKING:
+    from ..reexamination.reexamination_strategy import (
+        ReexaminationQueueType,
+        ReexaminationStrategy,
+    )
 
 
 class TopKSelector(SelectorBase):
@@ -29,14 +35,15 @@ class TopKSelector(SelectorBase):
         total_countermeasures: int,
         reexamination_strategy: ReexaminationStrategy,
         add_negatives: bool = True,
-        ):
-        logger.info("K: {}, batchsize: {}".format(k, batch_size))
+    ):
+        logger.info(f"K: {k}, batchsize: {batch_size}")
         assert k < batch_size
         super().__init__()
 
         self.version = 0
         self.add_negatives = add_negatives
-        self.easy_negatives = defaultdict(list)
+        self.easy_negatives: dict[int, list[Path]] = defaultdict(list)
+        self.num_negatives_added = 0
 
         self._k = k
         self._batch_size = batch_size
@@ -44,7 +51,7 @@ class TopKSelector(SelectorBase):
         self.num_countermeasures = total_countermeasures
         self._reexamination_strategy = reexamination_strategy
 
-        self._priority_queues = [queue.PriorityQueue()]
+        self._priority_queues: list[ReexaminationQueueType] = [queue.PriorityQueue()]
         self._batch_added = 0
         self._insert_lock = threading.Lock()
         self._mode = "hawk"
@@ -52,22 +59,23 @@ class TopKSelector(SelectorBase):
         self.log_counter = [int(i / 3.0 * self._batch_size) for i in range(1, 4)]
 
     @log_exceptions
-    def select_tiles(self, num_tiles):
+    def select_tiles(self, num_tiles: int) -> None:
+        assert self._mission is not None
         for i in range(num_tiles):
             result = self._priority_queues[-1].get()[-1]
-            if self._mission.enable_logfile:
-                self._mission.log(
-                    f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}"
-                )
-                if self._mode != "oracle":
-                    self.result_queue.put(result)
-                    logger.info(f"[Result] Id {result.id} Score {result.score}")
+            self._mission.log(
+                f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}"
+            )
+            if self._mode != "oracle":
+                self.result_queue.put(result)
+                logger.info(f"[Result] Id {result.id} Score {result.score}")
         self._batch_added -= self._batch_size
 
     @log_exceptions
     def _add_result(self, result: ResultProvider) -> None:
+        assert self._mission is not None
         with self._insert_lock:
-            time_result = time.time() - self._mission.start_time
+            time_result = self._mission.mission_time()
             self._mission.log(
                 f"{self.version} CLASSIFICATION: {result.id} "
                 f"GT {result.gt} Score {result.score:.4f}"
@@ -100,10 +108,11 @@ class TopKSelector(SelectorBase):
         if not self.add_negatives:
             return
 
+        assert self._mission is not None
         negative_path = path / "-1"
         os.makedirs(str(negative_path), exist_ok=True)
 
-        result_queue = queue.PriorityQueue()
+        result_queue: ReexaminationQueueType = queue.PriorityQueue()
         with self._insert_lock:
             result_queue.queue = copy.deepcopy(self._priority_queues[-1].queue)
 
@@ -128,7 +137,7 @@ class TopKSelector(SelectorBase):
 
         for result in auto_negative_list:
             object_id = result.id
-            example = self._mission.retriever.get_object(object_id, [""])
+            example = self._mission.retriever.get_object(object_id)
             if example is None:
                 break
             example_file = get_example_key(example.content)
@@ -138,12 +147,13 @@ class TopKSelector(SelectorBase):
             with self._insert_lock:
                 self.easy_negatives[self.version].append(example_path)
 
-    def delete_examples(self, examples: List) -> None:
+    def delete_examples(self, examples: list[Path]) -> None:
         for path in examples:
             if path.exists():
                 path.unlink()
 
-    def _new_model(self, model: Optional[Model]) -> None:
+    def _new_model(self, model: Model | None) -> None:
+        assert self._mission is not None
         with self._insert_lock:
             if model is not None:
                 version = self.version
@@ -163,7 +173,7 @@ class TopKSelector(SelectorBase):
                 )
 
                 self._batch_added += num_revisited
-                logger.info(f"ADDING  Reexamined to result Queue {num_revisited}")
+                logger.info(f"ADDING Reexamined to result Queue {num_revisited}")
 
                 self.num_revisited += num_revisited
                 self.num_negatives_added = 0
@@ -171,5 +181,3 @@ class TopKSelector(SelectorBase):
                 # this is a reset, discard everything
                 self._priority_queues = [queue.PriorityQueue()]
                 self._batch_added = 0
-
-            self._mission.log_file.flush()

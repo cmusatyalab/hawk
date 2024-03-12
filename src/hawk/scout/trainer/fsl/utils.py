@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import glob
-import os
 import random
+from pathlib import Path
+from typing import Callable, Tuple
 
 import torch
 import torch.nn as nn
@@ -12,23 +12,30 @@ from logzero import logger
 from PIL import Image
 from torch.utils.data import Dataset
 
+TripletType = Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
 
-class TripletData(Dataset):
-    def __init__(self, path, transforms, split="train"):
+
+class TripletData(Dataset[TripletType]):  # type: ignore[misc]
+    def __init__(
+        self,
+        path: Path,
+        transforms: Callable[[Image.Image], torch.Tensor],
+        split: str = "train",
+    ):
         self.path = path
         self.split = split  # train or valid
-        self.classes = glob.glob(os.path.join(path, "*"))
+        self.classes = [p.name for p in path.glob("*")]
         self.cats = len(self.classes)  # number of categories
         self.transforms = transforms
-        self.total_images = len(glob.glob(os.path.join(path, "*/*")))
+        self.total_images = len(list(path.glob("*/*")))
         logger.info(f"Num cats {self.cats} Total {self.total_images}")
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> TripletType:
         # our positive class for the triplet
         idx = int(idx % self.cats)
         classname = self.classes[idx]
         # choosing our pair of positive images (im1, im2)
-        positives = os.listdir(os.path.join(self.path, classname))
+        positives = list(self.path.joinpath(classname).iterdir())
         im1, im2 = random.sample(positives, 2)
 
         # choosing a negative class and negative image (im3)
@@ -36,35 +43,37 @@ class TripletData(Dataset):
         negative_cats.remove(idx)
         negative_idx = int(random.choice(negative_cats))
         negative_cat = self.classes[negative_idx]
-        negatives = os.listdir(os.path.join(self.path, negative_cat))
+        negatives = list(self.path.joinpath(negative_cat).iterdir())
         im3 = random.choice(negatives)
 
         im1, im2, im3 = (
-            os.path.join(self.path, classname, im1),
-            os.path.join(self.path, classname, im2),
-            os.path.join(self.path, negative_cat, im3),
+            self.path.joinpath(classname, im1),
+            self.path.joinpath(classname, im2),
+            self.path.joinpath(negative_cat, im3),
         )
 
-        im1 = self.transforms(Image.open(im1))
-        im2 = self.transforms(Image.open(im2))
-        im3 = self.transforms(Image.open(im3))
+        image1 = self.transforms(Image.open(im1))
+        image2 = self.transforms(Image.open(im2))
+        image3 = self.transforms(Image.open(im3))
 
-        return [im1, im2, im3]
+        return (image1, image2, image3)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.total_images
 
 
-class TripletLoss(nn.Module):
-    def __init__(self, margin=1.0):
+class TripletLoss(nn.Module):  # type: ignore[misc]
+    def __init__(self, margin: float = 1.0):
         super().__init__()
         self.margin = margin
 
-    def calc_euclidean(self, x1, x2):
+    def calc_euclidean(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
         return (x1 - x2).pow(2).sum(1)
 
     # Distances in embedding space is calculated in euclidean
-    def forward(self, anchor, positive, negative):
+    def forward(
+        self, anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor
+    ) -> torch.Tensor:
         distance_positive = self.calc_euclidean(anchor, positive)
         distance_negative = self.calc_euclidean(anchor, negative)
         losses = torch.relu(distance_positive - distance_negative + self.margin)

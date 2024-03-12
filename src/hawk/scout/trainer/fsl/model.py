@@ -5,7 +5,7 @@
 import io
 import time
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Sequence, Tuple, cast
 
 import numpy as np
 import torch
@@ -15,6 +15,7 @@ from PIL import Image, ImageFile
 from sklearn.metrics.pairwise import cosine_similarity
 from torchvision import models
 
+from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.object_provider import ObjectProvider
@@ -29,7 +30,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 class FSLModel(ModelBase):
     def __init__(
         self,
-        args: Dict,
+        args: Dict[str, Any],
         model_path: Path,
         version: int,
         mode: str,
@@ -73,13 +74,12 @@ class FSLModel(ModelBase):
         support = Image.open(support_path).convert("RGB")
         self.support = self.get_embed(support)
 
-    def get_embed(self, im):
+    def get_embed(self, im: Image.Image) -> Sequence[float]:
         im = im.resize((224, 224))
-        im = torch.unsqueeze(self._test_transforms(im), dim=0)
+        im_tensor = torch.unsqueeze(self._test_transforms(im), dim=0)
         with torch.no_grad():
-            preds = self._model(im.to(device))
-            preds = np.array([preds[0].cpu().numpy()])
-            return preds
+            preds = self._model(im_tensor.to(device))
+            return cast(Sequence[float], np.array([preds[0].cpu().numpy()]))
 
     @property
     def version(self) -> int:
@@ -87,8 +87,7 @@ class FSLModel(ModelBase):
 
     def preprocess(
         self, request: ObjectProvider
-    ) -> Tuple[ObjectProvider, torch.Tensor]:
-        embed = []
+    ) -> Tuple[ObjectProvider, Sequence[float]]:
         try:
             image = Image.open(io.BytesIO(request.content))
 
@@ -102,7 +101,7 @@ class FSLModel(ModelBase):
 
     def serialize(self) -> bytes:
         if self._model is None:
-            return None
+            return b""
 
         content = io.BytesIO()
         torch.save(
@@ -115,7 +114,7 @@ class FSLModel(ModelBase):
 
         return content.getvalue()
 
-    def load_model(self, model_path: Path):
+    def load_model(self, model_path: Path) -> torch.nn.Module:
         logger.info("Starting model load")
         model = models.resnet18().cuda()
         checkpoint = torch.load(model_path)
@@ -123,18 +122,18 @@ class FSLModel(ModelBase):
         logger.info("Starting model complete")
         return model
 
-    def get_predictions(self, inputs: torch.Tensor) -> List[float]:
+    def get_predictions(self, inputs: torch.Tensor) -> Sequence[float]:
         # probability = []
         with torch.no_grad():
             similarity = cosine_similarity(self.support, inputs)
             if similarity.shape[-1] == 1:
-                similarity = [float(similarity)]
+                predictions = [float(similarity)]
             else:
-                similarity = np.squeeze(similarity)
-            return similarity
+                predictions = np.squeeze(similarity)
+            return predictions
 
     @log_exceptions
-    def _infer_results(self):
+    def _infer_results(self) -> None:
         logger.info("INFER RESULTS THREAD STARTED")
 
         requests = []
@@ -162,9 +161,9 @@ class FSLModel(ModelBase):
                     self.result_queue.put(result)
                 requests = []
 
-    def infer(self, requests: Iterable[ObjectProvider]) -> Iterable[ResultProvider]:
+    def infer(self, requests: Sequence[ObjectProvider]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:
-            return
+            return []
 
         output = []
         for i in range(0, len(requests), self._batch_size):
@@ -201,7 +200,10 @@ class FSLModel(ModelBase):
                 batch[i][0].attributes.add({"score": str.encode(str(score))})
                 yield ResultProvider(batch[i][0], score, self.version)
 
-    def stop(self):
+    def evaluate_model(self, test_path: Path) -> TestResults:
+        raise Exception("ERROR: fsl.model.evaluate_model not implemented")
+
+    def stop(self) -> None:
         logger.info(f"Stopping model of version {self.version}")
         with self._model_lock:
             self._running = False

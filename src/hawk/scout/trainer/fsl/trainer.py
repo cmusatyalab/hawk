@@ -6,7 +6,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 import torch
 import torch.optim as optim
@@ -15,7 +15,6 @@ from logzero import logger
 from torchvision import models
 
 from ...context.model_trainer_context import ModelContext
-from ...core.model import Model
 from ...core.model_trainer import ModelTrainerBase
 from .model import FSLModel
 from .utils import TripletData, TripletLoss
@@ -46,14 +45,13 @@ class FSLTrainer(ModelTrainerBase):
 
         logger.info("FSL TRAINER CALLED")
 
-    def load_model(self, path: Path = "", content: bytes = b"", version: int = -1):
-        if isinstance(path, str):
-            path = Path(path)
-
+    def load_model(
+        self, path: Optional[Path] = None, content: bytes = b"", version: int = -1
+    ) -> FSLModel:
         new_version = self.get_new_version()
 
-        assert path.is_file() or len(content)
-        if not path.is_file():
+        if path is None or not path.is_file():
+            assert len(content)
             path = self.context.model_path(new_version)
             path.write_bytes(content)
 
@@ -69,21 +67,12 @@ class FSLTrainer(ModelTrainerBase):
             support_path=self.args["support_path"],
         )
 
-    def train_batch(self, model, data, optimizer, criterion):
-        imgsA, imgsB, labels = (t.to(device) for t in data)
-        optimizer.zero_grad()
-        codesA, codesB = model(imgsA, imgsB)
-        loss, acc = criterion(codesA, codesB, labels)
-        loss.backward()
-        optimizer.step()
-        return loss.item(), acc.item()
-
-    def train_model(self, train_dir="") -> Model:
+    def train_model(self, train_dir: Path) -> FSLModel:
         new_version = self.get_new_version()
 
         model_savepath = self.context.model_path(new_version)
 
-        train_dataset = self.args["fsl_traindir"]
+        train_dataset = Path(self.args["fsl_traindir"])
         support_path = self.args["support_path"]
 
         cmd = [
@@ -134,7 +123,7 @@ class FSLTrainer(ModelTrainerBase):
         epochs = 2
         for epoch in range(epochs):
             model.train()
-            epoch_loss = 0.0
+            epoch_loss = torch.Tensor(0.0)
             for data in train_loader:
                 optimizer.zero_grad()
                 x1, x2, x3 = data

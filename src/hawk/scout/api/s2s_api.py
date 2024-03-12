@@ -5,15 +5,24 @@
 """Scout to Scout internal api calls
 """
 
+from __future__ import annotations
+
+from multiprocessing import Queue
+from typing import TYPE_CHECKING
+
 import zmq
 from logzero import logger
 
-from ...ports import S2S_PORT
 from ...proto import Empty
 from ...proto.messages_pb2 import LabeledTile, LabelWrapper
 
+if TYPE_CHECKING:
+    from ..core.mission import Mission
 
-def s2s_receive_request(s2s_input, s2s_output):
+
+def s2s_receive_request(
+    s2s_input: Queue[tuple[bytes, bytes]], s2s_output: Queue[bytes], s2s_port: int
+) -> None:
     """Function to receive and invoke S2S api calls
 
     Uses Request-Response messaging protocol
@@ -27,7 +36,7 @@ def s2s_receive_request(s2s_input, s2s_output):
     """
     context = zmq.Context()
     socket = context.socket(zmq.REP)
-    socket.bind(f"tcp://0.0.0.0:{S2S_PORT}")
+    socket.bind(f"tcp://0.0.0.0:{s2s_port}")
     try:
         while True:
             method, req = socket.recv_multipart()
@@ -41,10 +50,10 @@ def s2s_receive_request(s2s_input, s2s_output):
 
 
 class S2SServicer:
-    def __init__(self, mission):
+    def __init__(self, mission: Mission):
         self._mission = mission
 
-    def s2s_get_tile(self, msg: str):
+    def s2s_get_tile(self, msg: bytes) -> bytes:
         """API call to fetch contents of requested tile ids
 
         Call made by COORDINATOR to (PARENT) scout where image is present
@@ -60,7 +69,8 @@ class S2SServicer:
             request.ParseFromString(msg)
             label = request
             # Fetch data from dataretriever
-            obj = self._mission.retriever.get_object(object_id=label.objectId)
+            obj = self._mission.retriever.get_object(label.objectId)
+            assert obj is not None
             # Assuming data requirement in Distribute positives
             if label.imageLabel != "0":
                 # Transmit data to coordinator
@@ -79,7 +89,7 @@ class S2SServicer:
             response = Empty
         return response
 
-    def s2s_add_tile_and_label(self, msg: str):
+    def s2s_add_tile_and_label(self, msg: bytes) -> bytes:
         """API call to add tile content and labels
 
         Call made by COORDINATOR to non-PARENT scouts

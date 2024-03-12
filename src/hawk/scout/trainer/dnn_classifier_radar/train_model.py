@@ -2,12 +2,18 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 # Source: https://github.com/pytorch/examples/blob/main/imagenet/main.py
+
+from __future__ import annotations
+
 import argparse
 import os
 import random
 import time
 import warnings
 from enum import Enum
+from pathlib import Path
+from typing import Any, Sequence
+
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
@@ -19,14 +25,8 @@ import torch.utils.data.distributed
 import torchvision.models as models
 import torchvision.transforms as transforms
 from logzero import logger
+from sklearn.metrics import average_precision_score
 from sklearn.preprocessing import label_binarize
-from sklearn.metrics import (
-    auc,
-    average_precision_score,
-    precision_recall_curve,
-    roc_auc_score,
-    confusion_matrix,
-)
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
 
@@ -42,7 +42,7 @@ parser = argparse.ArgumentParser(description="PyTorch ImageNet Training")
 parser.add_argument("--trainpath", type=str, default="", help="path to tain file")
 parser.add_argument("--valpath", type=str, default="", help="path to val file")
 parser.add_argument(
-    "--savepath", type=str, default="model.pth", help="path to save trained model"
+    "--savepath", type=Path, default="model.pth", help="path to save trained model"
 )
 parser.add_argument(
     "-a",
@@ -135,10 +135,16 @@ parser.add_argument(
 )
 parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
 
-best_acc1 = 0
-base_model_path = None ## Change this to the path on the scout where the base model is located (after downloading from Git repo).  Will add this to config file later.
+best_acc1 = 0.0
 
-def main():
+########
+# Change this to the path on the scout where the base model is located (after
+# downloading from Git repo).  Will add this to config file later.
+base_model_path = None
+########
+
+
+def main() -> None:
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -150,7 +156,8 @@ def main():
             "This will turn on the CUDNN deterministic setting, "
             "which can slow down your training considerably! "
             "You may see unexpected behavior when restarting "
-            "from checkpoints."
+            "from checkpoints.",
+            stacklevel=1,
         )
 
     ngpus_per_node = torch.cuda.device_count()
@@ -163,7 +170,7 @@ def main():
         train_worker(args.gpu, ngpus_per_node, args)
 
 
-def eval_worker(gpu, ngpus_per_node, args):
+def eval_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None:
     global best_acc1
     args.gpu = gpu
     # start_time = time.time()
@@ -195,7 +202,6 @@ def eval_worker(gpu, ngpus_per_node, args):
         else:
             print(f"=> no checkpoint found at '{args.resume}'")
 
- 
     radar_normalize = transforms.Normalize(
         mean=[0.111, 0.110, 0.111], std=[0.052, 0.050, 0.052]
     )
@@ -209,14 +215,14 @@ def eval_worker(gpu, ngpus_per_node, args):
         contents = f.read().splitlines()
         for content in contents:
             path, label = content.split()
-            val_list.append(path)
+            val_list.append(Path(path))
             val_labels.append(int(label))
 
     val_dataset = ImageFromList(
         val_list,
         transforms.Compose(
             [
-                transforms.Pad(padding=(80,0), fill=0, padding_mode='constant'),
+                transforms.Pad(padding=(80, 0), fill=0, padding_mode="constant"),
                 transforms.Resize(input_size),
                 transforms.ToTensor(),
                 radar_normalize,
@@ -236,10 +242,9 @@ def eval_worker(gpu, ngpus_per_node, args):
     auc = validate_model(val_loader, model, criterion, args)
 
     logger.info(f"Model AUC {auc}")
-    return
 
 
-def train_worker(gpu, ngpus_per_node, args):
+def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None:
     global best_acc1
     args.gpu = gpu
     start_time = time.time()
@@ -267,9 +272,9 @@ def train_worker(gpu, ngpus_per_node, args):
         contents = f.read().splitlines()
         for content in contents:
             path, label = content.split()
-            train_list.append(path)
+            train_list.append(Path(path))
             train_labels.append(int(label))
-    logger.info("Length of train labels: {}".format(len(train_labels)))
+    logger.info(f"Length of train labels: {len(train_labels)}")
 
     radar_normalize = transforms.Normalize(
         mean=[0.111, 0.110, 0.111], std=[0.052, 0.050, 0.052]
@@ -279,7 +284,7 @@ def train_worker(gpu, ngpus_per_node, args):
         train_list,
         transforms.Compose(
             [
-                transforms.Pad(padding=(80,0), fill=0, padding_mode='constant'),
+                transforms.Pad(padding=(80, 0), fill=0, padding_mode="constant"),
                 transforms.Resize(input_size),
                 transforms.ToTensor(),
                 radar_normalize,
@@ -312,16 +317,16 @@ def train_worker(gpu, ngpus_per_node, args):
             contents = f.read().splitlines()
             for content in contents:
                 path, label = content.split()
-                val_list.append(path)
+                val_list.append(Path(path))
                 val_labels.append(int(label))
 
         val_dataset = ImageFromList(
             val_list,
             transforms.Compose(
                 [
-                    transforms.Pad(padding=(80,0), fill=0, padding_mode='constant'),
+                    transforms.Pad(padding=(80, 0), fill=0, padding_mode="constant"),
                     transforms.Resize(input_size),
-                    #transforms.CenterCrop(input_size),
+                    # transforms.CenterCrop(input_size),
                     transforms.ToTensor(),
                     radar_normalize,
                 ]
@@ -342,10 +347,12 @@ def train_worker(gpu, ngpus_per_node, args):
     class_sample_count = torch.tensor(
         [(targets == t).sum() for t in torch.unique(targets, sorted=True)]
     )
-    logger.info("CLass sample count: {}".format(class_sample_count))
+    logger.info(f"CLass sample count: {class_sample_count}")
     total_samples = sum(class_sample_count)
-    #class_weights = [1 - (float(x) / float(total_samples)) for x in class_sample_count]
-    class_weights_temp = [1/float(x) for x in class_sample_count]
+    # class_weights = [
+    #     1 - (float(x) / float(total_samples)) for x in class_sample_count
+    # ]
+    class_weights_temp = [1 / float(x) for x in class_sample_count]
     class_weights = [x / sum(class_weights_temp) for x in class_weights_temp]
 
     logger.info(f"Total samples {total_samples} Class Weight {class_weights}")
@@ -475,7 +482,7 @@ def train_worker(gpu, ngpus_per_node, args):
     )
 
 
-def set_parameter_requires_grad(model, unfreeze=0):
+def set_parameter_requires_grad(model: nn.Module, unfreeze: int = 0) -> None:
     len_layers = len(list(model.children()))
     num_freeze = len_layers - unfreeze
     if unfreeze == -1:
@@ -492,17 +499,20 @@ def set_parameter_requires_grad(model, unfreeze=0):
             print("The following layer will be retrained:\n", child)
 
 
-def initialize_model(arch, num_classes, unfreeze=0):
+def initialize_model(
+    arch: str, num_classes: int, unfreeze: int = 0
+) -> tuple[nn.Module, int]:
     model_ft = None
     input_size = 0
     model_ft = models.__dict__[arch](pretrained=True)
-    ## Radar code
+    # Radar code
     logger.info("Loading initial radar checkpoint!!!")
-    radar_checkpoint = torch.load(base_model_path) 
-    num_ftrs = model_ft.fc.in_features    
-    model_ft.fc = nn.Linear(num_ftrs, 5) ## only for training the binay model from 5 to 2 classes.
-    model_ft.load_state_dict(radar_checkpoint['state_dict'])
-    
+    radar_checkpoint = torch.load(base_model_path)
+    num_ftrs = model_ft.fc.in_features
+    model_ft.fc = nn.Linear(
+        num_ftrs, 5
+    )  # only for training the binay model from 5 to 2 classes.
+    model_ft.load_state_dict(radar_checkpoint["state_dict"])
 
     if "resnet" in arch:
         """Resnet"""
@@ -567,7 +577,14 @@ def initialize_model(arch, num_classes, unfreeze=0):
     return model_ft, input_size
 
 
-def train(train_loader, model, criterion, optimizer, epoch, args):
+def train(
+    train_loader: torch.utils.data.DataLoader,
+    model: nn.Module,
+    criterion: nn._Loss,
+    optimizer: torch.optim.Optimizer,
+    epoch: int,
+    args: argparse.Namespace,
+) -> None:
     batch_time = AverageMeter("Time", ":6.3f")
     data_time = AverageMeter("Data", ":6.3f")
     losses = AverageMeter("Loss", ":.4e")
@@ -602,7 +619,12 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
     logger.info(f"Loss at epoch {epoch}: {losses}")
 
 
-def adjust_learning_rate(optimizer, scheduler, epoch, args):
+def adjust_learning_rate(
+    optimizer: torch.optim.Optimizer,
+    scheduler: torch.optim.lr_scheduler.LRScheduler,
+    epoch: int,
+    args: argparse.Namespace,
+) -> None:
     # lr = args.lr * (0.1 ** (epoch // 20))
     # for param_group in optimizer.param_groups:
     # param_group['lr'] = lr
@@ -615,24 +637,35 @@ def adjust_learning_rate(optimizer, scheduler, epoch, args):
     scheduler.step()
 
 
-def calculate_performance(y_true, y_pred):
-    
-    #ap_by_class = average_precision_score(label_binarize(y_true,classes=[0,1,2,3,4]), y_pred, average=None)
-    #logger.info("AUC across all classes: {}".format(average_precision_score(label_binarize(y_true,classes=[0,1,2,3,4]), y_pred, average=None)))
-    #ap_by_class = average_precision_score(y_true, y_pred, average=None)
-    ap = average_precision_score(label_binarize(y_true,classes=[0,1,2,3,4]), y_pred, average='macro')
-    #confusion = confusion_matrix(y_true, y_pred)
-    #logger.info("COnfusion matrix: {}".format(confusion))
-    #roc_auc = roc_auc_score(y_true, y_pred)
-    #precision, recall, _ = precision_recall_curve(y_true, y_pred)
-    #pr_auc = auc(recall, precision)
-    logger.info(f"AUC {ap}")
-    #logger.info(f"ROC AUC {roc_auc}")
-    #logger.info(f"PR AUC {pr_auc}")
-    return ap
+def calculate_performance(y_true: Sequence[int], y_pred: Sequence[float]) -> float:
+    # ap_by_class = average_precision_score(
+    #     label_binarize(y_true,classes=[0,1,2,3,4]), y_pred, average=None
+    # )
+    # logger.info(f"AUC across all classes: {ap_by_class}")
+    # ap_by_class = average_precision_score(y_true, y_pred, average=None)
+    ap_score: float = average_precision_score(
+        label_binarize(y_true, classes=[0, 1, 2, 3, 4]), y_pred, average="macro"
+    )
+    # from sklearn.metrics import (
+    #     auc, confusion_matrix precision_recall_curve, roc_auc_score
+    # )
+    # confusion = confusion_matrix(y_true, y_pred)
+    # logger.info("COnfusion matrix: {}".format(confusion))
+    # roc_auc = roc_auc_score(y_true, y_pred)
+    # precision, recall, _ = precision_recall_curve(y_true, y_pred)
+    # pr_auc = auc(recall, precision)
+    logger.info(f"AUC {ap_score}")
+    # logger.info(f"ROC AUC {roc_auc}")
+    # logger.info(f"PR AUC {pr_auc}")
+    return ap_score
 
 
-def validate_model(val_loader, model, criterion, args):
+def validate_model(
+    val_loader: torch.utils.data.DataLoader,
+    model: nn.Module,
+    criterion: nn._Loss,
+    args: argparse.Namespace,
+) -> float:
     batch_time = AverageMeter("Time", ":6.3f", Summary.NONE)
     losses = AverageMeter("Loss", ":.4e", Summary.NONE)
 
@@ -641,9 +674,9 @@ def validate_model(val_loader, model, criterion, args):
 
     y_true = []
     y_pred = []
-    total_pred = 0
-    total_target = 0
-    pos_list = []
+    # total_pred = 0
+    # total_target = 0
+    pos_list: list[float] = []
     with torch.no_grad():
         end = time.time()
         for images, target in tqdm(val_loader):
@@ -653,13 +686,13 @@ def validate_model(val_loader, model, criterion, args):
 
             # compute output
             output = model(images)
-            #logger.info("Output size: {}".format(output.size()))
+            # logger.info("Output size: {}".format(output.size()))
 
             loss = criterion(output, target)
 
             probability = torch.nn.functional.softmax(output, dim=1)
             probability = np.squeeze(probability.cpu().numpy())
-            '''
+            """
             pos = np.where(target.cpu().numpy()==1)
             if target[pos].sum() > 0:
                 logger.info(f"Positives: {np.where(target.cpu().numpy()==1)}")
@@ -669,10 +702,15 @@ def validate_model(val_loader, model, criterion, args):
             total_target += target[pos].sum()
             average = total_pred/total_target
             if target[pos].sum() > 0:
-                logger.info(f"Running average pos score: {total_pred}, {total_target}, {average}")
-            '''
+                logger.info(
+                    "Running average pos score: "
+                    f"{total_pred}, {total_target}, {average}"
+                )
+            """
             try:
-                #probability = probability[:, 1] ## Comment this line out if using multiclass (initial base model training for radar)
+                # Comment the following line out if using multiclass
+                # (initial base model training for radar)
+                # probability = probability[:, 1]
                 y_pred.extend(probability)
                 y_true.extend(target.cpu())
             except Exception:
@@ -689,12 +727,13 @@ def validate_model(val_loader, model, criterion, args):
     logger.info(f"Pred list scores: {sorted(pos_list)}")
     auc = calculate_performance(y_true, y_pred)
 
-
     return auc
 
 
-def save_checkpoint(state, filename="checkpoint.pth"):
-    torch.save(state, filename)
+def save_checkpoint(
+    state: dict[str, Any], filename: os.PathLike[str] | str = "checkpoint.pth"
+) -> None:
+    torch.save(state, str(filename))
 
 
 class Summary(Enum):
@@ -707,29 +746,31 @@ class Summary(Enum):
 class AverageMeter:
     """Computes and stores the average and current value"""
 
-    def __init__(self, name, fmt=":f", summary_type=Summary.AVERAGE):
+    def __init__(
+        self, name: str, fmt: str = ":f", summary_type: Summary = Summary.AVERAGE
+    ):
         self.name = name
         self.fmt = fmt
         self.summary_type = summary_type
         self.reset()
 
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
+    def reset(self) -> None:
+        self.val = 0.0
+        self.avg = 0.0
+        self.sum = 0.0
         self.count = 0
 
-    def update(self, val, n=1):
+    def update(self, val: float, n: int = 1) -> None:
         self.val = val
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
 
-    def __str__(self):
+    def __str__(self) -> str:
         fmtstr = "{name} {val" + self.fmt + "} ({avg" + self.fmt + "})"
         return fmtstr.format(**self.__dict__)
 
-    def summary(self):
+    def summary(self) -> str:
         fmtstr = ""
         if self.summary_type is Summary.NONE:
             fmtstr = ""

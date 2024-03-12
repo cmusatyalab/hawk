@@ -2,15 +2,20 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import queue
 import time
-from typing import List, Tuple
+from typing import TYPE_CHECKING
 
 from logzero import logger
 
 from ..core.model import Model
 from ..core.object_provider import ObjectProvider
 from .reexamination_strategy import ReexaminationStrategy
+
+if TYPE_CHECKING:
+    from .reexamination_strategy import ReexaminationQueueType
 
 
 class FullReexaminationStrategy(ReexaminationStrategy):
@@ -19,9 +24,12 @@ class FullReexaminationStrategy(ReexaminationStrategy):
         return True
 
     def get_new_queues(
-        self, model: Model, old_queues: List[queue.PriorityQueue], start_time: float = 0
-    ) -> Tuple[List[queue.PriorityQueue], int]:
-        new_queue = queue.PriorityQueue()
+        self,
+        model: Model,
+        old_queues: list[ReexaminationQueueType],
+        start_time: float = 0,
+    ) -> tuple[list[ReexaminationQueueType], int]:
+        new_queue: ReexaminationQueueType = queue.PriorityQueue()
 
         to_reexamine = []
         for priority_queue in old_queues:
@@ -46,8 +54,7 @@ class FullReexaminationStrategy(ReexaminationStrategy):
             score = result.score
             logger.info(
                 f"Reexamine score id: {obj_id} "
-                f"prev_score{prev_score} "
-                f"curr_score {score}"
+                f"prev_score{prev_score} curr_score {score}"
             )
             new_queue.put((-score, time_result, result))
 

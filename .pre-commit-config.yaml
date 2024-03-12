@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2023 Carnegie Mellon University
 # SPDX-License-Identifier: 0BSD
 
-exclude: '^(.*_pb2.pyi?|src/hawk/scout/trainer/yolo/yolov5/.*)$'
+exclude: '^(.*_pb2.pyi?|src/hawk/scout/trainer/yolo.*/yolov5.*/.*)$'
 
 repos:
   - repo: meta

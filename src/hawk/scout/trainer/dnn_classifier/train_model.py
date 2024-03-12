@@ -2,12 +2,17 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 # Source: https://github.com/pytorch/examples/blob/main/imagenet/main.py
+
+from __future__ import annotations
+
 import argparse
 import os
 import random
 import time
 import warnings
 from enum import Enum
+from pathlib import Path
+from typing import Any, Sequence
 
 import numpy as np
 import torch
@@ -41,7 +46,10 @@ parser = argparse.ArgumentParser(description="PyTorch ImageNet Training")
 parser.add_argument("--trainpath", type=str, default="", help="path to tain file")
 parser.add_argument("--valpath", type=str, default="", help="path to val file")
 parser.add_argument(
-    "--savepath", type=str, default="model.pth", help="path to save trained model"
+    "--savepath",
+    type=Path,
+    default=Path("model.pth"),
+    help="path to save trained model",
 )
 parser.add_argument(
     "-a",
@@ -134,10 +142,10 @@ parser.add_argument(
 )
 parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
 
-best_acc1 = 0
+best_acc1 = 0.0
 
 
-def main():
+def main() -> None:
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -149,7 +157,8 @@ def main():
             "This will turn on the CUDNN deterministic setting, "
             "which can slow down your training considerably! "
             "You may see unexpected behavior when restarting "
-            "from checkpoints."
+            "from checkpoints.",
+            stacklevel=1,
         )
 
     ngpus_per_node = torch.cuda.device_count()
@@ -162,7 +171,7 @@ def main():
         train_worker(args.gpu, ngpus_per_node, args)
 
 
-def eval_worker(gpu, ngpus_per_node, args):
+def eval_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None:
     global best_acc1
     args.gpu = gpu
     # start_time = time.time()
@@ -207,7 +216,7 @@ def eval_worker(gpu, ngpus_per_node, args):
         contents = f.read().splitlines()
         for content in contents:
             path, label = content.split()
-            val_list.append(path)
+            val_list.append(Path(path))
             val_labels.append(int(label))
 
     val_dataset = ImageFromList(
@@ -234,10 +243,9 @@ def eval_worker(gpu, ngpus_per_node, args):
     auc = validate_model(val_loader, model, criterion, args)
 
     logger.info(f"Model AUC {auc}")
-    return
 
 
-def train_worker(gpu, ngpus_per_node, args):
+def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None:
     global best_acc1
     args.gpu = gpu
     start_time = time.time()
@@ -265,7 +273,7 @@ def train_worker(gpu, ngpus_per_node, args):
         contents = f.read().splitlines()
         for content in contents:
             path, label = content.split()
-            train_list.append(path)
+            train_list.append(Path(path))
             train_labels.append(int(label))
 
     normalize = transforms.Normalize(
@@ -309,7 +317,7 @@ def train_worker(gpu, ngpus_per_node, args):
             contents = f.read().splitlines()
             for content in contents:
                 path, label = content.split()
-                val_list.append(path)
+                val_list.append(Path(path))
                 val_labels.append(int(label))
 
         val_dataset = ImageFromList(
@@ -340,6 +348,11 @@ def train_worker(gpu, ngpus_per_node, args):
     )
     total_samples = sum(class_sample_count)
     class_weights = [1 - (float(x) / float(total_samples)) for x in class_sample_count]
+    # class_weight_neg = class_weights[0]/2
+    # class_weight_pos = 1 - class_weight_neg
+    # class_weights = [class_weight_neg, class_weight_pos]
+    # class_weights = [1/21,20/21]
+
     logger.info(f"Total samples {total_samples} Class Weight {class_weights}")
     criterion = nn.CrossEntropyLoss(
         weight=torch.Tensor(class_weights), label_smoothing=0.1
@@ -466,7 +479,7 @@ def train_worker(gpu, ngpus_per_node, args):
     )
 
 
-def set_parameter_requires_grad(model, unfreeze=0):
+def set_parameter_requires_grad(model: nn.Module, unfreeze: int = 0) -> None:
     len_layers = len(list(model.children()))
     num_freeze = len_layers - unfreeze
     if unfreeze == -1:
@@ -483,7 +496,9 @@ def set_parameter_requires_grad(model, unfreeze=0):
             print("The following layer will be retrained:\n", child)
 
 
-def initialize_model(arch, num_classes, unfreeze=0):
+def initialize_model(
+    arch: str, num_classes: int, unfreeze: int = 0
+) -> tuple[nn.Module, int]:
     model_ft = None
     input_size = 0
     model_ft = models.__dict__[arch](pretrained=True)
@@ -551,7 +566,14 @@ def initialize_model(arch, num_classes, unfreeze=0):
     return model_ft, input_size
 
 
-def train(train_loader, model, criterion, optimizer, epoch, args):
+def train(
+    train_loader: torch.utils.data.DataLoader,
+    model: nn.Module,
+    criterion: nn._Loss,
+    optimizer: torch.optim.Optimizer,
+    epoch: int,
+    args: argparse.Namespace,
+) -> None:
     batch_time = AverageMeter("Time", ":6.3f")
     data_time = AverageMeter("Data", ":6.3f")
     losses = AverageMeter("Loss", ":.4e")
@@ -585,7 +607,12 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         end = time.time()
 
 
-def adjust_learning_rate(optimizer, scheduler, epoch, args):
+def adjust_learning_rate(
+    optimizer: torch.optim.Optimizer,
+    scheduler: torch.optim.lr_scheduler.LRScheduler,
+    epoch: int,
+    args: argparse.Namespace,
+) -> None:
     # lr = args.lr * (0.1 ** (epoch // 20))
     # for param_group in optimizer.param_groups:
     # param_group['lr'] = lr
@@ -598,8 +625,8 @@ def adjust_learning_rate(optimizer, scheduler, epoch, args):
     scheduler.step()
 
 
-def calculate_performance(y_true, y_pred):
-    ap = average_precision_score(y_true, y_pred, average=None)
+def calculate_performance(y_true: Sequence[int], y_pred: Sequence[float]) -> float:
+    ap: float = average_precision_score(y_true, y_pred, average=None)
     roc_auc = roc_auc_score(y_true, y_pred)
     precision, recall, _ = precision_recall_curve(y_true, y_pred)
     pr_auc = auc(recall, precision)
@@ -609,7 +636,12 @@ def calculate_performance(y_true, y_pred):
     return ap
 
 
-def validate_model(val_loader, model, criterion, args):
+def validate_model(
+    val_loader: torch.utils.data.DataLoader,
+    model: nn.Module,
+    criterion: nn._Loss,
+    args: argparse.Namespace,
+) -> float:
     batch_time = AverageMeter("Time", ":6.3f", Summary.NONE)
     losses = AverageMeter("Loss", ":.4e", Summary.NONE)
 
@@ -654,7 +686,8 @@ def validate_model(val_loader, model, criterion, args):
     return auc
 
 
-def save_checkpoint(state, filename="checkpoint.pth"):
+def save_checkpoint(state: dict[str, Any], path: Path | None = None) -> None:
+    filename = "checkpoint.pth" if path is None else str(path)
     torch.save(state, filename)
 
 
@@ -668,29 +701,31 @@ class Summary(Enum):
 class AverageMeter:
     """Computes and stores the average and current value"""
 
-    def __init__(self, name, fmt=":f", summary_type=Summary.AVERAGE):
+    def __init__(
+        self, name: str, fmt: str = ":f", summary_type: Summary = Summary.AVERAGE
+    ):
         self.name = name
         self.fmt = fmt
         self.summary_type = summary_type
         self.reset()
 
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
+    def reset(self) -> None:
+        self.val = 0.0
+        self.avg = 0.0
+        self.sum = 0.0
         self.count = 0
 
-    def update(self, val, n=1):
+    def update(self, val: float, n: int = 1) -> None:
         self.val = val
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
 
-    def __str__(self):
+    def __str__(self) -> str:
         fmtstr = "{name} {val" + self.fmt + "} ({avg" + self.fmt + "})"
         return fmtstr.format(**self.__dict__)
 
-    def summary(self):
+    def summary(self) -> str:
         fmtstr = ""
         if self.summary_type is Summary.NONE:
             fmtstr = ""

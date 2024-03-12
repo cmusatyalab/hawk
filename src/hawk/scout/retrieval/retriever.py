@@ -8,7 +8,8 @@ import threading
 import time
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from typing import Iterable, Optional, Sized
+from pathlib import Path
+from typing import Dict, Optional
 
 from ...proto.messages_pb2 import HawkObject
 from ..context.data_manager_context import DataManagerContext
@@ -36,13 +37,11 @@ class RetrieverBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_objects(self) -> Iterable[ObjectProvider]:
+    def get_objects(self) -> ObjectProvider:
         pass
 
     @abstractmethod
-    def get_object(
-        self, object_id: str, _attributes: Optional[Sized] = None
-    ) -> HawkObject:
+    def get_object(self, object_id: str) -> Optional[HawkObject]:
         pass
 
     @abstractmethod
@@ -56,13 +55,14 @@ class RetrieverBase(metaclass=ABCMeta):
 
 class Retriever(RetrieverBase):
     def __init__(self) -> None:
-        self._context = None
+        self._context: Optional[DataManagerContext] = None
+        self._context_event = threading.Event()
         self._start_event = threading.Event()
         self._stop_event = threading.Event()
         self._command_lock = threading.RLock()
         self._stats = RetrieverStats()
         self._start_time = time.time()
-        self.result_queue = queue.Queue()
+        self.result_queue: queue.Queue[ObjectProvider] = queue.Queue()
         self.server_id = get_server_ids()[0]
         self.total_tiles = 0
 
@@ -79,16 +79,17 @@ class Retriever(RetrieverBase):
     def is_running(self) -> bool:
         return not self._stop_event.is_set()
 
-    def add_context(self, context: DataManagerContext):
+    def add_context(self, context: DataManagerContext) -> None:
         self._context = context
+        self._context_event.set()
 
-    def stream_objects(self):
+    def stream_objects(self) -> None:
         # wait for mission context to be added
         while self._context is None:
-            continue
+            self._context_event.wait()
         self._start_time = time.time()
 
-    def set_tile_attributes(self, object_id: str, label: str):
+    def set_tile_attributes(self, object_id: str, label: str) -> Dict[str, bytes]:
         attributes = {
             "Device-Name": str.encode(self.server_id),
             "_ObjectID": str.encode(object_id),
@@ -96,15 +97,15 @@ class Retriever(RetrieverBase):
         }
         return attributes
 
-    def get_objects(self) -> Iterable[ObjectProvider]:
+    def get_objects(self) -> ObjectProvider:
         return self.result_queue.get()
 
-    def get_object(
-        self, object_id: str, attributes: Optional[Sized] = None
-    ) -> HawkObject:
-        image_path = object_id.split("collection/id/")[-1]
-        with open(image_path, "rb") as f:
-            content = f.read()
+    def get_object(self, object_id: str) -> Optional[HawkObject]:
+        image_path = Path(object_id.split("collection/id/")[-1])
+        if not image_path.exists():
+            return None
+
+        content = image_path.read_bytes()
 
         # Return object attributes
         dct = {

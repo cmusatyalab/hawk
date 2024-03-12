@@ -17,6 +17,7 @@ from logzero import logger
 from ..mission_config import load_config, write_config
 from ..ports import H2A_PORT
 from .admin import Admin
+from .hawk_typing import Labeler, LabelQueueType, LabelStats, MetaQueueType
 from .inbound import InboundProcess
 from .outbound import OutboundProcess
 from .script_labeler import ScriptLabeler
@@ -25,7 +26,7 @@ from .utils import define_scope, get_ip
 
 
 # Usage: python -m hawk.home.home_main config/config.yml
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "config", type=Path, default=Path.cwd().joinpath("configs", "config.yml")
@@ -85,10 +86,9 @@ def main():
 
     processes = []
     stop_event = mp.Event()
-    meta_q = mp.Queue()
-    label_q = mp.Queue()
-    stats_q = mp.Queue()
-    stats_q.put((0, 0, 0))
+    meta_q: MetaQueueType = mp.Queue()
+    label_q: LabelQueueType = mp.Queue()
+    labelstats = LabelStats()
 
     try:
         # Starting home to admin conn
@@ -103,7 +103,7 @@ def main():
         home_admin = Admin(home_ip, mission_id)
         p = mp.Process(
             target=home_admin.receive_from_home,
-            kwargs={"stop_event": stop_event, "stats_q": stats_q},
+            kwargs={"stop_event": stop_event, "labelstats": labelstats},
         )
         processes.append(p)
         p.start()
@@ -130,7 +130,7 @@ def main():
             label_mode = "detect"
 
         if labeler == "script":
-            home_labeler = ScriptLabeler(label_dir, config, gt_dir, label_mode)
+            home_labeler: Labeler = ScriptLabeler(label_dir, config, gt_dir, label_mode)
         elif labeler == "ui" or labeler == "browser":
             home_labeler = UILabeler(mission_dir)
         else:
@@ -141,7 +141,7 @@ def main():
             kwargs={
                 "input_q": meta_q,
                 "result_q": label_q,
-                "stats_q": stats_q,
+                "labelstats": labelstats,
                 "stop_event": stop_event,
             },
         )

@@ -2,20 +2,18 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import glob
 import json
 import shlex
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 import torch
 from logzero import logger
 
 from ...context.model_trainer_context import ModelContext
-from ...core.model import Model
 from ...core.model_trainer import ModelTrainerBase
 from .model import DNNClassifierModelRadar
 
@@ -47,14 +45,13 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
 
         logger.info("DNN CLASSIFIER TRAINER RADAR CALLED")
 
-    def load_model(self, path: Path = "", content: bytes = b"", version: int = -1):
-        if isinstance(path, str):
-            path = Path(path)
-
+    def load_model(
+        self, path: Optional[Path] = None, content: bytes = b"", version: int = -1
+    ) -> DNNClassifierModelRadar:
         new_version = self.get_new_version()
 
-        assert path.is_file() or len(content)
-        if not path.is_file():
+        if path is None or not path.is_file():
+            assert len(content)
             path = self.context.model_path(new_version)
             path.write_bytes(content)
 
@@ -65,10 +62,10 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
             self.args, path, version, mode=self.args["mode"], context=self.context
         )
 
-    def train_model(self, train_dir) -> Model:
+    def train_model(self, train_dir: Path) -> DNNClassifierModelRadar:
         # check mode if not hawk return model
         # EXPERIMENTAL
-        logger.info("TRAINING ARGS: {}".format(self.args))
+        logger.info(f"TRAINING ARGS: {self.args}")
         if self.args["mode"] == "oracle":
             return self.load_model(self.prev_path, version=0)
         elif self.args["mode"] == "notional":
@@ -90,7 +87,7 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
         # labels = [subdir.name for subdir in self._train_dir.iterdir()]
         labels = ["0", "1"]
         train_samples = {
-            label: glob.glob(str(train_dir / label / "*")) for label in labels
+            label: list(train_dir.joinpath(label).glob("*")) for label in labels
         }
         train_len = {label: len(train_samples[label]) for label in labels}
         if train_len["1"] == 0:
@@ -107,7 +104,7 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
             valpath = self.context.model_path(new_version, template="val-{}.txt")
             val_dir = train_dir.parent / "test"
             val_samples = {
-                label: glob.glob(str(val_dir / label / "*")) for label in labels
+                label: list(val_dir.joinpath(label).glob("*")) for label in labels
             }
             val_len = {label: len(val_samples[label]) for label in labels}
             if val_len["1"] == 0:
@@ -120,10 +117,9 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
                     for path in val_samples[label]:
                         f.write(f"{path} {label}\n")
 
-            self.args["test_dir"] = valpath
+            self.args["test_dir"] = str(valpath)
         if new_version <= 0:
             self.train_initial_model = True
-
             num_epochs = self.args["initial_model_epochs"]
         else:
             online_epochs = json.loads(self.args["online_epochs"])
@@ -145,7 +141,6 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
             "--trainpath",
             str(trainpath),
             "--arch",
-            
             self.args["arch"],
             "--savepath",
             str(model_savepath),
@@ -157,7 +152,6 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
             str(self.args["batch-size"]),
         ]
 
-
         if self.train_initial_model:
             self.train_initial_model = False
         else:
@@ -165,7 +159,7 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
 
         if self.args["test_dir"]:
             cmd.extend(["--valpath", str(self.args["test_dir"])])
-        logger.info(f"TRAIN CMD \n {shlex.join(cmd)}")
+        logger.info(f"TRAIN CMD\n {shlex.join(cmd)}")
         proc = subprocess.Popen(cmd)
         proc.communicate()
 

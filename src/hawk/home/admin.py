@@ -2,23 +2,26 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import base64
 import io
 import json
 import os
-import queue
 import socket
 import threading
 import time
 from collections import defaultdict
+from multiprocessing.synchronize import Event
 from pathlib import Path
+from typing import Any, Literal
 
 import zmq
 from google.protobuf.json_format import MessageToDict
 from logzero import logger
 from PIL import Image
 
-from ..mission_config import load_config
+from ..mission_config import MissionConfig, load_config
 from ..ports import H2A_PORT
 from ..proto.messages_pb2 import (
     AbsolutePolicyConfig,
@@ -39,23 +42,25 @@ from ..proto.messages_pb2 import (
     TopKConfig,
     TrainConfig,
 )
+from .hawk_typing import LabelStats
 
 LOG_INTERVAL = 15
 
 
 class Admin:
-    def __init__(self, home_ip, mission_id, explicit_start=False) -> None:
+    def __init__(
+        self, home_ip: str, mission_id: str, explicit_start: bool = False
+    ) -> None:
         self._home_ip = home_ip
         self._start_event = threading.Event()
-        self.last_stats = (0, 0, 0)
+        self.last_stats = LabelStats()
         self._mission_id = mission_id
         self.explicit_start = explicit_start
-        self.zmq_context = None
-        self.scout_stubs = {}
+        self.scout_stubs: dict[int, zmq.Socket[Literal[zmq.SocketType.REP]]] = {}
         self.test_path = ""
 
-    def receive_from_home(self, stop_event, stats_q):
-        self.stats_q = stats_q
+    def receive_from_home(self, stop_event: Event, labelstats: LabelStats) -> None:
+        self.labelstats = labelstats
         self.stop_event = stop_event
 
         # Bind H2A Server
@@ -75,11 +80,11 @@ class Admin:
             else:
                 raise NotImplementedError(f"Unknown header {header}")
 
-    def _setup_mission(self, config):
+    def _setup_mission(self, config: MissionConfig) -> None:
         self._mission_name = config["mission-name"]
         self.log_dir = Path(config["home-params"]["log_dir"])
         self.end_file = self.log_dir / "end"
-        self.end_time = int(config.get("end-time", 5000))
+        self.end_time = int(config.get("end-time", 4100))
 
         self.scouts = config.scouts
 
@@ -132,9 +137,9 @@ class Admin:
         elif train_type == "fsl":
             support_path = train_config["example_path"]
             image = Image.open(support_path).convert("RGB")
-            content = io.BytesIO()
-            image.save(content, format="JPEG", quality=75)
-            content = content.getvalue()
+            tmpfile = io.BytesIO()
+            image.save(tmpfile, format="JPEG", quality=75)
+            content = tmpfile.getvalue()
             support_data = base64.b64encode(content).decode("utf8")
             default_args = {
                 "mode": "hawk",
@@ -192,14 +197,6 @@ class Admin:
                 dataset = Dataset(
                     tile=FileDataset(
                         dataPath=dataset_config["index_path"],
-                        timeout=timeout,
-                    )
-                )
-            elif dataset_type == "filesystem":
-                dataset = Dataset(
-                    filesystem=FileDataset(
-                        dataPath=dataset_config["index_path"],
-                        tileSize=dataset_config["tile_size"],
                         timeout=timeout,
                     )
                 )
@@ -269,24 +266,29 @@ class Admin:
             topk_config = selector_config.get("topk", {})
             k_value = topk_config.get("k", 10)
             batch_size = topk_config.get("batchSize", 1000)
-            countermeasure_threshold = topk_config.get("countermeasure_threshold",0.5)
+            countermeasure_threshold = topk_config.get("countermeasure_threshold", 0.5)
             total_countermeasures = topk_config.get("total_countermeasures", 700)
             selector = SelectiveConfig(
                 topk=TopKConfig(
                     k=k_value,
                     batchSize=batch_size,
-                    countermeasure_threshold=countermeasure_threshold, 
-                    total_countermeasures=total_countermeasures
+                    countermeasure_threshold=countermeasure_threshold,
+                    total_countermeasures=total_countermeasures,
                 )
             )
         elif selector_type == "token":
             token_config = selector_config.get("token", {})
             init_samples = token_config.get("initial_samples")
             batch_size = token_config.get("batch_size")
-            countermeasure_threshold = token_config.get("countermeasure_threshold",0.5)
+            countermeasure_threshold = token_config.get("countermeasure_threshold", 0.5)
             total_countermeasures = token_config.get("total_countermeasures", 700)
             selector = SelectiveConfig(
-                token=TokenConfig(initial_samples=init_samples, batch_size=batch_size, countermeasure_threshold=countermeasure_threshold, total_countermeasures=total_countermeasures)
+                token=TokenConfig(
+                    initial_samples=init_samples,
+                    batch_size=batch_size,
+                    countermeasure_threshold=countermeasure_threshold,
+                    total_countermeasures=total_countermeasures,
+                )
             )
         else:
             raise NotImplementedError(f"Unknown selector {selector_type}")
@@ -324,14 +326,13 @@ class Admin:
 
         train_validate = train_config.get("validate", True)
 
-        self.zmq_context = zmq.Context()
-
+        self._zmq_context = zmq.Context()
         a2s_port = config.deploy.a2s_port
 
         self.scout_stubs = {}
         for index, host in enumerate(self.scouts):
             ip = socket.gethostbyname(host)
-            stub = self.zmq_context.socket(zmq.REQ)
+            stub = self._zmq_context.socket(zmq.REQ)
             stub.connect(f"tcp://{ip}:{a2s_port}")
             self.scout_stubs[index] = stub
 
@@ -388,9 +389,7 @@ class Admin:
         if not self.explicit_start:
             self.start_mission()
 
-        return "SUCCESS"
-
-    def start_mission(self):
+    def start_mission(self) -> None:
         """Explicit start Mission command"""
         # Start Mission
 
@@ -415,7 +414,7 @@ class Admin:
 
         threading.Thread(target=self.get_mission_stats, name="get-stats").start()
 
-    def stop_mission(self):
+    def stop_mission(self) -> None:
         """Explicit stop Mission command"""
 
         for stub in self.scout_stubs.values():
@@ -428,27 +427,19 @@ class Admin:
         for stub in self.scout_stubs.values():
             stub.recv()
 
-    def get_mission_stats(self):
+    def get_mission_stats(self) -> None:
         time.sleep(10)
         count = 1
         # prev_bytes = prev_processed = 0
         try:
             while not self.stop_event.is_set():
                 stats = self.accumulate_mission_stats()
-                last_stats = None
-                while True:
-                    try:
-                        last_stats = self.stats_q.get_nowait()
-                    except queue.Empty:
-                        break
 
-                if last_stats is None:
-                    last_stats = self.last_stats
-                else:
-                    self.last_stats = last_stats
-                keys = ["positives", "negatives", "bytes"]
-                for key, value in zip(keys, last_stats):
-                    stats[key] = value
+                self.labelstats.resync()
+
+                stats["positives"] = self.labelstats.positives
+                stats["negatives"] = self.labelstats.negatives
+                stats["bytes"] = self.labelstats.total_bytes
 
                 log_path = self.log_dir / f"stats-{count:06}.json"
                 with open(log_path, "w") as f:
@@ -483,9 +474,8 @@ class Admin:
             raise e
         self.stop_event.set()
         self.stop_mission()
-        return
 
-    def get_post_mission_archive(self):
+    def get_post_mission_archive(self) -> None:
         for index, stub in self.scout_stubs.items():
             msg = [
                 b"a2s_get_post_mission_archive",
@@ -497,9 +487,8 @@ class Admin:
             if len(reply):
                 with open(f"mission_{index}.zip", "wb") as f:
                     f.write(reply)
-        return
 
-    def get_test_results(self):
+    def get_test_results(self) -> None:
         assert len(self.test_path), "Test path not provided"
         for stub in self.scout_stubs.values():
             msg = [
@@ -515,9 +504,9 @@ class Admin:
             results_dir.mkdir(parents=True, exist_ok=True)
             if len(reply):
                 try:
-                    mission_stat = MissionResults()
-                    mission_stat.ParseFromString(reply)
-                    mission_stat = mission_stat.results
+                    mission_stat_msg = MissionResults()
+                    mission_stat_msg.ParseFromString(reply)
+                    mission_stat = mission_stat_msg.results
 
                     for version, result in mission_stat.items():
                         model_stat = MessageToDict(result)
@@ -525,11 +514,10 @@ class Admin:
                         with open(stat_path, "w") as f:
                             json.dump(model_stat, f, indent=4, sort_keys=True)
                 except Exception:
-                    msg = reply.decode()
-                    logger.error(f"ERROR during Testing from Scout {index}\n {msg}")
-        return
+                    errmsg = reply.decode()
+                    logger.error(f"ERROR during Testing from Scout {index}\n {errmsg}")
 
-    def accumulate_mission_stats(self):
+    def accumulate_mission_stats(self) -> dict[str, Any]:
         stats = defaultdict(lambda: 0)
         str_ignore = [
             "server_time",
@@ -548,9 +536,9 @@ class Admin:
 
         for index, stub in self.scout_stubs.items():
             reply = stub.recv()
-            mission_stat = MissionStats()
-            mission_stat.ParseFromString(reply)
-            mission_stat = MessageToDict(mission_stat)
+            mission_stat_msg = MissionStats()
+            mission_stat_msg.ParseFromString(reply)
+            mission_stat = MessageToDict(mission_stat_msg)
             self.log_files[index].write(json.dumps(mission_stat) + "\n")
             for k, v in mission_stat.items():
                 if isinstance(v, dict):

@@ -6,7 +6,7 @@ import io
 import multiprocessing as mp
 import time
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Sequence, Tuple
 
 import torch
 import torchvision.transforms as transforms
@@ -29,7 +29,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 class DNNClassifierModel(ModelBase):
     def __init__(
         self,
-        args: Dict,
+        args: Dict[str, Any],
         model_path: Path,
         version: int,
         mode: str,
@@ -37,7 +37,7 @@ class DNNClassifierModel(ModelBase):
     ):
         logger.info(f"Loading DNN Model from {model_path}")
         assert model_path.is_file()
-        args["input_size"] = args.get("input_size", 224)
+        args["input_size"] = int(args.get("input_size", 224))
         test_transforms = transforms.Compose(
             [
                 transforms.Resize(args["input_size"] + 32),
@@ -62,7 +62,7 @@ class DNNClassifierModel(ModelBase):
         self._test_transforms = test_transforms
         self._batch_size = args["test_batch_size"]
 
-        self._model = self.load_model(model_path)
+        self._model: torch.nn.Module = self.load_model(model_path)
         self._device = torch.device("cpu")
         self._model.to(self._device)
         self._model.eval()
@@ -75,19 +75,16 @@ class DNNClassifierModel(ModelBase):
     def preprocess(
         self, request: ObjectProvider
     ) -> Tuple[ObjectProvider, torch.Tensor]:
-        try:
-            image = Image.open(io.BytesIO(request.content))
+        image = Image.open(io.BytesIO(request.content))
 
-            if image.mode != "RGB":
-                image = image.convert("RGB")
-        except Exception as e:
-            raise (e)
+        if image.mode != "RGB":
+            image = image.convert("RGB")
 
         return request, self._test_transforms(image)
 
     def serialize(self) -> bytes:
         if self._model is None:
-            return None
+            return b""
 
         content = io.BytesIO()
         torch.save(
@@ -96,18 +93,15 @@ class DNNClassifierModel(ModelBase):
             },
             content,
         )
-        content.seek(0)
-
         return content.getvalue()
 
-    def load_model(self, model_path: Path):
+    def load_model(self, model_path: Path) -> torch.nn.Module:
         model = self.initialize_model(self._arch)
         checkpoint = torch.load(model_path)
         model.load_state_dict(checkpoint["state_dict"])
         return model
 
-    def initialize_model(self, arch, num_classes=2):
-        model_ft = None
+    def initialize_model(self, arch: str, num_classes: int = 2) -> torch.nn.Module:
         model_ft = models.__dict__[arch](pretrained=True)
 
         if "resnet" in arch:
@@ -158,17 +152,17 @@ class DNNClassifierModel(ModelBase):
 
         return model_ft
 
-    def get_predictions(self, inputs: torch.Tensor) -> List[float]:
+    def get_predictions(self, inputs: torch.Tensor) -> Sequence[float]:
         with torch.no_grad():
             inputs = inputs.to(self._device)
             output = self._model(inputs)
 
-            probability = torch.softmax(output, dim=1)
-            probability = probability.cpu().numpy()[:, 1]
-            return probability
+            probability: torch.Tensor = torch.softmax(output, dim=1)
+            predictions: Sequence[float] = probability.cpu().numpy()[:, 1]
+            return predictions
 
     @log_exceptions
-    def _infer_results(self):
+    def _infer_results(self) -> None:
         logger.info("INFER RESULTS THREAD STARTED")
 
         requests = []
@@ -198,23 +192,21 @@ class DNNClassifierModel(ModelBase):
                 # logger.info(f"Total results inferenced by model: {self.result_count}")
                 # logger.info(f"Request queue size: {self.request_queue.qsize()}")
 
-    def infer(self, requests: Iterable[ObjectProvider]) -> Iterable[ResultProvider]:
+    def infer(self, requests: Sequence[ObjectProvider]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:
             return
 
-        output = []
         for i in range(0, len(requests), self._batch_size):
             batch = []
             for request in requests[i : i + self._batch_size]:
                 batch.append(self.preprocess(request))
             results = self._process_batch(batch)
-            for result in results:
-                output.append(result)
-
-        return output
+            yield from results
 
     def infer_dir(
-        self, directory: Path, callback_fn: Callable[[int, float], None]
+        self,
+        directory: Path,
+        callback_fn: Callable[[int, List[int], List[float]], TestResults],
     ) -> TestResults:
         dataset = datasets.ImageFolder(str(directory), transform=self._test_transforms)
         data_loader = DataLoader(
@@ -224,8 +216,8 @@ class DNNClassifierModel(ModelBase):
             num_workers=mp.cpu_count(),
         )
 
-        targets = []
-        predictions = []
+        targets: List[int] = []
+        predictions: List[float] = []
         with torch.no_grad():
             for inputs, target in data_loader:
                 prediction = self.get_predictions(inputs)
@@ -238,7 +230,9 @@ class DNNClassifierModel(ModelBase):
         return callback_fn(self.version, targets, predictions)
 
     def infer_path(
-        self, test_file: Path, callback_fn: Callable[[int, float], None]
+        self,
+        test_file: Path,
+        callback_fn: Callable[[int, List[int], List[float]], TestResults],
     ) -> TestResults:
         image_list = []
         label_list = []
@@ -246,7 +240,7 @@ class DNNClassifierModel(ModelBase):
             contents = f.read().splitlines()
             for line in contents:
                 path, label = line.split()
-                image_list.append(path)
+                image_list.append(Path(path))
                 label_list.append(int(label))
 
         dataset = ImageFromList(
@@ -259,8 +253,8 @@ class DNNClassifierModel(ModelBase):
             num_workers=mp.cpu_count(),
         )
 
-        targets = []
-        predictions = []
+        targets: List[int] = []
+        predictions: List[float] = []
         with torch.no_grad():
             for inputs, target in data_loader:
                 prediction = self.get_predictions(inputs)
@@ -272,7 +266,7 @@ class DNNClassifierModel(ModelBase):
 
         return callback_fn(self.version, targets, predictions)
 
-    def evaluate_model(self, test_path: Path) -> None:
+    def evaluate_model(self, test_path: Path) -> TestResults:
         # call infer_dir
         self._device = torch.device("cuda")
         self._model.to(self._device)
@@ -311,7 +305,7 @@ class DNNClassifierModel(ModelBase):
                 result_object.attributes.add({"score": str.encode(str(score))})
                 yield ResultProvider(result_object, score, self.version)
 
-    def stop(self):
+    def stop(self) -> None:
         logger.info(f"Stopping model of version {self.version}")
         with self._model_lock:
             self._running = False
