@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from multiprocessing.synchronize import Event, Semaphore
     from pathlib import Path
 
-    from .hawk_typing import LabelStats
+    from .stats import LabelStats
 
 
 @dataclass
