@@ -28,7 +28,7 @@ class ThresholdSelector(SelectorBase):
         self._threshold = threshold
         self._reexamination_strategy = reexamination_strategy
 
-        self._discard_queue: list[ReexaminationQueueType] = [queue.PriorityQueue()]
+        self._discard_queue: ReexaminationQueueType = queue.PriorityQueue()
         self._insert_lock = threading.Lock()
         self._items_dropped = 0
         self._false_negatives = 0
@@ -44,7 +44,7 @@ class ThresholdSelector(SelectorBase):
             assert self._mission is not None
             with self._insert_lock:
                 time_result = self._mission.mission_time()
-                self._discard_queue[-1].put((-result.score, time_result, result))
+                self._discard_queue.put((-result.score, time_result, result))
         else:
             with self.stats_lock:
                 self._items_dropped += 1

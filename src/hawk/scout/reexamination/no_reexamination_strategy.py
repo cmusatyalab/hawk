@@ -22,7 +22,7 @@ class NoReexaminationStrategy(ReexaminationStrategy):
     def get_new_queues(
         self,
         model: Model,
-        old_queues: list[ReexaminationQueueType],
+        old_queues: ReexaminationQueueType,
         start_time: float = 0,
-    ) -> tuple[list[ReexaminationQueueType], int]:
-        return old_queues + [queue.PriorityQueue()], 0
+    ) -> tuple[ReexaminationQueueType, int]:
+        return queue.PriorityQueue(), 0

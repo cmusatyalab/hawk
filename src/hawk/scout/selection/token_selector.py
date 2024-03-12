@@ -31,24 +31,15 @@ class TokenSelector(TopKSelector):
 
     @log_exceptions
     def _initialize_queue(self) -> None:
-        if self._mode == "oracle":
-            return
-
         for _i in range(self._k):
-            result = self._priority_queues[-1].get()[-1]
+            result = self._priority_queues.get()[-1]
             self.result_queue.put(result)
             logger.info(f"Put tile number {self.sample_count} into result queue.")
 
     @log_exceptions
     def receive_token_message(self, label: LabelWrapper) -> None:
-        logger.info(
-            "In receive token message in token selector...\n"
-            "Index and label of received label: "
-            f"{label.scoutIndex} ... {label.imageLabel}\n"
-        )
-        result = self._priority_queues[-1].get()[-1]
+        result = self._priority_queues.get()[-1]
         self.result_queue.put(result)
-        logger.info("Sent new sample as a result of token message...")
 
     def _add_result(self, result: ResultProvider) -> None:
         assert self._mission is not None
@@ -66,13 +57,14 @@ class TokenSelector(TopKSelector):
                 logger.info(f"Queueing {result.id} Score {result.score}")
 
             if self._mode == "oracle":
+                self._priority_queues.put((-result.score, time_result, result))
                 if int(result.score) == 1:
-                    self.result_queue.put(result)
                     logger.info(f"[Result] Id {result.id} Score {result.score}")
+            else:
+                self._priority_queues.put((-result.score, time_result, result))
 
-            self._priority_queues[-1].put((-result.score, time_result, result))
-            # pop the top 4 samples of the first 100 to populate the initial
-            # labeling queue at home.
-            # logger.info("Self.k parameter: {}".format(self._k))
+        if self.sample_count % 200 == 0:
+            logger.info(f"Total Placed into priority queue: {self.sample_count}")
+
             if self.sample_count == 1000:
                 self._initialize_queue()

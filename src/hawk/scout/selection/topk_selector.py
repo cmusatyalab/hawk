@@ -51,7 +51,7 @@ class TopKSelector(SelectorBase):
         self.num_countermeasures = total_countermeasures
         self._reexamination_strategy = reexamination_strategy
 
-        self._priority_queues: list[ReexaminationQueueType] = [queue.PriorityQueue()]
+        self._priority_queues: ReexaminationQueueType = queue.PriorityQueue()
         self._batch_added = 0
         self._insert_lock = threading.Lock()
         self._mode = "hawk"
@@ -62,7 +62,7 @@ class TopKSelector(SelectorBase):
     def select_tiles(self, num_tiles: int) -> None:
         assert self._mission is not None
         for i in range(num_tiles):
-            result = self._priority_queues[-1].get()[-1]
+            result = self._priority_queues.get()[-1]
             self._mission.log(
                 f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}"
             )
@@ -91,7 +91,7 @@ class TopKSelector(SelectorBase):
                     self.result_queue.put(result)
                     logger.info(f"[Result] Id {result.id} Score {result.score}")
 
-            self._priority_queues[-1].put((-result.score, time_result, result))
+            self._priority_queues.put((-result.score, time_result, result))
             self._batch_added += 1
 
             # Logging for debugging
@@ -114,7 +114,7 @@ class TopKSelector(SelectorBase):
 
         result_queue: ReexaminationQueueType = queue.PriorityQueue()
         with self._insert_lock:
-            result_queue.queue = copy.deepcopy(self._priority_queues[-1].queue)
+            result_queue.queue = copy.deepcopy(self._priority_queues.queue)
 
         result_list = [item[-1] for item in list(result_queue.queue)]
         length_results = len(result_list)
@@ -179,5 +179,5 @@ class TopKSelector(SelectorBase):
                 self.num_negatives_added = 0
             else:
                 # this is a reset, discard everything
-                self._priority_queues = [queue.PriorityQueue()]
+                self._priority_queues = queue.PriorityQueue()
                 self._batch_added = 0

@@ -120,7 +120,7 @@ class DiversitySelector(TopKSelector):
         results = []
         logger.info("TopK call")
         for i in range(self._k):
-            result = self._priority_queues[-1].get()[-1]
+            result = self._priority_queues.get()[-1]
             self._mission.log(
                 f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}"
             )

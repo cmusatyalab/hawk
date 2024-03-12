@@ -26,19 +26,18 @@ class FullReexaminationStrategy(ReexaminationStrategy):
     def get_new_queues(
         self,
         model: Model,
-        old_queues: list[ReexaminationQueueType],
+        old_queue: ReexaminationQueueType,
         start_time: float = 0,
-    ) -> tuple[list[ReexaminationQueueType], int]:
+    ) -> tuple[ReexaminationQueueType, int]:
         new_queue: ReexaminationQueueType = queue.PriorityQueue()
 
         to_reexamine = []
-        for priority_queue in old_queues:
+        try:
             while True:
-                try:
-                    score, time_result, result = priority_queue.get_nowait()
-                    to_reexamine.append((score, time_result, result))
-                except queue.Empty:
-                    break
+                score, time_result, result = old_queue.get_nowait()
+                to_reexamine.append((score, time_result, result))
+        except queue.Empty:
+            pass
 
         reexamine = [
             ObjectProvider(item[-1].id, item[-1].content, item[-1].attributes)
@@ -58,4 +57,4 @@ class FullReexaminationStrategy(ReexaminationStrategy):
             )
             new_queue.put((-score, time_result, result))
 
-        return old_queues + [new_queue], len(to_reexamine)
+        return new_queue, len(to_reexamine)

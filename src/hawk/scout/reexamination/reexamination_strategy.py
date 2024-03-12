@@ -26,8 +26,8 @@ class ReexaminationStrategy(metaclass=ABCMeta):
     def get_new_queues(
         self,
         model: Model,
-        old_queues: list[ReexaminationQueueType],
+        old_queues: ReexaminationQueueType,
         start_time: float = 0,
-    ) -> tuple[list[ReexaminationQueueType], int]:
+    ) -> tuple[ReexaminationQueueType, int]:
         """Generates a new queue with reexamined results"""
         pass

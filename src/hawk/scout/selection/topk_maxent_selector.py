@@ -32,9 +32,7 @@ class MaxEntropySelector(TopKSelector):
 
         with self._insert_lock:
             time_result = self._mission.mission_time()
-            self._priority_queues[-1].put(
-                (calc_score(result.score), time_result, result)
-            )
+            self._priority_queues.put((calc_score(result.score), time_result, result))
             self._batch_added += 1
 
             if (
