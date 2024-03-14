@@ -43,7 +43,7 @@ class InboundProcess:
             logger.info("In token")
             self._token = True
             init_samples = selector_field["token"]["initial_samples"]
-            self._num_scouts = len(self.configuration["scouts"])
+            self._num_scouts = len(self.configuration.scouts)
             self.total_init_samples = int(init_samples) * int(self._num_scouts)
             self._label_time = int(selector_field["token"]["label_time"])
             self._sample_count = 0

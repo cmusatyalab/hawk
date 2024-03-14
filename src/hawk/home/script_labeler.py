@@ -37,7 +37,7 @@ class ScriptLabeler(Labeler):
         if selector_field["type"] == "token":
             self._token = True
             init_samples = selector_field["token"]["initial_samples"]
-            num_scouts = len(self.configuration["scouts"])
+            num_scouts = len(self.configuration.scouts)
             self.total_init_samples = int(init_samples * int(num_scouts))
             self._label_time = float(selector_field["token"]["label_time"])
         ##########
