@@ -7,7 +7,7 @@ import io
 import os
 import time
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, cast
 
 import cv2
 import numpy as np
@@ -60,7 +60,7 @@ class FrameRetriever(Retriever):
         return outpath
 
     def split_frame(self, frame: Path) -> Iterable[Path]:
-        image = cv2.imread(str(frame))
+        image = cast(npt.NDArray[np.uint8], cv2.imread(str(frame)))
 
         width = np.shape(image)[1]
         height = np.shape(image)[0]

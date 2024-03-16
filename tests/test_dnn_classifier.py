@@ -11,15 +11,13 @@ from hawk.scout.trainer.dnn_classifier.model import DNNClassifierModel
 
 
 @pytest.mark.cuda
+@pytest.mark.skipif(not torch.cuda.is_available(), "CUDA not available")
 @pytest.mark.benchmark(group="dnn_classifier_model")
 @pytest.mark.parametrize("batch_size", [1, 10])
 def test_dnn_classifier(benchmark, testcontext, objectprovider, batch_size):
     model_path = Path(__file__).parent.joinpath("assets", "model.pth")
     if not model_path.exists():
-        pytest.skip("Missing model to load with DNNClassiferModel")
-
-    if not torch.cuda.is_available():
-        pytest.skip("CUDA not available")
+        pytest.skip("Missing model to load with DNNClassifierModel")
 
     benchmark.extra_info.update(
         {

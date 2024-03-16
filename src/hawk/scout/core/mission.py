@@ -480,15 +480,15 @@ class Mission(DataManagerContext, ModelContext):
         try:
             while not self._abort_event.is_set():
                 try:
-                    msg = pipe.recv()                    
+                    msg = pipe.recv()
                 except EOFError:
                     continue
                 request = LabelWrapper()
                 request.ParseFromString(msg)
-                self.distribute_label(request)                
+                self.distribute_label(request)
                 if isinstance(self.selector, TokenSelector):
                     self.selector.receive_token_message(request)
-                    
+
         except Exception as e:
             logger.error(e)
             self.stop()

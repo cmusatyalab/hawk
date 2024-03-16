@@ -112,8 +112,8 @@ class VideoRetriever(Retriever):
 
                 outdir = self.temp_tile_dir.joinpath(f"{basename}{subimgname}.jpeg")
                 # h, w, c = np.shape(subimg)
-                tile = cv2.resize(tile, (256, 256))
-                cv2.imwrite(str(outdir), tile)
+                resized_tile = cv2.resize(tile, (256, 256))
+                cv2.imwrite(str(outdir), resized_tile)
                 yield outdir
 
     def stream_objects(self) -> None:
