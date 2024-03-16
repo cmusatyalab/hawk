@@ -4,6 +4,7 @@
 
 import io
 import multiprocessing as mp
+import queue
 import time
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Sequence, Tuple
@@ -167,30 +168,34 @@ class DNNClassifierModel(ModelBase):
 
         requests = []
         timeout = 5
-        prev_infer = time.time()
+        next_infer = time.time() + timeout
         while self._running:
             try:
-                request = self.request_queue.get(block=False)
+                request = self.request_queue.get(timeout=1)
                 requests.append(request)
-            except Exception:
-                # sleep when queue empty
-                time.sleep(1)
-
-            if not len(requests):
+            except queue.Empty:
                 continue
 
-            if (
-                len(requests) >= self._batch_size
-                or (time.time() - prev_infer) > timeout
-            ):
-                prev_infer = time.time()
-                results = self._process_batch(requests)
-                for result in results:
-                    self.result_count += 1
-                    self.result_queue.put(result)
-                requests = []
-                # logger.info(f"Total results inferenced by model: {self.result_count}")
-                # logger.info(f"Request queue size: {self.request_queue.qsize()}")
+            if len(requests) == 0:
+                continue
+
+            if len(requests) < self._batch_size and time.time() < next_infer:
+                continue
+
+            start_infer = time.time()
+            results = self._process_batch(requests)
+            logger.info(
+                f"Process batch took {time.time()-start_infer}s for {len(requests)}"
+            )
+            for result in results:
+                self.result_count += 1
+                self.result_queue.put(result)
+
+            requests = []
+            # next_infer = start_infer + timeout
+            next_infer = time.time() + timeout
+            # logger.info(f"Total results inferenced by model: {self.result_count}")
+            # logger.info(f"Request queue size: {self.request_queue.qsize()}")
 
     def infer(self, requests: Sequence[ObjectProvider]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:
@@ -288,8 +293,9 @@ class DNNClassifierModel(ModelBase):
                 # put request back in queue
                 for req in batch:
                     self.request_queue.put(req)
-            return
+            return []
 
+        results = []
         with self._model_lock:
             tensors = torch.stack([f[1] for f in batch])
             predictions = self.get_predictions(tensors)
@@ -298,12 +304,10 @@ class DNNClassifierModel(ModelBase):
                 score = predictions[i]
                 result_object = batch[i][0]
                 if self._mode == "oracle":
-                    if "/0/" in result_object.id:
-                        score = 0
-                    else:
-                        score = 1
+                    score = 0 if result_object.id.startswith("/0/") else 1
                 result_object.attributes.add({"score": str.encode(str(score))})
-                yield ResultProvider(result_object, score, self.version)
+                results.append(ResultProvider(result_object, score, self.version))
+        return results
 
     def stop(self) -> None:
         logger.info(f"Stopping model of version {self.version}")

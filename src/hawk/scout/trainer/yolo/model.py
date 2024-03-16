@@ -6,6 +6,7 @@ import gc
 import io
 import multiprocessing as mp
 import os
+import queue
 import time
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, cast
@@ -130,28 +131,27 @@ class YOLOModel(ModelBase):
 
         requests = []
         timeout = 5
-        prev_infer = time.time()
+        next_infer = time.time() + timeout
         while self._running:
             try:
-                request = self.request_queue.get(block=False)
+                request = self.request_queue.get(timeout=1)
                 requests.append(request)
-            except Exception:
-                # sleep when queue empty
-                time.sleep(0.01)
+            except queue.Empty:
+                continue
 
             if not len(requests):
                 continue
 
-            if (
-                len(requests) >= self._batch_size
-                or (time.time() - prev_infer) > timeout
-            ):
-                prev_infer = time.time()
-                results = self._process_batch(requests)
-                for result in results:
-                    self.result_count += 1
-                    self.result_queue.put(result)
-                requests = []
+            if len(requests) < self._batch_size and time.time() < next_infer:
+                continue
+
+            results = self._process_batch(requests)
+            for result in results:
+                self.result_count += 1
+                self.result_queue.put(result)
+
+            requests = []
+            next_infer = time.time() + timeout
 
     def infer(self, requests: Sequence[ObjectProvider]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:

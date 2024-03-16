@@ -4,6 +4,7 @@
 
 import io
 import os
+import queue
 import time
 import zipfile
 from argparse import Namespace
@@ -190,28 +191,27 @@ class FewShotModel(ModelBase):
 
         requests = []
         timeout = 5
-        prev_infer = time.time()
+        next_infer = time.time() + timeout
         while self._running:
             try:
-                request = self.request_queue.get(block=False)
+                request = self.request_queue.get(timeout=1)
                 requests.append(request)
-            except Exception:
-                # sleep when queue empty
-                time.sleep(1)
-
-            if not len(requests):
+            except queue.Empty:
                 continue
 
-            if (
-                len(requests) >= self._batch_size
-                or (time.time() - prev_infer) > timeout
-            ):
-                prev_infer = time.time()
-                results = self._process_batch(requests)
-                for result in results:
-                    self.result_count += 1
-                    self.result_queue.put(result)
-                requests = []
+            if len(requests) == 0:
+                continue
+
+            if len(requests) < self._batch_size and time.time() < next_infer:
+                continue
+
+            results = self._process_batch(requests)
+            for result in results:
+                self.result_count += 1
+                self.result_queue.put(result)
+
+            requests = []
+            next_infer = time.time() + timeout
 
     def infer(self, requests: Iterable[ObjectProvider]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:
