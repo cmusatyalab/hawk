@@ -66,5 +66,5 @@ class TokenSelector(TopKSelector):
         if self.sample_count % 200 == 0:
             logger.info(f"Total Placed into priority queue: {self.sample_count}")
 
-            if self.sample_count == 1000:
+            if self.sample_count == self._batch_size:
                 self._initialize_queue()
