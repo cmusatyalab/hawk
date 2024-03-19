@@ -159,6 +159,8 @@ filterwarnings = [
 ]
 markers = [
     "cuda: marks tests that depend on CUDA (deselect with '-m \"not cuda\"')",
+    "home: components that run on home (deselect with '-m \"not home\"')",
+    "scout: components that run on the scout (deselect with '-m \"not scout\"')",
 ]
 
 [build-system]

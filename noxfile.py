@@ -16,3 +16,5 @@ from nox_poetry import session
 def tests(session, component):
     session.install(f".[{component}]", "pytest")
     session.run("pytest", f"tests/test_entrypoints_{component}.py")
+    marker = "not scout" if component == "home" else "not home"
+    session.run("pytest", "-m", marker)

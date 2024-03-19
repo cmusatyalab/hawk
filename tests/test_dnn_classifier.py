@@ -11,7 +11,8 @@ from hawk.scout.trainer.dnn_classifier.model import DNNClassifierModel
 
 
 @pytest.mark.cuda
-@pytest.mark.skipif(not torch.cuda.is_available(), "CUDA not available")
+@pytest.mark.scout
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 @pytest.mark.benchmark(group="dnn_classifier_model")
 @pytest.mark.parametrize("batch_size", [1, 10])
 def test_dnn_classifier(benchmark, testcontext, objectprovider, batch_size):

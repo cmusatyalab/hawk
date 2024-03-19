@@ -12,6 +12,7 @@ from torchvision import transforms as T
 from torchvision.models import resnet18  # , ResNet18_Weights
 
 
+@pytest.mark.scout
 @pytest.mark.benchmark(group="torchvision_transform")
 def test_torchvision_transforms(benchmark, reference_image):
     # weights = ResNet18_Weights.DEFAULT
@@ -28,6 +29,7 @@ def test_torchvision_transforms(benchmark, reference_image):
     assert isinstance(transformed_img, torch.Tensor)
 
 
+@pytest.mark.scout
 @pytest.mark.benchmark(group="resnet18_inference")
 @pytest.mark.parametrize(
     "device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
