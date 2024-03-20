@@ -21,16 +21,16 @@ This is a developing project.
 
 ## Installation steps
 
-### Step 1. Setting up Environment
+### Step 0. Setting up Environment
 
-```bash
-cd ~/hawk
-# use extras to specify if you want dependencies for only home, scout, or both.
-poetry install --extras home
+If installing the system from scratch, first follow the wiki install instructions here:
+[Install Instructions from Scratch](https://github.com/cmusatyalab/hawk/wiki/Hawk-from-Scratch)
 
-# you can run `poetry shell` to get a shell in the new environment and then you
-# will not have to prefix commands with 'poetry run' to execute in the environment.
-```
+### Step 1. Verify required artifacts
+The standard Hawk mission requires a minimal set of artifacts.  
+a First, a dataset must be available on the scout.
+b Second, a boostsstrap dataset consisting of a small number of sample per class
+    1 dfdf
 
 ### Step 2. Modify mission configuration
 
