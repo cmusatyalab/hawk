@@ -28,9 +28,10 @@ If installing the system from scratch, first follow the wiki install instruction
 
 ### Step 1. Verify required artifacts
 The standard Hawk mission requires a minimal set of artifacts.  
-a First, a dataset must be available on the scout.
-b Second, a boostsstrap dataset consisting of a small number of sample per class
-    1 dfdf
+- A dataset must be available on the scout.
+- A booststrap dataset consisting of a small number of samples per class from the relvant dataset.
+- An index file containing the full paths of each sample that will be stored on the scout for processing during a mission.
+- (Optional) An initial model trained on a small amount of data prior to the mission.
 
 ### Step 2. Modify mission configuration
 
@@ -91,18 +92,12 @@ poetry run python scripts/split_data.py configs/dota_sample_config.yml
 ```
 After running this script, the list of all samples from the stream file  will be approximately evenly split across the number of scouts defined in the config file.  These new per-scout index files will be stored on each respective scout at the location specified by dataset: index_path in the config file.
 
-### Step 4. Start Hawk on the Scout Servers
-
-```bash
-poetry install --extras scout
-poetry run hawk_scout
-```
-
-### Step 5. Start Hawk at Home
+### Step 5. Start Hawk Mission from Home
 
 ```bash
 poetry run hawk_home configs/config.yml
 ```
+
 ## Running Hawk UI
 Hawk UI is developed using [Flutter SDK](https://docs.flutter.dev/get-started/install) and has been tested using Chrome browser.
 The backend uses Flask REST API (Port:8000) to start and stop missions. The results are streamed to the front-end using websockets (Port:5000).
