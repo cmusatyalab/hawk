@@ -14,7 +14,12 @@ from nox_poetry import session
 @session(python=["3.8", "3.9", "3.10"])
 @nox.parametrize("component", ["home", "scout"])
 def tests(session, component):
-    session.install(f".[{component}]", "pytest")
-    session.run("pytest", f"tests/test_entrypoints_{component}.py")
+    session.install(
+        "--extra-index-url",
+        "https://download.pytorch.org/whl/cu118",
+        f".[{component}]",
+        "pytest",
+        "pytest-benchmark",
+    )
     marker = "not scout" if component == "home" else "not home"
     session.run("pytest", "-m", marker)

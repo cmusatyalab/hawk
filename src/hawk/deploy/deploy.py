@@ -121,6 +121,8 @@ def deploy(
             "-m",
             "pip",
             "install",
+            "--extra-index-url",
+            "https://download.pytorch.org/whl/cu118",
         ]
         if dist_requirements is not None:
             c.put(dist_requirements, "requirements-scout.txt")
