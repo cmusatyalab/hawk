@@ -29,8 +29,8 @@ If installing the system from scratch, first follow the wiki install instruction
 ### Step 1. Verify required artifacts
 The standard Hawk mission requires a minimal set of artifacts.  
 - A dataset must be available on the scout.
-- A booststrap dataset consisting of a small number of samples per class from the relvant dataset.
-- An index file containing the full paths of each sample that will be stored on the scout for processing during a mission.
+- A booststrap dataset consisting of a small number of samples per class from the relvant dataset.  A .zip containing two directories 0/ and 1/, each containing positive and negative samples.
+- An index file containing the full paths of each sample that will be stored on the scout for processing during a mission.  Example: [example_DOTA_stream_file](/configs/stream_example_DOTA_roundabout.txt)
 - (Optional) An initial model trained on a small amount of data prior to the mission.
 
 ### Step 2. Modify mission configuration
@@ -73,17 +73,13 @@ Provide relevant data and model parameters in the [config file.](/configs/dota_s
     - k: 100 - number of samples reexamined each time a new model is trained.
 - bandwidth: scout-home bandwidth constraint (in kbps)
 
-
 ### Step 3. Split dataset across Scout Servers
-
 
 The stream file on home provided in [config file.](/configs/dota_sample_config.yml), dataset: stream_path, contains a list of input images with associated labels.  The script below assumes the stream file contains all possible samples desired for inference during a mission, with the format:
 <path/to/image1> <label_1>
 <path/to/image2> <label_2>
 ...
 where the labels are either 1 or 0 (pos or neg).  If using the DOTA dataset, all original images should be tiled to dimensions of 256x256, which can be done by referencing [DOTA Dev Kit](https://github.com/CAPTAIN-WHU/DOTA_devkit/tree/master).  This file thus points to data samples to be inferenced by the scouts.
-
-
 
 The user can specify the index file (dataset: index_path) that will be generated from running the split_data.py script below.
 Run the following cmd to split the dataset across participating scouts
@@ -92,11 +88,13 @@ poetry run python scripts/split_data.py configs/dota_sample_config.yml
 ```
 After running this script, the list of all samples from the stream file  will be approximately evenly split across the number of scouts defined in the config file.  These new per-scout index files will be stored on each respective scout at the location specified by dataset: index_path in the config file.
 
-### Step 5. Start Hawk Mission from Home
+### Step 4. Start Hawk Mission from Home
 
 ```bash
 poetry run hawk_home configs/config.yml
 ```
+The configuration file will need to be modified to include the actual host name of the scout and will need to include the index file path location on the scout (see step 3).  If the mission successfully runs, you should see the scout retrieving and inferencing batches of images and periodically reporting scores of positives.
+
 
 ## Running Hawk UI
 Hawk UI is developed using [Flutter SDK](https://docs.flutter.dev/get-started/install) and has been tested using Chrome browser.
