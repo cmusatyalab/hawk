@@ -42,21 +42,35 @@ class Result:
     index: int
     objectId: str
     scoutIndex: int
-    score: int
+    score: float
     size: int
+    data: bytes | None = None
     imageLabel: int | None = None
     boundingBoxes: list[tuple[float, float, float, float]] | None = None
 
-    def to_jsonl(self, jsonl_file: os.PathLike[str] | str) -> None:
+    def to_unlabeled_json(self, **kwargs: int | float | str) -> str:
+        return json.dumps(
+            dict(
+                index=self.index,
+                objectId=self.objectId,
+                scoutIndex=self.scoutIndex,
+                score=self.score,
+                size=self.size,
+                **kwargs,
+            ),
+            sort_keys=True,
+        )
+
+    def to_labeled_jsonl(self, jsonl_file: os.PathLike[str] | str) -> None:
         json_data = json.dumps(
-            {
-                "index": self.index,
-                "objectId": self.objectId,
-                "scoutIndex": self.scoutIndex,
-                "size": self.size,
-                "imageLabel": self.imageLabel,
-                "boundingBoxes": self.boundingBoxes,
-            }
+            dict(
+                index=self.index,
+                objectId=self.objectId,
+                scoutIndex=self.scoutIndex,
+                size=self.size,
+                imageLabel=self.imageLabel,
+                boundingBoxes=self.boundingBoxes,
+            )
         )
         with Path(jsonl_file).open("a") as fd:
             fd.write(f"{json_data}\n")
@@ -78,6 +92,18 @@ class Result:
             .astype(merged_dtypes)
             .set_index("index")
         )
+
+    # @classmethod
+    # def from_sendtiles_msg(cls, msg: bytes) -> Result:
+    #    request = SendTiles()
+    #    request.ParseFromString(msg)
+    #    return cls(
+    #        objectId=request.objectId,
+    #        scoutIndex=request.scoutIndex,
+    #        score=request.score,
+    #        size=request.ByteSize(),
+    #        data=request.attributes["thumbnail.jpeg"],
+    #    )
 
 
 @dataclass

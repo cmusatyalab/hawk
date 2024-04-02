@@ -4,7 +4,6 @@
 
 import argparse
 import multiprocessing as mp
-import socket
 import time
 from datetime import datetime
 from pathlib import Path
@@ -15,10 +14,10 @@ from logzero import logger
 from ..mission_config import load_config, write_config
 from ..ports import H2A_PORT
 from .admin import Admin
-from .inbound import InboundProcess
-from .outbound import OutboundProcess
 from .script_labeler import ScriptLabeler
 from .stats import LabelStats
+from .to_labeler import LabelerDiskQueue
+from .to_scout import ScoutQueue, Strategy
 from .utils import define_scope, get_ip
 
 
@@ -48,11 +47,10 @@ def main() -> None:
     )
 
     mission_id = "_".join([mission_name, datetime.now().strftime("%Y%m%d-%H%M%S")])
-    scouts = config.scouts
 
     if config["dataset"]["type"] == "cookie":
         logger.info("Reading Scope Cookie")
-        logger.info(f"Participating scouts \n{scouts}")
+        logger.info(f"Participating scouts \n{config.scouts}")
         config = define_scope(config)
 
     bandwidth = config.get("bandwidth", "100")
@@ -61,7 +59,7 @@ def main() -> None:
         30,
         12,
     ], f"Fireqos script may not exist for {bandwidth}"
-    config["bandwidth"] = [f'[[-1, "{bandwidth}k"]]' for _ in scouts]
+    config["bandwidth"] = [f'[[-1, "{bandwidth}k"]]' for _ in config.scouts]
 
     # create new mission directory if we've been started with a config.yml
     if mission_dir is None:
@@ -76,18 +74,12 @@ def main() -> None:
 
     log_dir.mkdir(parents=True)
 
-    results_jsonl = mission_dir / "unlabeled.jsonl"
-    labeled_jsonl = mission_dir / "labeled.jsonl"
-
     # Save final config file to log_dir
     # this includes scope derived parameters, normalized bandwidth, and
     # home-params.log_dir
     # TODO some of this could move into initializers of a config dataclass
     config_path = log_dir / "hawk.yml"
     write_config(config, config_path)
-
-    # Setting up helpers
-    scout_ips = [socket.gethostbyname(scout) for scout in scouts]
 
     processes = []
     stop_event = mp.Event()
@@ -121,36 +113,27 @@ def main() -> None:
             p.start()
             processes.append(p)
 
-        # Start inbound process
-        logger.info("Starting Inbound Process")
-        strategy = config.get("label-queue-strategy", "fifo")
-        label_queue_max = config.get("label-queue-max", 0)
-        label_sem = mp.BoundedSemaphore(label_queue_max) if label_queue_max else None
-        home_inbound = InboundProcess(
-            results_jsonl, strategy, len(config.deploy.scouts)
-        )
-        p = mp.Process(
-            target=home_inbound.scout_to_labeler,
-            kwargs={"next_label": label_sem, "stop_event": stop_event},
-        )
-        p.start()
-        processes.append(p)
+        # Start scout and labeler queues
+        queues = config.get("queue-mode", "thread")
+        if queues == "thread":
+            logger.info("Initializing Scout Queue")
+            strategy = config.get("label-queue-strategy", Strategy.FIFO)
+            scout_queue = ScoutQueue(
+                strategy=strategy,
+                scouts=config.scouts,
+                h2c_port=config.deploy.h2c_port,
+            )
 
-        # start outbound process
-        logger.info("Starting Outbound Process")
-        home_outbound = OutboundProcess(
-            scout_ips, config.deploy.h2c_port, labeled_jsonl
-        )
-        p = mp.Process(
-            target=home_outbound.labeler_to_scout,
-            kwargs={
-                "next_label": label_sem,
-                "stop_event": stop_event,
-                "labelstats": labelstats,
-            },
-        )
-        p.start()
-        processes.append(p)
+            logger.info("Starting Labeler Queue")
+            label_queue_max = config.get("label-queue-max", 0)
+            LabelerDiskQueue(
+                scout_queue=scout_queue,
+                mission_dir=mission_dir,
+                label_queue_size=label_queue_max,
+            ).start()
+
+            logger.info("Starting Scout Queue")
+            scout_queue.start()
 
         # Send config file to admin
         # send msg "<config> <path to config file>"

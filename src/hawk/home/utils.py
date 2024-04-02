@@ -10,13 +10,13 @@ import re
 import socket
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterator
+from typing import TYPE_CHECKING
 
 from logzero import logger
 
 if TYPE_CHECKING:
-    import os
     from multiprocessing.synchronize import Event
+    from typing import Iterator, TextIO
 
     from ..mission_config import MissionConfig
 
@@ -95,24 +95,21 @@ def get_ip() -> str:
     return IP
 
 
-def tailf(
-    file: os.PathLike[str] | str, stop_event: Event | None = None
-) -> Iterator[str]:
-    """Iterate over the lines in the file, but wait for more when we hit EOF"""
-    with Path(file).open() as fp:
-        fragments: list[str] = []
-        while stop_event is None or not stop_event.is_set():
-            for line in fp:
-                # this is only an optimization to avoid maintaining and
-                # concatenating the list of fragments
-                if len(fragments) == 0 and line[-1] == "\n":
-                    yield line
-                    continue
+def tailf(fp: TextIO, stop_event: Event | None = None) -> Iterator[str]:
+    """Iterate over the lines in the file, wait for more when we hit EOF"""
+    fragments: list[str] = []
+    while stop_event is None or not stop_event.is_set():
+        for line in fp:
+            # this is only an optimization to avoid maintaining and
+            # concatenating the list of fragments
+            if len(fragments) == 0 and line[-1] == "\n":
+                yield line
+                continue
 
-                fragments.append(line)
-                if line[-1] == "\n":
-                    yield "".join(fragments)
-                    fragments = []
+            fragments.append(line)
+            if line[-1] == "\n":
+                yield "".join(fragments)
+                fragments = []
 
-            # got to EOF, wait for more.
-            time.sleep(0.5)
+        # got to EOF, wait for more.
+        time.sleep(0.5)
