@@ -70,6 +70,7 @@ class Label:
     size: int
     image_label: str
     bounding_boxes: list[tuple[float, float, float, float]]
+    queued_time: float | None = None
 
     def to_msg(self) -> bytes:
         bboxes = [f"{b[0]} {b[1]} {b[2]} {b[3]}" for b in self.bounding_boxes or []]
@@ -103,6 +104,7 @@ class Label:
             size=data["size"],
             image_label=data["imageLabel"],
             bounding_boxes=data["boundingBoxes"],
+            queued_time=data.get("queued_time"),
         )
 
 

@@ -27,7 +27,7 @@ If installing the system from scratch, first follow the wiki install instruction
 [Install Instructions from Scratch](https://github.com/cmusatyalab/hawk/wiki/Hawk-from-Scratch)
 
 ### Step 1. Verify required artifacts
-The standard Hawk mission requires a minimal set of artifacts.  
+The standard Hawk mission requires a minimal set of artifacts.
 - A dataset must be available on the scout.
 - A booststrap dataset consisting of a small number of samples per class from the relvant dataset.  A .zip containing two directories 0/ and 1/, each containing positive and negative samples.
 - An index file containing the full paths of each sample that will be stored on the scout for processing during a mission.  Example: [example_DOTA_stream_file](/configs/stream_example_DOTA_roundabout.txt)

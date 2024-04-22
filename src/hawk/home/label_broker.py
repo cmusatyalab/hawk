@@ -8,6 +8,8 @@ import sys
 from contextlib import suppress
 from pathlib import Path
 
+from prometheus_client import start_http_server as start_metrics_server
+
 from ..mission_config import MissionConfig
 from .to_labeler import LabelerDiskQueue
 from .to_scout import ScoutQueue, Strategy
@@ -19,6 +21,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--coordinator", type=int)
     parser.add_argument("--label-queue-size", type=int)
+    parser.add_argument("--metrics-port", type=int)
     parser.add_argument(
         "--label-queue-strategy",
         type=Strategy,
@@ -38,6 +41,9 @@ def main() -> int:
         args.label_queue_strategy = config.get("label-queue-strategy", Strategy.FIFO)
 
     with suppress(KeyboardInterrupt):
+        if args.metrics_port is not None:
+            start_metrics_server(port=args.metrics_port)
+
         scout_queue = ScoutQueue(
             strategy=args.label_queue_strategy,
             scouts=config.scouts,
@@ -46,6 +52,7 @@ def main() -> int:
         )
 
         LabelerDiskQueue(
+            mission_id=args.mission_directory.name,
             scout_queue=scout_queue,
             mission_dir=args.mission_directory,
             label_queue_size=args.label_queue_size,

@@ -10,12 +10,12 @@ from pathlib import Path
 
 import zmq
 from logzero import logger
+from prometheus_client import start_http_server as start_metrics_server
 
 from ..mission_config import load_config, write_config
 from ..ports import H2A_PORT
 from .admin import Admin
 from .script_labeler import ScriptLabeler
-from .stats import LabelStats
 from .to_labeler import LabelerDiskQueue
 from .to_scout import ScoutQueue, Strategy
 from .utils import define_scope, get_ip
@@ -83,7 +83,6 @@ def main() -> None:
 
     processes = []
     stop_event = mp.Event()
-    labelstats = LabelStats()
 
     try:
         # Starting home to admin conn
@@ -94,14 +93,13 @@ def main() -> None:
         # Setup admin
         home_ip = get_ip()
 
-        logger.info("Starting Admin Process")
-        home_admin = Admin(home_ip, mission_id)
-        p = mp.Process(
-            target=home_admin.receive_from_home,
-            kwargs={"stop_event": stop_event, "labelstats": labelstats},
-        )
-        processes.append(p)
-        p.start()
+        logger.info("Starting Admin Thread")
+        home_admin = Admin(home_ip, mission_id, stop_event)
+        home_admin.start()
+
+        metrics_port = config.get("home-params", {}).get("metrics-port")
+        if metrics_port is not None:
+            start_metrics_server(port=int(metrics_port))
 
         # Start labeler process
         labeler = config.get("label-mode", "ui")
@@ -110,8 +108,8 @@ def main() -> None:
             labeler = ScriptLabeler.from_mission_config(config, mission_dir)
 
             p = mp.Process(target=labeler.run)
-            p.start()
             processes.append(p)
+            p.start()
 
         # Start scout and labeler queues
         queues = config.get("queue-mode", "thread")
@@ -122,11 +120,13 @@ def main() -> None:
                 strategy=strategy,
                 scouts=config.scouts,
                 h2c_port=config.deploy.h2c_port,
+                zmq_context=context,
             )
 
             logger.info("Starting Labeler Queue")
             label_queue_max = config.get("label-queue-max", 0)
             LabelerDiskQueue(
+                mission_id=mission_id,
                 scout_queue=scout_queue,
                 mission_dir=mission_dir,
                 label_queue_size=label_queue_max,
@@ -153,7 +153,7 @@ def main() -> None:
         logger.error(e)
     finally:
         stop_event.set()
-        home_admin.stop_mission()
+        # home_admin.stop_mission()
         time.sleep(10)
         for p in processes:
             p.terminate()

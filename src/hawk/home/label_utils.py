@@ -23,6 +23,7 @@ _UNLABELED_DTYPES = {
     "scoutIndex": "int",
     "size": "int",
     "score": "float",
+    "queued_time": "float",
 }
 
 _LABELED_DTYPES = {
@@ -34,6 +35,8 @@ _LABELED_DTYPES = {
     # "boundingBoxes": "list[str]",
     # What pandas can actually recognize...
     "boundingBoxes": "object",
+    # "size": "int",
+    # "queued_time": "float",
 }
 
 
@@ -162,7 +165,13 @@ class MissionResults:
             # read new data, forcing the data types as we go
             tail = (
                 pd.DataFrame(
-                    pd.read_json(fp, orient="records", lines=True, dtype=dtypes),
+                    pd.read_json(
+                        fp,
+                        orient="records",
+                        lines=True,
+                        convert_dates=False,
+                        dtype=dtypes,
+                    ),
                     columns=list(dtypes),
                 )
                 .astype(dtypes)
@@ -245,6 +254,7 @@ class MissionResults:
                     "size",
                     "imageLabel",
                     "boundingBoxes",
+                    "queued_time",
                 ]
             ].to_json(fp, orient="records", lines=True)
 

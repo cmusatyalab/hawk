@@ -101,7 +101,7 @@ def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--label-time", type=float, default=0.0)
+    parser.add_argument("--label-time", type=float, default=1.0)
     parser.add_argument("--detect", action="store_true")
     parser.add_argument("--gt-path", type=Path)
     parser.add_argument("mission_directory", type=Path, nargs="?", default=".")

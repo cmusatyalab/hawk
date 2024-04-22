@@ -14,7 +14,7 @@ import time
 from collections import defaultdict
 from contextlib import suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, TextIO
 
 import zmq
 from google.protobuf.json_format import MessageToDict
@@ -42,37 +42,55 @@ from ..proto.messages_pb2 import (
     TopKConfig,
     TrainConfig,
 )
-from .stats import LabelStats
+from .to_labeler import HAWK_LABEL_MSGSIZE, HAWK_LABEL_NEGATIVE, HAWK_LABEL_POSITIVE
 
 if TYPE_CHECKING:
     from multiprocessing.synchronize import Event
 
+    from prometheus_client import Counter
+
 LOG_INTERVAL = 15
+
+
+def collect_counter_total(counter: Counter) -> float:
+    return sum(
+        sample.value
+        for metric in counter.collect()
+        for sample in metric.samples
+        if not sample.name.endswith("_created")
+    )
 
 
 class Admin:
     def __init__(
-        self, home_ip: str, mission_id: str, explicit_start: bool = False
+        self,
+        home_ip: str,
+        mission_id: str,
+        stop_event: Event,
+        explicit_start: bool = False,
     ) -> None:
         self._home_ip = home_ip
         self._start_event = threading.Event()
-        self.last_stats = LabelStats()
         self._mission_id = mission_id
+        self.stop_event = stop_event
         self.explicit_start = explicit_start
         self.scout_stubs: dict[int, zmq.Socket[Literal[zmq.SocketType.REP]]] = {}
+        self.log_files: dict[int, TextIO] = {}
         self.test_path = ""
 
-    def receive_from_home(self, stop_event: Event, labelstats: LabelStats) -> None:
-        with suppress(KeyboardInterrupt):
-            self.labelstats = labelstats
-            self.stop_event = stop_event
+    def start(self) -> Admin:
+        threading.Thread(target=self.receive_from_home, daemon=True).start()
+        threading.Thread(target=self.get_mission_stats, daemon=True).start()
+        return self
 
+    def receive_from_home(self) -> None:
+        with suppress(KeyboardInterrupt):
             # Bind H2A Server
             context = zmq.Context()
             socket = context.socket(zmq.REP)
             socket.bind(f"tcp://127.0.0.1:{H2A_PORT}")
 
-            while not stop_event.is_set():
+            while not self.stop_event.is_set():
                 msg_string = socket.recv_string()
                 header, body = msg_string.split()
                 socket.send_string("RECEIVED")
@@ -403,7 +421,7 @@ class Admin:
         for stub in self.scout_stubs.values():
             msg = [
                 b"a2s_start_mission",
-                b"",
+                self._mission_id.encode("utf-8"),
             ]
             stub.send_multipart(msg)
 
@@ -412,15 +430,17 @@ class Admin:
 
         logger.info("Start msg received")
 
-        threading.Thread(target=self.get_mission_stats, name="get-stats").start()
-
     def stop_mission(self) -> None:
         """Explicit stop Mission command"""
+        # close per-scout log files to suspend stats collection
+        log_files, self.log_files = self.log_files, {}
+        for log_file in log_files.values():
+            log_file.close()
 
         for stub in self.scout_stubs.values():
             msg = [
                 b"a2s_stop_mission",
-                b"",
+                self._mission_id.encode("utf-8"),
             ]
             stub.send_multipart(msg)
 
@@ -428,18 +448,24 @@ class Admin:
             stub.recv()
 
     def get_mission_stats(self) -> None:
-        time.sleep(10)
         count = 1
         # prev_bytes = prev_processed = 0
         try:
             while not self.stop_event.is_set():
+                time.sleep(LOG_INTERVAL)
+
+                # wait until mission has started
+                if not self.log_files:
+                    continue
+
                 stats = self.accumulate_mission_stats()
-
-                self.labelstats.resync()
-
-                stats["positives"] = self.labelstats.positives
-                stats["negatives"] = self.labelstats.negatives
-                stats["bytes"] = self.labelstats.total_bytes
+                stats.update(
+                    {
+                        "positives": int(collect_counter_total(HAWK_LABEL_POSITIVE)),
+                        "negatives": int(collect_counter_total(HAWK_LABEL_NEGATIVE)),
+                        "bytes": int(collect_counter_total(HAWK_LABEL_MSGSIZE)),
+                    }
+                )
 
                 log_path = self.log_dir / f"stats-{count:06}.json"
                 with open(log_path, "w") as f:
@@ -478,11 +504,9 @@ class Admin:
                 # prev_bytes = stats["bytes"]
                 # prev_processed = stats["processedObjects"]
                 count += 1
-                time.sleep(LOG_INTERVAL)
         except (Exception, KeyboardInterrupt) as e:
             raise e
         self.stop_event.set()
-        self.stop_mission()
 
     def get_post_mission_archive(self) -> None:
         for index, stub in self.scout_stubs.items():
@@ -539,7 +563,7 @@ class Admin:
         for stub in self.scout_stubs.values():
             msg = [
                 b"a2s_get_mission_stats",
-                b"",
+                self._mission_id.encode("utf-8"),
             ]
             stub.send_multipart(msg)
 
@@ -549,6 +573,7 @@ class Admin:
             mission_stat_msg.ParseFromString(reply)
             mission_stat = MessageToDict(mission_stat_msg)
             self.log_files[index].write(json.dumps(mission_stat) + "\n")
+
             for k, v in mission_stat.items():
                 if isinstance(v, dict):
                     others = v
