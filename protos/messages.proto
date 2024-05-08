@@ -78,6 +78,7 @@ message TrainConfig {
     ModelConfig yolo = 2;
     ModelConfig fsl = 3;
     ModelConfig dnn_classifier_radar = 4;
+    ModelConfig yolo_radar = 5;
   }
 }
 
@@ -132,6 +133,13 @@ message FileDataset {
   int32 tileSize = 2;
   int32 numTiles = 3; // optional param for random sampling
   int32 timeout = 4; // optional param for random sampling
+  bool resizeTile = 5;
+}
+
+message NetworkDataset {
+  string dataSourceAddr = 1; // host address of data server
+  int32 dataSourcePort = 2; // port of data server
+  double retrievalRate = 3; // requested samples per second
   bool resizeTile = 5;
 }
 

@@ -68,6 +68,11 @@ class InboundProcess:
                 object_id = request.objectId
                 parent_scout = request.scoutIndex
                 score = request.score
+                #logger.info(f"Attributes: {request.attributes['boxes']}")
+                if 'boxes' in request.attributes.keys():
+                    bounding_boxes = request.attributes['boxes'].decode()
+                else:
+                    bounding_boxes = []
                 print(object_id, parent_scout)
                 data_name = f"{self._count:06}"
 
@@ -81,6 +86,7 @@ class InboundProcess:
                     "scoutIndex": parent_scout,
                     "score": score,
                     "size": byte_size,
+                    "bounding_boxes": bounding_boxes
                 }
 
                 if self._token:
@@ -153,6 +159,7 @@ class InboundProcess:
             "scoutIndex": temp_meta_data["scoutIndex"],
             "score": temp_meta_data["score"],
             "size": temp_meta_data["size"],
+            "bounding_boxes": temp_meta_data["bounding_boxes"],
         }
         # logger.info("Meta path:{} {}".format(meta_path, meta_data))
         with open(meta_path, "w") as f:
@@ -162,6 +169,7 @@ class InboundProcess:
             f"Received {temp_meta_data['objectId']}"
             f" {temp_meta_data['scoutIndex']}"
             f" {temp_meta_data['score']}"
+            f" {temp_meta_data['bounding_boxes']}"
         )
         logger.info(f"SAVING TILES {tile_jpeg}")
         result_queue.put(str(meta_path))

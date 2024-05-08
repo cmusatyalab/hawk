@@ -84,7 +84,7 @@ class Admin:
         self._mission_name = config["mission-name"]
         self.log_dir = Path(config["home-params"]["log_dir"])
         self.end_file = self.log_dir / "end"
-        self.end_time = int(config.get("end-time", 4100))
+        self.end_time = int(config.get("end-time", 5000))
 
         self.scouts = config.scouts
 
@@ -131,6 +131,13 @@ class Admin:
             default_args = {"mode": "hawk", "online_epochs": "[[10,0],[15,100]]"}
             train_strategy = TrainConfig(
                 yolo=ModelConfig(
+                    args=train_config.get("args", default_args),
+                )
+            )
+        elif train_type == "yolo_radar":
+            default_args = {"mode": "hawk", "online_epochs": "[[10,0],[15,100]]"}
+            train_strategy = TrainConfig(
+                yolo_radar=ModelConfig(
                     args=train_config.get("args", default_args),
                 )
             )

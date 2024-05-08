@@ -129,7 +129,8 @@ class ScriptLabeler(Labeler):
 
         bounding_boxes = []
         if label_file.exists():
-            bounding_boxes = open(label_file).read().splitlines()
+            bounding_boxes = open(label_file).read().splitlines()        
+        time.sleep(self._label_time)
 
         image_label: LabelClass = "1" if len(bounding_boxes) else "0"
 
