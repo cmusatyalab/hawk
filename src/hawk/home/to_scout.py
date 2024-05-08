@@ -37,6 +37,7 @@ class Result:
     score: float
     size: int
     data: bytes
+    inferred_boxes: list[tuple[float, float, float, float]]
 
     def to_json(self, **kwargs: int | float | str) -> str:
         return json.dumps(
@@ -54,12 +55,20 @@ class Result:
     def from_msg(cls, msg: bytes) -> Result:
         request = SendTiles()
         request.ParseFromString(msg)
+
+        if 'boxes' in request.attributes.keys():
+            bb_string = request.attributes['boxes'].decode()
+            bounding_boxes = json.loads(bb_string)
+        else:
+            bounding_boxes = []
+
         return cls(
             object_id=request.objectId,
             scout_index=request.scoutIndex,
             score=request.score,
             size=request.ByteSize(),
             data=request.attributes["thumbnail.jpeg"],
+            inferred_boxes=bounding_boxes,
         )
 
 

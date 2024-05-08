@@ -90,7 +90,14 @@ class ScriptLabeler:
             label_time = float(selector["token"].get("label-time", 1.0))
 
         trainer = (config["train_strategy"]["type"]).lower()
-        label_mode = "classify" if trainer != "yolo" else "detect"
+
+        label_mode = "classify"
+
+        if trainer == "dnn_classifier_radar":
+            if config["train_strategy"]["args"]["pick_patches"] == "True":
+                label_mode = "detect"
+        elif trainer == "yolo":
+            label_mode = "detect"
 
         gt_dir = config["home-params"].get("label_dir", "")
 

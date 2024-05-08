@@ -64,6 +64,7 @@ from ..trainer.dnn_classifier.trainer import DNNClassifierTrainer
 from ..trainer.dnn_classifier_radar.trainer import DNNClassifierTrainerRadar
 from ..trainer.fsl.trainer import FSLTrainer
 from ..trainer.yolo.trainer import YOLOTrainer
+from ..trainer.yolo_radar.trainer import YOLOTrainerRadar
 
 MODEL_FORMATS = ["pt", "pth"]
 
@@ -238,7 +239,10 @@ class A2SAPI:
             selector,
             request.bootstrapZip,
             request.initialModel,
-            request.validate,
+            request.trainStrategy,
+            request.validate            
+            ## add base model field for radar missions
+            ## add request.train_strategy here to be able to pass to data manager.
         )
         logger.info("Finished setting up mission")
         self._manager.set_mission(mission)
@@ -256,6 +260,9 @@ class A2SAPI:
         elif model.HasField("yolo"):
             config = model.yolo
             trainer = YOLOTrainer(mission, dict(config.args))
+        elif model.HasField("yolo_radar"):
+            config = model.yolo_radar
+            trainer = YOLOTrainerRadar(mission, dict(config.args))
         elif model.HasField("fsl"):
             config = model.fsl
             support_path = config.args["support_path"]

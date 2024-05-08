@@ -24,6 +24,7 @@ from ...core.model import ModelBase
 from ...core.object_provider import ObjectProvider
 from ...core.result_provider import ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
+from skimage.measure import label, regionprops
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -58,6 +59,7 @@ class DNNClassifierModelRadar(ModelBase):
         args["arch"] = args.get("arch", "resnet50")
         args["train_examples"] = args.get("train_examples", {"1": 0, "0": 0})
         args["mode"] = mode
+        args["pick_patches"] = args.get("pick_patches", False)
         self.args = args
 
         super().__init__(self.args, model_path, context)
@@ -65,7 +67,8 @@ class DNNClassifierModelRadar(ModelBase):
         self._arch = args["arch"]
         self._train_examples = args["train_examples"]
         self._test_transforms = test_transforms
-        self._batch_size = args["test_batch_size"]
+        self._batch_size = int(args["test_batch_size"])
+        self.pick_patches = args["pick_patches"]
 
         self._model: torch.nn.Module = self.load_model(model_path)
         self._device = torch.device("cpu")
@@ -82,7 +85,7 @@ class DNNClassifierModelRadar(ModelBase):
     ) -> Tuple[ObjectProvider, torch.Tensor]:
         try:
             array = cast(npt.NDArray[Any], request.content)
-            array = array / np.max(array)
+            array = (array - np.min(array)) / (np.max(array) - np.min(array))
             image = Image.fromarray((array * 255).astype(np.uint8))
         except Exception:
             image = Image.open(io.BytesIO(request.content))
@@ -304,17 +307,28 @@ class DNNClassifierModelRadar(ModelBase):
             return []
 
         results = []
+        ### need additional function call here to crop out the high prob areas of RD map 
+        ## if we crop and add samples to the batch here, then the batch size will be > 64.
+        
         with self._model_lock:
-            tensors = torch.stack([f[1] for f in batch])
-            predictions = self.get_predictions(tensors)
-            del tensors
+            if self.pick_patches:
+                predictions, boxes = self.patch_processing(batch)
+                #logger.info(f"Num predictions:{len(predictions)}, Num boxes:{len(boxes)}")
+            else:
+                tensors = torch.stack([f[1] for f in batch])
+                predictions = self.get_predictions(tensors)
+            
             for i in range(len(batch)):
                 score = predictions[i]
+                box = [list(coord) for coord in boxes[i]]
                 result_object = batch[i][0]
                 if self._mode == "oracle":
                     score = 0 if result_object.id.startswith("/0/") else 1
                 result_object.attributes.add({"score": str.encode(str(score))})
-                results.append(ResultProvider(result_object, score, self.version))
+                result_object.attributes.add({"boxes": str.encode(str(box))})
+                ### add another attribute containing the estimated bounding boxes, should be a list of cls, x,y,w,h
+                ### ground truth bounding boxes will be added at home
+                results.append(ResultProvider(result_object, score, self.version))#, box))
         return results
 
     def stop(self) -> None:
@@ -322,3 +336,101 @@ class DNNClassifierModelRadar(ModelBase):
         with self._model_lock:
             self._running = False
             self._model = None
+
+    def patch_processing(self, img_batch):
+        num_image = 0
+        source_img_dict = {}
+        tensors_for_predict = []
+        crop_assign = []
+        boxes_list = []
+        ## loop through batch and determine which samples have potential instances
+        for obj, tensor in img_batch:
+            cropped_images, coords = self.select_patches(obj.content) ## select the patches and crop
+            num_crops = len(cropped_images)
+        
+            if not num_crops: ## no potential objects in sample
+                tensors_for_predict.append(tensor)
+                crop_assign.append([num_image])
+                boxes_list.append([])
+                num_image += 1
+            else: ## at least 1 instance in the source image
+                for i, crop in enumerate(cropped_images):
+                    tensors_for_predict.append(crop)
+                crop_assign.append([i for i in range(num_image, num_image + num_crops)]) ## not the list indices where these crops will be.
+                boxes_list.append(coords)
+                num_image += num_crops
+      
+        input_tensors = torch.stack([tens for tens in tensors_for_predict])
+        predictions_tiles = self.get_predictions(input_tensors) ## predictions include all cropped samples and those that are negs.
+        predictions = []
+        for crops in crop_assign:
+            predictions.append(max(predictions_tiles[crops[0]:crops[0]+len(crops)]))
+        
+        ## find the set of n patchesthat are most likely to contain an object.
+        ## select a few additional patches of negative space
+        ## return a list of patches, perhaps do a yield
+        ## in order to call this function, must check if self.args['pick_patches']
+        ## needs to return list of floats, which are the scores for the given class for each sample.\
+        #logger.info(f"Predictions: {predictions}, box list: {boxes_list}")    
+        return predictions, boxes_list
+
+    def select_patches(self, source_img):
+        #print(source_img.shape)
+        threshold = 4.56*1.46 ## Global median of negatives mult by constant factor
+        binary_img = source_img.max(axis=2).transpose() > threshold
+        binary_img[binary_img != 0] = 1
+        labeled_binary_img = label(binary_img, connectivity=2)
+        regions = regionprops(labeled_binary_img)
+        
+        condition = lambda region: ((31 <= region.centroid[1] <= 33) and (region.bbox[3]-region.bbox[1] < 3)) or region.area < 4
+        regions = [region for region in regions if not condition(region)]
+
+        if not len(regions): return [], []
+        box_distance_xthresh, box_distance_ythresh = 10,10
+        doppler_width, range_height = 50,74
+        merged_regions = []
+        for region in regions:
+            bbox=region.bbox
+            width = bbox[3]  - bbox[1]        
+            height = bbox[2] - bbox[0]
+            crop_width = max(doppler_width, width)
+            crop_height = max(range_height, height)
+            ### merge smaller regions to larger regions
+            is_adjacent = False
+            for merged_region in merged_regions:
+                cond_1 = region.bbox[0] - merged_region['bbox'][2] <= box_distance_ythresh
+                cond_2 = merged_region['bbox'][0] - region.bbox[2] <= box_distance_ythresh
+                cond_3 = region.bbox[1] - merged_region['bbox'][3] <= box_distance_xthresh
+                cond_4 = merged_region['bbox'][1] - region.bbox[3] <= box_distance_xthresh
+                if cond_1 and cond_2 and cond_3 and cond_4:
+                    minr = min(region.bbox[0], merged_region['bbox'][0])
+                    minc = min(region.bbox[1], merged_region['bbox'][1])
+                    maxr = max(region.bbox[2], merged_region['bbox'][2])
+                    maxc = max(region.bbox[3], merged_region['bbox'][3])
+                    merged_regions.append({"bbox": (minr, minc, maxr, maxc)})
+                    merged_regions.remove(merged_region)
+                    is_adjacent = True
+                    break
+            if not is_adjacent:
+                merged_regions.append({'bbox':region.bbox})
+
+        padded_crops = []
+        coords_list = []
+        for region in merged_regions:
+            bbox = region['bbox']
+            width, height = bbox[3] - bbox[1], bbox[2] - bbox[0]
+            centerx = int(width/2 + bbox[1])
+            centery = int(height/2 + bbox[0])
+            left_border = max(0, centerx - int(max(width/2,25)))
+            right_border = min(63, centerx + int(max(width/2,25)))
+            top_border = max(0, centery - int(max(height/2,37)))
+            bottom_border = min(255, centery + int(max(height/2,37)))  
+            norm_source_img = (source_img - np.min(source_img)) / (np.max(source_img) - np.min(source_img))  ## normalize
+            cropped_image = norm_source_img[left_border:right_border + 1, top_border:bottom_border+1, :]
+            padded_image = np.pad(cropped_image, ((left_border, 63 - right_border), (top_border, 255 - bottom_border), (0,0)), mode='constant')
+            padded_image = Image.fromarray((padded_image*255).astype(np.uint8))
+            padded_image = self._test_transforms(padded_image)
+            padded_crops.append(padded_image)
+            coords_list.append((left_border, right_border, top_border, bottom_border))
+        return padded_crops, coords_list
+

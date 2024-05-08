@@ -103,6 +103,9 @@ def main() -> None:
 
         # Start labeler process
         labeler = config.get("label-mode", "ui")
+        trainer = (config["train_strategy"]["type"]).lower()
+        logger.info(f"Trainer {trainer}")
+
         if labeler == "script":
             logger.info("Starting Labeler Process")
             labeler = ScriptLabeler.from_mission_config(config, mission_dir)
@@ -147,9 +150,7 @@ def main() -> None:
             time.sleep(10)
 
         logger.info("Stop event is set")
-    except KeyboardInterrupt:
-        logger.info("Stopping mission")
-    except BaseException as e:
+    except KeyboardInterrupt as e:
         logger.error(e)
     finally:
         stop_event.set()
