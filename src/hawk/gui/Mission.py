@@ -145,7 +145,7 @@ if update_statistics(mission, data):
 
 # sync session_state to persisted (on-disk) labels
 for label in data.loc[:, ["imageLabel"]].dropna().itertuples():
-    st.session_state[label.index] = CLASSES[label.imageLabel + 1]
+    st.session_state[label.Index] = CLASSES[label.imageLabel + 1]
 
 
 ####
