@@ -21,7 +21,7 @@ from .hawk_typing import Labeler, LabelQueueType, LabelStats, MetaQueueType
 from .inbound import InboundProcess
 from .outbound import OutboundProcess
 from .script_labeler import ScriptLabeler
-from .ui_labeler import UILabeler
+#from .ui_labeler import UILabeler
 from .utils import define_scope, get_ip
 
 
@@ -126,8 +126,11 @@ def main() -> None:
         logger.info(f"Trainer {trainer}")
         label_mode = "classify"
 
-        if trainer == "yolo":
-            label_mode = "detect"
+        
+        if trainer == "dnn_classifier_radar":
+            if config["train_strategy"]["args"]["pick_patches"] == "True": 
+                label_mode = "detect"
+        elif trainer == "yolo": label_mode = "detect"
 
         if labeler == "script":
             home_labeler: Labeler = ScriptLabeler(label_dir, config, gt_dir, label_mode)
@@ -176,7 +179,7 @@ def main() -> None:
             time.sleep(10)
 
         logger.info("Stop event is set")
-    except BaseException as e:
+    except KeyboardInterrupt as e:
         logger.error(e)
     finally:
         stop_event.set()

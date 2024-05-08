@@ -130,7 +130,7 @@ class BaseImageFromList(Dataset[T]):  # type: ignore[misc]
         try:
             if path.suffix == ".npy":
                 array: npt.NDArray[Any] = np.load(path)
-                array /= np.max(array)
+                array = (array - np.min(array)) / (np.max(array) - np.min(array))
                 image = Image.fromarray((array * 255).astype(np.uint8))
             else:
                 image = Image.open(path).convert("RGB")

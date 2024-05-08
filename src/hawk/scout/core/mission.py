@@ -61,7 +61,9 @@ class Mission(DataManagerContext, ModelContext):
         selector: Selector,
         bootstrap_zip: bytes,
         initial_model: ModelArchive,
+        train_strategy,
         validate: bool = False,
+        
     ):
         super().__init__()
         logger.info("Initialization")
@@ -93,6 +95,7 @@ class Mission(DataManagerContext, ModelContext):
         self.retriever = retriever
         self.selector = selector
         self.bootstrap_zip = bootstrap_zip
+        self.train_strategy = train_strategy
 
         if isinstance(self._retrain_policy, SampleIntervalPolicy):
             self._retrain_policy.total_tiles = self.retriever.total_tiles
@@ -142,7 +145,7 @@ class Mission(DataManagerContext, ModelContext):
         h2c_output, h2c_input = mp.Pipe(False)
         h2c_port = port + 1
         p = mp.Process(
-            target=H2CSubscriber.h2c_receive_labels, args=(h2c_input, h2c_port)
+            target=H2CSubscriber.h2c_receive_labels, args=(h2c_input, h2c_port) ## receive labels continuously over ZMQ socket
         )
         self._label_thread = threading.Thread(
             target=self._get_labels, args=(h2c_output,), name="get-labels"
@@ -540,7 +543,7 @@ class Mission(DataManagerContext, ModelContext):
                 self.log(f"{model.version} Initial Model SET")
             return
 
-        with self._data_manager.get_examples(DatasetSplit.TRAIN) as train_dir:
+        with self._data_manager.get_examples(DatasetSplit.TRAIN) as train_dir: ## important
             logger.info(f"Train dir {train_dir}")
             model = self.trainer.train_model(train_dir)
 
