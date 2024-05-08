@@ -8,6 +8,7 @@ import io
 import os
 import threading
 import zipfile
+import numpy as np
 from collections import defaultdict
 from contextlib import contextmanager
 from pathlib import Path
@@ -52,13 +53,54 @@ class DataManager:
         ).start()
         self._positives = 0
         self._negatives = 0
+        self.train_type = self._context.train_strategy
+        self._radar_crop = False
+        logger.info(f"Training strategy: {self.train_type}")
+        if self.train_type.HasField("dnn_classifier_radar"):
+            if self.train_type.dnn_classifier_radar.args['pick_patches']:
+                self._radar_crop = True
 
     def get_example_directory(self, example_set: DatasetSplitValue) -> Path:
         return self._examples_dir / self._to_dir(example_set)
 
     def store_labeled_tile(self, tile: LabeledTile) -> None:
         """Store the tile content along with labels in the scout"""
-        self._store_labeled_examples([tile], None)
+        bounding_boxes = tile.label.boundingBoxes
+        if not self._radar_crop or not bounding_boxes:
+            self._store_labeled_examples([tile], None)
+            logger.info("Stored negative examples...")
+        else:
+            with io.BytesIO(tile.obj.content) as fp:
+                np_arr = np.load(fp)
+            crop_list = []
+            for box in bounding_boxes:
+                ## crop each 
+                cls, x, y, w, h = box.split()
+                logger.info(f" class: {cls}, x:{w}, y:{y}, w:{w}, h:{h}")
+                x, y, w, h = int(np.round(float(x)*63)), int(np.round(float(y)*255)),int(np.round(float(w)*63)),int(np.round(float(h)*255))
+                logger.info(f"{x}, {y}, {w}, {h}")
+                crop_width, crop_height = 51, 74 ## predetermined crop dimensions derived from mean + 1 stdev across all object instances of raddet dataset.
+                left, right, top, bottom = max(0, x - int(np.round(crop_width/2))), min(63, x + int(np.round(crop_width/2))), max(0, y - int(np.round(crop_height/2))), min(255, y + int(np.round(crop_height/2)))
+                crop_arr = np_arr[left:right+1, top:bottom+1, :]
+                pad_left, pad_top = left, top
+                pad_right, pad_bottom = 63 - right, 255 - bottom
+                crop_arr_padded = np.pad(crop_arr, ((pad_left, pad_right), (pad_top, pad_bottom), (0,0)), mode='constant')
+                logger.info(f"Padded array shape: {crop_arr_padded.shape}")
+                crop_arr_bytes = crop_arr_padded.tobytes()
+                crop_label = LabelWrapper(
+                    objectId='',
+                    scoutIndex=99, 
+                    imageLabel=cls, 
+                    boundingBoxes=[]
+                    )
+                                
+                crop_tile = LabeledTile(
+                    obj=tile.obj,
+                    label=crop_label
+                )
+                crop_list.append(crop_tile)
+            self._store_labeled_examples(crop_list, None)         
+            
         return
 
     def distribute_label(self, label: LabelWrapper) -> None:
@@ -67,7 +109,7 @@ class DataManager:
             self._negatives += 1
         else:
             self._positives += 1
-        if scout_index != self._context.scout_index:
+        if scout_index != self._context.scout_index: ## This code should not run as not using coordinator, all labels initially return to generating scout.
             logger.info(f"Fetch {label.objectId} from {scout_index}")
             stub = self._context.scouts[scout_index]
             assert stub.internal is not None
@@ -85,19 +127,18 @@ class DataManager:
         else:
             # Local scout contains image of respective label received.
             obj = self._context.retriever.get_object(label.objectId)
-
         if obj is None:
             return
         # Save labeled tile
         labeled_tile = LabeledTile(
             obj=obj,
             label=label,
-        )
-        self._context.store_labeled_tile(labeled_tile)
-        if label.imageLabel == "0":
+        )        
+        self._context.store_labeled_tile(labeled_tile) ## save copy of original image and label to examples dir for future training
+        if label.imageLabel == "0": ##only send positives to other scouts
             return
         # Transmit
-        for i, stub in enumerate(self._context.scouts):
+        for i, stub in enumerate(self._context.scouts): ## send positives to all scouts
             if i in [self._context.scout_index, scout_index]:
                 continue
             assert stub.internal is not None
@@ -272,7 +313,7 @@ class DataManager:
                     example_subdir = self._to_dir(DatasetSplit.TRAIN)
 
                 if label != "-1":
-                    label_dir = self._staging_dir / example_subdir / label
+                    label_dir = self._staging_dir / example_subdir / label  ## 0 or 1 or ...
                     label_dir.mkdir(parents=True, exist_ok=True)
                     example_path = label_dir / example_file
                     with example_path.open("wb") as f:
