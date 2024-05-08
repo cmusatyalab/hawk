@@ -18,18 +18,18 @@ from logzero import logger
 from ...context.model_trainer_context import ModelContext
 from ...core.model_trainer import ModelTrainerBase
 from ...core.utils import log_exceptions
-from .model import YOLOModel
+from .model import YOLOModelRadar
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
 
-class YOLOTrainer(ModelTrainerBase):
+class YOLOTrainerRadar(ModelTrainerBase):
     def __init__(self, context: ModelContext, args: Dict[str, str]):
         super().__init__(args)
 
         self.args["test_dir"] = self.args.get("test_dir", "")
         self.args["batch-size"] = int(self.args.get("batch-size", 16))
-        self.args["image-size"] = int(self.args.get("image-size", 640))
+        self.args["image-size"] = int(self.args.get("image-size", 256))
         self.args["initial_model_epochs"] = int(
             self.args.get("initial_model_epochs", 30)
         )
@@ -52,12 +52,12 @@ class YOLOTrainer(ModelTrainerBase):
             msg = f"Notional Model Path {notional_model_path} provided does not exist"
             assert notional_model_path.exists(), msg
 
-        logger.info("YOLO TRAINER CALLED")
+        logger.info("YOLO RADAR TRAINER CALLED")
 
     @log_exceptions
     def load_model(
         self, path: Optional[Path] = None, content: bytes = b"", version: int = -1
-    ) -> YOLOModel:
+    ) -> YOLOModelRadar:
         if version == -1:
             version = self.get_new_version()
 
@@ -72,12 +72,12 @@ class YOLOTrainer(ModelTrainerBase):
         self.prev_path = path
         self.context.stop_model()
         logger.info(f" Trainer Loading from path {path}")
-        return YOLOModel(
+        return YOLOModelRadar(
             self.args, path, version, mode=self.args["mode"], context=self.context
         )
 
     @log_exceptions
-    def train_model(self, train_dir: Path) -> YOLOModel:
+    def train_model(self, train_dir: Path) -> YOLOModelRadar:
         # check mode if not hawk return model
         # EXPERIMENTAL
         if self.args["mode"] == "oracle":
@@ -97,7 +97,7 @@ class YOLOTrainer(ModelTrainerBase):
         model_savepath = self.context.model_path(new_version, template="model-{}.pt")
         trainpath = self.context.model_path(new_version, template="train-{}.txt")
 
-        labels = ["1"]
+        labels = ["1"]  # will need to change this for multi-class
         train_samples = {
             label: glob.glob(str(train_dir / label / "*")) for label in labels
         }
@@ -136,7 +136,7 @@ class YOLOTrainer(ModelTrainerBase):
             else:
                 num_epochs = int(online_epochs)
 
-        data_dict = {
+        data_dict = { ## need to modify this data dict
             "path": str(self.context.model_dir),
             "train": str(trainpath),
             "nc": 1,
@@ -158,7 +158,7 @@ class YOLOTrainer(ModelTrainerBase):
         cmd = [
             sys.executable,
             "-m",
-            "hawk.scout.trainer.yolo.yolov5.train",
+            "hawk.scout.trainer.yolo_radar.yolov5_radar.train",
             "--savepath",
             str(model_savepath),
             "--epochs",
@@ -187,7 +187,7 @@ class YOLOTrainer(ModelTrainerBase):
         model_args = self.args.copy()
         model_args["train_examples"] = train_len
         self.context.stop_model()
-        return YOLOModel(
+        return YOLOModelRadar(
             model_args,
             model_savepath,
             new_version,
