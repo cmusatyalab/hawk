@@ -30,7 +30,7 @@ torch.multiprocessing.set_sharing_strategy("file_system")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
-class YOLOModel(ModelBase):
+class YOLOModelRadar(ModelBase):
     def __init__(
         self,
         args: Dict[str, Any],
