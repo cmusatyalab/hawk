@@ -87,7 +87,7 @@ class ScriptLabeler:
 
         selector = config.get("selector", {})
         if selector.get("type") == "token":
-            label_time = float(selector["token"].get("label-time", 1.0))
+            label_time = float(selector["token"].get("label_time", 1.0))
 
         trainer = (config["train_strategy"]["type"]).lower()
 
@@ -99,7 +99,8 @@ class ScriptLabeler:
         elif trainer == "yolo":
             label_mode = "detect"
 
-        gt_dir = config["home-params"].get("label_dir", "")
+        gt_dir = Path(config["home-params"].get("label_dir", ""))
+        logger.info(f"GT DIR: {gt_dir}, {type(gt_dir)}")
 
         return cls(mission_dir, label_time, label_mode == "detect", gt_dir)
 

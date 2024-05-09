@@ -13,6 +13,11 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 from prometheus_client import Counter, Gauge, Histogram
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import io
+matplotlib.use('agg')
 
 from .to_scout import Label
 from .utils import tailf
@@ -111,7 +116,10 @@ class LabelerDiskQueue:
 
             # write result image file to disk
             tile_jpeg = tile_dir.joinpath(f"{index:06}.jpeg")
-            tile_jpeg.write_bytes(result.data)
+            if result.object_id.endswith('.npy'): ## for radar missions with .npy files
+                self.gen_heatmap(result.data, tile_jpeg)
+            else: 
+                tile_jpeg.write_bytes(result.data)
             logger.info(f"SAVED TILE {tile_jpeg}")
 
             # append metadata to unlabeled.jsonl file
@@ -164,3 +172,11 @@ class LabelerDiskQueue:
                 if label.queued_time is not None:
                     queue_elapsed = now - label.queued_time
                     self.queued_time.observe(queue_elapsed)
+
+    def gen_heatmap(self, data, tile_path):
+        with io.BytesIO(data) as bytes_file:
+            data = np.load(bytes_file,allow_pickle=True)
+        logger.info(f"Array shape: {data.shape}")
+        plt.imshow(data.sum(axis=2).transpose(), cmap='viridis', interpolation='nearest')
+        plt.savefig(tile_path, bbox_inches='tight')
+        plt.close('all')

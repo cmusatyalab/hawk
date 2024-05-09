@@ -34,6 +34,7 @@ prometheus-client = { version = "^0.20.0", optional = true }
 python-dateutil = { version = "^2.8.1", optional = true }
 streamlit = {version = "^1.30.0", optional = true, python = "!=3.9.7"}
 streamlit-autorefresh = { version = "^1.0.1", optional = true, python = "!=3.9.7" }
+matplotlib = { version = "^3.6"}
 
 # scout
 albumentations = { version = "^1.3.1", optional = true }
@@ -56,6 +57,7 @@ tensorboard = { version = "^2.1.1", optional = true }
 torch = { version = "^2.2", optional = true, source = "torch-cu11" }
 torchvision = { version = "^0.17", optional = true, source = "torch-cu11" }
 
+
 [[tool.poetry.source]]
 name = "torch-cu11"
 url = "https://download.pytorch.org/whl/cu118"
@@ -71,6 +73,7 @@ home = [
     "prometheus-client",
     "streamlit",
     "streamlit-autorefresh",
+    "matplotlib",
 ]
 scout = [
     "albumentations",
