@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,7 +24,11 @@ objects and gather valuable training samples under austere and degraded
 conditions.
 """
 
-HOME_MISSION_DIR = Path("hawk-missions")
+parser = argparse.ArgumentParser()
+parser.add_argument("logdir", type=Path)
+args = parser.parse_args()
+
+HOME_MISSION_DIR = args.logdir
 SCOUT_MISSION_DIR = Path("hawk-missions")
 
 
