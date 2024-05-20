@@ -19,7 +19,7 @@ from hawk.home.label_utils import MissionResults
 if TYPE_CHECKING:
     from hawk.mission_config import MissionConfig
 
-BBoxes = List[Tuple[float, float, float, float]]
+BBoxes = List[Tuple[float, float, float, float, float]]
 
 
 @dataclass
@@ -28,6 +28,8 @@ class ScriptLabeler:
     label_time: float = 0.0
     detect: bool = False
     gt_path: Path | None = None
+    positives = 0
+    negatives = 0
 
     def __post_init__(self) -> None:
         if self.detect:
@@ -49,11 +51,12 @@ class ScriptLabeler:
         bounding_boxes = cast(
             BBoxes,
             [
-                tuple(float(c) for c in line.split(" ", 5)[1:])
+                tuple(float(c) for c in line.split(" ", 5))
                 for line in gt_file.read_text().splitlines()
             ],
         )
-        labelClass = 1 if len(bounding_boxes) else 0
+        classes = [int(box[0]) for box in bounding_boxes]
+        labelClass = 1 if sum(classes) else 0
         return labelClass, bounding_boxes
 
     def run(self) -> None:
@@ -70,12 +73,17 @@ class ScriptLabeler:
             imageLabel, boundingBoxes = self.labeling_func(objectId)
 
             new_label = pd.Series([imageLabel], index=[index], dtype=int)
-            # new_bboxes = pd.Series([boundingBoxes], index=[index])
+            new_bboxes = pd.Series([boundingBoxes], index=[index])
 
             time.sleep(self.label_time)
+            if imageLabel:
+                self.positives += 1
+            else:
+                self.negatives += 1
 
-            logger.info(f"Labeling {index:06} {imageLabel} {objectId}")
-            self.mission_data.save_new_labels(new_label)
+
+            logger.info(f"Labeling {index:06} {imageLabel} {objectId}, (Pos, Neg): ({self.positives}, {self.negatives})")
+            self.mission_data.save_new_labels(new_label, new_bboxes)
 
     @classmethod
     def from_mission_config(

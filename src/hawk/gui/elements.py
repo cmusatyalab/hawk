@@ -48,6 +48,11 @@ class Mission:
     def image_dir(self) -> Path:
         return self.result_dir / "images"
 
+    @property
+    def log_file(self) -> Path:
+        print(type(self.result_dir / "logs" / "hawk.yml"))
+        return self.result_dir / "logs" / "hawk.yml"
+
     def save_new_labels(self, new_labels: pd.Series[int]) -> None:
         mission_data = MissionResults(self.result_dir, sync_labels=True)
         mission_data.save_new_labels(new_labels)
