@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Iterable, Iterator
 
 from logzero import logger
+import time
 
 from ...proto.messages_pb2 import DatasetSplit, HawkObject, LabeledTile, LabelWrapper
 from .utils import get_example_key
@@ -43,6 +44,7 @@ class DataManager:
         self._tmp_dir.mkdir(parents=True, exist_ok=True)
         self._example_counts: dict[str, int] = defaultdict(int)
         self._validate = self._context.check_create_test()
+        logger.info(f"self . validate is {self._validate}")
         self._is_npy = False
         bootstrap_zip = self._context.bootstrap_zip
         if bootstrap_zip is not None and len(bootstrap_zip):
@@ -52,6 +54,7 @@ class DataManager:
             target=self._promote_staging_examples, name="promote-staging-examples"
         ).start()
         self._positives = 0
+        self._total_positives = 0
         self._negatives = 0
         self.train_type = self._context.train_strategy
         self._radar_crop = False
@@ -66,9 +69,14 @@ class DataManager:
     def store_labeled_tile(self, tile: LabeledTile) -> None:
         """Store the tile content along with labels in the scout"""
         bounding_boxes = tile.label.boundingBoxes
+        label_num = tile.label.imageLabel
+        if label_num =="1":
+            self._total_positives += 1
+        #logger.info(f"Original tile name: {tile.obj.objectId}")
+        #logger.info(f" NEW TOTAL POSITIVES: {self._total_positives}\n\n")
         if not self._radar_crop or not bounding_boxes:
             self._store_labeled_examples([tile], None)
-            logger.info("Stored negative examples...")
+            #logger.info("Stored negative examples...")
         else:
             with io.BytesIO(tile.obj.content) as fp:
                 np_arr = np.load(fp)
@@ -76,16 +84,14 @@ class DataManager:
             for box in bounding_boxes:
                 ## crop each 
                 cls, x, y, w, h = box.split()
-                logger.info(f" class: {cls}, x:{w}, y:{y}, w:{w}, h:{h}")
                 x, y, w, h = int(np.round(float(x)*63)), int(np.round(float(y)*255)),int(np.round(float(w)*63)),int(np.round(float(h)*255))
-                logger.info(f"{x}, {y}, {w}, {h}")
                 crop_width, crop_height = 51, 74 ## predetermined crop dimensions derived from mean + 1 stdev across all object instances of raddet dataset.
                 left, right, top, bottom = max(0, x - int(np.round(crop_width/2))), min(63, x + int(np.round(crop_width/2))), max(0, y - int(np.round(crop_height/2))), min(255, y + int(np.round(crop_height/2)))
                 crop_arr = np_arr[left:right+1, top:bottom+1, :]
                 pad_left, pad_top = left, top
                 pad_right, pad_bottom = 63 - right, 255 - bottom
                 crop_arr_padded = np.pad(crop_arr, ((pad_left, pad_right), (pad_top, pad_bottom), (0,0)), mode='constant')
-                logger.info(f"Padded array shape: {crop_arr_padded.shape}")
+                
                 crop_arr_bytes = crop_arr_padded.tobytes()
                 crop_label = LabelWrapper(
                     objectId='',
@@ -95,7 +101,7 @@ class DataManager:
                     )
                                 
                 crop_tile = LabeledTile(
-                    obj=tile.obj,
+                    obj=HawkObject(objectId='', content=crop_arr_bytes, attributes={}),
                     label=crop_label
                 )
                 crop_list.append(crop_tile)
@@ -148,7 +154,6 @@ class DataManager:
             ]
             stub.internal.send_multipart(msg)
             stub.internal.recv()
-
         return
 
     def add_initial_examples(self, zip_content: bytes) -> None:
@@ -225,7 +230,7 @@ class DataManager:
 
         new_positives = sum(labels)
         new_negatives = len(labels) - new_positives
-        logger.info(f" New positives {new_positives} \n Negatives {new_negatives}")
+        logger.info(f" New positives {new_positives}  Negatives {new_negatives}")
 
         retrain = True
         if self._context.check_initial_model():
@@ -237,9 +242,10 @@ class DataManager:
 
     @contextmanager
     def get_examples(self, example_set: DatasetSplitValue) -> Iterator[Path]:
-        with self._examples_lock:
+        results = []
+        with self._examples_lock:       
             if self._context.scout_index != 0:
-                yield self._examples_dir / self._to_dir(example_set)
+                results.append(self._examples_dir / self._to_dir(example_set))
             else:
                 example_dir = self._examples_dir / self._to_dir(example_set)
                 if example_set is DatasetSplit.TEST:
@@ -250,13 +256,15 @@ class DataManager:
                         for i in range(0, len(test_files), len(self._context.scouts)):
                             test_files[i].rename(tmp_label_dir / test_files[i].name)
 
-                    yield self._tmp_dir
+                    results.append(self._tmp_dir)
 
                     for label in self._tmp_dir.iterdir():
                         for tmp_file in label.iterdir():
                             tmp_file.rename(example_dir / label.name / tmp_file.name)
                 else:
-                    yield example_dir
+                    results.append(example_dir)
+
+        return iter(results)
 
     def get_example_path(
         self, example_set: DatasetSplitValue, label: str, example: str
@@ -316,8 +324,13 @@ class DataManager:
                     label_dir = self._staging_dir / example_subdir / label  ## 0 or 1 or ...
                     label_dir.mkdir(parents=True, exist_ok=True)
                     example_path = label_dir / example_file
-                    with example_path.open("wb") as f:
-                        f.write(obj.content)
+                    if self._radar_crop:
+                        arr=np.frombuffer(obj.content,dtype=np.float32)
+                        arr = arr.reshape((64,256,3))
+                        np.save(example_path,arr)
+                    else:
+                        with example_path.open("wb") as f:
+                            f.write(obj.content)
                     if bounding_boxes:
                         label_dir = self._staging_dir / example_subdir / "labels"
                         label_dir.mkdir(parents=True, exist_ok=True)
@@ -326,15 +339,14 @@ class DataManager:
                             f.write("\n".join(bounding_boxes))
 
                 else:
-                    logger.info("Example set to ignore - skipping")
                     ignore_file = self._staging_dir / IGNORE_FILE[0]
                     with ignore_file.open("a+") as f:
                         f.write(example_file + "\n")
 
                 if callback is not None:
                     callback(example)
-
         self._stored_examples_event.set()
+
 
     def _promote_staging_examples(self) -> None:
         while not self._context._abort_event.is_set():
@@ -349,7 +361,6 @@ class DataManager:
                     for example_set in [DatasetSplit.TRAIN, DatasetSplit.TEST]:
                         example_dir = self._examples_dir / self._to_dir(example_set)
                         set_dirs[example_set] = list(example_dir.iterdir())
-
                     with self._staging_lock:
                         for file in self._staging_dir.iterdir():
                             if file.name == IGNORE_FILE[0]:
@@ -374,9 +385,9 @@ class DataManager:
                                 ) = self._promote_staging_examples_dir(file, set_dirs)
                                 new_positives += dir_positives
                                 new_negatives += dir_negatives
-
                 if not self._context._abort_event.is_set():
                     self._context.new_labels_callback(new_positives, new_negatives)
+                
             except Exception as e:
                 logger.exception(e)
 
@@ -428,7 +439,6 @@ class DataManager:
                 example_dir.mkdir(parents=True, exist_ok=True)
                 example_path = example_dir / example_file.name
                 example_file.rename(example_path)
-
         return new_positives, new_negatives
 
     def _get_example_count(self, example_set: DatasetSplitValue, label: str) -> int:
@@ -445,7 +455,6 @@ class DataManager:
             old_example_path = old_path / example_file
             if old_example_path.exists():
                 old_example_path.unlink()
-                logger.info(f"Removed old path {old_example_path} for example")
                 return old_example_path
 
         return None

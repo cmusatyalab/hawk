@@ -99,6 +99,9 @@ class Retriever(RetrieverBase):
 
     def get_objects(self) -> ObjectProvider:
         return self.result_queue.get()
+    
+    def put_objects(self, result_object) -> None:
+        self.result_queue.put_nowait(result_object)
 
     def get_object(self, object_id: str) -> Optional[HawkObject]:
         image_path = Path(object_id.split("collection/id/")[-1])

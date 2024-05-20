@@ -313,7 +313,7 @@ class Mission(DataManagerContext, ModelContext):
         # is not the sample interval policy or simply use an if statement and
         # feed the total number of retreived samples
         if not isinstance(self._retrain_policy, SampleIntervalPolicy):
-            self._retrain_policy.update(new_positives, new_negatives)
+            self._retrain_policy.update(new_positives, new_negatives) ## add new pos and neg to current tally
         if self.enable_logfile:
             self.log(
                 f"{time.ctime()} NEW Examples "
@@ -322,21 +322,23 @@ class Mission(DataManagerContext, ModelContext):
                 end_t,
             )
             self.log_file.flush()
-
         if not retrain:
             return
 
         if not isinstance(self._retrain_policy, SampleIntervalPolicy):
             if self._retrain_policy.should_retrain():
                 should_retrain = True
+            
             else:
-                with self._model_lock:
-                    model = self._model
-                should_retrain = model is None
-
+                #with self._model_lock:
+                #    model = self._model
+                #should_retrain = model is None
+                should_retrain = False
             if should_retrain:
                 self._retrain_policy.reset()
+                
                 self._model_event.set()
+ 
 
     def start(self) -> None:
         try:
@@ -382,7 +384,6 @@ class Mission(DataManagerContext, ModelContext):
 
         with self._model_lock:
             model = self._model
-
         # no current model, loop and try again. We really should have a
         # condition variable here to avoid busy looping.
         if model is None:
@@ -392,6 +393,7 @@ class Mission(DataManagerContext, ModelContext):
         logger.info(f"Starting evaluation with model version {starting_version}")
 
         while not self._abort_event.is_set():
+
             with self._model_lock:
                 if self._model is not None and self._model.version != starting_version:
                     logger.info(
@@ -403,6 +405,8 @@ class Mission(DataManagerContext, ModelContext):
                 # pop single retriever object from retriever result queue
                 retriever_object = self.retriever.get_objects()
 
+                ## will need to add put_objects(retriever_object)  when we move get_objects() outside the lock above.
+
                 # put single retriever object into model inference request queue
                 model.add_requests(retriever_object)
 
@@ -413,7 +417,6 @@ class Mission(DataManagerContext, ModelContext):
                         logger.info("Reached Retrain sample policy...")
                         self._retrain_policy.reset()
                         self._model_event.set()
-
     @log_exceptions
     def _retriever_thread(self) -> None:
         try:
@@ -580,10 +583,9 @@ class Mission(DataManagerContext, ModelContext):
             self._model = model
             self._model_stats = model_stats
             self._last_trained_version = model.version
-
         logger.info(f"Promoted New Model Version {model.version}")
         self.log(f"{time.ctime()} Promoted New Model Version {model.version}")
-        self.selector.new_model(model)
+        self.selector.new_model(model) ## This ultimately calls the reexamination inference through the new model after training completed
 
         if should_notify:
             self._initial_model_event.set()
