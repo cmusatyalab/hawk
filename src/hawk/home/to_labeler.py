@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import io
 import threading
 import time
 from dataclasses import dataclass, field
@@ -11,16 +12,16 @@ from itertools import count
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from logzero import logger
-from prometheus_client import Counter, Gauge, Histogram
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import io
-matplotlib.use('agg')
+from logzero import logger
+from prometheus_client import Counter, Gauge, Histogram
 
 from .to_scout import Label
 from .utils import tailf
+
+matplotlib.use("agg")
 
 if TYPE_CHECKING:
     from .to_scout import ScoutQueue
@@ -116,9 +117,9 @@ class LabelerDiskQueue:
 
             # write result image file to disk
             tile_jpeg = tile_dir.joinpath(f"{index:06}.jpeg")
-            if result.object_id.endswith('.npy'): ## for radar missions with .npy files
+            if result.object_id.endswith(".npy"):  # for radar missions with .npy files
                 self.gen_heatmap(result.data, tile_jpeg)
-            else: 
+            else:
                 tile_jpeg.write_bytes(result.data)
             logger.info(f"SAVED TILE {tile_jpeg}")
 
@@ -175,13 +176,15 @@ class LabelerDiskQueue:
 
     def gen_heatmap(self, data, tile_path):
         with io.BytesIO(data) as bytes_file:
-            data = np.load(bytes_file,allow_pickle=True)
+            data = np.load(bytes_file, allow_pickle=True)
         logger.info(f"Array shape: {data.shape}")
-        plt.imshow(data.sum(axis=2).transpose(), cmap='viridis', interpolation='nearest')
-        plt.xticks([0, 16, 32, 48, 63], [-13, -6.5, 0, 6.5, 13],fontsize=8)
+        plt.imshow(
+            data.sum(axis=2).transpose(), cmap="viridis", interpolation="nearest"
+        )
+        plt.xticks([0, 16, 32, 48, 63], [-13, -6.5, 0, 6.5, 13], fontsize=8)
         plt.yticks([0, 64, 128, 192, 255], [50, 37.5, 25, 12.5, 0])
         plt.xlabel("velocity (m/s)")
         plt.ylabel("range (m)")
-        #plt.title("RD Map")
-        plt.savefig(tile_path, bbox_inches='tight')
-        plt.close('all')
+        # plt.title("RD Map")
+        plt.savefig(tile_path, bbox_inches="tight")
+        plt.close("all")

@@ -226,7 +226,7 @@ class MissionResults:
         """Using this so much, figured a helper could be useful."""
         return self.df.imageLabel.isna()
 
-    def save_new_labels(self, labels: pd.Series[int], bounding_boxes = None) -> None:
+    def save_new_labels(self, labels: pd.Series[int], bounding_boxes=None) -> None:
         # make sure we're current with the on-disk state and capture the
         # previous unlabeled state before we merge the new labels.
         self.resync_unlabeled()
@@ -237,7 +237,9 @@ class MissionResults:
         updates = labels[labels >= 0].astype("Int8")
         self.df["imageLabel"] = self.df.imageLabel.combine_first(updates)
         if bounding_boxes is not None:
-            self.df["boundingBoxes"] = self.df.boundingBoxes.combine_first(bounding_boxes)
+            self.df["boundingBoxes"] = self.df.boundingBoxes.combine_first(
+                bounding_boxes
+            )
 
         # and filter down to the list of updated labels
         new_labels = self.df[unlabeled & self.df.imageLabel.notna()]

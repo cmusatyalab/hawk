@@ -240,9 +240,9 @@ class A2SAPI:
             request.bootstrapZip,
             request.initialModel,
             request.trainStrategy,
-            request.validate            
-            ## add base model field for radar missions
-            ## add request.train_strategy here to be able to pass to data manager.
+            request.validate,
+            # add base model field for radar missions
+            # add request.train_strategy here to be able to pass to data manager.
         )
         logger.info("Finished setting up mission")
         self._manager.set_mission(mission)

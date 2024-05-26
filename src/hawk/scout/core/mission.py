@@ -63,7 +63,6 @@ class Mission(DataManagerContext, ModelContext):
         initial_model: ModelArchive,
         train_strategy,
         validate: bool = False,
-        
     ):
         super().__init__()
         logger.info("Initialization")
@@ -144,8 +143,9 @@ class Mission(DataManagerContext, ModelContext):
         logger.info("SETTING UP H2C API")
         h2c_output, h2c_input = mp.Pipe(False)
         h2c_port = port + 1
+        # receive labels continuously over ZMQ socket
         p = mp.Process(
-            target=H2CSubscriber.h2c_receive_labels, args=(h2c_input, h2c_port) ## receive labels continuously over ZMQ socket
+            target=H2CSubscriber.h2c_receive_labels, args=(h2c_input, h2c_port)
         )
         self._label_thread = threading.Thread(
             target=self._get_labels, args=(h2c_output,), name="get-labels"
@@ -313,7 +313,8 @@ class Mission(DataManagerContext, ModelContext):
         # is not the sample interval policy or simply use an if statement and
         # feed the total number of retreived samples
         if not isinstance(self._retrain_policy, SampleIntervalPolicy):
-            self._retrain_policy.update(new_positives, new_negatives) ## add new pos and neg to current tally
+            # add new pos and neg to current tally
+            self._retrain_policy.update(new_positives, new_negatives)
         if self.enable_logfile:
             self.log(
                 f"{time.ctime()} NEW Examples "
@@ -328,17 +329,16 @@ class Mission(DataManagerContext, ModelContext):
         if not isinstance(self._retrain_policy, SampleIntervalPolicy):
             if self._retrain_policy.should_retrain():
                 should_retrain = True
-            
+
             else:
-                #with self._model_lock:
+                # with self._model_lock:
                 #    model = self._model
-                #should_retrain = model is None
+                # should_retrain = model is None
                 should_retrain = False
             if should_retrain:
                 self._retrain_policy.reset()
-                
+
                 self._model_event.set()
- 
 
     def start(self) -> None:
         try:
@@ -393,7 +393,6 @@ class Mission(DataManagerContext, ModelContext):
         logger.info(f"Starting evaluation with model version {starting_version}")
 
         while not self._abort_event.is_set():
-
             with self._model_lock:
                 if self._model is not None and self._model.version != starting_version:
                     logger.info(
@@ -405,7 +404,8 @@ class Mission(DataManagerContext, ModelContext):
                 # pop single retriever object from retriever result queue
                 retriever_object = self.retriever.get_objects()
 
-                ## will need to add put_objects(retriever_object)  when we move get_objects() outside the lock above.
+                # will need to add put_objects(retriever_object) when we move
+                # get_objects() outside the lock above.
 
                 # put single retriever object into model inference request queue
                 model.add_requests(retriever_object)
@@ -417,6 +417,7 @@ class Mission(DataManagerContext, ModelContext):
                         logger.info("Reached Retrain sample policy...")
                         self._retrain_policy.reset()
                         self._model_event.set()
+
     @log_exceptions
     def _retriever_thread(self) -> None:
         try:
@@ -546,7 +547,9 @@ class Mission(DataManagerContext, ModelContext):
                 self.log(f"{model.version} Initial Model SET")
             return
 
-        with self._data_manager.get_examples(DatasetSplit.TRAIN) as train_dir: ## important
+        with self._data_manager.get_examples(
+            DatasetSplit.TRAIN
+        ) as train_dir:  # important
             logger.info(f"Train dir {train_dir}")
             model = self.trainer.train_model(train_dir)
 
@@ -585,7 +588,9 @@ class Mission(DataManagerContext, ModelContext):
             self._last_trained_version = model.version
         logger.info(f"Promoted New Model Version {model.version}")
         self.log(f"{time.ctime()} Promoted New Model Version {model.version}")
-        self.selector.new_model(model) ## This ultimately calls the reexamination inference through the new model after training completed
+        # This ultimately calls the reexamination inference through the new
+        # model after training completed
+        self.selector.new_model(model)
 
         if should_notify:
             self._initial_model_event.set()

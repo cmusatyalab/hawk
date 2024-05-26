@@ -56,8 +56,8 @@ class Result:
         request = SendTiles()
         request.ParseFromString(msg)
 
-        if 'boxes' in request.attributes.keys():
-            bb_string = request.attributes['boxes'].decode()
+        if "boxes" in request.attributes.keys():
+            bb_string = request.attributes["boxes"].decode()
             bounding_boxes = json.loads(bb_string)
         else:
             bounding_boxes = []
@@ -82,7 +82,10 @@ class Label:
     queued_time: float | None = None
 
     def to_msg(self) -> bytes:
-        bboxes = [f"{int(b[0])} {b[1]} {b[2]} {b[3]} {b[4]}" for b in self.bounding_boxes or []]
+        bboxes = [
+            f"{int(b[0])} {b[1]} {b[2]} {b[3]} {b[4]}"
+            for b in self.bounding_boxes or []
+        ]
         label = LabelWrapper(
             objectId=self.object_id,
             scoutIndex=self.scout_index,

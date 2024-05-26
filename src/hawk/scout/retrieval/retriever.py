@@ -99,7 +99,7 @@ class Retriever(RetrieverBase):
 
     def get_objects(self) -> ObjectProvider:
         return self.result_queue.get()
-    
+
     def put_objects(self, result_object) -> None:
         self.result_queue.put_nowait(result_object)
 

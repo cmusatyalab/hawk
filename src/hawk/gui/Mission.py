@@ -166,7 +166,7 @@ def columns(ncols: int) -> Iterator[DeltaGenerator]:
 column = columns(st.session_state.columns)
 
 
-def display_radar_images(data: pd.DataFrame) -> None:    
+def display_radar_images(data: pd.DataFrame) -> None:
     unlabeled = data["unlabeled"]
     if not st.session_state.show_labeled:
         data = data[unlabeled]
@@ -174,22 +174,30 @@ def display_radar_images(data: pd.DataFrame) -> None:
         index = cast(int, row.Index)
         unlabeled = row.unlabeled
         objectid = row.objectId
-        base = objectid.split('/')[-1].split('.')[0] + '_left.jpg'
+        base = objectid.split("/")[-1].split(".")[0] + "_left.jpg"
         image = Path(mission.image_dir, f"{index:06}.jpeg")
-        stereo_image = Path('/media/eric/Drive2/RADAR_DETECTION/train/stereo_left/', f"{base}") ## stereo image for radar missions, if stereo image.exists(), etc.
-        with next(column): ## make a 1x2 container?
+        stereo_image = Path(
+            "/media/eric/Drive2/RADAR_DETECTION/train/stereo_left/", f"{base}"
+        )  # stereo image for radar missions, if stereo image.exists(), etc.
+        with next(column):  # make a 1x2 container?
             col1, col2 = st.columns(2)
             with col1:
                 view_height = 800
                 img_height = 500
-                padding_top = (view_height - img_height) //2
+                padding_top = (view_height - img_height) // 2
                 padding_bottom = view_height - img_height - padding_top
                 st.header("Stereo")
-                st.markdown(f"<div style='padding-top: {padding_top}px'></div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div style='padding-top: {padding_top}px'></div>",
+                    unsafe_allow_html=True,
+                )
                 st.image(str(stereo_image), use_column_width=True)
-                st.markdown(f"<div style='padding-bottom: {padding_bottom}px'></div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div style='padding-bottom: {padding_bottom}px'></div>",
+                    unsafe_allow_html=True,
+                )
 
-            #col1.image(str(stereo_image))
+            # col1.image(str(stereo_image))
             with col2:
                 st.header("RD Map")
                 st.image(str(image))
@@ -202,6 +210,7 @@ def display_radar_images(data: pd.DataFrame) -> None:
                 horizontal=st.session_state.columns <= 4,
             )
 
+
 def display_images(data: pd.DataFrame) -> None:
     unlabeled = data["unlabeled"]
     if not st.session_state.show_labeled:
@@ -210,8 +219,7 @@ def display_images(data: pd.DataFrame) -> None:
     for idx, unlabeled in data["unlabeled"].items():
         index = cast(int, idx)
         image = Path(mission.image_dir, f"{index:06}.jpeg")
-        stereo_image = Path(mission.image_dir, f"_stereo_{index:06}.jpeg") ## stereo image for radar missions, if stereo image.exists(), etc.
-        with next(column): ## make a 1x2 container?
+        with next(column):
             col1, col2 = st.columns(2)
             col1.image(str(image))
             col2.image(str(image))
@@ -224,13 +232,14 @@ def display_images(data: pd.DataFrame) -> None:
                 horizontal=st.session_state.columns <= 4,
             )
 
+
 config_file = mission.log_file
 config = load_config(config_file)
-train_strategy = config["train_strategy"]['type']
-if train_strategy == 'dnn_classifier_radar':
-    display_radar_images(data) ## only for radar missions
+train_strategy = config["train_strategy"]["type"]
+if train_strategy == "dnn_classifier_radar":
+    display_radar_images(data)  # only for radar missions
 else:
-    display_images(data) ## RGB default function call
+    display_images(data)  # RGB default function call
 
 # rely on autorefresh
 # st.stop()

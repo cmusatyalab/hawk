@@ -136,7 +136,7 @@ class YOLOTrainerRadar(ModelTrainerBase):
             else:
                 num_epochs = int(online_epochs)
 
-        data_dict = { ## need to modify this data dict
+        data_dict = {  # need to modify this data dict
             "path": str(self.context.model_dir),
             "train": str(trainpath),
             "nc": 1,

@@ -129,7 +129,8 @@ class BaseImageFromList(Dataset[T]):  # type: ignore[misc]
     def image_loader(self, path: Path) -> Image.Image:
         try:
             if path.suffix == ".npy":
-                array: npt.NDArray[Any] = np.load(path, allow_pickle=True) ## may need to use original Path object here.
+                # may need to use original Path object here.
+                array: npt.NDArray[Any] = np.load(path, allow_pickle=True)
                 array = (array - np.min(array)) / (np.max(array) - np.min(array))
                 image = Image.fromarray((array * 255).astype(np.uint8))
             else:

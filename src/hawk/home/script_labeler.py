@@ -81,8 +81,10 @@ class ScriptLabeler:
             else:
                 self.negatives += 1
 
-
-            logger.info(f"Labeling {index:06} {imageLabel} {objectId}, (Pos, Neg): ({self.positives}, {self.negatives})")
+            logger.info(
+                f"Labeling {index:06} {imageLabel} {objectId}, "
+                f"(Pos, Neg): ({self.positives}, {self.negatives})"
+            )
             self.mission_data.save_new_labels(new_label, new_bboxes)
 
     @classmethod
