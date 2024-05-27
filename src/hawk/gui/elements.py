@@ -50,7 +50,6 @@ class Mission:
 
     @property
     def log_file(self) -> Path:
-        print(type(self.result_dir / "logs" / "hawk.yml"))
         return self.result_dir / "logs" / "hawk.yml"
 
     def save_new_labels(self, new_labels: pd.Series[int]) -> None:

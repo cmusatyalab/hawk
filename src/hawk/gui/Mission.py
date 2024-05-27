@@ -219,10 +219,8 @@ def display_images(data: pd.DataFrame) -> None:
     for idx, unlabeled in data["unlabeled"].items():
         index = cast(int, idx)
         image = Path(mission.image_dir, f"{index:06}.jpeg")
-        with next(column):
-            col1, col2 = st.columns(2)
-            col1.image(str(image))
-            col2.image(str(image))
+        with next(column): 
+            st.image(str(image))
             st.radio(
                 "classification",
                 key=index,

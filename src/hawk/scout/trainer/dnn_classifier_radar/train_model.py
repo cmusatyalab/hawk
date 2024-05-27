@@ -140,7 +140,7 @@ best_acc1 = 0.0
 ########
 # Change this to the path on the scout where the base model is located (after
 # downloading from Git repo).  Will add this to config file later.
-base_model_path = None
+base_model_path = '/srv/diamond/RADAR_DERIVATIVE_CROPPED/person/person_basemodel_resnet18.pth'
 ########
 
 
@@ -641,11 +641,12 @@ def calculate_performance(y_true: Sequence[int], y_pred: Sequence[float]) -> flo
     # ap_by_class = average_precision_score(
     #     label_binarize(y_true,classes=[0,1,2,3,4]), y_pred, average=None
     # )
-    # logger.info(f"AUC across all classes: {ap_by_class}")
-    # ap_by_class = average_precision_score(y_true, y_pred, average=None)
-    ap_score: float = average_precision_score(
-        label_binarize(y_true, classes=[0, 1, 2, 3, 4]), y_pred, average="macro"
-    )
+    #logger.info(f"AUC across all classes: {ap_by_class}")
+    ap: float = average_precision_score(y_true, y_pred, average=None)
+    #ap_score = average_precision_score(y_true, y_pred, average=None)
+    #ap_score: float = average_precision_score(
+        #label_binarize(y_true, classes=[0, 1, 2, 3, 4]), y_pred, average="macro"
+    #)
     # from sklearn.metrics import (
     #     auc, confusion_matrix precision_recall_curve, roc_auc_score
     # )
@@ -654,10 +655,10 @@ def calculate_performance(y_true: Sequence[int], y_pred: Sequence[float]) -> flo
     # roc_auc = roc_auc_score(y_true, y_pred)
     # precision, recall, _ = precision_recall_curve(y_true, y_pred)
     # pr_auc = auc(recall, precision)
-    logger.info(f"AUC {ap_score}")
+    logger.info(f"AUC {ap}")
     # logger.info(f"ROC AUC {roc_auc}")
     # logger.info(f"PR AUC {pr_auc}")
-    return ap_score
+    return ap
 
 
 def validate_model(
@@ -710,7 +711,7 @@ def validate_model(
             try:
                 # Comment the following line out if using multiclass
                 # (initial base model training for radar)
-                # probability = probability[:, 1]
+                probability = probability[:, 1]
                 y_pred.extend(probability)
                 y_true.extend(target.cpu())
             except Exception:
