@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: hawk_home
+    scrape_interval: 5s
+    static_configs:
+      - targets: ["localhost:6178"]
+
+# Should we use http service discovery through hawk_home to find scouts?
+# + simplifies configuration when mission parameters/scouts change
+# - requires another http endpoint
+# - only updates list of scouts periodically, may miss mission start (60s?)
+#
+#  - job_name: hawk_scout
+#    static_configs:
+#      - targets:
+#        - scout1:6103
+#        - scout2:6103
+#        - scout3:6103
+#        - scout4:6103

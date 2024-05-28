@@ -123,13 +123,13 @@ class LabelerDiskQueue:
                 tile_jpeg.write_bytes(result.data)
             logger.info(f"SAVED TILE {tile_jpeg}")
 
+            # update label_queue_length metric
+            self.queue_length.inc()
+
             # append metadata to unlabeled.jsonl file
             meta_json = result.to_json(index=index, queued_time=time.time())
             with unlabeled_jsonl.open("a") as f:
                 f.write(f"{meta_json}\n")
-
-            # update label_queue_length metric
-            self.queue_length.inc()
 
             # logger.info(f"Meta: {count:06} {meta_json}")
             self.scout_queue.task_done()

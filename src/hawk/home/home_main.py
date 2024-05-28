@@ -13,7 +13,7 @@ from logzero import logger
 from prometheus_client import start_http_server as start_metrics_server
 
 from ..mission_config import load_config, write_config
-from ..ports import H2A_PORT
+from ..ports import H2A_PORT, HOME_METRICS_PORT
 from .admin import Admin
 from .script_labeler import ScriptLabeler
 from .to_labeler import LabelerDiskQueue
@@ -97,9 +97,13 @@ def main() -> None:
         home_admin = Admin(home_ip, mission_id, stop_event)
         home_admin.start()
 
-        metrics_port = config.get("home-params", {}).get("metrics-port")
-        if metrics_port is not None:
-            start_metrics_server(port=int(metrics_port))
+        try:
+            metrics_port = int(
+                config.get("home-params", {}).get("metrics-port", HOME_METRICS_PORT)
+            )
+            start_metrics_server(port=metrics_port, addr="127.0.0.1")
+        except ValueError:
+            pass
 
         # Start labeler process
         labeler = config.get("label-mode", "ui")
@@ -120,6 +124,7 @@ def main() -> None:
             logger.info("Initializing Scout Queue")
             strategy = config.get("label-queue-strategy", Strategy.FIFO)
             scout_queue = ScoutQueue(
+                mission_id=mission_id,
                 strategy=strategy,
                 scouts=config.scouts,
                 h2c_port=config.deploy.h2c_port,
