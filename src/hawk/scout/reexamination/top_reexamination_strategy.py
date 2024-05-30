@@ -32,7 +32,7 @@ class TopReexaminationStrategy(ReexaminationStrategy):
         old_queues: ReexaminationQueueType,
         start_time: float = 0,
     ) -> tuple[ReexaminationQueueType, int]:
-        #new_queue: ReexaminationQueueType = queue.PriorityQueue()
+        new_queue: ReexaminationQueueType = queue.PriorityQueue()
 
         to_reexamine = []
         num_reexamined = self._k
@@ -62,8 +62,8 @@ class TopReexaminationStrategy(ReexaminationStrategy):
                 f"prev_score{prev_score} "
                 f"curr_score {score}"
             )
-            #new_queue.put((-score, time_result, result))
-            old_queues.put((-score, time_result, result))
+            new_queue.put((-score, time_result, result))
+            #old_queues.put((-score, time_result, result))
 
-        return old_queues, len(reexamine)
-        #return new_queue, len(reexamine)
+        #return old_queues, len(reexamine)
+        return new_queue, len(reexamine)
