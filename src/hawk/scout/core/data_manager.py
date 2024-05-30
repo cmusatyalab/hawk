@@ -101,22 +101,16 @@ class DataManager:
                 crop_arr = np_arr[left : right + 1, top : bottom + 1, :]
                 pad_left, pad_top = left, top
                 pad_right, pad_bottom = 63 - right, 255 - bottom
-<<<<<<< Updated upstream
+
                 crop_arr_padded = np.pad(
                     crop_arr,
                     ((pad_left, pad_right), (pad_top, pad_bottom), (0, 0)),
                     mode="constant",
                 )
-
-                crop_arr_bytes = crop_arr_padded.tobytes()
-=======
-                crop_arr_padded = np.pad(crop_arr, ((pad_left, pad_right), (pad_top, pad_bottom), (0,0)), mode='constant')
                 
                 with io.BytesIO() as tmp:
                     np.save(tmp, crop_arr_padded)
                     crop_arr_bytes = tmp.getvalue()
-                #crop_arr_bytes = crop_arr_padded.tobytes()
->>>>>>> Stashed changes
                 crop_label = LabelWrapper(
                     objectId="", scoutIndex=99, imageLabel=cls, boundingBoxes=[]
                 )
@@ -355,16 +349,10 @@ class DataManager:
                     label_dir.mkdir(parents=True, exist_ok=True)
                     example_path = label_dir / example_file
                     if self._radar_crop:
-<<<<<<< Updated upstream
-                        arr = np.frombuffer(obj.content, dtype=np.float32)
-                        arr = arr.reshape((64, 256, 3))
-                        np.save(example_path, arr)
-=======
                         with io.BytesIO(obj.content) as fp:
                             arr = np.load(fp)
                         arr = arr.reshape((64,256,3))
                         np.save(example_path,arr)
->>>>>>> Stashed changes
                     else:
                         with example_path.open("wb") as f:
                             f.write(obj.content)

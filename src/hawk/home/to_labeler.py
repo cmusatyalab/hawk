@@ -177,7 +177,6 @@ class LabelerDiskQueue:
     def gen_heatmap(self, data, tile_path):
         with io.BytesIO(data) as bytes_file:
             data = np.load(bytes_file, allow_pickle=True)
-        logger.info(f"Array shape: {data.shape}")
         plt.imshow(
             data.sum(axis=2).transpose(), cmap="viridis", interpolation="nearest"
         )

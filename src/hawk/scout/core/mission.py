@@ -393,16 +393,19 @@ class Mission(DataManagerContext, ModelContext):
         logger.info(f"Starting evaluation with model version {starting_version}")
 
         while not self._abort_event.is_set():
+            retriever_object = self.retriever.get_objects()
             with self._model_lock:
                 if self._model is not None and self._model.version != starting_version:
                     logger.info(
                         f"Done evaluating with model version {starting_version} "
                         f"(new version {self._model.version} available)"
                     )
+                    ## make sure to put this back in retriever put object
+                    self.retriever.put_objects(retriever_object)
                     return
 
                 # pop single retriever object from retriever result queue
-                retriever_object = self.retriever.get_objects()
+                
 
                 # will need to add put_objects(retriever_object) when we move
                 # get_objects() outside the lock above.
@@ -463,8 +466,7 @@ class Mission(DataManagerContext, ModelContext):
         try:
             while True:  # not self._abort_event.is_set():
                 result = self.selector.get_result()
-                # logger.info("Successfully reutrned result to mission.py...")
-                # logger.info("Attributes".format(result.attributes.get()))
+
                 if result is None:
                     break
                 tile = SendTiles(
@@ -474,9 +476,7 @@ class Mission(DataManagerContext, ModelContext):
                     version=result.model_version,
                     attributes=result.attributes.get(),
                 )
-                # logger.info("Successfully created the tile message...")
                 pipe.send(tile.SerializeToString())
-                # logger.info("Successfully send over the pipe...")
         except Exception as e:
             logger.error(e)
             self.stop()
@@ -535,7 +535,6 @@ class Mission(DataManagerContext, ModelContext):
             return
 
         train_start = time.time()
-
         with self._model_lock:
             model = self._model
 
@@ -546,7 +545,6 @@ class Mission(DataManagerContext, ModelContext):
             if self.enable_logfile:
                 self.log(f"{model.version} Initial Model SET")
             return
-
         with self._data_manager.get_examples(
             DatasetSplit.TRAIN
         ) as train_dir:  # important

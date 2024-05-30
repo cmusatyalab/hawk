@@ -13,6 +13,7 @@ from streamlit_autorefresh import st_autorefresh
 
 from hawk.gui.elements import ABOUT_TEXT, Mission, page_header
 from hawk.mission_config import load_config
+#from streamlit_label_kit import detection
 
 if TYPE_CHECKING:
     import pandas as pd
