@@ -15,7 +15,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0emessages.proto\x12\x13\x65\x64u.cmu.cs.hawk.api\"\x1a\n\tMissionId\x12\r\n\x05value\x18\x01 \x01(\t\"\xa0\x05\n\x12ScoutConfiguration\x12\x11\n\tmissionId\x18\x01 \x01(\t\x12\x0e\n\x06scouts\x18\x02 \x03(\t\x12\x12\n\nscoutIndex\x18\x03 \x01(\x05\x12\x0e\n\x06homeIP\x18\x04 \x01(\t\x12\x15\n\rtrainLocation\x18\x05 \x01(\t\x12\x18\n\x10missionDirectory\x18\x06 \x01(\t\x12\x37\n\rtrainStrategy\x18\x07 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.TrainConfig\x12?\n\rretrainPolicy\x18\x08 \x01(\x0b\x32(.edu.cmu.cs.hawk.api.RetrainPolicyConfig\x12-\n\x07\x64\x61taset\x18\t \x01(\x0b\x32\x1c.edu.cmu.cs.hawk.api.Dataset\x12\x36\n\x08selector\x18\n \x01(\x0b\x32$.edu.cmu.cs.hawk.api.SelectiveConfig\x12G\n\rreexamination\x18\x0b \x01(\x0b\x32\x30.edu.cmu.cs.hawk.api.ReexaminationStrategyConfig\x12\x37\n\x0cinitialModel\x18\x0c \x01(\x0b\x32!.edu.cmu.cs.hawk.api.ModelArchive\x12\x14\n\x0c\x62ootstrapZip\x18\r \x01(\x0c\x12Q\n\rbandwidthFunc\x18\x0e \x03(\x0b\x32:.edu.cmu.cs.hawk.api.ScoutConfiguration.BandwidthFuncEntry\x12\x10\n\x08validate\x18\x0f \x01(\x08\x1a\x34\n\x12\x42\x61ndwidthFuncEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xdc\x01\n\x0cMissionStats\x12\x14\n\x0ctotalObjects\x18\x01 \x01(\x03\x12\x18\n\x10processedObjects\x18\x02 \x01(\x03\x12\x16\n\x0e\x64roppedObjects\x18\x03 \x01(\x03\x12\x16\n\x0e\x66\x61lseNegatives\x18\x04 \x01(\x03\x12=\n\x06others\x18\x05 \x03(\x0b\x32-.edu.cmu.cs.hawk.api.MissionStats.OthersEntry\x1a-\n\x0bOthersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xb6\x01\n\x0bTestResults\x12\x14\n\x0ctestExamples\x18\x01 \x01(\x03\x12\x0b\n\x03\x61uc\x18\x02 \x01(\x01\x12\x37\n\x0cmodelMetrics\x18\x03 \x01(\x0b\x32!.edu.cmu.cs.hawk.api.ModelMetrics\x12\x15\n\rbestThreshold\x18\x04 \x01(\x01\x12\x12\n\nprecisions\x18\x05 \x03(\x01\x12\x0f\n\x07recalls\x18\x06 \x03(\x01\x12\x0f\n\x07version\x18\x07 \x01(\x05\"\xa5\x01\n\x0eMissionResults\x12\x41\n\x07results\x18\x01 \x03(\x0b\x32\x30.edu.cmu.cs.hawk.api.MissionResults.ResultsEntry\x1aP\n\x0cResultsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12/\n\x05value\x18\x02 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.TestResults:\x02\x38\x01\"\x89\x01\n\x0cModelMetrics\x12\x15\n\rtruePositives\x18\x01 \x01(\x03\x12\x16\n\x0e\x66\x61lsePositives\x18\x02 \x01(\x03\x12\x16\n\x0e\x66\x61lseNegatives\x18\x03 \x01(\x03\x12\x11\n\tprecision\x18\x04 \x01(\x01\x12\x0e\n\x06recall\x18\x05 \x01(\x01\x12\x0f\n\x07\x66\x31Score\x18\x06 \x01(\x01\"M\n\x0bImportModel\x12\x30\n\x05model\x18\x01 \x01(\x0b\x32!.edu.cmu.cs.hawk.api.ModelArchive\x12\x0c\n\x04path\x18\x02 \x01(\t\"0\n\x0cModelArchive\x12\x0f\n\x07\x63ontent\x18\x01 \x01(\x0c\x12\x0f\n\x07version\x18\x02 \x01(\x05\"\xf7\x01\n\x0bTrainConfig\x12:\n\x0e\x64nn_classifier\x18\x01 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.ModelConfigH\x00\x12\x30\n\x04yolo\x18\x02 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.ModelConfigH\x00\x12/\n\x03\x66sl\x18\x03 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.ModelConfigH\x00\x12@\n\x14\x64nn_classifier_radar\x18\x04 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.ModelConfigH\x00\x42\x07\n\x05value\"t\n\x0bModelConfig\x12\x38\n\x04\x61rgs\x18\x01 \x03(\x0b\x32*.edu.cmu.cs.hawk.api.ModelConfig.ArgsEntry\x1a+\n\tArgsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"-\n\nYOLOConfig\x12\x11\n\timageSize\x18\x01 \x01(\x05\x12\x0c\n\x04\x61rgs\x18\x02 \x01(\t\"\x9c\x02\n\x13RetrainPolicyConfig\x12=\n\x08\x61\x62solute\x18\x01 \x01(\x0b\x32).edu.cmu.cs.hawk.api.AbsolutePolicyConfigH\x00\x12\x41\n\npercentage\x18\x02 \x01(\x0b\x32+.edu.cmu.cs.hawk.api.PercentagePolicyConfigH\x00\x12\x37\n\x05model\x18\x03 \x01(\x0b\x32&.edu.cmu.cs.hawk.api.ModelPolicyConfigH\x00\x12\x41\n\x06sample\x18\x04 \x01(\x0b\x32/.edu.cmu.cs.hawk.api.SampleIntervalPolicyConfigH\x00\x42\x07\n\x05value\"@\n\x14\x41\x62solutePolicyConfig\x12\x11\n\tthreshold\x18\x01 \x01(\x05\x12\x15\n\ronlyPositives\x18\x02 \x01(\x08\"B\n\x16PercentagePolicyConfig\x12\x11\n\tthreshold\x18\x01 \x01(\x01\x12\x15\n\ronlyPositives\x18\x02 \x01(\x08\"!\n\x11ModelPolicyConfig\x12\x0c\n\x04name\x18\x01 \x01(\t\"3\n\x1aSampleIntervalPolicyConfig\x12\x15\n\rnum_intervals\x18\x01 \x01(\x05\"\x95\x02\n\x07\x44\x61taset\x12\x31\n\x05\x66rame\x18\x01 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.FileDatasetH\x00\x12\x32\n\x06random\x18\x02 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.FileDatasetH\x00\x12\x30\n\x04tile\x18\x03 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.FileDatasetH\x00\x12\x31\n\x05scope\x18\x04 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.FileDatasetH\x00\x12\x35\n\x05video\x18\x05 \x01(\x0b\x32$.edu.cmu.cs.hawk.api.Streaming_VideoH\x00\x42\x07\n\x05value\"h\n\x0b\x46ileDataset\x12\x10\n\x08\x64\x61taPath\x18\x01 \x01(\t\x12\x10\n\x08tileSize\x18\x02 \x01(\x05\x12\x10\n\x08numTiles\x18\x03 \x01(\x05\x12\x0f\n\x07timeout\x18\x04 \x01(\x05\x12\x12\n\nresizeTile\x18\x05 \x01(\x08\"\x88\x01\n\x0fStreaming_Video\x12\r\n\x05width\x18\x01 \x01(\x05\x12\x0e\n\x06height\x18\x02 \x01(\x05\x12\x19\n\x11sampling_rate_fps\x18\x03 \x01(\x05\x12\x12\n\nvideo_path\x18\x04 \x01(\t\x12\x13\n\x0btile_height\x18\x05 \x01(\x05\x12\x12\n\ntile_width\x18\x06 \x01(\x05\"\xf4\x01\n\x0fSelectiveConfig\x12/\n\x04topk\x18\x01 \x01(\x0b\x32\x1f.edu.cmu.cs.hawk.api.TopKConfigH\x00\x12\x39\n\tthreshold\x18\x02 \x01(\x0b\x32$.edu.cmu.cs.hawk.api.ThresholdConfigH\x00\x12\x31\n\x05token\x18\x03 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.TokenConfigH\x00\x12\x39\n\tdiversity\x18\x04 \x01(\x0b\x32$.edu.cmu.cs.hawk.api.DiversityConfigH\x00\x42\x07\n\x05value\"k\n\nTopKConfig\x12\t\n\x01k\x18\x01 \x01(\x05\x12\x11\n\tbatchSize\x18\x02 \x01(\x05\x12 \n\x18\x63ountermeasure_threshold\x18\x03 \x01(\x01\x12\x1d\n\x15total_countermeasures\x18\x04 \x01(\x05\"$\n\x0fThresholdConfig\x12\x11\n\tthreshold\x18\x01 \x01(\x01\"{\n\x0bTokenConfig\x12\x17\n\x0finitial_samples\x18\x01 \x01(\x05\x12\x12\n\nbatch_size\x18\x02 \x01(\x05\x12 \n\x18\x63ountermeasure_threshold\x18\x03 \x01(\x01\x12\x1d\n\x15total_countermeasures\x18\x04 \x01(\x05\"p\n\x0f\x44iversityConfig\x12\t\n\x01k\x18\x01 \x01(\x05\x12\x11\n\tbatchSize\x18\x02 \x01(\x05\x12 \n\x18\x63ountermeasure_threshold\x18\x03 \x01(\x01\x12\x1d\n\x15total_countermeasures\x18\x04 \x01(\x05\"6\n\x1bReexaminationStrategyConfig\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\t\n\x01k\x18\x02 \x01(\x05\"\x1f\n\x1dNoReexaminationStrategyConfig\"+\n\x1eTopReexaminationStrategyConfig\x12\t\n\x01k\x18\x01 \x01(\x05\"!\n\x1f\x46ullReexaminationStrategyConfig\"R\n\x0cTileMetadata\x12\x10\n\x08objectId\x18\x01 \x01(\t\x12\x30\n\x05label\x18\x02 \x01(\x0b\x32!.edu.cmu.cs.hawk.api.LabelWrapper\"m\n\x0bLabeledTile\x12,\n\x03obj\x18\x01 \x01(\x0b\x32\x1f.edu.cmu.cs.hawk.api.HawkObject\x12\x30\n\x05label\x18\x02 \x01(\x0b\x32!.edu.cmu.cs.hawk.api.LabelWrapper\"@\n\x0cTokenMessage\x12\x30\n\x05label\x18\x01 \x01(\x0b\x32!.edu.cmu.cs.hawk.api.LabelWrapper\"_\n\x0cLabelWrapper\x12\x10\n\x08objectId\x18\x01 \x01(\t\x12\x12\n\nscoutIndex\x18\x02 \x01(\x05\x12\x12\n\nimageLabel\x18\x03 \x01(\t\x12\x15\n\rboundingBoxes\x18\x04 \x03(\t\"\xa7\x01\n\nHawkObject\x12\x10\n\x08objectId\x18\x01 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\x0c\x12\x43\n\nattributes\x18\x03 \x03(\x0b\x32/.edu.cmu.cs.hawk.api.HawkObject.AttributesEntry\x1a\x31\n\x0f\x41ttributesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"\xc8\x01\n\tSendTiles\x12\x10\n\x08objectId\x18\x01 \x01(\t\x12\x12\n\nscoutIndex\x18\x02 \x01(\x05\x12\r\n\x05score\x18\x03 \x01(\x01\x12\x0f\n\x07version\x18\x04 \x01(\x05\x12\x42\n\nattributes\x18\x05 \x03(\x0b\x32..edu.cmu.cs.hawk.api.SendTiles.AttributesEntry\x1a\x31\n\x0f\x41ttributesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\">\n\nSendLabels\x12\x30\n\x05label\x18\x01 \x01(\x0b\x32!.edu.cmu.cs.hawk.api.LabelWrapper*#\n\x0c\x44\x61tasetSplit\x12\t\n\x05TRAIN\x10\x00\x12\x08\n\x04TEST\x10\x01\x42\x02P\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0emessages.proto\x12\x13\x65\x64u.cmu.cs.hawk.api\"\x1a\n\tMissionId\x12\r\n\x05value\x18\x01 \x01(\t\"\xa0\x05\n\x12ScoutConfiguration\x12\x11\n\tmissionId\x18\x01 \x01(\t\x12\x0e\n\x06scouts\x18\x02 \x03(\t\x12\x12\n\nscoutIndex\x18\x03 \x01(\x05\x12\x0e\n\x06homeIP\x18\x04 \x01(\t\x12\x15\n\rtrainLocation\x18\x05 \x01(\t\x12\x18\n\x10missionDirectory\x18\x06 \x01(\t\x12\x37\n\rtrainStrategy\x18\x07 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.TrainConfig\x12?\n\rretrainPolicy\x18\x08 \x01(\x0b\x32(.edu.cmu.cs.hawk.api.RetrainPolicyConfig\x12-\n\x07\x64\x61taset\x18\t \x01(\x0b\x32\x1c.edu.cmu.cs.hawk.api.Dataset\x12\x36\n\x08selector\x18\n \x01(\x0b\x32$.edu.cmu.cs.hawk.api.SelectiveConfig\x12G\n\rreexamination\x18\x0b \x01(\x0b\x32\x30.edu.cmu.cs.hawk.api.ReexaminationStrategyConfig\x12\x37\n\x0cinitialModel\x18\x0c \x01(\x0b\x32!.edu.cmu.cs.hawk.api.ModelArchive\x12\x14\n\x0c\x62ootstrapZip\x18\r \x01(\x0c\x12Q\n\rbandwidthFunc\x18\x0e \x03(\x0b\x32:.edu.cmu.cs.hawk.api.ScoutConfiguration.BandwidthFuncEntry\x12\x10\n\x08validate\x18\x0f \x01(\x08\x1a\x34\n\x12\x42\x61ndwidthFuncEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xdc\x01\n\x0cMissionStats\x12\x14\n\x0ctotalObjects\x18\x01 \x01(\x03\x12\x18\n\x10processedObjects\x18\x02 \x01(\x03\x12\x16\n\x0e\x64roppedObjects\x18\x03 \x01(\x03\x12\x16\n\x0e\x66\x61lseNegatives\x18\x04 \x01(\x03\x12=\n\x06others\x18\x05 \x03(\x0b\x32-.edu.cmu.cs.hawk.api.MissionStats.OthersEntry\x1a-\n\x0bOthersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xb6\x01\n\x0bTestResults\x12\x14\n\x0ctestExamples\x18\x01 \x01(\x03\x12\x0b\n\x03\x61uc\x18\x02 \x01(\x01\x12\x37\n\x0cmodelMetrics\x18\x03 \x01(\x0b\x32!.edu.cmu.cs.hawk.api.ModelMetrics\x12\x15\n\rbestThreshold\x18\x04 \x01(\x01\x12\x12\n\nprecisions\x18\x05 \x03(\x01\x12\x0f\n\x07recalls\x18\x06 \x03(\x01\x12\x0f\n\x07version\x18\x07 \x01(\x05\"\xa5\x01\n\x0eMissionResults\x12\x41\n\x07results\x18\x01 \x03(\x0b\x32\x30.edu.cmu.cs.hawk.api.MissionResults.ResultsEntry\x1aP\n\x0cResultsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x05\x12/\n\x05value\x18\x02 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.TestResults:\x02\x38\x01\"\x89\x01\n\x0cModelMetrics\x12\x15\n\rtruePositives\x18\x01 \x01(\x03\x12\x16\n\x0e\x66\x61lsePositives\x18\x02 \x01(\x03\x12\x16\n\x0e\x66\x61lseNegatives\x18\x03 \x01(\x03\x12\x11\n\tprecision\x18\x04 \x01(\x01\x12\x0e\n\x06recall\x18\x05 \x01(\x01\x12\x0f\n\x07\x66\x31Score\x18\x06 \x01(\x01\"M\n\x0bImportModel\x12\x30\n\x05model\x18\x01 \x01(\x0b\x32!.edu.cmu.cs.hawk.api.ModelArchive\x12\x0c\n\x04path\x18\x02 \x01(\t\"0\n\x0cModelArchive\x12\x0f\n\x07\x63ontent\x18\x01 \x01(\x0c\x12\x0f\n\x07version\x18\x02 \x01(\x05\"\xaf\x02\n\x0bTrainConfig\x12:\n\x0e\x64nn_classifier\x18\x01 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.ModelConfigH\x00\x12\x30\n\x04yolo\x18\x02 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.ModelConfigH\x00\x12/\n\x03\x66sl\x18\x03 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.ModelConfigH\x00\x12@\n\x14\x64nn_classifier_radar\x18\x04 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.ModelConfigH\x00\x12\x36\n\nyolo_radar\x18\x05 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.ModelConfigH\x00\x42\x07\n\x05value\"t\n\x0bModelConfig\x12\x38\n\x04\x61rgs\x18\x01 \x03(\x0b\x32*.edu.cmu.cs.hawk.api.ModelConfig.ArgsEntry\x1a+\n\tArgsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"-\n\nYOLOConfig\x12\x11\n\timageSize\x18\x01 \x01(\x05\x12\x0c\n\x04\x61rgs\x18\x02 \x01(\t\"\x9c\x02\n\x13RetrainPolicyConfig\x12=\n\x08\x61\x62solute\x18\x01 \x01(\x0b\x32).edu.cmu.cs.hawk.api.AbsolutePolicyConfigH\x00\x12\x41\n\npercentage\x18\x02 \x01(\x0b\x32+.edu.cmu.cs.hawk.api.PercentagePolicyConfigH\x00\x12\x37\n\x05model\x18\x03 \x01(\x0b\x32&.edu.cmu.cs.hawk.api.ModelPolicyConfigH\x00\x12\x41\n\x06sample\x18\x04 \x01(\x0b\x32/.edu.cmu.cs.hawk.api.SampleIntervalPolicyConfigH\x00\x42\x07\n\x05value\"@\n\x14\x41\x62solutePolicyConfig\x12\x11\n\tthreshold\x18\x01 \x01(\x05\x12\x15\n\ronlyPositives\x18\x02 \x01(\x08\"B\n\x16PercentagePolicyConfig\x12\x11\n\tthreshold\x18\x01 \x01(\x01\x12\x15\n\ronlyPositives\x18\x02 \x01(\x08\"!\n\x11ModelPolicyConfig\x12\x0c\n\x04name\x18\x01 \x01(\t\"3\n\x1aSampleIntervalPolicyConfig\x12\x15\n\rnum_intervals\x18\x01 \x01(\x05\"\x95\x02\n\x07\x44\x61taset\x12\x31\n\x05\x66rame\x18\x01 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.FileDatasetH\x00\x12\x32\n\x06random\x18\x02 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.FileDatasetH\x00\x12\x30\n\x04tile\x18\x03 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.FileDatasetH\x00\x12\x31\n\x05scope\x18\x04 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.FileDatasetH\x00\x12\x35\n\x05video\x18\x05 \x01(\x0b\x32$.edu.cmu.cs.hawk.api.Streaming_VideoH\x00\x42\x07\n\x05value\"h\n\x0b\x46ileDataset\x12\x10\n\x08\x64\x61taPath\x18\x01 \x01(\t\x12\x10\n\x08tileSize\x18\x02 \x01(\x05\x12\x10\n\x08numTiles\x18\x03 \x01(\x05\x12\x0f\n\x07timeout\x18\x04 \x01(\x05\x12\x12\n\nresizeTile\x18\x05 \x01(\x08\"k\n\x0eNetworkDataset\x12\x16\n\x0e\x64\x61taSourceAddr\x18\x01 \x01(\t\x12\x16\n\x0e\x64\x61taSourcePort\x18\x02 \x01(\x05\x12\x15\n\rretrievalRate\x18\x03 \x01(\x01\x12\x12\n\nresizeTile\x18\x05 \x01(\x08\"\x88\x01\n\x0fStreaming_Video\x12\r\n\x05width\x18\x01 \x01(\x05\x12\x0e\n\x06height\x18\x02 \x01(\x05\x12\x19\n\x11sampling_rate_fps\x18\x03 \x01(\x05\x12\x12\n\nvideo_path\x18\x04 \x01(\t\x12\x13\n\x0btile_height\x18\x05 \x01(\x05\x12\x12\n\ntile_width\x18\x06 \x01(\x05\"\xf4\x01\n\x0fSelectiveConfig\x12/\n\x04topk\x18\x01 \x01(\x0b\x32\x1f.edu.cmu.cs.hawk.api.TopKConfigH\x00\x12\x39\n\tthreshold\x18\x02 \x01(\x0b\x32$.edu.cmu.cs.hawk.api.ThresholdConfigH\x00\x12\x31\n\x05token\x18\x03 \x01(\x0b\x32 .edu.cmu.cs.hawk.api.TokenConfigH\x00\x12\x39\n\tdiversity\x18\x04 \x01(\x0b\x32$.edu.cmu.cs.hawk.api.DiversityConfigH\x00\x42\x07\n\x05value\"k\n\nTopKConfig\x12\t\n\x01k\x18\x01 \x01(\x05\x12\x11\n\tbatchSize\x18\x02 \x01(\x05\x12 \n\x18\x63ountermeasure_threshold\x18\x03 \x01(\x01\x12\x1d\n\x15total_countermeasures\x18\x04 \x01(\x05\"$\n\x0fThresholdConfig\x12\x11\n\tthreshold\x18\x01 \x01(\x01\"{\n\x0bTokenConfig\x12\x17\n\x0finitial_samples\x18\x01 \x01(\x05\x12\x12\n\nbatch_size\x18\x02 \x01(\x05\x12 \n\x18\x63ountermeasure_threshold\x18\x03 \x01(\x01\x12\x1d\n\x15total_countermeasures\x18\x04 \x01(\x05\"p\n\x0f\x44iversityConfig\x12\t\n\x01k\x18\x01 \x01(\x05\x12\x11\n\tbatchSize\x18\x02 \x01(\x05\x12 \n\x18\x63ountermeasure_threshold\x18\x03 \x01(\x01\x12\x1d\n\x15total_countermeasures\x18\x04 \x01(\x05\"6\n\x1bReexaminationStrategyConfig\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\t\n\x01k\x18\x02 \x01(\x05\"\x1f\n\x1dNoReexaminationStrategyConfig\"+\n\x1eTopReexaminationStrategyConfig\x12\t\n\x01k\x18\x01 \x01(\x05\"!\n\x1f\x46ullReexaminationStrategyConfig\"R\n\x0cTileMetadata\x12\x10\n\x08objectId\x18\x01 \x01(\t\x12\x30\n\x05label\x18\x02 \x01(\x0b\x32!.edu.cmu.cs.hawk.api.LabelWrapper\"m\n\x0bLabeledTile\x12,\n\x03obj\x18\x01 \x01(\x0b\x32\x1f.edu.cmu.cs.hawk.api.HawkObject\x12\x30\n\x05label\x18\x02 \x01(\x0b\x32!.edu.cmu.cs.hawk.api.LabelWrapper\"@\n\x0cTokenMessage\x12\x30\n\x05label\x18\x01 \x01(\x0b\x32!.edu.cmu.cs.hawk.api.LabelWrapper\"_\n\x0cLabelWrapper\x12\x10\n\x08objectId\x18\x01 \x01(\t\x12\x12\n\nscoutIndex\x18\x02 \x01(\x05\x12\x12\n\nimageLabel\x18\x03 \x01(\t\x12\x15\n\rboundingBoxes\x18\x04 \x03(\t\"\xa7\x01\n\nHawkObject\x12\x10\n\x08objectId\x18\x01 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\x0c\x12\x43\n\nattributes\x18\x03 \x03(\x0b\x32/.edu.cmu.cs.hawk.api.HawkObject.AttributesEntry\x1a\x31\n\x0f\x41ttributesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"\xc8\x01\n\tSendTiles\x12\x10\n\x08objectId\x18\x01 \x01(\t\x12\x12\n\nscoutIndex\x18\x02 \x01(\x05\x12\r\n\x05score\x18\x03 \x01(\x01\x12\x0f\n\x07version\x18\x04 \x01(\x05\x12\x42\n\nattributes\x18\x05 \x03(\x0b\x32..edu.cmu.cs.hawk.api.SendTiles.AttributesEntry\x1a\x31\n\x0f\x41ttributesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\">\n\nSendLabels\x12\x30\n\x05label\x18\x01 \x01(\x0b\x32!.edu.cmu.cs.hawk.api.LabelWrapper*#\n\x0c\x44\x61tasetSplit\x12\t\n\x05TRAIN\x10\x00\x12\x08\n\x04TEST\x10\x01\x42\x02P\x01\x62\x06proto3')
 
 _DATASETSPLIT = DESCRIPTOR.enum_types_by_name['DatasetSplit']
 DatasetSplit = enum_type_wrapper.EnumTypeWrapper(_DATASETSPLIT)
@@ -45,6 +45,7 @@ _MODELPOLICYCONFIG = DESCRIPTOR.message_types_by_name['ModelPolicyConfig']
 _SAMPLEINTERVALPOLICYCONFIG = DESCRIPTOR.message_types_by_name['SampleIntervalPolicyConfig']
 _DATASET = DESCRIPTOR.message_types_by_name['Dataset']
 _FILEDATASET = DESCRIPTOR.message_types_by_name['FileDataset']
+_NETWORKDATASET = DESCRIPTOR.message_types_by_name['NetworkDataset']
 _STREAMING_VIDEO = DESCRIPTOR.message_types_by_name['Streaming_Video']
 _SELECTIVECONFIG = DESCRIPTOR.message_types_by_name['SelectiveConfig']
 _TOPKCONFIG = DESCRIPTOR.message_types_by_name['TopKConfig']
@@ -222,6 +223,13 @@ FileDataset = _reflection.GeneratedProtocolMessageType('FileDataset', (_message.
   })
 _sym_db.RegisterMessage(FileDataset)
 
+NetworkDataset = _reflection.GeneratedProtocolMessageType('NetworkDataset', (_message.Message,), {
+  'DESCRIPTOR' : _NETWORKDATASET,
+  '__module__' : 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:edu.cmu.cs.hawk.api.NetworkDataset)
+  })
+_sym_db.RegisterMessage(NetworkDataset)
+
 Streaming_Video = _reflection.GeneratedProtocolMessageType('Streaming_Video', (_message.Message,), {
   'DESCRIPTOR' : _STREAMING_VIDEO,
   '__module__' : 'messages_pb2'
@@ -373,8 +381,8 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _HAWKOBJECT_ATTRIBUTESENTRY._serialized_options = b'8\001'
   _SENDTILES_ATTRIBUTESENTRY._options = None
   _SENDTILES_ATTRIBUTESENTRY._serialized_options = b'8\001'
-  _DATASETSPLIT._serialized_start=4633
-  _DATASETSPLIT._serialized_end=4668
+  _DATASETSPLIT._serialized_start=4798
+  _DATASETSPLIT._serialized_end=4833
   _MISSIONID._serialized_start=39
   _MISSIONID._serialized_end=65
   _SCOUTCONFIGURATION._serialized_start=68
@@ -398,63 +406,65 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _MODELARCHIVE._serialized_start=1537
   _MODELARCHIVE._serialized_end=1585
   _TRAINCONFIG._serialized_start=1588
-  _TRAINCONFIG._serialized_end=1835
-  _MODELCONFIG._serialized_start=1837
-  _MODELCONFIG._serialized_end=1953
-  _MODELCONFIG_ARGSENTRY._serialized_start=1910
-  _MODELCONFIG_ARGSENTRY._serialized_end=1953
-  _YOLOCONFIG._serialized_start=1955
-  _YOLOCONFIG._serialized_end=2000
-  _RETRAINPOLICYCONFIG._serialized_start=2003
-  _RETRAINPOLICYCONFIG._serialized_end=2287
-  _ABSOLUTEPOLICYCONFIG._serialized_start=2289
-  _ABSOLUTEPOLICYCONFIG._serialized_end=2353
-  _PERCENTAGEPOLICYCONFIG._serialized_start=2355
-  _PERCENTAGEPOLICYCONFIG._serialized_end=2421
-  _MODELPOLICYCONFIG._serialized_start=2423
-  _MODELPOLICYCONFIG._serialized_end=2456
-  _SAMPLEINTERVALPOLICYCONFIG._serialized_start=2458
-  _SAMPLEINTERVALPOLICYCONFIG._serialized_end=2509
-  _DATASET._serialized_start=2512
-  _DATASET._serialized_end=2789
-  _FILEDATASET._serialized_start=2791
-  _FILEDATASET._serialized_end=2895
-  _STREAMING_VIDEO._serialized_start=2898
-  _STREAMING_VIDEO._serialized_end=3034
-  _SELECTIVECONFIG._serialized_start=3037
-  _SELECTIVECONFIG._serialized_end=3281
-  _TOPKCONFIG._serialized_start=3283
-  _TOPKCONFIG._serialized_end=3390
-  _THRESHOLDCONFIG._serialized_start=3392
-  _THRESHOLDCONFIG._serialized_end=3428
-  _TOKENCONFIG._serialized_start=3430
-  _TOKENCONFIG._serialized_end=3553
-  _DIVERSITYCONFIG._serialized_start=3555
-  _DIVERSITYCONFIG._serialized_end=3667
-  _REEXAMINATIONSTRATEGYCONFIG._serialized_start=3669
-  _REEXAMINATIONSTRATEGYCONFIG._serialized_end=3723
-  _NOREEXAMINATIONSTRATEGYCONFIG._serialized_start=3725
-  _NOREEXAMINATIONSTRATEGYCONFIG._serialized_end=3756
-  _TOPREEXAMINATIONSTRATEGYCONFIG._serialized_start=3758
-  _TOPREEXAMINATIONSTRATEGYCONFIG._serialized_end=3801
-  _FULLREEXAMINATIONSTRATEGYCONFIG._serialized_start=3803
-  _FULLREEXAMINATIONSTRATEGYCONFIG._serialized_end=3836
-  _TILEMETADATA._serialized_start=3838
-  _TILEMETADATA._serialized_end=3920
-  _LABELEDTILE._serialized_start=3922
-  _LABELEDTILE._serialized_end=4031
-  _TOKENMESSAGE._serialized_start=4033
-  _TOKENMESSAGE._serialized_end=4097
-  _LABELWRAPPER._serialized_start=4099
-  _LABELWRAPPER._serialized_end=4194
-  _HAWKOBJECT._serialized_start=4197
-  _HAWKOBJECT._serialized_end=4364
-  _HAWKOBJECT_ATTRIBUTESENTRY._serialized_start=4315
-  _HAWKOBJECT_ATTRIBUTESENTRY._serialized_end=4364
-  _SENDTILES._serialized_start=4367
-  _SENDTILES._serialized_end=4567
-  _SENDTILES_ATTRIBUTESENTRY._serialized_start=4315
-  _SENDTILES_ATTRIBUTESENTRY._serialized_end=4364
-  _SENDLABELS._serialized_start=4569
-  _SENDLABELS._serialized_end=4631
+  _TRAINCONFIG._serialized_end=1891
+  _MODELCONFIG._serialized_start=1893
+  _MODELCONFIG._serialized_end=2009
+  _MODELCONFIG_ARGSENTRY._serialized_start=1966
+  _MODELCONFIG_ARGSENTRY._serialized_end=2009
+  _YOLOCONFIG._serialized_start=2011
+  _YOLOCONFIG._serialized_end=2056
+  _RETRAINPOLICYCONFIG._serialized_start=2059
+  _RETRAINPOLICYCONFIG._serialized_end=2343
+  _ABSOLUTEPOLICYCONFIG._serialized_start=2345
+  _ABSOLUTEPOLICYCONFIG._serialized_end=2409
+  _PERCENTAGEPOLICYCONFIG._serialized_start=2411
+  _PERCENTAGEPOLICYCONFIG._serialized_end=2477
+  _MODELPOLICYCONFIG._serialized_start=2479
+  _MODELPOLICYCONFIG._serialized_end=2512
+  _SAMPLEINTERVALPOLICYCONFIG._serialized_start=2514
+  _SAMPLEINTERVALPOLICYCONFIG._serialized_end=2565
+  _DATASET._serialized_start=2568
+  _DATASET._serialized_end=2845
+  _FILEDATASET._serialized_start=2847
+  _FILEDATASET._serialized_end=2951
+  _NETWORKDATASET._serialized_start=2953
+  _NETWORKDATASET._serialized_end=3060
+  _STREAMING_VIDEO._serialized_start=3063
+  _STREAMING_VIDEO._serialized_end=3199
+  _SELECTIVECONFIG._serialized_start=3202
+  _SELECTIVECONFIG._serialized_end=3446
+  _TOPKCONFIG._serialized_start=3448
+  _TOPKCONFIG._serialized_end=3555
+  _THRESHOLDCONFIG._serialized_start=3557
+  _THRESHOLDCONFIG._serialized_end=3593
+  _TOKENCONFIG._serialized_start=3595
+  _TOKENCONFIG._serialized_end=3718
+  _DIVERSITYCONFIG._serialized_start=3720
+  _DIVERSITYCONFIG._serialized_end=3832
+  _REEXAMINATIONSTRATEGYCONFIG._serialized_start=3834
+  _REEXAMINATIONSTRATEGYCONFIG._serialized_end=3888
+  _NOREEXAMINATIONSTRATEGYCONFIG._serialized_start=3890
+  _NOREEXAMINATIONSTRATEGYCONFIG._serialized_end=3921
+  _TOPREEXAMINATIONSTRATEGYCONFIG._serialized_start=3923
+  _TOPREEXAMINATIONSTRATEGYCONFIG._serialized_end=3966
+  _FULLREEXAMINATIONSTRATEGYCONFIG._serialized_start=3968
+  _FULLREEXAMINATIONSTRATEGYCONFIG._serialized_end=4001
+  _TILEMETADATA._serialized_start=4003
+  _TILEMETADATA._serialized_end=4085
+  _LABELEDTILE._serialized_start=4087
+  _LABELEDTILE._serialized_end=4196
+  _TOKENMESSAGE._serialized_start=4198
+  _TOKENMESSAGE._serialized_end=4262
+  _LABELWRAPPER._serialized_start=4264
+  _LABELWRAPPER._serialized_end=4359
+  _HAWKOBJECT._serialized_start=4362
+  _HAWKOBJECT._serialized_end=4529
+  _HAWKOBJECT_ATTRIBUTESENTRY._serialized_start=4480
+  _HAWKOBJECT_ATTRIBUTESENTRY._serialized_end=4529
+  _SENDTILES._serialized_start=4532
+  _SENDTILES._serialized_end=4732
+  _SENDTILES_ATTRIBUTESENTRY._serialized_start=4480
+  _SENDTILES_ATTRIBUTESENTRY._serialized_end=4529
+  _SENDLABELS._serialized_start=4734
+  _SENDLABELS._serialized_end=4796
 # @@protoc_insertion_point(module_scope)
