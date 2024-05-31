@@ -145,8 +145,8 @@ class LabelerDiskQueue:
                     queue_elapsed = now - label.queued_time
                     self.queued_time.observe(queue_elapsed)
 
-    def gen_heatmap(self, data, tile_path):
-        with io.BytesIO(data) as bytes_file:
+    def gen_heatmap(self, data_: bytes, tile_path: Path) -> None:
+        with io.BytesIO(data_) as bytes_file:
             data = np.load(bytes_file, allow_pickle=True)
         plt.imshow(
             data.sum(axis=2).transpose(), cmap="viridis", interpolation="nearest"

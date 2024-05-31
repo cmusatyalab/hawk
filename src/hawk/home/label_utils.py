@@ -220,7 +220,9 @@ class MissionResults:
         """Using this so much, figured a helper could be useful."""
         return self.df.imageLabel.isna()
 
-    def save_new_labels(self, labels: pd.Series[int], bounding_boxes=None) -> None:
+    def save_new_labels(
+        self, labels: pd.Series[int], bounding_boxes: pd.Series[str] | None = None
+    ) -> None:
         # make sure we're current with the on-disk state and capture the
         # previous unlabeled state before we merge the new labels.
         self.resync_unlabeled()
