@@ -17,21 +17,10 @@ from prometheus_client import Gauge, Summary
 
 from ..ports import H2C_PORT, S2H_PORT
 from ..proto.messages_pb2 import LabelWrapper, SendLabels, SendTiles
-
-HAWK_UNLABELED_RECEIVED = Summary(
-    "hawk_unlabeled_received",
-    "Size and count of samples received from a scout",
-    labelnames=["mission", "scout"],
-)
-HAWK_UNLABELED_QUEUE_LENGTH = Gauge(
-    "hawk_unlabeled_queue_length",
-    "Number of samples queued in priority queue for labeling",
-    labelnames=["mission"],
-)
-HAWK_LABELED_QUEUE_LENGTH = Gauge(
-    "hawk_labeled_queue_length",
-    "Number of labels queued for a scout",
-    labelnames=["mission", "scout"],
+from .stats import (
+    HAWK_LABELED_QUEUE_LENGTH,
+    HAWK_UNLABELED_QUEUE_LENGTH,
+    HAWK_UNLABELED_RECEIVED,
 )
 
 
@@ -52,7 +41,6 @@ class Result:
     object_id: str
     scout_index: int
     score: float
-    size: int
     data: bytes
     inferred_boxes: list[tuple[float, float, float, float]]
 
@@ -62,7 +50,6 @@ class Result:
                 objectId=self.object_id,
                 scoutIndex=self.scout_index,
                 score=self.score,
-                size=self.size,
                 **kwargs,
             ),
             sort_keys=True,
@@ -83,7 +70,6 @@ class Result:
             object_id=request.objectId,
             scout_index=request.scoutIndex,
             score=request.score,
-            size=request.ByteSize(),
             data=request.attributes["thumbnail.jpeg"],
             inferred_boxes=bounding_boxes,
         )
@@ -93,7 +79,6 @@ class Result:
 class Label:
     object_id: str
     scout_index: int
-    size: int
     image_label: str
     bounding_boxes: list[tuple[float, float, float, float, float]]
     queued_time: float | None = None
@@ -116,7 +101,6 @@ class Label:
             dict(
                 objectId=self.object_id,
                 scoutIndex=self.scout_index,
-                size=self.size,
                 imageLabel=self.image_label,
                 boundingBoxes=self.bounding_boxes,
                 **kwargs,
@@ -130,7 +114,6 @@ class Label:
         return cls(
             object_id=data["objectId"],
             scout_index=data["scoutIndex"],
-            size=data["size"],
             image_label=data["imageLabel"],
             bounding_boxes=data["boundingBoxes"],
             queued_time=data.get("queued_time"),
@@ -232,7 +215,7 @@ class ScoutQueue:
             msg = socket.recv()
             result = Result.from_msg(msg)
 
-            self.unlabeled_received[result.scout_index].observe(result.size)
+            self.unlabeled_received[result.scout_index].observe(len(msg))
 
             received += 1
             received_from_scout.update([result.scout_index])

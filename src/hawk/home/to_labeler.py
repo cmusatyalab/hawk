@@ -18,6 +18,12 @@ import numpy as np
 from logzero import logger
 from prometheus_client import Counter, Gauge, Histogram
 
+from .stats import (
+    HAWK_LABELED_NEGATIVE,
+    HAWK_LABELED_POSITIVE,
+    HAWK_LABELER_QUEUED_LENGTH,
+    HAWK_LABELER_QUEUED_TIME,
+)
 from .to_scout import Label
 from .utils import tailf
 
@@ -25,34 +31,6 @@ matplotlib.use("agg")
 
 if TYPE_CHECKING:
     from .to_scout import ScoutQueue
-
-
-HAWK_LABEL_POSITIVE = Counter(
-    "hawk_label_positive",
-    "Number of samples that were labeled as True Positive",
-    labelnames=["mission", "labeler"],
-)
-HAWK_LABEL_NEGATIVE = Counter(
-    "hawk_label_negative",
-    "Number of samples that were labeled as False Positive",
-    labelnames=["mission", "labeler"],
-)
-HAWK_LABEL_MSGSIZE = Counter(
-    "hawk_label_msgsize",
-    "Message size of (labeled) samples received from scouts",
-    labelnames=["mission", "labeler"],
-)
-HAWK_LABEL_QUEUE_LENGTH = Gauge(
-    "hawk_label_queue_length",
-    "Number of samples waiting to be labeled",
-    labelnames=["mission", "labeler"],
-)
-HAWK_LABEL_QUEUED_TIME = Histogram(
-    "hawk_label_queued_time",
-    "Time elapsed until a sample is labeled (seconds)",
-    labelnames=["mission", "labeler"],
-    buckets=(0.5, 1.0, 2.5, 5.0, 7.5, 10.0, 25.0, 50.0, 75.0, 100.0),
-)
 
 
 @dataclass
@@ -66,8 +44,8 @@ class LabelerDiskQueue:
 
     negatives: Counter = field(init=False)
     positives: Counter = field(init=False)
-    totalsize: Counter = field(init=False)
     queue_length: Gauge = field(init=False)
+    queued_time: Histogram = field(init=False)
 
     def __post_init__(self) -> None:
         if self.label_queue_size <= 0:
@@ -77,19 +55,16 @@ class LabelerDiskQueue:
         self.token_semaphore = threading.BoundedSemaphore(self.label_queue_size)
 
         # track labeler statistics
-        self.negatives = HAWK_LABEL_NEGATIVE.labels(
+        self.negatives = HAWK_LABELED_NEGATIVE.labels(
             mission=self.mission_id, labeler="disk"
         )
-        self.positives = HAWK_LABEL_POSITIVE.labels(
+        self.positives = HAWK_LABELED_POSITIVE.labels(
             mission=self.mission_id, labeler="disk"
         )
-        self.totalsize = HAWK_LABEL_MSGSIZE.labels(
+        self.queue_length = HAWK_LABELER_QUEUED_LENGTH.labels(
             mission=self.mission_id, labeler="disk"
         )
-        self.queue_length = HAWK_LABEL_QUEUE_LENGTH.labels(
-            mission=self.mission_id, labeler="disk"
-        )
-        self.queued_time = HAWK_LABEL_QUEUED_TIME.labels(
+        self.queued_time = HAWK_LABELER_QUEUED_TIME.labels(
             mission=self.mission_id, labeler="disk"
         )
 
@@ -164,10 +139,6 @@ class LabelerDiskQueue:
                     self.negatives.inc()
                 else:
                     self.positives.inc()
-
-                # not sure why we track this here and not where the unlabeled
-                # tiles are received and queued for labeling.
-                self.totalsize.inc(label.size)
 
                 # track time it took to apply label
                 if label.queued_time is not None:

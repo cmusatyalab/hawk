@@ -42,23 +42,18 @@ from ..proto.messages_pb2 import (
     TopKConfig,
     TrainConfig,
 )
-from .to_labeler import HAWK_LABEL_MSGSIZE, HAWK_LABEL_NEGATIVE, HAWK_LABEL_POSITIVE
+from .stats import (
+    HAWK_LABELED_NEGATIVE,
+    HAWK_LABELED_POSITIVE,
+    HAWK_UNLABELED_RECEIVED,
+    collect_counter_total,
+    collect_summary_total,
+)
 
 if TYPE_CHECKING:
     from multiprocessing.synchronize import Event
 
-    from prometheus_client import Counter
-
 LOG_INTERVAL = 15
-
-
-def collect_counter_total(counter: Counter) -> float:
-    return sum(
-        sample.value
-        for metric in counter.collect()
-        for sample in metric.samples
-        if not sample.name.endswith("_created")
-    )
 
 
 class Admin:
@@ -468,9 +463,9 @@ class Admin:
                 stats = self.accumulate_mission_stats()
                 stats.update(
                     {
-                        "positives": int(collect_counter_total(HAWK_LABEL_POSITIVE)),
-                        "negatives": int(collect_counter_total(HAWK_LABEL_NEGATIVE)),
-                        "bytes": int(collect_counter_total(HAWK_LABEL_MSGSIZE)),
+                        "positives": int(collect_counter_total(HAWK_LABELED_POSITIVE)),
+                        "negatives": int(collect_counter_total(HAWK_LABELED_NEGATIVE)),
+                        "bytes": int(collect_summary_total(HAWK_UNLABELED_RECEIVED)),
                     }
                 )
 
