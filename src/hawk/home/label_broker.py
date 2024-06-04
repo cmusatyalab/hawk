@@ -40,11 +40,14 @@ def main() -> int:
     if args.label_queue_strategy is None:
         args.label_queue_strategy = config.get("label-queue-strategy", Strategy.FIFO)
 
+    mission_id = args.mission_directory.name
+
     with suppress(KeyboardInterrupt):
         if args.metrics_port is not None:
-            start_metrics_server(port=args.metrics_port)
+            start_metrics_server(port=args.metrics_port, addr="127.0.0.1")
 
         scout_queue = ScoutQueue(
+            mission_id=mission_id,
             strategy=args.label_queue_strategy,
             scouts=config.scouts,
             h2c_port=config.deploy.h2c_port,
@@ -52,7 +55,7 @@ def main() -> int:
         )
 
         LabelerDiskQueue(
-            mission_id=args.mission_directory.name,
+            mission_id=mission_id,
             scout_queue=scout_queue,
             mission_dir=args.mission_directory,
             label_queue_size=args.label_queue_size,

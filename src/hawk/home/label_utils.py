@@ -21,7 +21,6 @@ _UNLABELED_DTYPES = {
     "index": "int",
     "objectId": "string",
     "scoutIndex": "int",
-    "size": "int",
     "score": "float",
     "queued_time": "float",
 }
@@ -35,7 +34,6 @@ _LABELED_DTYPES = {
     # "boundingBoxes": "list[str]",
     # What pandas can actually recognize...
     "boundingBoxes": "object",
-    # "size": "int",
     # "queued_time": "float",
 }
 
@@ -46,7 +44,6 @@ class Result:
     objectId: str
     scoutIndex: int
     score: float
-    size: int
     data: bytes | None = None
     imageLabel: int | None = None
     boundingBoxes: list[tuple[float, float, float, float]] | None = None
@@ -58,7 +55,6 @@ class Result:
                 objectId=self.objectId,
                 scoutIndex=self.scoutIndex,
                 score=self.score,
-                size=self.size,
                 **kwargs,
             ),
             sort_keys=True,
@@ -70,7 +66,6 @@ class Result:
                 index=self.index,
                 objectId=self.objectId,
                 scoutIndex=self.scoutIndex,
-                size=self.size,
                 imageLabel=self.imageLabel,
                 boundingBoxes=self.boundingBoxes,
             )
@@ -104,7 +99,6 @@ class Result:
     #        objectId=request.objectId,
     #        scoutIndex=request.scoutIndex,
     #        score=request.score,
-    #        size=request.ByteSize(),
     #        data=request.attributes["thumbnail.jpeg"],
     #    )
 
@@ -226,7 +220,9 @@ class MissionResults:
         """Using this so much, figured a helper could be useful."""
         return self.df.imageLabel.isna()
 
-    def save_new_labels(self, labels: pd.Series[int], bounding_boxes=None) -> None:
+    def save_new_labels(
+        self, labels: pd.Series[int], bounding_boxes: pd.Series[str] | None = None
+    ) -> None:
         # make sure we're current with the on-disk state and capture the
         # previous unlabeled state before we merge the new labels.
         self.resync_unlabeled()
@@ -255,7 +251,6 @@ class MissionResults:
                     "index",
                     "objectId",
                     "scoutIndex",
-                    "size",
                     "imageLabel",
                     "boundingBoxes",
                     "queued_time",

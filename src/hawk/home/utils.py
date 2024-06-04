@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import os
 import re
 import socket
 import time
@@ -82,12 +83,16 @@ def define_scope(config: MissionConfig) -> MissionConfig:
 
 
 def get_ip() -> str:
+    IP = os.environ.get("HAWK_HOME_ADDRESS")
+    if IP is not None:
+        return IP
+
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.settimeout(0)
     try:
         # doesn't even have to be reachable
         s.connect(("10.255.255.255", 1))
-        IP: str = s.getsockname()[0]
+        IP = s.getsockname()[0]
     except Exception:
         IP = "127.0.0.1"
     finally:

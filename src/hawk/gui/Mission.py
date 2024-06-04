@@ -13,7 +13,6 @@ from streamlit_autorefresh import st_autorefresh
 
 from hawk.gui.elements import ABOUT_TEXT, Mission, page_header
 from hawk.mission_config import load_config
-#from streamlit_label_kit import detection
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -220,7 +219,7 @@ def display_images(data: pd.DataFrame) -> None:
     for idx, unlabeled in data["unlabeled"].items():
         index = cast(int, idx)
         image = Path(mission.image_dir, f"{index:06}.jpeg")
-        with next(column): 
+        with next(column):
             st.image(str(image))
             st.radio(
                 "classification",
