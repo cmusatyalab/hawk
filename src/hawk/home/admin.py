@@ -456,9 +456,11 @@ class Admin:
 
     def get_mission_stats(self) -> None:
         count = 1
+        finish_time = 0
+        processed_complete = False
         # prev_bytes = prev_processed = 0
         try:
-            while not self.stop_event.is_set():
+            while not self.stop_event.is_set() and finish_time < time.time():
                 time.sleep(LOG_INTERVAL)
 
                 # wait until mission has started
@@ -501,12 +503,15 @@ class Admin:
                     #     prev_processed == stats['processedObjects']
                     #   ):
                     if stats["processedObjects"] == stats["totalObjects"]:
-                        time.sleep(60)
-                        self.stop_event.set()
-                        logger.info("End mission")
-                        with open(self.end_file, "w") as f:
-                            f.write("\n")
-                        break
+                        if not processed_complete:
+                            finish_time = time.time() + 60
+                            processed_complete = True
+                        #time.sleep(60)
+                        #self.stop_event.set()
+                        #logger.info("End mission")
+                        #with open(self.end_file, "w") as f:
+                        #    f.write("\n")
+                        #break
 
                 # prev_bytes = stats["bytes"]
                 # prev_processed = stats["processedObjects"]
