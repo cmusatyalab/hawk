@@ -31,9 +31,6 @@ class SelectorStats:
     items_revisited: int
     positive_in_stream: int
     train_positives: int
-    dropped_objects: int = 0
-    passed_objects: int = 0
-    false_negatives: int = 0
 
 
 class Selector(metaclass=ABCMeta):

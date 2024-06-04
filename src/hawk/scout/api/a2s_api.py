@@ -360,7 +360,6 @@ class A2SAPI:
             "total_objects",
             "processed_objects",
             "dropped_objects",
-            "passed_objects",
             "false_negatives",
         ]
         for k in list(mission_stats):
@@ -384,15 +383,9 @@ class A2SAPI:
 
         reply = MissionStats(
             totalObjects=retriever_stats.total_objects,
-            processedObjects=(
-                retriever_stats.dropped_objects + selector_stats.processed_objects
-            ),
-            droppedObjects=(
-                retriever_stats.dropped_objects + selector_stats.dropped_objects
-            ),
-            falseNegatives=(
-                retriever_stats.false_negatives + selector_stats.false_negatives
-            ),
+            processedObjects=selector_stats.processed_objects,
+            droppedObjects=retriever_stats.dropped_objects,
+            falseNegatives=0,
             others=mission_stats,
         )
         if mission.enable_logfile:

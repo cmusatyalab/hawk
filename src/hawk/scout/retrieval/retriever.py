@@ -22,7 +22,6 @@ class RetrieverStats:
     total_objects: int = 0
     total_images: int = 0
     dropped_objects: int = 0
-    false_negatives: int = 0
     retrieved_images: int = 0
     retrieved_tiles: int = 0
 
