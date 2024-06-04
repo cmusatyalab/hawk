@@ -16,6 +16,7 @@ from ..mission_config import load_config, write_config
 from ..ports import H2A_PORT, HOME_METRICS_PORT
 from .admin import Admin
 from .script_labeler import ScriptLabeler
+from .stats import HAWK_MISSION_STATUS
 from .to_labeler import LabelerDiskQueue
 from .to_scout import ScoutQueue, Strategy
 from .utils import define_scope, get_ip
@@ -47,6 +48,8 @@ def main() -> None:
     )
 
     mission_id = "_".join([mission_name, datetime.now().strftime("%Y%m%d-%H%M%S")])
+    mission_status = HAWK_MISSION_STATUS.labels(mission=mission_id)
+    mission_status.state("starting")
 
     if config["dataset"]["type"] == "cookie":
         logger.info("Reading Scope Cookie")
@@ -146,8 +149,10 @@ def main() -> None:
         # Send config file to admin
         # send msg "<config> <path to config file>"
 
+        mission_status.state("configuring")
         h2a_socket.send_string(f"config {config_path}")
         h2a_socket.recv()
+        mission_status.state("running")
 
         while not stop_event.is_set():
             if end_file.is_file():
@@ -158,6 +163,7 @@ def main() -> None:
     except KeyboardInterrupt as e:
         logger.error(e)
     finally:
+        mission_status.state("stopped")
         stop_event.set()
         # home_admin.stop_mission()
         time.sleep(10)

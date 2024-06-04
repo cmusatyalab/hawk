@@ -4,8 +4,14 @@
 
 from __future__ import annotations
 
-from prometheus_client import Counter, Gauge, Histogram, Summary
+from prometheus_client import Counter, Enum, Gauge, Histogram, Summary
 
+HAWK_MISSION_STATUS = Enum(
+    "hawk_mission_status",
+    "Current state of the mission",
+    states=["starting", "configuring", "running", "stopped"],
+    labelnames=["mission"],
+)
 HAWK_UNLABELED_RECEIVED = Summary(
     "hawk_unlabeled_received",
     "Size (_sum) and count (_count) of samples received from each scout",
