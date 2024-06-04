@@ -18,13 +18,14 @@ from PIL import Image
 from ...proto.messages_pb2 import Streaming_Video
 from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
+from ..stats import collect_metrics_total
 from .retriever import Retriever
 from .video_parser import produce_video_frames
 
 
 class VideoRetriever(Retriever):
-    def __init__(self, dataset: Streaming_Video):
-        super().__init__()
+    def __init__(self, mission_id: str, dataset: Streaming_Video):
+        super().__init__(mission_id)
         self._dataset = dataset
         self.timeout = 20
         self._start_time = time.time()
@@ -57,8 +58,8 @@ class VideoRetriever(Retriever):
         self.temp_tile_dir = Path("/srv/diamond/video_stream_temp_tile_dir")
         self.temp_tile_dir.mkdir(exist_ok=True)
 
-        self._stats.total_objects = 1
-        self._stats.total_images = 1
+        self.total_images.set(0)
+        self.total_objects.set(0)
         # self.total_tiles = 192 * len(os.listdir(self.temp_image_dir))
 
         # hardcoded for now, but needs to be
@@ -135,10 +136,12 @@ class VideoRetriever(Retriever):
                 logger.info("Stop event is set...")
                 break
 
+            self.total_images.inc()
+            self.retrieved_images.inc()
             frame_count += 1
-            self._stats.retrieved_images += 1
             num_retrieved_images += 1
             tiles = list(self.split_frame(frame_name, frame))
+            self.total_objects.inc(len(tiles))
 
             delta_t = time.time() - self._start_time
             logger.info(
@@ -159,9 +162,8 @@ class VideoRetriever(Retriever):
                     ATTR_GT_LABEL: str.encode(str(label)),
                 }"""
                 attributes = self.set_tile_attributes(object_id, label)
-                self._stats.retrieved_tiles += 1
 
-                self.result_queue.put_nowait(
+                self.put_objects(
                     ObjectProvider(
                         object_id,
                         content,
@@ -170,12 +172,12 @@ class VideoRetriever(Retriever):
                     )
                 )
             time.sleep(8)
-            logger.info(f"{self._stats.retrieved_tiles} / {self.total_tiles} RETRIEVED")
+
+            retrieved_tiles = collect_metrics_total(self.retrieved_objects)
+            logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
             # time_passed = time.time() - self._start_time
             # if time_passed < self.timeout:
             #  time.sleep(self.timeout - time_passed)
 
-        self._stats.retrieved_images += 1
         self._context.log(f"RETRIEVE: File # {num_retrieved_images}")
-
         # shutil.rmtree(self.temp_tile_dir)

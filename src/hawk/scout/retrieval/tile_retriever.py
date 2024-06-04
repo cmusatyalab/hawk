@@ -14,12 +14,13 @@ from PIL import Image
 from ...proto.messages_pb2 import FileDataset
 from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
+from ..stats import collect_metrics_total
 from .retriever import Retriever
 
 
 class TileRetriever(Retriever):
-    def __init__(self, dataset: FileDataset):
-        super().__init__()
+    def __init__(self, mission_id: str, dataset: FileDataset):
+        super().__init__(mission_id)
 
         self._dataset = dataset
         self._timeout = dataset.timeout
@@ -38,8 +39,9 @@ class TileRetriever(Retriever):
             self.img_tile_map[key].append(line)
 
         self.total_tiles = len(contents)
-        self._stats.total_objects = self.total_tiles
-        self._stats.total_images = len(self.images)
+
+        self.total_images.set(len(self.images))
+        self.total_objects.set(self.total_tiles)
 
     def stream_objects(self) -> None:
         super().stream_objects()
@@ -49,7 +51,8 @@ class TileRetriever(Retriever):
             time_start = time.time()
             if self._stop_event.is_set():
                 break
-            self._stats.retrieved_images += 1
+
+            self.retrieved_images.inc()
             self._context.log(f"RETRIEVE: File {key}")
 
             tiles = self.img_tile_map[key]
@@ -65,9 +68,8 @@ class TileRetriever(Retriever):
 
                 object_id = f"/{label}/collection/id/{image_path}"
                 attributes = self.set_tile_attributes(object_id, label)
-                self._stats.retrieved_tiles += 1
 
-                self.result_queue.put_nowait(
+                self.put_objects(
                     ObjectProvider(
                         object_id,
                         content,
@@ -77,7 +79,9 @@ class TileRetriever(Retriever):
                         int(label),
                     )
                 )
-            logger.info(f"{self._stats.retrieved_tiles} / {self.total_tiles} RETRIEVED")
+
+            retrieved_tiles = collect_metrics_total(self.retrieved_objects)
+            logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
             time_passed = time.time() - time_start
             if time_passed < self._timeout:
                 time.sleep(self._timeout - time_passed)

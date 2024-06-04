@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 class TopKSelector(SelectorBase):
     def __init__(
         self,
+        mission_id: str,
         k: int,
         batch_size: int,
         countermeasure_threshold: float,
@@ -38,7 +39,7 @@ class TopKSelector(SelectorBase):
     ):
         logger.info(f"K: {k}, batchsize: {batch_size}")
         assert k < batch_size
-        super().__init__()
+        super().__init__(mission_id)
 
         self.version = 0
         self.add_negatives = add_negatives
@@ -63,10 +64,12 @@ class TopKSelector(SelectorBase):
         assert self._mission is not None
         for i in range(num_tiles):
             result = self._priority_queues.get()[-1]
+            self.priority_queue_length.dec()
             self._mission.log(
                 f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}"
             )
             if self._mode != "oracle":
+                self.result_queue_length.inc()
                 self.result_queue.put(result)
                 logger.info(f"[Result] Id {result.id} Score {result.score}")
         self._batch_added -= self._batch_size
@@ -83,14 +86,15 @@ class TopKSelector(SelectorBase):
 
             # Incrementing positives in stream
             if result.gt:
-                self.num_positives += 1
                 logger.info(f"Queueing {result.id} Score {result.score}")
 
             if self._mode == "oracle":
                 if int(result.score) == 1:
+                    self.result_queue_length.inc()
                     self.result_queue.put(result)
                     logger.info(f"[Result] Id {result.id} Score {result.score}")
 
+            self.priority_queue_length.inc()
             self._priority_queues.put((-result.score, time_result, result))
             self._batch_added += 1
 
@@ -172,12 +176,15 @@ class TopKSelector(SelectorBase):
                     model, self._priority_queues, self._mission.start_time
                 )
 
+                self.priority_queue_length.set(self._priority_queues.qsize())
+                self.num_revisited.inc(num_revisited)
+
                 self._batch_added += num_revisited
                 logger.info(f"ADDING Reexamined to result Queue {num_revisited}")
 
-                self.num_revisited += num_revisited
                 self.num_negatives_added = 0
             else:
                 # this is a reset, discard everything
                 self._priority_queues = queue.PriorityQueue()
+                self.priority_queue_length.set(0)
                 self._batch_added = 0

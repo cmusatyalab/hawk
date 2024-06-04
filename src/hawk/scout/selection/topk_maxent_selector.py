@@ -10,6 +10,7 @@ from .topk_selector import TopKSelector
 class MaxEntropySelector(TopKSelector):
     def __init__(
         self,
+        mission_id: str,
         k: int,
         batch_size: int,
         countermeasure_threshold: float,
@@ -17,6 +18,7 @@ class MaxEntropySelector(TopKSelector):
         reexamination_strategy: ReexaminationStrategy,
     ):
         super().__init__(
+            mission_id,
             k,
             batch_size,
             countermeasure_threshold,
@@ -32,6 +34,7 @@ class MaxEntropySelector(TopKSelector):
 
         with self._insert_lock:
             time_result = self._mission.mission_time()
+            self.priority_queue_length.inc()
             self._priority_queues.put((calc_score(result.score), time_result, result))
             self._batch_added += 1
 

@@ -12,6 +12,11 @@ from logzero import logger
 
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
+from ..stats import (
+    HAWK_SELECTOR_DISCARD_QUEUE_LENGTH,
+    HAWK_SELECTOR_DROPPED_OBJECTS,
+    HAWK_SELECTOR_FALSE_NEGATIVES,
+)
 from .selector_base import SelectorBase
 
 if TYPE_CHECKING:
@@ -22,34 +27,42 @@ if TYPE_CHECKING:
 
 
 class ThresholdSelector(SelectorBase):
-    def __init__(self, threshold: float, reexamination_strategy: ReexaminationStrategy):
-        super().__init__()
+    def __init__(
+        self,
+        mission_id: str,
+        threshold: float,
+        reexamination_strategy: ReexaminationStrategy,
+    ):
+        super().__init__(mission_id)
 
         self._threshold = threshold
         self._reexamination_strategy = reexamination_strategy
 
+        self.discard_queue_length = HAWK_SELECTOR_DISCARD_QUEUE_LENGTH.labels(
+            mission=mission_id
+        )
         self._discard_queue: ReexaminationQueueType = queue.PriorityQueue()
         self._insert_lock = threading.Lock()
-        self._items_dropped = 0
-        self._false_negatives = 0
+        self.items_dropped = HAWK_SELECTOR_DROPPED_OBJECTS.labels(mission=mission_id)
+        self.false_negatives = HAWK_SELECTOR_FALSE_NEGATIVES.labels(mission=mission_id)
 
     def _add_result(self, result: ResultProvider) -> None:
         if result.gt:
-            self.num_positives += 1
             logger.info(f"{result.id} Score {result.score}")
 
         if result.score > self._threshold:
+            self.result_queue_length.inc()
             self.result_queue.put(result)
         elif self._reexamination_strategy.reexamines_old_results:
             assert self._mission is not None
             with self._insert_lock:
                 time_result = self._mission.mission_time()
+                self.discard_queue_length.inc()
                 self._discard_queue.put((-result.score, time_result, result))
         else:
-            with self.stats_lock:
-                self._items_dropped += 1
-                if result.gt:
-                    self._false_negatives += 1
+            self.items_dropped.inc()
+            if result.gt:
+                self.false_negatives.inc()
 
     def _new_model(self, model: Model | None) -> None:
         assert self._mission is not None
@@ -64,5 +77,5 @@ class ThresholdSelector(SelectorBase):
                 ) = self._reexamination_strategy.get_new_queues(
                     model, self._discard_queue, self._mission.start_time
                 )
-
-                self.num_revisited += num_revisited
+                self.discard_queue_length.set(self._discard_queue.qsize())
+                self.num_revisited.inc(num_revisited)

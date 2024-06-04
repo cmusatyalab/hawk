@@ -21,6 +21,7 @@ from .topk_selector import TopKSelector
 class DiversitySelector(TopKSelector):
     def __init__(
         self,
+        mission_id: str,
         k: int,
         batch_size: int,
         countermeasure_threshold: float,
@@ -30,6 +31,7 @@ class DiversitySelector(TopKSelector):
     ):
         assert k < batch_size
         super().__init__(
+            mission_id,
             k,
             batch_size,
             countermeasure_threshold,
@@ -121,10 +123,12 @@ class DiversitySelector(TopKSelector):
         logger.info("TopK call")
         for i in range(self._k):
             result = self._priority_queues.get()[-1]
+            self.priority_queue_length.dec()
             self._mission.log(
                 f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}"
             )
             if self._mode != "oracle":
+                # self.result_queue_length.inc()
                 # self.result_queue.put(result)
                 results.append(result)
 
@@ -136,6 +140,7 @@ class DiversitySelector(TopKSelector):
         logger.info(f"Time taken {time.time() - time_start}")
         results += list(div_sample)
         for result in results:
+            self.result_queue_length.inc()
             self.result_queue.put(result)
             logger.info(f"[Result] Id {result.id} Score {result.score}")
 

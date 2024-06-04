@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import dataclasses
 import queue
 import threading
 import time
@@ -15,6 +14,15 @@ from ...proto.messages_pb2 import HawkObject
 from ..context.data_manager_context import DataManagerContext
 from ..core.object_provider import ObjectProvider
 from ..core.utils import get_server_ids
+from ..stats import (
+    HAWK_RETRIEVER_DROPPED_OBJECTS,
+    HAWK_RETRIEVER_QUEUE_LENGTH,
+    HAWK_RETRIEVER_RETRIEVED_IMAGES,
+    HAWK_RETRIEVER_RETRIEVED_OBJECTS,
+    HAWK_RETRIEVER_TOTAL_IMAGES,
+    HAWK_RETRIEVER_TOTAL_OBJECTS,
+    collect_metrics_total,
+)
 
 
 @dataclass
@@ -40,6 +48,10 @@ class RetrieverBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def put_objects(self, obj: ObjectProvider) -> None:
+        pass
+
+    @abstractmethod
     def get_object(self, object_id: str) -> Optional[HawkObject]:
         pass
 
@@ -53,17 +65,27 @@ class RetrieverBase(metaclass=ABCMeta):
 
 
 class Retriever(RetrieverBase):
-    def __init__(self) -> None:
+    def __init__(self, mission_id: str) -> None:
         self._context: Optional[DataManagerContext] = None
         self._context_event = threading.Event()
         self._start_event = threading.Event()
         self._stop_event = threading.Event()
         self._command_lock = threading.RLock()
-        self._stats = RetrieverStats()
         self._start_time = time.time()
         self.result_queue: queue.Queue[ObjectProvider] = queue.Queue()
         self.server_id = get_server_ids()[0]
         self.total_tiles = 0
+
+        self.total_images = HAWK_RETRIEVER_TOTAL_IMAGES.labels(mission=mission_id)
+        self.total_objects = HAWK_RETRIEVER_TOTAL_OBJECTS.labels(mission=mission_id)
+        self.retrieved_images = HAWK_RETRIEVER_RETRIEVED_IMAGES.labels(
+            mission=mission_id
+        )
+        self.retrieved_objects = HAWK_RETRIEVER_RETRIEVED_OBJECTS.labels(
+            mission=mission_id
+        )
+        self.dropped_objects = HAWK_RETRIEVER_DROPPED_OBJECTS.labels(mission=mission_id)
+        self.queue_length = HAWK_RETRIEVER_QUEUE_LENGTH.labels(mission=mission_id)
 
     def start(self) -> None:
         with self._command_lock:
@@ -97,10 +119,18 @@ class Retriever(RetrieverBase):
         return attributes
 
     def get_objects(self) -> ObjectProvider:
-        return self.result_queue.get()
+        result = self.result_queue.get()
+        self.queue_length.dec()
+        return result
 
-    def put_objects(self, result_object) -> None:
-        self.result_queue.put_nowait(result_object)
+    def put_objects(self, result_object: ObjectProvider) -> None:
+        self.retrieved_objects.inc()
+        try:
+            self.queue_length.inc()
+            self.result_queue.put_nowait(result_object)
+        except queue.Full:
+            self.queue_length.dec()
+            self.dropped_objects.inc()
 
     def get_object(self, object_id: str) -> Optional[HawkObject]:
         image_path = Path(object_id.split("collection/id/")[-1])
@@ -119,7 +149,11 @@ class Retriever(RetrieverBase):
     def get_stats(self) -> RetrieverStats:
         self._start_event.wait()
 
-        with self._command_lock:
-            stats = dataclasses.replace(self._stats)
-
+        stats = RetrieverStats(
+            total_objects=collect_metrics_total(self.total_objects),
+            total_images=collect_metrics_total(self.total_images),
+            dropped_objects=collect_metrics_total(self.dropped_objects),
+            retrieved_images=collect_metrics_total(self.retrieved_images),
+            retrieved_tiles=collect_metrics_total(self.retrieved_objects),
+        )
         return stats

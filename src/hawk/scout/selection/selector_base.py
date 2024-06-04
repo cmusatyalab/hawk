@@ -14,6 +14,21 @@ from logzero import logger
 
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
+from ..stats import (
+    HAWK_GROUNDTRUTH_POSITIVES,
+    HAWK_INFERENCED_OBJECTS,
+    HAWK_SELECTOR_PRIORITY_QUEUE_LENGTH,
+    HAWK_SELECTOR_RESULT_QUEUE_LENGTH,
+    HAWK_SELECTOR_REVISITED_OBJECTS,
+    HAWK_SELECTOR_SKIPPED_OBJECTS,
+    HAWK_SURVIVABILITY_FALSE_NEGATIVES,
+    HAWK_SURVIVABILITY_FALSE_POSITIVES,
+    HAWK_SURVIVABILITY_THREATS_NOT_COUNTERED,
+    HAWK_SURVIVABILITY_TRUE_NEGATIVES,
+    HAWK_SURVIVABILITY_TRUE_POSITIVES,
+    collect_metrics_total,
+    collect_summary_count,
+)
 
 if TYPE_CHECKING:
     from ..core.mission import Mission
@@ -66,22 +81,35 @@ class Selector(metaclass=ABCMeta):
 
 
 class SelectorBase(Selector):
-    def __init__(self) -> None:
+    def __init__(self, mission_id: str) -> None:
         self.result_queue: queue.Queue[ResultProvider | None] = queue.Queue(maxsize=100)
-        self.stats_lock = threading.Lock()
+
         self.items_processed = 0
-        self.num_revisited = 0
-        self.num_positives = 0
-        self.model_train_time = 0
+
+        self.inferenced_objects = HAWK_INFERENCED_OBJECTS.labels(mission=mission_id)
+        self.num_positives = HAWK_GROUNDTRUTH_POSITIVES.labels(mission=mission_id)
+        self.items_skipped = HAWK_SELECTOR_SKIPPED_OBJECTS.labels(mission=mission_id)
+        self.priority_queue_length = HAWK_SELECTOR_PRIORITY_QUEUE_LENGTH.labels(
+            mission=mission_id
+        )
+        self.result_queue_length = HAWK_SELECTOR_RESULT_QUEUE_LENGTH.labels(
+            mission=mission_id
+        )
+        self.num_revisited = HAWK_SELECTOR_REVISITED_OBJECTS.labels(mission=mission_id)
+
         self.model_examples = 0
+
         self.countermeasure_threshold = 0.5  # make this configurable from config file
-        self.surv_TPs = 0
-        self.surv_FPs = 0
-        self.surv_FNs = 0
-        self.surv_TNs = 0
-        self.surv_threat_not_neut = 0  # increment this number by 1 for every FN
-        # this will get incremeneted by 1 upon every TP when countermeasures = 0
         self.num_countermeasures = 50
+        self.surv_TPs = HAWK_SURVIVABILITY_TRUE_POSITIVES.labels(mission=mission_id)
+        self.surv_FPs = HAWK_SURVIVABILITY_FALSE_POSITIVES.labels(mission=mission_id)
+        self.surv_FNs = HAWK_SURVIVABILITY_FALSE_NEGATIVES.labels(mission=mission_id)
+        self.surv_TNs = HAWK_SURVIVABILITY_TRUE_NEGATIVES.labels(mission=mission_id)
+
+        # incremented by 1 for every FN and every TP when countermeasures remaining = 0
+        self.surv_threat_not_neut = HAWK_SURVIVABILITY_THREATS_NOT_COUNTERED.labels(
+            mission=mission_id
+        )
 
         self._model_lock = threading.Lock()
         self._model_present = False
@@ -106,37 +134,46 @@ class SelectorBase(Selector):
     def add_result(self, result: ResultProvider | None) -> int:
         """Add processed results from model to selection strategy"""
         if result is None:
-            with self.stats_lock:
-                return self.items_processed
+            return self.items_processed
+
+        self.items_processed += 1
+
+        # collect inference stats
+        self.inferenced_objects.observe(result.score)
+        if result.gt:
+            self.num_positives.inc()
 
         with self._model_lock:
             model_present = self._model_present
 
         if not model_present:
+            self.items_skipped.inc()
+            self.result_queue_length.inc()
             self.result_queue.put(result)  # pass through
         else:
             self._add_result(result)
+
             # logger.info(f"Label: {result.gt}, Score: {result.score}, ID: {result.id}")
             # logger.info(f"Countermeasure threshold: {self.countermeasure_threshold}")
             # logger.info(f"Total countermeasures: {self.num_countermeasures}")
             perceived_truth = result.score >= self.countermeasure_threshold
             if result.gt:
                 if perceived_truth:
-                    self.surv_TPs += 1
-                    if self.num_countermeasures == 0:
-                        self.surv_threat_not_neut += 1
-                    else:
-                        self.num_countermeasures -= 1
+                    self.surv_TPs.inc()
+                    countermeasures_used = collect_metrics_total(
+                        self.surv_TPs
+                    ) + collect_metrics_total(self.surv_FPs)
+                    if countermeasures_used > self.num_countermeasures:
+                        self.surv_threat_not_neut.inc()
                 else:
-                    self.surv_FNs += 1
-
+                    self.surv_FNs.inc()
+                    self.surv_threat_not_neut.inc()
             else:
                 if perceived_truth:
-                    self.surv_FPs += 1
-                    if self.num_countermeasures > 0:
-                        self.num_countermeasures -= 1
+                    self.surv_FPs.inc()
+                    # self.countermeasures_used.inc()
                 else:
-                    self.surv_TNs += 1
+                    self.surv_TNs.inc()
 
             # Here is where we'll compare threshold to ground truth and actual
             # score to determine TP, TN, FP, FN
@@ -145,11 +182,9 @@ class SelectorBase(Selector):
 
             # Decrement number of countermeausures if TP or FP
 
-        with self.stats_lock:
-            self.items_processed += 1
-            """if self.items_processed % 10 == 0:
-                logger.info(f"Total items processed: {self.items_processed}")"""
-            return self.items_processed
+        # if self.items_processed % 10 == 0:
+        #     logger.info(f"Total items processed: {self.items_processed}")
+        return self.items_processed
 
     def new_model(self, model: Model | None) -> None:
         """New model generation is available from trainer"""
@@ -162,28 +197,37 @@ class SelectorBase(Selector):
         logger.info("Selector clear called in selector base...")
 
         self._clear_event.set()
+        self.result_queue_length.inc()
         self.result_queue.put(None)
 
     def get_result(self) -> ResultProvider | None:
         """Returns result for transmission when available"""
         while True:
             try:
-                return self.result_queue.get(timeout=10)
+                result = self.result_queue.get(timeout=10)
+                self.result_queue_length.dec()
+                return result
             except queue.Empty:
                 pass
 
     def get_stats(self) -> SelectorStats:
-        with self.stats_lock:
-            stats = {
-                "processed_objects": self.items_processed,
-                "items_revisited": self.num_revisited,
-                "positive_in_stream": self.num_positives,
-                "train_positives": self.model_examples,
-                "surv_TPs": self.surv_TPs,
-                "surv_TNs": self.surv_TNs,
-                "surv_FPs": self.surv_FPs,
-                "surv_FNs": self.surv_FNs,
-                "surv_threat_not_neut": self.surv_threat_not_neut,
-                "num_countermeasures_remain": self.num_countermeasures,
-            }
-        return SelectorStats(**stats)
+        surv_TPs = collect_metrics_total(self.surv_TPs)
+        surv_TNs = collect_metrics_total(self.surv_TNs)
+        surv_FPs = collect_metrics_total(self.surv_FPs)
+        surv_FNs = collect_metrics_total(self.surv_FNs)
+        surv_threat_not_neut = collect_metrics_total(self.surv_threat_not_neut)
+
+        countermeasures_used = surv_TPs + surv_FPs
+        countermeasures_remain = max(0, self.num_countermeasures - countermeasures_used)
+        return SelectorStats(
+            processed_objects=collect_summary_count(self.inferenced_objects),
+            items_revisited=collect_metrics_total(self.num_revisited),
+            positive_in_stream=collect_metrics_total(self.num_positives),
+            train_positives=self.model_examples,
+            surv_TPs=surv_TPs,
+            surv_TNs=surv_TNs,
+            surv_FPs=surv_FPs,
+            surv_FNs=surv_FNs,
+            surv_threat_not_neut=surv_threat_not_neut,
+            num_countermeasures_remain=countermeasures_remain,
+        )

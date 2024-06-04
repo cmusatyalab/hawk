@@ -22,6 +22,73 @@ in the docker volumes.
 
 Some of the metrics that can be queried/graphed
 
+## Hawk Scout/Inferencing related metrics
+
+```
+hawk_retriever_total_images:
+    Total number of images in mission
+
+hawk_retriever_total_objects:
+    Total number of samples in mission
+
+hawk_retriever_retrieved_images:
+    Number of images retrieved
+
+hawk_retriever_retrieved_objects:
+    Number of samples retrieved
+
+hawk_retriever_dropped_objects:
+    Number of samples dropped by retriever queue
+
+hawk_retriever_queue_length:
+    Number of tiles queued for inferencing
+```
+
+```
+hawk_inferenced_objects_count:
+    Number of samples inferenced
+
+hawk_inferenced_objects_sum:
+    Sum of confidence scores of inferenced samples
+
+hawk_inferenced_objects_buckets:
+    Histogram buckets for confidence scores of inferenced samples
+
+hawk_groundtruth_positives:
+    (Oracle) Number of positive samples in inferenced objects (TP + FN)
+```
+
+```
+hawk_selector_skipped_objects:
+    Number of samples that skipped selector because there was no model
+
+hawk_selector_priority_queue_length:
+    Number of samples queued in the selector priority queue(s)
+
+hawk_selector_revisited_objects:
+    Number of reexamined samples
+
+hawk_selector_result_queue_length
+    Number of samples queued for sending to hawk_home
+```
+
+```
+hawk_survivability_true_positive:
+    True positive based on the survivability countermeasure threshold
+
+hawk_survivability_false_positive:
+    False positive based on the survivability countermeasure threshold
+
+hawk_survivability_false_negative:
+    False negative based on the survivability countermeasure threshold
+
+hawk_survivability_true_negative:
+    True negative based on the survivability countermeasure threshold
+
+hawk_survivability_threats_not_countered
+    Survivability threats not countered (FN + TP after depleting CMs)
+```
+
 ## Hawk Home/Labeling related metrics
 
 ```

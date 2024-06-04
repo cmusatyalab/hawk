@@ -37,6 +37,7 @@ from ..retrain.sampleInterval_policy import SampleIntervalPolicy
 from ..retrieval.retriever import Retriever
 from ..selection.selector_base import Selector
 from ..selection.token_selector import TokenSelector
+from ..stats import collect_metrics_total
 from .data_manager import DataManager
 from .hawk_stub import HawkStub
 from .model import Model
@@ -44,7 +45,7 @@ from .model_trainer import ModelTrainer
 from .utils import get_server_ids, log_exceptions
 
 if TYPE_CHECKING:
-    from ...proto.messages_pb2 import DatasetSplitValue
+    from ...proto.messages_pb2 import DatasetSplitValue, TrainConfig
 
 
 class Mission(DataManagerContext, ModelContext):
@@ -61,7 +62,7 @@ class Mission(DataManagerContext, ModelContext):
         selector: Selector,
         bootstrap_zip: bytes,
         initial_model: ModelArchive,
-        train_strategy,
+        train_strategy: TrainConfig,
         validate: bool = False,
     ):
         super().__init__()
@@ -405,7 +406,6 @@ class Mission(DataManagerContext, ModelContext):
                     return
 
                 # pop single retriever object from retriever result queue
-                
 
                 # will need to add put_objects(retriever_object) when we move
                 # get_objects() outside the lock above.
@@ -450,8 +450,11 @@ class Mission(DataManagerContext, ModelContext):
                     self.selector.select_tiles(self.selector._k)
                 if items_processed > self.retriever.total_tiles - 200:
                     sent_to_model = self._model.get_request_count()
+                    retrieved_objects = collect_metrics_total(
+                        self.retriever.retrieved_objects
+                    )
                     logger.info(
-                        f"Items retrieved, {self.retriever._stats.retrieved_tiles}, "
+                        f"Items retrieved, {retrieved_objects}, "
                         f"sent to model: {sent_to_model}, "
                         f"total items processed: {items_processed}"
                     )

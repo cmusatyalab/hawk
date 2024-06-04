@@ -18,12 +18,13 @@ from PIL import Image
 from ...proto.messages_pb2 import FileDataset
 from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
+from ..stats import collect_metrics_total
 from .retriever import Retriever
 
 
 class FrameRetriever(Retriever):
-    def __init__(self, dataset: FileDataset):
-        super().__init__()
+    def __init__(self, mission_id: str, dataset: FileDataset):
+        super().__init__(mission_id)
 
         self._dataset = dataset
         self._timeout = dataset.timeout
@@ -35,8 +36,10 @@ class FrameRetriever(Retriever):
         self.slide = self.tilesize - self.overlap
 
         self.images = [Path(line) for line in index_file.read_text().splitlines()]
-        self._stats.total_objects = len(self.images)
-        self._stats.total_images = len(self.images)
+
+        self.total_tiles = len(self.images)
+        self.total_images.set(self.total_tiles)
+        self.total_objects.set(self.total_tiles)
 
     def save_tile(
         self,
@@ -94,7 +97,9 @@ class FrameRetriever(Retriever):
             time_start = time.time()
             if self._stop_event.is_set():
                 break
-            self._stats.retrieved_images += 1
+
+            self.retrieved_images.inc()
+
             self._context.log(f"RETRIEVE: File {key}")
             tiles = list(self.split_frame(key))
             logger.info(
@@ -102,6 +107,9 @@ class FrameRetriever(Retriever):
                     key, len(tiles), time.time() - self._start_time
                 )
             )
+            # bump total_objects to account for the tiles in this frame
+            self.total_objects.inc(len(tiles) - 1)
+
             for image_path in tiles:
                 tmpfile = io.BytesIO()
                 label = 0
@@ -111,9 +119,8 @@ class FrameRetriever(Retriever):
 
                 object_id = f"/{label}/collection/id/{image_path}"
                 attributes = self.set_tile_attributes(object_id, str(label))
-                self._stats.retrieved_tiles += 1
 
-                self.result_queue.put_nowait(
+                self.put_objects(
                     ObjectProvider(
                         object_id,
                         content,
@@ -121,7 +128,9 @@ class FrameRetriever(Retriever):
                         int(label),
                     )
                 )
-            logger.info(f"{self._stats.retrieved_tiles} / {self.total_tiles} RETRIEVED")
+
+            retrieved_tiles = collect_metrics_total(self.retrieved_objects)
+            logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
             time_passed = time.time() - time_start
             if time_passed < self._timeout:
                 time.sleep(self._timeout - time_passed)

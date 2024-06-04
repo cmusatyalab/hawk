@@ -215,7 +215,7 @@ class A2SAPI:
 
         mission_id = MissionId(value=request.missionId)
         retrain_policy = self._get_retrain_policy(request.retrainPolicy, model_dir)
-        retriever = self._get_retriever(request.dataset)
+        retriever = self._get_retriever(request.missionId, request.dataset)
         if request.retrainPolicy.HasField("sample"):
             assert isinstance(retrain_policy, SampleIntervalPolicy)
             retrain_policy.num_interval_sample(retriever.total_tiles)
@@ -223,7 +223,9 @@ class A2SAPI:
         scouts = [HawkStub(scout, this_host) for scout in request.scouts]
 
         reexamination_strategy = self._get_reexamination_strategy(request.reexamination)
-        selector = self._get_selector(request.selector, reexamination_strategy)
+        selector = self._get_selector(
+            request.missionId, request.selector, reexamination_strategy
+        )
 
         # Setting up Mission with config params
         logger.info("Start setting up mission")
@@ -496,6 +498,7 @@ class A2SAPI:
 
     def _get_selector(
         self,
+        mission_id: str,
         selector: SelectiveConfig,
         reexamination_strategy: ReexaminationStrategy,
     ) -> Selector:
@@ -503,6 +506,7 @@ class A2SAPI:
             top_k_param = json_format.MessageToDict(selector.topk)
             logger.info(f"TopK Params {top_k_param}")
             return TopKSelector(
+                mission_id,
                 selector.topk.k,
                 selector.topk.batchSize,
                 selector.topk.countermeasure_threshold,
@@ -511,6 +515,7 @@ class A2SAPI:
             )
         elif selector.HasField("token"):
             return TokenSelector(
+                mission_id,
                 selector.token.initial_samples,
                 selector.token.batch_size,
                 selector.token.countermeasure_threshold,
@@ -519,6 +524,7 @@ class A2SAPI:
             )
         elif selector.HasField("threshold"):
             return ThresholdSelector(
+                mission_id,
                 selector.threshold.threshold,
                 reexamination_strategy,
             )
@@ -526,6 +532,7 @@ class A2SAPI:
             top_k_param = json_format.MessageToDict(selector.diversity)
             logger.info(f"Diversity Params {top_k_param}")
             return DiversitySelector(
+                mission_id,
                 selector.diversity.k,
                 selector.diversity.batchSize,
                 selector.diversity.countermeasure_threshold,
@@ -554,15 +561,15 @@ class A2SAPI:
                 )
             )
 
-    def _get_retriever(self, dataset: Dataset) -> Retriever:
+    def _get_retriever(self, mission_id: str, dataset: Dataset) -> Retriever:
         if dataset.HasField("tile"):
-            return TileRetriever(dataset.tile)
+            return TileRetriever(mission_id, dataset.tile)
         elif dataset.HasField("frame"):
-            return FrameRetriever(dataset.frame)
+            return FrameRetriever(mission_id, dataset.frame)
         elif dataset.HasField("random"):
-            return RandomRetriever(dataset.random)
+            return RandomRetriever(mission_id, dataset.random)
         elif dataset.HasField("video"):
-            return VideoRetriever(dataset.video)
+            return VideoRetriever(mission_id, dataset.video)
         else:
             raise NotImplementedError(
                 f"unknown dataset: {json_format.MessageToJson(dataset)}"
