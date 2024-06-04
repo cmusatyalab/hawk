@@ -38,7 +38,10 @@ class TokenSelector(TopKSelector):
 
     @log_exceptions
     def receive_token_message(self, label: LabelWrapper) -> None:
-        result = self._priority_queues.get()[-1]
+        # the self._insert_lock is held during reexecution when the priority
+        # queues may be replaced with new ones
+        with self._insert_lock:
+            result = self._priority_queues.get()[-1]
         logger.info(f"New priority queue size is {self._priority_queues.qsize()}")
         self.result_queue.put(result)
 
