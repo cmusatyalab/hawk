@@ -451,11 +451,11 @@ class Admin:
 
     def get_mission_stats(self) -> None:
         count = 1
-        finish_time = 0
+        finish_time = 1e14
         processed_complete = False
         # prev_bytes = prev_processed = 0
         try:
-            while not self.stop_event.is_set() and finish_time < time.time():
+            while not self.stop_event.is_set():
                 time.sleep(LOG_INTERVAL)
 
                 # wait until mission has started
@@ -511,6 +511,8 @@ class Admin:
                 # prev_bytes = stats["bytes"]
                 # prev_processed = stats["processedObjects"]
                 count += 1
+                if finish_time < time.time():
+                    break
         except (Exception, KeyboardInterrupt) as e:
             raise e
         self.stop_event.set()
