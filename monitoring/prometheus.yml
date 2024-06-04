@@ -6,7 +6,7 @@ scrape_configs:
   - job_name: hawk_home
     scrape_interval: 5s
     static_configs:
-      - targets: ["localhost:6178"]
+      - targets: ["host.docker.internal:6178"]
 
 # Should we use http service discovery through hawk_home to find scouts?
 # + simplifies configuration when mission parameters/scouts change
@@ -20,3 +20,13 @@ scrape_configs:
 #        - scout2:6103
 #        - scout3:6103
 #        - scout4:6103
+
+  # we can grab other metrics as well, for end-to-end checking?
+  - job_name: prometheus
+    scrape_interval: 5s
+    static_configs:
+      - targets: [ 'localhost:9090' ]
+
+  - job_name: grafana
+    static_configs:
+      - targets: [ 'grafana:3000' ]

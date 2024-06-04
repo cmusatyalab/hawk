@@ -101,7 +101,7 @@ def main() -> None:
             metrics_port = int(
                 config.get("home-params", {}).get("metrics-port", HOME_METRICS_PORT)
             )
-            start_metrics_server(port=metrics_port, addr="127.0.0.1")
+            start_metrics_server(port=metrics_port)
         except ValueError:
             pass
 

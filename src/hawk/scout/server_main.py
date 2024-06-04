@@ -15,6 +15,7 @@ import multiprocessing_logging
 import torchvision
 import zmq
 from logzero import logger
+from prometheus_client import start_http_server as start_metrics_server
 
 from ..ports import A2S_PORT
 from .api.a2s_api import A2SAPI
@@ -45,7 +46,11 @@ def dumpstacks(_: Any, __: Any) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--a2s-port", type=int, default=A2S_PORT)
+    parser.add_argument("--metrics-port", type=int)
     args = parser.parse_args()
+
+    metrics_port = args.a2s_port + 3 if args.metrics_port is None else args.metrics_port
+    start_metrics_server(port=metrics_port)
 
     multiprocessing_logging.install_mp_handler()
 

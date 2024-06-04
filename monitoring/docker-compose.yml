@@ -1,0 +1,28 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: prometheus
+    #ports:
+    #  - '9090:9090'
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_storage:/prometheus
+    command: --web.enable-lifecycle --config.file=/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana-oss
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - ./grafana-datasource.ini:/etc/grafana/provisioning/datasources/prometheus.yaml
+      - grafana_storage:/var/lib/grafana
+
+volumes:
+  grafana_storage:
+  prometheus_storage:
