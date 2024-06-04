@@ -136,14 +136,11 @@ class YOLOModelRadar(ModelBase):
             try:
                 request = self.request_queue.get(timeout=1)
                 requests.append(request)
+                if len(requests) < self._batch_size:
+                    continue
             except queue.Empty:
-                continue
-
-            if not len(requests):
-                continue
-
-            if len(requests) < self._batch_size and time.time() < next_infer:
-                continue
+                if len(requests) == 0 or time.time() < next_infer:
+                    continue
 
             results = self._process_batch(requests)
             for result in results:

@@ -173,14 +173,12 @@ class DNNClassifierModel(ModelBase):
             try:
                 request = self.request_queue.get(timeout=1)
                 requests.append(request)
+
+                if len(requests) < self._batch_size:
+                    continue
             except queue.Empty:
-                continue
-
-            if len(requests) == 0:
-                continue
-
-            if len(requests) < self._batch_size and time.time() < next_infer:
-                continue
+                if len(requests) == 0 or time.time() < next_infer:
+                    continue
 
             start_infer = time.time()
             results = self._process_batch(requests)
