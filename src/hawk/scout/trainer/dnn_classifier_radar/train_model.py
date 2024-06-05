@@ -26,11 +26,13 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 from logzero import logger
 from sklearn.metrics import average_precision_score
-from sklearn.preprocessing import label_binarize
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
 
 from ...core.utils import ImageFromList
+
+# from sklearn.preprocessing import label_binarize
+
 
 model_names = sorted(
     name
@@ -140,7 +142,9 @@ best_acc1 = 0.0
 ########
 # Change this to the path on the scout where the base model is located (after
 # downloading from Git repo).  Will add this to config file later.
-base_model_path = '/srv/diamond/RADAR_DERIVATIVE_CROPPED/person/person_basemodel_resnet18.pth'
+base_model_path = (
+    "/srv/diamond/RADAR_DERIVATIVE_CROPPED/person/person_basemodel_resnet18.pth"
+)
 ########
 
 
@@ -641,12 +645,12 @@ def calculate_performance(y_true: Sequence[int], y_pred: Sequence[float]) -> flo
     # ap_by_class = average_precision_score(
     #     label_binarize(y_true,classes=[0,1,2,3,4]), y_pred, average=None
     # )
-    #logger.info(f"AUC across all classes: {ap_by_class}")
+    # logger.info(f"AUC across all classes: {ap_by_class}")
     ap: float = average_precision_score(y_true, y_pred, average=None)
-    #ap_score = average_precision_score(y_true, y_pred, average=None)
-    #ap_score: float = average_precision_score(
-        #label_binarize(y_true, classes=[0, 1, 2, 3, 4]), y_pred, average="macro"
-    #)
+    # ap_score = average_precision_score(y_true, y_pred, average=None)
+    # ap_score: float = average_precision_score(
+    # label_binarize(y_true, classes=[0, 1, 2, 3, 4]), y_pred, average="macro"
+    # )
     # from sklearn.metrics import (
     #     auc, confusion_matrix precision_recall_curve, roc_auc_score
     # )

@@ -63,7 +63,7 @@ class TopReexaminationStrategy(ReexaminationStrategy):
                 f"curr_score {score}"
             )
             new_queue.put((-score, time_result, result))
-            #old_queues.put((-score, time_result, result))
+            # old_queues.put((-score, time_result, result))
 
-        #return old_queues, len(reexamine)
+        # return old_queues, len(reexamine)
         return new_queue, len(reexamine)

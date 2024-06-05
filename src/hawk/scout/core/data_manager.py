@@ -107,7 +107,7 @@ class DataManager:
                     ((pad_left, pad_right), (pad_top, pad_bottom), (0, 0)),
                     mode="constant",
                 )
-                
+
                 with io.BytesIO() as tmp:
                     np.save(tmp, crop_arr_padded)
                     crop_arr_bytes = tmp.getvalue()
@@ -320,7 +320,10 @@ class DataManager:
         callback: Callable[[LabeledTile], None] | None,
     ) -> None:
         with self._staging_lock:
-            #logger.info(f"Grabbed staging lock in store labeled examples... for {len(examples)} examples, {time.time()}")
+            # logger.info(
+            #    "Grabbed staging lock in store labeled examples... "
+            #    f"for {len(examples)} examples, {time.time()}"
+            # )
             old_dirs = []
             for dir in self._staging_dir.iterdir():
                 if dir.name not in IGNORE_FILE:
@@ -333,7 +336,9 @@ class DataManager:
                     example_file = get_example_key(obj.content, extension=".npy")
                 else:
                     example_file = get_example_key(obj.content)
-                self._remove_old_paths(example_file, old_dirs) ## what is the purpose of this function?
+                self._remove_old_paths(
+                    example_file, old_dirs
+                )  ## what is the purpose of this function?
 
                 label = example.label.imageLabel
                 bounding_boxes = example.label.boundingBoxes
@@ -351,8 +356,8 @@ class DataManager:
                     if self._radar_crop:
                         with io.BytesIO(obj.content) as fp:
                             arr = np.load(fp)
-                        arr = arr.reshape((64,256,3))
-                        np.save(example_path,arr)
+                        arr = arr.reshape((64, 256, 3))
+                        np.save(example_path, arr)
                     else:
                         with example_path.open("wb") as f:
                             f.write(obj.content)
