@@ -7,11 +7,11 @@
 The metrics endpoints are publically accessible and can be monitored remotely,
 which is needed to access both the remote scouts and the home endpoint from the
 Prometheus docker container because the container is using a private network
-and as such doesn't see localhost services.
+and as such cannot access services bound to localhost.
 
 If you run `docker-compose up -d` from the current directory it will
 orchestrate two containers. One container runs Prometheus which will scrape
-the configured hawk_home and hawk_scout endpoints every 5 seconds.
+the configured `hawk_home` and `hawk_scout` endpoints every 5 seconds.
 
 The other container runs a Grafana instance listening on port 3000, you can log
 in with admin/admin and it will prompt you to change the password.
@@ -54,16 +54,16 @@ This metric is quite powerful and can be used to derive other metrics
 Number of objects inferenced:
     `sum(hawk_inferenced_objects_count)`
 
-Number of true positives (Oracle):
+Number of positive samples (Oracle based on ground truth metadata):
     `sum(hawk_inferenced_objects_count{gt!="0"})`
 
-Average confidence score for all positives:
+Average confidence score for all positive samples:
     `sum(hawk_inferenced_objects_sum{gt!="0"}) / sum(hawk_inferenced_objects_count{gt!="0"})`
 
-Percentage of samples that had a score less than 0.6
+Percentage of samples that had a score less than or equal to 0.6
     `hawk_inferenced_objects_bucket{le="0.6"} / ignoring(le) hawk_inferenced_objects_count`
 
-Number of samples had a score greater than 0.6
+Number of samples with a score greater than 0.6
     `hawk_inferenced_objects_count - ignoring(le) hawk_inferenced_objects_bucket{le="0.6"}`
 
 To display a heatmap of confidence scores for positive samples in Grafana:
@@ -82,6 +82,8 @@ hawk_selector_revisited_objects: Counter
 hawk_selector_result_queue_length: Gauge
     Number of samples queued for sending to hawk_home
 ```
+
+## Hawk Survivability related metrics
 
 ```
 hawk_survivability_true_positive: Counter
