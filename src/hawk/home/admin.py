@@ -43,10 +43,9 @@ from ..proto.messages_pb2 import (
     TrainConfig,
 )
 from .stats import (
-    HAWK_LABELED_NEGATIVE,
-    HAWK_LABELED_POSITIVE,
+    HAWK_LABELED_OBJECTS,
     HAWK_UNLABELED_RECEIVED,
-    collect_counter_total,
+    collect_metric_samples,
     collect_summary_total,
 )
 
@@ -463,11 +462,19 @@ class Admin:
                     continue
 
                 stats = self.accumulate_mission_stats()
+
+                label_stats = collect_metric_samples(HAWK_LABELED_OBJECTS)
+                total_labeled = sum(sample.value for sample in label_stats)
+                negatives = sum(
+                    sample.value
+                    for sample in label_stats
+                    if sample.labels["label"] == "0"
+                )
                 stats.update(
                     {
-                        "positives": int(collect_counter_total(HAWK_LABELED_POSITIVE)),
-                        "negatives": int(collect_counter_total(HAWK_LABELED_NEGATIVE)),
-                        "bytes": int(collect_summary_total(HAWK_UNLABELED_RECEIVED)),
+                        "positives": int(total_labeled - negatives),
+                        "negatives": int(negatives),
+                        "bytes": collect_summary_total(HAWK_UNLABELED_RECEIVED),
                     }
                 )
 
@@ -501,12 +508,12 @@ class Admin:
                         if not processed_complete:
                             finish_time = time.time() + 60
                             processed_complete = True
-                        #time.sleep(60)
-                        #self.stop_event.set()
-                        #logger.info("End mission")
-                        #with open(self.end_file, "w") as f:
+                        # time.sleep(60)
+                        # self.stop_event.set()
+                        # logger.info("End mission")
+                        # with open(self.end_file, "w") as f:
                         #    f.write("\n")
-                        #break
+                        # break
 
                 # prev_bytes = stats["bytes"]
                 # prev_processed = stats["processedObjects"]

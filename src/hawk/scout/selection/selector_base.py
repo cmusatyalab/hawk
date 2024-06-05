@@ -15,7 +15,6 @@ from logzero import logger
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
 from ..stats import (
-    HAWK_GROUNDTRUTH_POSITIVES,
     HAWK_INFERENCED_OBJECTS,
     HAWK_SELECTOR_PRIORITY_QUEUE_LENGTH,
     HAWK_SELECTOR_RESULT_QUEUE_LENGTH,
@@ -27,7 +26,6 @@ from ..stats import (
     HAWK_SURVIVABILITY_TRUE_NEGATIVES,
     HAWK_SURVIVABILITY_TRUE_POSITIVES,
     collect_metrics_total,
-    collect_summary_count,
 )
 
 if TYPE_CHECKING:
@@ -86,8 +84,11 @@ class SelectorBase(Selector):
 
         self.items_processed = 0
 
-        self.inferenced_objects = HAWK_INFERENCED_OBJECTS.labels(mission=mission_id)
-        self.num_positives = HAWK_GROUNDTRUTH_POSITIVES.labels(mission=mission_id)
+        self.mission_id = mission_id
+        self.inferenced_objects = HAWK_INFERENCED_OBJECTS
+        for label in [0, 1]:  # Hint to prometheus_client which labels we might use
+            HAWK_INFERENCED_OBJECTS.labels(mission=mission_id, gt=str(label))
+
         self.items_skipped = HAWK_SELECTOR_SKIPPED_OBJECTS.labels(mission=mission_id)
         self.priority_queue_length = HAWK_SELECTOR_PRIORITY_QUEUE_LENGTH.labels(
             mission=mission_id
@@ -139,9 +140,9 @@ class SelectorBase(Selector):
         self.items_processed += 1
 
         # collect inference stats
-        self.inferenced_objects.observe(result.score)
-        if result.gt:
-            self.num_positives.inc()
+        self.inferenced_objects.labels(
+            mission=self.mission_id, gt=str(result.gt)
+        ).observe(result.score)
 
         with self._model_lock:
             model_present = self._model_present
@@ -219,10 +220,22 @@ class SelectorBase(Selector):
 
         countermeasures_used = surv_TPs + surv_FPs
         countermeasures_remain = max(0, self.num_countermeasures - countermeasures_used)
+
+        inferenced = [
+            sample
+            for instance in self.inferenced_objects.collect()
+            for sample in instance.samples
+            if sample.name.endswith("_count")
+        ]
+        processed_objects = sum(sample.value for sample in inferenced)
+        positives_in_stream = sum(
+            sample.value for sample in inferenced if sample.labels["gt"] != "0"
+        )
+
         return SelectorStats(
-            processed_objects=collect_summary_count(self.inferenced_objects),
+            processed_objects=int(processed_objects),
             items_revisited=collect_metrics_total(self.num_revisited),
-            positive_in_stream=collect_metrics_total(self.num_positives),
+            positive_in_stream=int(positives_in_stream),
             train_positives=self.model_examples,
             surv_TPs=surv_TPs,
             surv_TNs=surv_TNs,

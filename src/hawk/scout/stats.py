@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from prometheus_client import Counter, Gauge, Histogram, Summary
+from prometheus_client import Counter, Gauge, Histogram
 
 HAWK_RETRIEVER_TOTAL_IMAGES = Gauge(
     "hawk_retriever_total_images",
@@ -40,18 +40,13 @@ HAWK_RETRIEVER_QUEUE_LENGTH = Gauge(
 HAWK_INFERENCED_OBJECTS = Histogram(
     "hawk_inferenced_objects",
     "Histogram to track confidence scores of inferenced objects (count/sum/buckets)",
-    labelnames=["mission"],
+    labelnames=["mission", "gt"],
     buckets=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
-)
-HAWK_GROUNDTRUTH_POSITIVES = Counter(
-    "hawk_groundtruth_positives",
-    "(Oracle) Number of positive samples in inferenced objects (TP + FN)",
-    labelnames=["mission"],
 )
 
 HAWK_SELECTOR_SKIPPED_OBJECTS = Counter(
     "hawk_selector_skipped_objects",
-    "Number of samples that skipped selector because there was no model",
+    "Number of samples that skipped the selector because there was no model",
     labelnames=["mission"],
 )
 HAWK_SELECTOR_DISCARD_QUEUE_LENGTH = Gauge(
@@ -120,16 +115,5 @@ def collect_metrics_total(metric: Counter | Gauge) -> int:
             for instance in metric.collect()
             for sample in instance.samples
             if not sample.name.endswith("_created")
-        )
-    )
-
-
-def collect_summary_count(metric: Histogram | Summary) -> int:
-    return int(
-        sum(
-            sample.value
-            for instance in metric.collect()
-            for sample in instance.samples
-            if sample.name.endswith("_count")
         )
     )

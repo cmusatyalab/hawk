@@ -19,8 +19,7 @@ from logzero import logger
 from prometheus_client import Counter, Gauge, Histogram
 
 from .stats import (
-    HAWK_LABELED_NEGATIVE,
-    HAWK_LABELED_POSITIVE,
+    HAWK_LABELED_OBJECTS,
     HAWK_LABELER_QUEUED_LENGTH,
     HAWK_LABELER_QUEUED_TIME,
 )
@@ -42,8 +41,7 @@ class LabelerDiskQueue:
 
     token_semaphore: threading.BoundedSemaphore = field(init=False, repr=False)
 
-    negatives: Counter = field(init=False)
-    positives: Counter = field(init=False)
+    labeled_objects: Counter = field(init=False)
     queue_length: Gauge = field(init=False)
     queued_time: Histogram = field(init=False)
 
@@ -55,12 +53,12 @@ class LabelerDiskQueue:
         self.token_semaphore = threading.BoundedSemaphore(self.label_queue_size)
 
         # track labeler statistics
-        self.negatives = HAWK_LABELED_NEGATIVE.labels(
-            mission=self.mission_id, labeler="disk"
-        )
-        self.positives = HAWK_LABELED_POSITIVE.labels(
-            mission=self.mission_id, labeler="disk"
-        )
+        self.labeled_objects = HAWK_LABELED_OBJECTS
+        for label in [0, 1]:  # Hint to prometheus_client which labels we may use
+            HAWK_LABELED_OBJECTS.labels(
+                mission=self.mission_id, labeler="disk", label=label
+            )
+
         self.queue_length = HAWK_LABELER_QUEUED_LENGTH.labels(
             mission=self.mission_id, labeler="disk"
         )
@@ -135,10 +133,9 @@ class LabelerDiskQueue:
                 self.scout_queue.put(label)
 
                 # update stats
-                if label.image_label in [None, "", "0", 0, 0.0]:
-                    self.negatives.inc()
-                else:
-                    self.positives.inc()
+                self.labeled_objects.labels(
+                    mission=self.mission_id, labeler="disk", label=label.image_label
+                ).inc()
 
                 # track time it took to apply label
                 if label.queued_time is not None:
