@@ -211,6 +211,7 @@ class YOLOModelRadar(ModelBase):
                     self.request_queue.put(req)
             return []
 
+        results = []
         with self._model_lock:
             tensors = torch.stack([f[1] for f in batch]).to(self._device)
             predictions = self.get_predictions(tensors)
@@ -223,7 +224,8 @@ class YOLOModelRadar(ModelBase):
                     else:
                         score = 1
                 batch[i][0].attributes.add({"score": str.encode(str(score))})
-                yield ResultProvider(batch[i][0], score, self.version)
+                results.append(ResultProvider(batch[i][0], score, self.version))
+        return results
 
     def stop(self) -> None:
         logger.info(f"Stopping model of version {self.version}")
