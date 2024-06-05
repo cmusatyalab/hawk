@@ -1,0 +1,6 @@
+# Copy this file to scouts.yaml and replace scoutN with the hostnames of your scouts
+- targets:
+  - scout1:6103
+  - scout2:6103
+  - scout3:6103
+  - scout4:6103

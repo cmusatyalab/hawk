@@ -12,13 +12,18 @@ scrape_configs:
 # - requires another http endpoint
 # - only updates list of scouts periodically, may miss mission start (60s?)
 #
-#  - job_name: hawk_scout
-#    static_configs:
-#      - targets:
-#        - scout1:6103
-#        - scout2:6103
-#        - scout3:6103
-#        - scout4:6103
+# For now take list of scouts to monitor from ./scouts.yaml
+  - job_name: hawk_scout
+    scrape_interval: 5s
+    file_sd_configs:
+      - files: ["/etc/prometheus/sd/scouts.yaml"]
+
+# where ./scouts.yaml contains:
+# - targets:
+#   - scout1:6103
+#   - scout2:6103
+#   - scout3:6103
+#   - scout4:6103
 
   # we can grab other metrics as well, for end-to-end checking?
   - job_name: prometheus

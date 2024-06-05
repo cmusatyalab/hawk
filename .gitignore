@@ -143,3 +143,4 @@ configs/
 hawk_ui/images
 home/hosts
 hawk-missions/
+monitoring/scouts.yaml

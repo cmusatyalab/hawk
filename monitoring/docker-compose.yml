@@ -9,6 +9,10 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_storage:/prometheus
+      # we can't map a non-existent file as docker turns it into an empty directory
+      # so we map the parent directory instead...
+      # ./scouts.yaml:/etc/prometheus/sd/scouts.yaml
+      - .:/etc/prometheus/sd
     command: --web.enable-lifecycle --config.file=/etc/prometheus/prometheus.yml
 
   grafana:
