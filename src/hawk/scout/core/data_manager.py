@@ -82,12 +82,12 @@ class DataManager:
             crop_list = []
             for box in bounding_boxes:
                 # crop each
-                cls, x, y, w, h = box.split()
-                x, y, w, h = (
-                    int(np.round(float(x) * 63)),
-                    int(np.round(float(y) * 255)),
-                    int(np.round(float(w) * 63)),
-                    int(np.round(float(h) * 255)),
+                cls, x_, y_, w_, h_ = box.split()
+                x, y = (
+                    int(np.round(float(x_) * 63)),
+                    int(np.round(float(y_) * 255)),
+                    # int(np.round(float(w_) * 63)),
+                    # int(np.round(float(h_) * 255)),
                 )
                 # predetermined crop dimensions derived from mean + 1 stdev
                 # across all object instances of raddet dataset.
