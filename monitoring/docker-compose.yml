@@ -20,7 +20,9 @@ services:
     environment:
       GF_ANALYTICS_REPORTING_ENABLED: "false"
     volumes:
-      - ./grafana-datasource.ini:/etc/grafana/provisioning/datasources/prometheus.yaml
+      - ./grafana-datasource.yaml:/etc/grafana/provisioning/datasources/prometheus.yaml
+      - ./grafana-dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboard.yaml
+      - ./dashboards:/etc/grafana/dashboards
       - grafana_storage:/var/lib/grafana
 
 volumes:
