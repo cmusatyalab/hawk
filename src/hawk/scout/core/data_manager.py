@@ -150,7 +150,7 @@ class DataManager:
                 obj.ParseFromString(reply)
         else:
             # Local scout contains image of respective label received.
-            obj = self._context.retriever.get_object(label.objectId)
+            obj = self._context.retriever.read_object(label.objectId)
         if obj is None:
             return
 

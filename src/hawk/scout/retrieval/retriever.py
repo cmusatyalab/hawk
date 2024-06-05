@@ -52,7 +52,7 @@ class RetrieverBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_object(self, object_id: str) -> Optional[HawkObject]:
+    def read_object(self, object_id: str) -> Optional[HawkObject]:
         pass
 
     @abstractmethod
@@ -132,7 +132,7 @@ class Retriever(RetrieverBase):
             self.queue_length.dec()
             self.dropped_objects.inc()
 
-    def get_object(self, object_id: str) -> Optional[HawkObject]:
+    def read_object(self, object_id: str) -> Optional[HawkObject]:
         image_path = Path(object_id.split("collection/id/")[-1])
         if not image_path.exists():
             return None

@@ -141,7 +141,7 @@ class TopKSelector(SelectorBase):
 
         for result in auto_negative_list:
             object_id = result.id
-            example = self._mission.retriever.get_object(object_id)
+            example = self._mission.retriever.read_object(object_id)
             if example is None:
                 break
             example_file = get_example_key(example.content)

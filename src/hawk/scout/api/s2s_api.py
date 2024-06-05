@@ -69,7 +69,7 @@ class S2SServicer:
             request.ParseFromString(msg)
             label = request
             # Fetch data from dataretriever
-            obj = self._mission.retriever.get_object(label.objectId)
+            obj = self._mission.retriever.read_object(label.objectId)
             assert obj is not None
             # Assuming data requirement in Distribute positives
             if label.imageLabel != "0":
