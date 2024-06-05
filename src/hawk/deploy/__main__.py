@@ -62,7 +62,7 @@ def main() -> int:
     try:
         if "config" in args:
             config = DeployConfig.from_yaml(args.config.read_text())
-            print(f"{args.action}ing hawk-scout @ {config.scouts}")
+            print(f"{args.action} hawk-scout @ {config.scouts}")
         else:
             config = None
 
