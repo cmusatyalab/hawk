@@ -204,11 +204,6 @@ class Mission(DataManagerContext, ModelContext):
     def distribute_label(self, label: LabelWrapper) -> None:
         self._data_manager.distribute_label(label)
 
-    def get_example(
-        self, example_set: DatasetSplitValue, label: str, example: str
-    ) -> Path:
-        return self._data_manager.get_example_path(example_set, label, example)
-
     def get_test_results(self) -> TestResults:
         # We assume that the master is the source of truth
         with self._model_lock:

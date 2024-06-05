@@ -264,40 +264,10 @@ class DataManager:
 
     @contextmanager
     def get_examples(self, example_set: DatasetSplitValue) -> Iterator[Path]:
-        results = []
+        assert example_set is not DatasetSplit.TEST
         with self._examples_lock:
-            if self._context.scout_index != 0:
-                results.append(self._examples_dir / self._to_dir(example_set))
-            else:
-                example_dir = self._examples_dir / self._to_dir(example_set)
-                if example_set is DatasetSplit.TEST:
-                    for label in example_dir.iterdir():
-                        tmp_label_dir = self._tmp_dir / label.name
-                        tmp_label_dir.mkdir(parents=True, exist_ok=True)
-                        test_files = list(label.iterdir())
-                        for i in range(0, len(test_files), len(self._context.scouts)):
-                            test_files[i].rename(tmp_label_dir / test_files[i].name)
-
-                    results.append(self._tmp_dir)
-
-                    for label in self._tmp_dir.iterdir():
-                        for tmp_file in label.iterdir():
-                            tmp_file.rename(example_dir / label.name / tmp_file.name)
-                else:
-                    results.append(example_dir)
-
-        return iter(results)
-
-    def get_example_path(
-        self, example_set: DatasetSplitValue, label: str, example: str
-    ) -> Path:
-        # assert self._examples_lock.locked()
-        assert self._context.scout_index == 0
-        locked = self._examples_lock.locked()
-        if locked:
-            return self._examples_dir / self._to_dir(example_set) / label / example
-        with self._examples_lock:
-            return self._examples_dir / self._to_dir(example_set) / label / example
+            example_dir = self._examples_dir / self._to_dir(example_set)
+            yield example_dir
 
     def reset(self, train_only: bool) -> None:
         with self._staging_lock:
