@@ -18,13 +18,12 @@ import numpy as np
 from logzero import logger
 from prometheus_client import Counter, Gauge, Histogram
 
+from .label_utils import index_jsonl, read_jsonl
 from .stats import (
     HAWK_LABELED_OBJECTS,
     HAWK_LABELER_QUEUED_LENGTH,
     HAWK_LABELER_QUEUED_TIME,
 )
-from .to_scout import Label
-from .utils import tailf
 
 matplotlib.use("agg")
 
@@ -77,7 +76,13 @@ class LabelerDiskQueue:
         tile_dir = self.mission_dir / "images"
         tile_dir.mkdir(exist_ok=True)
 
-        for index in count():
+        # check how many unlabeled samples we have already processed
+        # (we may have restarted the hawk_label_broker process)
+        # this can be much faster if we don't actually try to index/json decode
+        # but the assumption is that most of the time the file will be empty
+        _, lines = index_jsonl(unlabeled_jsonl)
+
+        for index in count(lines + 1):
             # block until the labeler is ready to accept more.
             self.token_semaphore.acquire()
 
@@ -85,24 +90,26 @@ class LabelerDiskQueue:
             result = self.scout_queue.get()
 
             logger.info(
-                f"Labeling {result.object_id} {result.scout_index} {result.score}"
+                f"Labeling {result.objectId} {result.scoutIndex} {result.score}"
             )
 
             # write result image file to disk
             tile_jpeg = tile_dir.joinpath(f"{index:06}.jpeg")
-            if result.object_id.endswith(".npy"):  # for radar missions with .npy files
+            if result.objectId.endswith(".npy"):  # for radar missions with .npy files
                 self.gen_heatmap(result.data, tile_jpeg)
             else:
                 tile_jpeg.write_bytes(result.data)
             logger.info(f"SAVED TILE {tile_jpeg}")
 
+            # update queued time so we can track labeling delay.
+            result.queued = time.time()
+
             # update label_queue_length metric
             self.queue_length.inc()
 
             # append metadata to unlabeled.jsonl file
-            meta_json = result.to_json(index=index, queued_time=time.time())
-            with unlabeled_jsonl.open("a") as f:
-                f.write(f"{meta_json}\n")
+            with unlabeled_jsonl.open("a") as fp:
+                result.to_jsonl(fp)
 
             # logger.info(f"Meta: {count:06} {meta_json}")
             self.scout_queue.task_done()
@@ -113,34 +120,31 @@ class LabelerDiskQueue:
 
         logger.info("Started reading labeled results from labeler")
 
-        # read label results and forward to the scouts
-        with labeled_jsonl.open() as fp:
-            # Seek to the end of the labeled.jsonl file, assuming we've already
-            # forwarded all labels, there really is no good way to track what
-            # we've done because the semaphore we use doesn't survive a restart.
-            fp.seek(0, 2)
+        # skip previously labeled results
+        labeled = index_jsonl(labeled_jsonl)[0]
 
-            for label_json in tailf(fp):
-                now = time.time()
+        # read labeled results and forward to the scouts
+        for result in read_jsonl(labeled_jsonl, exclude=labeled, tail=True):
+            now = time.time()
 
-                # update label_queue_length metric
-                self.queue_length.dec()
+            # update label_queue_length metric
+            self.queue_length.dec()
 
-                # release next unlabeled result to labeler
-                self.token_semaphore.release()
+            # release next unlabeled result to labeler
+            self.token_semaphore.release()
 
-                label = Label.from_json(label_json)
-                self.scout_queue.put(label)
+            self.scout_queue.put(result)
 
-                # update stats
-                self.labeled_objects.labels(
-                    mission=self.mission_id, labeler="disk", label=label.image_label
-                ).inc()
+            # update stats
+            label = "0" if not result.labels else "1"
+            self.labeled_objects.labels(
+                mission=self.mission_id, labeler="disk", label=label
+            ).inc()
 
-                # track time it took to apply label
-                if label.queued_time is not None:
-                    queue_elapsed = now - label.queued_time
-                    self.queued_time.observe(queue_elapsed)
+            # track time it took to apply label
+            if result.queued is not None:
+                queue_elapsed = now - result.queued
+                self.queued_time.observe(queue_elapsed)
 
     def gen_heatmap(self, data_: bytes, tile_path: Path) -> None:
         with io.BytesIO(data_) as bytes_file:

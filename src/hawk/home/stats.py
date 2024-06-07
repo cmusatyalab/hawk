@@ -27,6 +27,12 @@ HAWK_UNLABELED_QUEUE_LENGTH = Gauge(
     "Number of samples queued in priority queue before labeling",
     labelnames=["mission"],
 )
+HAWK_UNLABELED_QUEUE_TIME = Histogram(
+    "hawk_unlabeled_queue_time",
+    "How much time a sample spent in the priority queue before labeling",
+    labelnames=["mission"],
+    buckets=(0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0),
+)
 HAWK_LABELER_QUEUED_LENGTH = Gauge(
     "hawk_labeler_queued_length",
     "Number of samples written to labeler waiting to be labeled",

@@ -8,256 +8,200 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass, field
+from dataclasses import InitVar, asdict, dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterator
+from typing import TYPE_CHECKING, Any, Iterator, TextIO
 
-import pandas as pd
+from .utils import tailf
 
 if TYPE_CHECKING:
-    import os
-
-_UNLABELED_DTYPES = {
-    "index": "int",
-    "objectId": "string",
-    "scoutIndex": "int",
-    "score": "float",
-    "queued_time": "float",
-}
-
-_LABELED_DTYPES = {
-    "index": "int",
-    "imageLabel": "Int8",
-    # What we probably want...
-    # "boundingBoxes": "list[tuple[float,float,float,float]]",
-    # What home/scout currently expect...
-    # "boundingBoxes": "list[str]",
-    # What pandas can actually recognize...
-    "boundingBoxes": "object",
-    # "queued_time": "float",
-}
+    from os import PathLike
 
 
 @dataclass
-class Result:
-    index: int
-    objectId: str
-    scoutIndex: int
-    score: float
-    data: bytes | None = None
-    imageLabel: int | None = None
-    boundingBoxes: list[tuple[float, float, float, float]] | None = None
-
-    def to_unlabeled_json(self, **kwargs: int | float | str) -> str:
-        return json.dumps(
-            dict(
-                index=self.index,
-                objectId=self.objectId,
-                scoutIndex=self.scoutIndex,
-                score=self.score,
-                **kwargs,
-            ),
-            sort_keys=True,
-        )
-
-    def to_labeled_jsonl(self, jsonl_file: os.PathLike[str] | str) -> None:
-        json_data = json.dumps(
-            dict(
-                index=self.index,
-                objectId=self.objectId,
-                scoutIndex=self.scoutIndex,
-                imageLabel=self.imageLabel,
-                boundingBoxes=self.boundingBoxes,
-            )
-        )
-        with Path(jsonl_file).open("a") as fd:
-            fd.write(f"{json_data}\n")
+class BoundingBox:
+    label: int
+    score: float = 1.0
+    minX: float = 0.0
+    minY: float = 0.0
+    maxX: float = 1.0
+    maxY: float = 1.0
 
     @classmethod
-    def from_dataframe(cls, df: pd.DataFrame) -> Iterator[Result]:
-        for item in df.dropna().itertuples():
-            yield cls(**item._asdict())
+    def from_dict(cls, obj: dict[str, Any]) -> BoundingBox:
+        return cls(**obj)
 
-    @staticmethod
-    def to_dataframe(results: list[Result] | None = None) -> pd.DataFrame:
-        """returns a dataframe with all the columns/datatypes defined"""
-        # poorly documented dictionary merge was introduced in Python 3.5
-        merged_dtypes = {**_UNLABELED_DTYPES, **_LABELED_DTYPES}
-        if results is None:
-            results = []
-        return (
-            pd.DataFrame(results, columns=list(merged_dtypes))
-            .astype(merged_dtypes)
-            .set_index("index")
+    @classmethod
+    def from_yolo(cls, line: str) -> BoundingBox:
+        label, centerX_, centerY_, width, height, *score = line.split()
+        centerX, centerY = float(centerX_), float(centerY_)
+        deltaX, deltaY = float(width) / 2, float(height) / 2
+        return cls(
+            label=int(label),
+            minX=centerX - deltaX,
+            minY=centerY - deltaY,
+            maxX=centerX + deltaX,
+            maxY=centerY + deltaY,
+            score=float(score[0]) if score else 1.0,
         )
 
-    # @classmethod
-    # def from_sendtiles_msg(cls, msg: bytes) -> Result:
-    #    request = SendTiles()
-    #    request.ParseFromString(msg)
-    #    return cls(
-    #        objectId=request.objectId,
-    #        scoutIndex=request.scoutIndex,
-    #        score=request.score,
-    #        data=request.attributes["thumbnail.jpeg"],
-    #    )
+    def to_yolo(self) -> str:
+        centerX = (self.maxX + self.minX) / 2
+        centerY = (self.maxY + self.minY) / 2
+        deltaX = self.maxX - self.minX
+        deltaY = self.maxY - self.minY
+        return f"{self.label} {centerX} {centerY} {deltaX} {deltaY} {self.score}"
+
+
+@dataclass
+class LabelSample:
+    """Representation of an unlabeled tile received from a scout on it's way
+    to getting labeled, or a labeled result being passed back to the scout"""
+
+    objectId: str  # unique object id
+    scoutIndex: int  # index of originating scout
+    queued: float = field(default_factory=time.time)
+    labels: list[BoundingBox] = field(default_factory=list)
+    line: InitVar[int] = -1  # used to track line number in jsonl file
+
+    def __post_init__(self, line: int) -> None:
+        self.index = line
+
+    @property
+    def score(self) -> float:
+        return max(bbox.score for bbox in self.labels) if self.labels else 0.0
+
+    def to_jsonl(self, fp: TextIO) -> None:
+        jsonl = json.dumps(
+            dict(
+                objectId=self.objectId,
+                scoutIndex=self.scoutIndex,
+                queued=self.queued,
+                labels=[asdict(bbox) for bbox in self.labels],
+            )
+        )
+        fp.write(f"{jsonl}\n")
+
+    def to_yolo(self) -> str:
+        return "".join(label.to_yolo() + "\n" for label in self.labels)
+
+    @classmethod
+    def from_dict(cls, obj: dict[str, Any], line: int = -1) -> LabelSample:
+        labels = [BoundingBox.from_dict(label) for label in obj.pop("labels", [])]
+        return cls(line=line, labels=labels, **obj)
+
+
+def index_jsonl(
+    jsonl: PathLike[str] | str, skip: int = 0, index: set[str] | None = None
+) -> tuple[set[str], int]:
+    """Returns a set of all unique ids in the given jsonl file.
+    Returns both the set and the number of lines parsed."""
+    if index is None:
+        index = set()
+
+    jsonl_path = Path(jsonl)
+    if not jsonl_path.exists():
+        return index, skip
+
+    n = 0  # in case the file is empty
+    with jsonl_path.open() as fp:
+        for n, line in enumerate(fp, start=1):
+            if n <= skip:
+                continue
+            obj = json.loads(line)
+            index.add(obj["objectId"])
+    return index, n
+
+
+def read_jsonl(
+    jsonl: PathLike[str] | str,
+    exclude: set[str] | dict[str, Any] | None = None,
+    skip: int = 0,
+    tail: bool = False,
+) -> Iterator[LabelSample]:
+    """Yields all entries in the given jsonl file
+    exclude is a set of id values to leave out
+    skip is the number of lines to skip completely before parsing lines
+    when tail is true, iterate indefinitely and block waiting for new lines
+    """
+    if exclude is None:
+        exclude = set()
+
+    jsonl_path = Path(jsonl)
+    while not jsonl_path.exists():
+        if not tail:
+            return
+        # wait for file
+        time.sleep(0.5)
+
+    with jsonl_path.open() as fp:
+        line_iter = tailf(fp) if tail else fp
+        for index, line in enumerate(line_iter, start=1):
+            if index <= skip:
+                continue
+            obj = json.loads(line)
+            if obj["objectId"] in exclude:
+                continue
+            yield LabelSample.from_dict(obj, index)
 
 
 @dataclass
 class MissionResults:
-    mission_dir: os.PathLike[str] | str = field(default_factory=Path.cwd)
-    sync_labels: bool = False
+    mission_dir: PathLike[str] | str = field(default_factory=Path.cwd)
 
-    _unlabeled_offset: int = 0
-    _labeled_offset: int = 0
-
-    unlabeled_jsonl: Path = field(init=False, repr=False)
     labeled_jsonl: Path = field(init=False, repr=False)
-    df: pd.DataFrame = field(init=False)
+    unlabeled_jsonl: Path = field(init=False, repr=False)
+
+    labeled: dict[str, list[BoundingBox]] = field(default_factory=dict)
+    labeled_offset: int = 0
+
+    unlabeled: list[LabelSample] = field(default_factory=list)
+    unlabeled_offset: int = 0
 
     def __post_init__(self) -> None:
-        self.unlabeled_jsonl = Path(self.mission_dir, "unlabeled.jsonl")
         self.labeled_jsonl = Path(self.mission_dir, "labeled.jsonl")
-        self.df = self.empty_dataframe
+        self.unlabeled_jsonl = Path(self.mission_dir, "unlabeled.jsonl")
 
-    def __iter__(self) -> MissionResults:
-        self.rows_seen = self.df.index.size
-        return self
+    def resync_labeled(self) -> None:
+        new_labels = list(read_jsonl(self.labeled_jsonl, skip=self.labeled_offset))
+        if new_labels:
+            self.labeled.update((label.objectId, label.labels) for label in new_labels)
+            self.labeled_offset = new_labels[-1].index
 
-    def __next__(self) -> pd.DataFrame:
-        while not self.resync_unlabeled():
-            time.sleep(0.5)
-        if self.sync_labels:
-            self.resync_labeled()
-        prev_offset = self.rows_seen
-        self.rows_seen = self.df.index.size
-        return self.df[prev_offset:]
-
-    def _read_jsonl_tail(
-        self, jsonl_file: Path, offset: int, dtypes: dict[str, str]
-    ) -> tuple[pd.DataFrame | None, int]:
-        """Read entries from a jsonl file starting at offset.
-        Returns:
-        - None when there was nothing new to read.
-        - An empty dataframe and offset 0 when the file was empty.
-        - dataframe with read entries and the file length (new offset).
-        """
-        length = jsonl_file.stat().st_size if jsonl_file.exists() else 0
-
-        # no changes
-        if offset == length:
-            return None, offset
-
-        # length (re)set to 0, return empty dataframe
-        if length == 0:
-            return self.empty_dataframe, 0
-
-        with jsonl_file.open() as fp:
-            # seek to previous tail
-            fp.seek(offset)
-
-            # read new data, forcing the data types as we go
-            tail = (
-                pd.DataFrame(
-                    pd.read_json(
-                        fp,
-                        orient="records",
-                        lines=True,
-                        convert_dates=False,
-                        dtype=dtypes,
-                    ),
-                    columns=list(dtypes),
-                )
-                .astype(dtypes)
-                .set_index("index")
-            )
-            # record new tail
-            offset = fp.tell()
-        return tail, offset
-
-    def resync(self) -> bool:
-        updated = self.resync_unlabeled()
-        if self.sync_labels:
-            updated |= self.resync_labeled()
-        return updated
-
-    def resync_unlabeled(self) -> bool:
-        new_data, self._unlabeled_offset = self._read_jsonl_tail(
-            self.unlabeled_jsonl,
-            self._unlabeled_offset,
-            dtypes=_UNLABELED_DTYPES,
-        )
-        if new_data is None:
-            return False
-
-        # concatenate new tail
-        self.df = pd.concat([self.df, new_data]) if self._unlabeled_offset else new_data
-        return True
-
-    def resync_labeled(self) -> bool:
-        new_data, self._labeled_offset = self._read_jsonl_tail(
-            self.labeled_jsonl,
-            self._labeled_offset,
-            dtypes=_LABELED_DTYPES,
-        )
-        if new_data is None:
-            return False
-
-        # merge labels
-        self.df[["imageLabel", "boundingBoxes"]] = (
-            self.df[["imageLabel", "boundingBoxes"]].combine_first(new_data)
-            if self._labeled_offset
-            else pd.NA
-        )
-        return True
-
-    def reset_labels(self) -> None:
-        self.df["imageLabel", "boundingBoxes"] = pd.NA
-        self._labeled_offset = 0
-
-    @property
-    def unlabeled(self) -> pd.Series[bool]:
-        """Using this so much, figured a helper could be useful."""
-        return self.df.imageLabel.isna()
-
-    def save_new_labels(
-        self, labels: pd.Series[int], bounding_boxes: pd.Series[str] | None = None
-    ) -> None:
-        # make sure we're current with the on-disk state and capture the
-        # previous unlabeled state before we merge the new labels.
-        self.resync_unlabeled()
+    def resync(self) -> None:
         self.resync_labeled()
-        unlabeled = self.df.imageLabel.isna()
 
-        # drop new labels with negative or NA/NaN/None values and merge
-        updates = labels[labels >= 0].astype("Int8")
-        self.df["imageLabel"] = self.df.imageLabel.combine_first(updates)
-        if bounding_boxes is not None:
-            self.df["boundingBoxes"] = self.df.boundingBoxes.combine_first(
-                bounding_boxes
-            )
+        new_unlabeled = list(
+            read_jsonl(self.unlabeled_jsonl, skip=self.unlabeled_offset)
+        )
+        if new_unlabeled:
+            self.unlabeled.extend(new_unlabeled)
+            self.unlabeled_offset = new_unlabeled[-1].index
 
-        # and filter down to the list of updated labels
-        new_labels = self.df[unlabeled & self.df.imageLabel.notna()]
-        if new_labels.empty:
-            return
+    def read_unlabeled(
+        self, exclude_labeled: bool = True, tail: bool = False
+    ) -> Iterator[LabelSample]:
+        if exclude_labeled:
+            self.resync_labeled()
+            exclude = self.labeled
+        else:
+            exclude = dict()
+        yield from read_jsonl(self.unlabeled_jsonl, exclude=exclude, tail=tail)
 
-        # ugly workaround for not being able to do .fillna([])
-        # new_labels["boundingBoxes"] = new_labels.boundingBoxes.fillna("").apply(list)
+    def save_labeled(self, results: list[LabelSample]) -> None:
+        # make sure we're current with the on-disk labeled state
+        self.resync_labeled()
 
         with self.labeled_jsonl.open("a") as fp:
-            new_labels.reset_index()[
-                [
-                    "index",
-                    "objectId",
-                    "scoutIndex",
-                    "imageLabel",
-                    "boundingBoxes",
-                    "queued_time",
-                ]
-            ].to_json(fp, orient="records", lines=True)
+            for result in results:
+                # skip already labeled results
+                if result.objectId in self.labeled:
+                    continue
 
-    @property
-    def empty_dataframe(self) -> pd.DataFrame:
-        """returns an empty dataframe with all the columns/datatypes defined"""
-        return Result.to_dataframe()
+                # skip if there are still unclassified bounding boxes?
+                if sum(
+                    1 for bbox in result.labels if bbox.label < 0 or bbox.score != 1.0
+                ):
+                    continue
+
+                result.to_jsonl(fp)

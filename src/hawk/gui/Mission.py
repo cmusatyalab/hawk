@@ -6,18 +6,19 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterator, cast
+from typing import TYPE_CHECKING, Iterator
 
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 
 from hawk.gui.elements import ABOUT_TEXT, Mission, page_header
+from hawk.home.label_utils import BoundingBox, LabelSample
 from hawk.mission_config import load_config
 
 if TYPE_CHECKING:
-    import pandas as pd
     from streamlit.delta_generator import DeltaGenerator
 
+start = time.time()
 page_header("Hawk Browser")
 
 ####
@@ -31,13 +32,11 @@ if st.session_state.mission is None:
             f"""\
 {ABOUT_TEXT}
 ### No Hawk mission selected
-Choose an existing mission from the "**Select Mission**" pulldown in the
-sidebar, or go to "**Mission Config**" to create and configure a new Hawk
-mission.
+Choose a mission from the "**Select Mission**" pulldown in the sidebar.
 """
         )
-        if st.button("Configure a new mission"):
-            st.switch_page("pages/1_Config.py")
+        # if st.button("Configure a new mission"):
+        #     st.switch_page("pages/1_Config.py")
         st.stop()
 else:
     banner.title("Hawk Mission Results")
@@ -45,12 +44,13 @@ else:
 
 
 mission = st.session_state.mission
+mission.resync()
 
-# classes, first one is expected to be the not-yet-labeled value
-# followed by the various classes in the mission
-CLASSES = ["?", "neg", "pos"]
+# classes, first one is expected to be the not-yet-labeled value, second is
+# negative, followed by the various classes in the mission
+mission_classes = ["pos"]
+CLASSES = ["?", "neg"] + mission_classes
 
-data = mission.get_data()
 # banner.write(data)
 
 
@@ -62,30 +62,42 @@ def update_labels(mission: Mission) -> None:
 
     def extract_label_from_state(index: int) -> int:
         class_ = st.session_state.get(index, "?")
-        return CLASSES.index(class_) - 1
+        return CLASSES.index(class_) - 2
 
-    data = mission.get_data()
-    pending = data[data.unlabeled].index.to_series().map(extract_label_from_state)
-    mission.save_new_labels(pending)
+    pending = []
+    for result in mission.unlabeled:
+        if result.objectId in mission.labeled:
+            continue
+
+        label = extract_label_from_state(result.index)
+        if label == -2:  # unlabeled
+            continue
+
+        if label == -1:  # negative
+            result.labels = []
+        else:
+            result.labels = [BoundingBox(label=label)]
+        pending.append(result)
+    mission.save_labeled(pending)
 
 
-def clear_labels() -> None:
+def clear_labels(mission: Mission) -> None:
     """clear pending (uncommitted) label values"""
-    data = st.session_state.mission.get_data()
-    for index in data.unlabeled[data.unlabeled].index:
-        st.session_state[index] = "?"
+    for result in mission.unlabeled:
+        if result.objectId not in mission.labeled:
+            st.session_state[result.index] = "?"
 
 
 col1, col2 = st.sidebar.columns(2)
 with col1:
     st.button("Submit Labels", on_click=update_labels, args=(mission,))
 with col2:
-    st.button("Clear Labels", on_click=clear_labels)
+    st.button("Clear Labels", on_click=clear_labels, args=(mission,))
 
 statistics = st.sidebar.empty()
 
 
-def update_statistics(mission: Mission, data: pd.DataFrame) -> bool:
+def update_statistics(mission: Mission) -> bool:
     # read scout stats from logs/mission-stats.json
     stats = mission.get_stats()
     time_elapsed = int(stats.get("home_time", 0))
@@ -102,15 +114,14 @@ def update_statistics(mission: Mission, data: pd.DataFrame) -> bool:
         mission_state = "Running"
 
     # compute home stats from received and labeled samples
-    class_counts = data.imageLabel.value_counts()
-    total_labeled = class_counts.sum()
-    negative_labeled = cast(int, class_counts.get(0) or 0)
+    total_labeled = len(mission.labeled)
+    negative_labeled = sum(1 for labels in mission.labeled.values() if not labels)
     positive_labeled = total_labeled - negative_labeled
     positive_label_ratio = (
         int(100 * positive_labeled / total_labeled) if total_labeled else 0
     )
 
-    samples_received = len(data)
+    samples_received = len(mission.unlabeled)
     received_ratio = (
         int(100 * samples_received / samples_inferenced) if samples_inferenced else 0
     )
@@ -141,12 +152,17 @@ def update_statistics(mission: Mission, data: pd.DataFrame) -> bool:
 ####
 # to minimize flickering when rerunning the script we update the sidebar
 # before we render results.
-if update_statistics(mission, data):
+if update_statistics(mission):
     st_autorefresh(interval=2000, key="refresh")
 
 # sync session_state to persisted (on-disk) labels
-for label in data.loc[:, ["imageLabel"]].dropna().itertuples():
-    st.session_state[label.Index] = CLASSES[label.imageLabel + 1]
+for result in mission.unlabeled:
+    if result.objectId not in mission.labeled:
+        continue
+
+    labels = mission.labeled[result.objectId]
+    label = -1 if not labels else 0
+    st.session_state[result.index] = CLASSES[label + 2]
 
 
 ####
@@ -166,18 +182,17 @@ def columns(ncols: int) -> Iterator[DeltaGenerator]:
 column = columns(st.session_state.columns)
 
 
-def display_radar_images(data: pd.DataFrame) -> None:
-    unlabeled = data["unlabeled"]
-    if not st.session_state.show_labeled:
-        data = data[unlabeled]
-    for row in data.itertuples():
-        index = cast(int, row.Index)
-        unlabeled = row.unlabeled
-        objectid = row.objectId
-        base = objectid.split("/")[-1].split(".")[0] + "_left.jpg"
+def display_radar_images(results: list[LabelSample]) -> None:
+    exclude = mission.labeled if not st.session_state.show_labeled else set()
+
+    for index, result in enumerate(mission.unlabeled, start=1):
+        if result.objectId in exclude:
+            continue
+
+        base = Path(result.objectId).stem
         image = Path(mission.image_dir, f"{index:06}.jpeg")
         stereo_image = Path(
-            "/media/eric/Drive2/RADAR_DETECTION/train/stereo_left/", f"{base}"
+            "/media/eric/Drive2/RADAR_DETECTION/train/stereo_left/", f"{base}_left.jpg"
         )  # stereo image for radar missions, if stereo image.exists(), etc.
         with next(column):  # make a 1x2 container?
             col1, col2 = st.columns(2)
@@ -205,19 +220,19 @@ def display_radar_images(data: pd.DataFrame) -> None:
                 "classification",
                 key=index,
                 options=CLASSES,
-                disabled=not unlabeled,
+                disabled=result.objectId in mission.labeled,
                 label_visibility="collapsed",
                 horizontal=st.session_state.columns <= 4,
             )
 
 
-def display_images(data: pd.DataFrame) -> None:
-    unlabeled = data["unlabeled"]
-    if not st.session_state.show_labeled:
-        data = data[unlabeled]
+def display_images(mission: Mission) -> None:
+    exclude = mission.labeled if not st.session_state.show_labeled else set()
 
-    for idx, unlabeled in data["unlabeled"].items():
-        index = cast(int, idx)
+    for index, result in enumerate(mission.unlabeled, start=1):
+        if result.objectId in exclude:
+            continue
+
         image = Path(mission.image_dir, f"{index:06}.jpeg")
         with next(column):
             st.image(str(image))
@@ -225,7 +240,7 @@ def display_images(data: pd.DataFrame) -> None:
                 "classification",
                 key=index,
                 options=CLASSES,
-                disabled=not unlabeled,
+                disabled=result.objectId in mission.labeled,
                 label_visibility="collapsed",
                 horizontal=st.session_state.columns <= 4,
             )
@@ -235,17 +250,9 @@ config_file = mission.log_file
 config = load_config(config_file)
 train_strategy = config["train_strategy"]["type"]
 if train_strategy == "dnn_classifier_radar":
-    display_radar_images(data)  # only for radar missions
+    display_radar_images(mission)  # only for radar missions
 else:
-    display_images(data)  # RGB default function call
+    display_images(mission)  # RGB default function call
 
-# rely on autorefresh
-# st.stop()
-
-# while update_statistics(mission, data):
-#    data_rows = data.index.size
-#    mission.mission_data.resync_unlabeled()
-#    new_results = mission.get_data().iloc[data_rows:]
-#    if not new_results.empty:
-#        display_images(new_results)
-#    time.sleep(1)
+elapsed = time.time() - start
+st.write(f"Time to render page {elapsed:.3f}s")

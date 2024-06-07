@@ -7,19 +7,22 @@ from __future__ import annotations
 import json
 import queue
 import threading
+import time
 from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
 
 import zmq
 from logzero import logger
-from prometheus_client import Gauge, Summary
+from prometheus_client import Gauge, Histogram, Summary
 
 from ..ports import H2C_PORT, S2H_PORT
 from ..proto.messages_pb2 import LabelWrapper, SendLabels, SendTiles
+from .label_utils import BoundingBox, LabelSample
 from .stats import (
     HAWK_LABELED_QUEUE_LENGTH,
     HAWK_UNLABELED_QUEUE_LENGTH,
+    HAWK_UNLABELED_QUEUE_TIME,
     HAWK_UNLABELED_RECEIVED,
 )
 
@@ -37,86 +40,31 @@ class Strategy(Enum):
 
 
 @dataclass
-class Result:
-    object_id: str
-    scout_index: int
-    score: float
-    data: bytes
-    inferred_boxes: list[tuple[float, float, float, float]]
-
-    def to_json(self, **kwargs: int | float | str) -> str:
-        return json.dumps(
-            dict(
-                objectId=self.object_id,
-                scoutIndex=self.scout_index,
-                score=self.score,
-                **kwargs,
-            ),
-            sort_keys=True,
-        )
+class UnlabeledResult(LabelSample):
+    score: float = 1.0
+    data: bytes = b""
 
     @classmethod
-    def from_msg(cls, msg: bytes) -> Result:
+    def from_msg(cls, msg: bytes) -> UnlabeledResult:
         request = SendTiles()
         request.ParseFromString(msg)
 
         if "boxes" in request.attributes.keys():
             bb_string = request.attributes["boxes"].decode()
-            bounding_boxes = json.loads(bb_string)
+            bounding_boxes = [
+                BoundingBox.from_yolo(line)
+                for line in json.loads(bb_string).splitlines()
+            ]
         else:
-            bounding_boxes = []
+            # classification case, scout thinks this could be a positive
+            bounding_boxes = [BoundingBox(label=0, score=request.score)]
 
         return cls(
-            object_id=request.objectId,
-            scout_index=request.scoutIndex,
+            objectId=request.objectId,
+            scoutIndex=request.scoutIndex,
             score=request.score,
+            labels=bounding_boxes,
             data=request.attributes["thumbnail.jpeg"],
-            inferred_boxes=bounding_boxes,
-        )
-
-
-@dataclass
-class Label:
-    object_id: str
-    scout_index: int
-    image_label: str
-    bounding_boxes: list[tuple[float, float, float, float, float]]
-    queued_time: float | None = None
-
-    def to_msg(self) -> bytes:
-        bboxes = [
-            f"{int(b[0])} {b[1]} {b[2]} {b[3]} {b[4]}"
-            for b in self.bounding_boxes or []
-        ]
-        label = LabelWrapper(
-            objectId=self.object_id,
-            scoutIndex=self.scout_index,
-            imageLabel=str(self.image_label),
-            boundingBoxes=bboxes,
-        )
-        return SendLabels(label=label).SerializeToString()
-
-    def to_json(self, **kwargs: int | float | str) -> str:
-        return json.dumps(
-            dict(
-                objectId=self.object_id,
-                scoutIndex=self.scout_index,
-                imageLabel=self.image_label,
-                boundingBoxes=self.bounding_boxes,
-                **kwargs,
-            ),
-            sort_keys=True,
-        )
-
-    @classmethod
-    def from_json(cls, json_data: str) -> Label:
-        data = json.loads(json_data)
-        return cls(
-            object_id=data["objectId"],
-            scout_index=data["scoutIndex"],
-            image_label=data["imageLabel"],
-            bounding_boxes=data["boundingBoxes"],
-            queued_time=data.get("queued_time"),
         )
 
 
@@ -150,9 +98,18 @@ class HomeToScoutWorker:
             self.labeled_queue_length.dec()
             h2c_socket.send(msg)
 
-    def put(self, label: Label) -> None:
+    def put(self, result: LabelSample) -> None:
         """Queue a label from any thread which will be sent to the scout."""
-        msg = label.to_msg()
+        imageLabel = "0" if not result.labels else "1"
+        bboxes = [bbox.to_yolo() for bbox in result.labels]
+        label = LabelWrapper(
+            objectId=result.objectId,
+            scoutIndex=result.scoutIndex,
+            imageLabel=imageLabel,
+            boundingBoxes=bboxes,
+        )
+        msg = SendLabels(label=label).SerializeToString()
+
         # update statistic first to avoid negative queue lengths when
         # the thread with queue.get and queue_length.dec gets to run first
         self.labeled_queue_length.inc()
@@ -170,13 +127,14 @@ class ScoutQueue:
     zmq_context: zmq.Context = field(  # type: ignore[type-arg]
         default_factory=zmq.Context, repr=False
     )
-    label_queue: queue.PriorityQueue[tuple[float, Result]] = field(
+    label_queue: queue.PriorityQueue[tuple[float, UnlabeledResult]] = field(
         default_factory=queue.PriorityQueue
     )
     to_scout: list[HomeToScoutWorker] = field(init=False)
 
     unlabeled_received: list[Summary] = field(init=False)
     unlabeled_queue_length: Gauge = field(init=False)
+    unlabeled_queue_time: Histogram = field(init=False)
 
     def __post_init__(self) -> None:
         self.to_scout = [
@@ -193,6 +151,9 @@ class ScoutQueue:
             for scout in self.scouts
         ]
         self.unlabeled_queue_length = HAWK_UNLABELED_QUEUE_LENGTH.labels(
+            mission=self.mission_id
+        )
+        self.unlabeled_queue_time = HAWK_UNLABELED_QUEUE_TIME.labels(
             mission=self.mission_id
         )
 
@@ -213,43 +174,41 @@ class ScoutQueue:
 
         while True:
             msg = socket.recv()
-            result = Result.from_msg(msg)
+            result = UnlabeledResult.from_msg(msg)
 
-            self.unlabeled_received[result.scout_index].observe(len(msg))
+            self.unlabeled_received[result.scoutIndex].observe(len(msg))
 
             received += 1
-            received_from_scout.update([result.scout_index])
+            received_from_scout.update([result.scoutIndex])
             logger.debug(
-                f"Received {result.scout_index} {result.object_id} {result.score}"
+                f"Received {result.scoutIndex} {result.objectId} {result.score}"
             )
 
             if self.strategy in [Strategy.SCORE, Strategy.TOP]:
                 priority = -result.score
             elif self.strategy in [Strategy.FIFO_SCOUT, Strategy.ROUND_ROBIN]:
-                priority = received_from_scout[result.scout_index]
+                priority = received_from_scout[result.scoutIndex]
             else:  # self.strategy in [Strategy.FIFO_HOME, Strategy.FIFO]:
                 priority = received
 
             self.unlabeled_queue_length.inc()
             self.label_queue.put((priority, result))
 
-    def get(self) -> Result:
+    def get(self) -> UnlabeledResult:
         _, result = self.label_queue.get()
         self.unlabeled_queue_length.dec()
+        self.unlabeled_queue_time.observe(time.time() - result.queued)
         return result
 
     def task_done(self) -> None:
         self.label_queue.task_done()
 
-    def put(self, label: Label) -> None:
+    def put(self, result: LabelSample) -> None:
         """Queue a label to be sent back to the scout.
 
         Will be sent to the scout that sent the original result or the coordinator.
         """
-        scout_index = (
-            label.scout_index if self.coordinator is None else self.coordinator
-        )
-        logger.info(
-            f"Sending label {label.image_label} {scout_index} {label.object_id}"
-        )
-        self.to_scout[scout_index].put(label)
+        scout_index = self.coordinator if self.coordinator else result.scoutIndex
+        label = 0 if not result.labels else 1
+        logger.info(f"Sending label {label} {result.scoutIndex} {result.objectId}")
+        self.to_scout[scout_index].put(result)

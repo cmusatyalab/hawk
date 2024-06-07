@@ -9,17 +9,14 @@ import time
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Tuple, cast
+from typing import TYPE_CHECKING
 
-import pandas as pd
 from logzero import logger
 
-from hawk.home.label_utils import MissionResults
+from hawk.home.label_utils import BoundingBox, LabelSample, MissionResults
 
 if TYPE_CHECKING:
     from hawk.mission_config import MissionConfig
-
-BBoxes = List[Tuple[float, float, float, float, float]]
 
 
 @dataclass
@@ -43,62 +40,51 @@ class ScriptLabeler:
             0 for i in range(len(self.class_list))
         ]  ## for multiclass support
 
-    def classify_func(self, objectId: str) -> tuple[int, BBoxes]:
-        return (
-            int(objectId.split("/")[1]),
-            [],
-        )  ## returns the label regardless if 0, 1, 2 (handles multiclass)
+    def classify_func(self, objectId: str) -> list[BoundingBox]:
+        if objectId.startswith("/0/"):
+            return []
+        label = int(objectId.split("/", 2)[1])
+        return [BoundingBox(label=label)]
 
-    def detect_func(self, objectId: str) -> tuple[int, BBoxes]:
+    def detect_func(self, objectId: str) -> list[BoundingBox]:
         assert self.gt_path is not None
         gt_name = Path(objectId).with_suffix(".txt").name
         gt_file = self.gt_path / gt_name
         if not gt_file.exists():
-            return 0, []
+            return []
 
-        bounding_boxes = cast(
-            BBoxes,
-            [
-                tuple(float(c) for c in line.split(" ", 5))
-                for line in gt_file.read_text().splitlines()
-            ],
-        )
-        classes = [int(box[0]) for box in bounding_boxes]
-        labelClass = 1 if sum(classes) else 0
-        return labelClass, bounding_boxes
+        return [
+            BoundingBox.from_yolo(line) for line in gt_file.read_text().splitlines()
+        ]
 
     def run(self) -> None:
-        self.mission_data = MissionResults(self.mission_dir, sync_labels=True)
+        self.mission_data = MissionResults(self.mission_dir)
         with suppress(KeyboardInterrupt):
             logger.debug("Waiting for data to label")
-            for new_data in self.mission_data:
-                new_data = new_data[new_data.imageLabel.isna()]
-                logger.debug(f"Received {new_data.index.size} results to label")
-                self.label_data(new_data)
+            for result in self.mission_data.read_unlabeled(tail=True):
+                logger.debug("Received new results to label")
+                self.label_data(result)
+                time.sleep(self.label_time)
 
-    def label_data(self, data: pd.DataFrame) -> None:
-        for index, objectId in data.objectId.items():
-            imageLabel, boundingBoxes = self.labeling_func(objectId)
+    def label_data(self, result: LabelSample) -> None:
+        result.labels = self.labeling_func(result.objectId)
 
-            new_label = pd.Series([imageLabel], index=[index], dtype=int)
-            new_bboxes = pd.Series([boundingBoxes], index=[index])
-
-            time.sleep(self.label_time)
-
-            if imageLabel:
-                self.positives += 1
+        labels = list({bbox.label for bbox in result.labels})
+        if labels:
+            self.positives += 1
+            for imageLabel in labels:
                 self.class_counter[imageLabel] += 1
+        else:
+            self.negatives += 1
+            self.class_counter[0] += 1
 
-            else:
-                self.negatives += 1
-                self.class_counter[0] += 1
+        logger.info(
+            f"Labeling {result.index:06} {labels} {result.objectId}, "
+            f"(Pos, Neg): ({self.positives}, {self.negatives})"
+        )
+        logger.info(f"By class: ({self.class_list}, {self.class_counter})")
 
-            logger.info(
-                f"Labeling {index:06} {imageLabel} {objectId}, "
-                f"(Pos, Neg): ({self.positives}, {self.negatives})"
-            )
-            logger.info(f"By class: ({self.class_list}, {self.class_counter})")
-            self.mission_data.save_new_labels(new_label, new_bboxes)
+        self.mission_data.save_labeled([result])
 
     @classmethod
     def from_mission_config(
@@ -138,12 +124,15 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--label-time", type=float, default=1.0)
     parser.add_argument("--detect", action="store_true")
+    parser.add_argument("--label-class", action="append")
     parser.add_argument("--gt-path", type=Path)
     parser.add_argument("mission_directory", type=Path, nargs="?", default=".")
     args = parser.parse_args()
 
+    class_list = ["negative"] + (args.label_class or ["positive"])
+
     ScriptLabeler(
-        args.mission_directory, args.label_time, args.detect, args.gt_path
+        args.mission_directory, class_list, args.label_time, args.detect, args.gt_path
     ).run()
     return 0
 

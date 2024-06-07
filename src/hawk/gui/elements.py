@@ -8,14 +8,11 @@ import argparse
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import streamlit as st
 
 from hawk.home.label_utils import MissionResults
-
-if TYPE_CHECKING:
-    import pandas as pd
 
 ABOUT_TEXT = """\
 Hawk is a live learning system that leverages distributed machine learning,
@@ -33,41 +30,29 @@ SCOUT_MISSION_DIR = Path("hawk-missions")
 
 
 @dataclass
-class Mission:
-    result_dir: Path
-
+class Mission(MissionResults):
     @classmethod
     def list(cls) -> list[Mission]:
         return [cls(mission) for mission in sorted(HOME_MISSION_DIR.iterdir())]
 
     @property
     def name(self) -> str:
-        return self.result_dir.name
+        return Path(self.mission_dir).name
 
     @property
     def image_dir(self) -> Path:
-        return self.result_dir / "images"
+        return Path(self.mission_dir, "images")
 
     @property
     def log_file(self) -> Path:
-        return self.result_dir / "logs" / "hawk.yml"
+        return Path(self.mission_dir, "logs", "hawk.yml")
 
-    def save_new_labels(self, new_labels: pd.Series[int]) -> None:
-        mission_data = MissionResults(self.result_dir, sync_labels=True)
-        mission_data.save_new_labels(new_labels)
-
-    def get_data(self) -> pd.DataFrame:
-        mission_data = MissionResults(self.result_dir, sync_labels=True)
-        mission_data.resync()
-        return mission_data.df.pipe(self._augment_data)
-
-    @staticmethod
-    def _augment_data(data: pd.DataFrame) -> pd.DataFrame:
-        data["unlabeled"] = data.imageLabel.isna()
-        return data
+    @property
+    def stats_file(self) -> Path:
+        return Path(self.mission_dir, "logs", "mission-stats.json")
 
     def get_stats(self) -> dict[str, Any]:
-        filepath = self.result_dir.joinpath("logs", "mission-stats.json")
+        filepath = self.stats_file
         if not filepath.exists():
             return {}
 
