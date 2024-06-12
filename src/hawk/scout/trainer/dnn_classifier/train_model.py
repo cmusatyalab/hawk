@@ -699,7 +699,7 @@ def validate_model(
             # measure elapsed time
             batch_time.update(time.time() - end)
             end = time.time()
-    
+
     auc = calculate_performance(y_true, y_pred)
 
     return auc

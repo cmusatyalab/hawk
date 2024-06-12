@@ -12,6 +12,7 @@ class MLClass:
     def __repr__(self):
         return f"MLClass(name={self.name}, label={self.label}, total_samples={self.total_samples})"
 
+
 class MLClassManager:
     def __init__(self):
         self.classes = {}
@@ -41,15 +42,19 @@ class MLClassManager:
 
     def get_total_samples(self):
         return sum(ml_class.total_samples for ml_class in self.classes.values())
-    
+
     def get_total_positives(self):
-        return sum(ml_class.total_samples for ml_class in self.classes.values() if ml_class.label > 0)
+        return sum(
+            ml_class.total_samples
+            for ml_class in self.classes.values()
+            if ml_class.label > 0
+        )
 
     def __repr__(self):
         return f"MLClassManager(classes={list(self.classes.values())})"
-    
 
-'''
+
+"""
 # Example usage
 manager = MLClassManager()
 manager.add_class("Negatives", 0)
@@ -74,4 +79,4 @@ print(f"Total samples across all classes: {total_samples}")  # Output: Total sam
 
 total_positive_samples = manager.get_total_positives()
 print(f"Total positive samples: {total_positive_samples}")  # Output: Total positives samples across all classes: 500
-'''
+"""

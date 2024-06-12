@@ -312,7 +312,9 @@ class DNNClassifierModel(ModelBase):
                     )  ## modify this for multiclass oracle
                 result_object.attributes.add({"score": str.encode(str(score))})
                 results.append(
-                    ResultProvider(result_object, sum(score[1:]), self.version) ## score for priority queue is sum of all positive classes
+                    ResultProvider(
+                        result_object, sum(score[1:]), self.version
+                    )  ## score for priority queue is sum of all positive classes
                 )
         return results
 
