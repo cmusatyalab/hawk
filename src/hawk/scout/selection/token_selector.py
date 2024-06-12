@@ -50,7 +50,6 @@ class TokenSelector(TopKSelector):
             result = self._priority_queues.get()[-1]
             self.priority_queue_length.dec()
 
-        logger.info(f"New priority queue size is {self._priority_queues.qsize()}")
         self.result_queue_length.inc()
         self.result_queue.put(result)
 

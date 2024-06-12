@@ -29,6 +29,7 @@ message ScoutConfiguration {
   bytes bootstrapZip = 13;
   map<int32, string> bandwidthFunc = 14;
   bool validate = 15;
+  repeated string class_list = 16;
 }
 
 message MissionStats {

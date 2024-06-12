@@ -97,7 +97,9 @@ class DNNClassifierModel(ModelBase):
         return content.getvalue()
 
     def load_model(self, model_path: Path) -> torch.nn.Module:
-        model = self.initialize_model(self._arch)
+        model = self.initialize_model(
+            self._arch, num_classes=len(self.context.class_manager.classes)
+        )
         checkpoint = torch.load(model_path)
         model.load_state_dict(checkpoint["state_dict"])
         return model
@@ -157,9 +159,12 @@ class DNNClassifierModel(ModelBase):
         with torch.no_grad():
             inputs = inputs.to(self._device)
             output = self._model(inputs)
-
             probability: torch.Tensor = torch.softmax(output, dim=1)
-            predictions: Sequence[float] = probability.cpu().numpy()[:, 1]
+            predictions: Sequence[
+                Sequence[float]
+            ] = (
+                probability.cpu().numpy()
+            )  # [:, 1]  ## changed this to output multi-class vector
             return predictions
 
     @log_exceptions
@@ -302,9 +307,13 @@ class DNNClassifierModel(ModelBase):
                 score = predictions[i]
                 result_object = batch[i][0]
                 if self._mode == "oracle":
-                    score = 0 if result_object.id.startswith("/0/") else 1
+                    score = (
+                        0 if result_object.id.startswith("/0/") else 1
+                    )  ## modify this for multiclass oracle
                 result_object.attributes.add({"score": str.encode(str(score))})
-                results.append(ResultProvider(result_object, score, self.version))
+                results.append(
+                    ResultProvider(result_object, sum(score[1:]), self.version) ## score for priority queue is sum of all positive classes
+                )
         return results
 
     def stop(self) -> None:

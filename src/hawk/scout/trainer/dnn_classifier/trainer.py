@@ -14,6 +14,7 @@ import torch
 from logzero import logger
 
 from ...context.model_trainer_context import ModelContext
+from ...core.class_manager import MLClassManager
 from ...core.model_trainer import ModelTrainerBase
 from .model import DNNClassifierModel
 
@@ -62,7 +63,9 @@ class DNNClassifierTrainer(ModelTrainerBase):
             self.args, path, version, mode=self.args["mode"], context=self.context
         )
 
-    def train_model(self, train_dir: Path) -> DNNClassifierModel:
+    def train_model(
+        self, train_dir: Path, class_manager: MLClassManager
+    ) -> DNNClassifierModel:
         # check mode if not hawk return model
         # EXPERIMENTAL
         if self.args["mode"] == "oracle":
@@ -84,7 +87,11 @@ class DNNClassifierTrainer(ModelTrainerBase):
         trainpath = self.context.model_path(new_version, template="train-{}.txt")
 
         # labels = [subdir.name for subdir in self._train_dir.iterdir()]
-        labels = ["0", "1"]
+        ## refence class manager here to determine labels
+        labels = class_manager.get_labels()
+        logger.info(f"List of labels in trainer: {labels}")
+        num_classes = len(labels)
+        # labels = ["0", "1"]
         train_samples = {
             label: list(train_dir.joinpath(label).glob("*")) for label in labels
         }
@@ -150,6 +157,8 @@ class DNNClassifierTrainer(ModelTrainerBase):
             str(num_epochs),
             "--batch-size",
             str(self.args["batch-size"]),
+            "--num-classes",
+            str(num_classes),
         ]
 
         if self.train_initial_model:

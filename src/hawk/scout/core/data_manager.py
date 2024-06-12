@@ -57,10 +57,12 @@ class DataManager:
         self._negatives = 0
         self.train_type = self._context.train_strategy
         self._radar_crop = False
-        logger.info(f"Training strategy: {self.train_type}")
+        # logger.info(f"Training strategy: {self.train_type}")
         if self.train_type.HasField("dnn_classifier_radar"):
             if self.train_type.dnn_classifier_radar.args["pick_patches"]:
                 self._radar_crop = True
+        logger.info(f"Class list: {self._context.class_list}")
+        logger.info(f"Class manager: {self._context.class_manager}")
 
     def get_example_directory(self, example_set: DatasetSplitValue) -> Path:
         return self._examples_dir / self._to_dir(example_set)
@@ -126,10 +128,10 @@ class DataManager:
 
     def distribute_label(self, label: LabelWrapper) -> None:
         scout_index = label.scoutIndex
-        if label.imageLabel == "0":
-            self._negatives += 1
-        else:
+        if int(label.imageLabel) > 0:
             self._positives += 1
+        else:
+            self._negatives += 1
 
         if scout_index != self._context.scout_index:
             # This code should not run as not using coordinator, all labels
@@ -188,6 +190,7 @@ class DataManager:
 
         image_extensions = (".png", ".jpeg", ".jpg", ".npy")
         labels = []
+        new_samples = [0 for i in range(len(self._context.class_manager.class_list))]
         with zipfile.ZipFile(io.BytesIO(zip_content), "r") as zf:
             example_files = zf.namelist()
             for filename in example_files:
@@ -196,12 +199,14 @@ class DataManager:
 
                 if basename.endswith(image_extensions) and name_is_integer(parent_name):
                     label = str(parent_name)
+                    new_samples[
+                        int(label)
+                    ] += 1  ## new method to track samples by class
                     content = zf.read(filename)
                     # logger.info(f"FILE NAME: {filename}")
                     if filename.split(".")[-1] == "npy":
                         example_file = get_example_key(content, extension=".npy")
                         self._is_npy = True
-                        # logger.info("CHANGED NPY TO TRUE")
                     else:
                         example_file = get_example_key(content)
                     if self._validate and (
@@ -249,10 +254,18 @@ class DataManager:
                             f.write(label_content)
 
                     labels.append(int(label))
+                    self._context.class_manager.add_samples(
+                        self._context.class_manager.label_name_dict[int(label)], 1
+                    )  ## add single sample to respective class
 
-        new_positives = sum(labels)
-        new_negatives = len(labels) - new_positives
-        logger.info(f" New positives {new_positives}  Negatives {new_negatives}")
+        # new_positives = sum(labels) ## need to adjust this here
+        new_positives = self._context.class_manager.get_total_positives()
+        # new_negatives = len(labels) - new_positives
+        new_negatives = self._context.class_manager.get_total_samples() - new_positives
+
+        logger.info(
+            f" New positives {new_positives}  Negatives {new_negatives}, Samples by class: {new_samples}"
+        )
 
         retrain = True
         if self._context.check_initial_model():
@@ -260,7 +273,9 @@ class DataManager:
         logger.info(
             f"Initial model {self._context.check_initial_model()} retrain {retrain}"
         )
-        self._context.new_labels_callback(new_positives, new_negatives, retrain=retrain)
+        self._context.new_labels_callback(
+            new_positives, new_negatives, new_samples, retrain=retrain
+        )
 
     @contextmanager
     def get_examples(self, example_set: DatasetSplitValue) -> Iterator[Path]:
@@ -355,6 +370,9 @@ class DataManager:
 
                 new_positives = 0
                 new_negatives = 0
+                new_samples = [
+                    0 for i in range(len(self._context.class_manager.class_list))
+                ]
                 with self._examples_lock:
                     set_dirs = {}
                     for example_set in [DatasetSplit.TRAIN, DatasetSplit.TEST]:
@@ -381,11 +399,17 @@ class DataManager:
                                 (
                                     dir_positives,
                                     dir_negatives,
+                                    dir_samples,
                                 ) = self._promote_staging_examples_dir(file, set_dirs)
                                 new_positives += dir_positives
                                 new_negatives += dir_negatives
+                                new_samples = [
+                                    sum(x) for x in zip(new_samples, dir_samples)
+                                ]
                 if not self._context._abort_event.is_set():
-                    self._context.new_labels_callback(new_positives, new_negatives)
+                    self._context.new_labels_callback(
+                        new_positives, new_negatives, new_samples
+                    )
 
             except Exception as e:
                 logger.exception(e)
@@ -398,9 +422,10 @@ class DataManager:
             or subdir.name == self._to_dir(DatasetSplit.TEST)
             or subdir.name == "unspecified"
         )
-
+        new_samples = [0 for i in range(len(self._context.class_manager.class_list))]
         new_positives = 0
         new_negatives = 0
+        ### create simple list here of length num classes, which is reset to zero each time
 
         for label in subdir.iterdir():
             example_files = list(label.iterdir())
@@ -410,6 +435,8 @@ class DataManager:
                 pass
             else:
                 new_negatives += len(example_files)
+            if not label.name == "labels":
+                new_samples[int(label.name)] += 1  ## new manner to track samples
 
             for example_file in example_files:
                 for example_set in set_dirs:
@@ -438,7 +465,7 @@ class DataManager:
                 example_dir.mkdir(parents=True, exist_ok=True)
                 example_path = example_dir / example_file.name
                 example_file.rename(example_path)
-        return new_positives, new_negatives
+        return new_positives, new_negatives, new_samples
 
     def _get_example_count(self, example_set: DatasetSplitValue, label: str) -> int:
         return self._example_counts[f"{DatasetSplit.Name(example_set)}_{label}"]

@@ -5,6 +5,8 @@
 """Retrain policy based on percentage of #labels increment
 """
 
+from logzero import logger
+
 from .retrain_policy_base import RetrainPolicyBase
 
 
@@ -24,6 +26,9 @@ class PercentagePolicy(RetrainPolicyBase):
             self.new_examples += new_negatives
 
     def should_retrain(self) -> bool:
+        logger.info(
+            f"Testing retrain: {self.new_examples} >= 1.{self._threshold} * {self._previous_size} : {self.new_examples >= (1 + self._threshold) * self._previous_size}"
+        )
         return self.new_examples >= (1 + self._threshold) * self._previous_size
 
     def reset(self) -> None:

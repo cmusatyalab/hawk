@@ -216,6 +216,8 @@ class Admin:
             video_file_list = dataset_config["video_list"]
         logger.info("Index {}".format(dataset_config["index_path"]))
         timeout = dataset_config.get("timeout", 20)
+        cls_list = dataset_config.get("class_list", ["negative", "positive"])
+        logger.info(f"CLass list: {cls_list}")
 
         datasets = {}
         for index, _scout in enumerate(self.scouts):
@@ -382,6 +384,7 @@ class Admin:
                 bootstrapZip=bootstrap_zip,
                 bandwidthFunc=bandwidth_func,
                 validate=train_validate,
+                class_list=cls_list,
             )
             msg = [
                 b"a2s_configure_scout",

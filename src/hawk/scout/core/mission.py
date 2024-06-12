@@ -38,6 +38,7 @@ from ..retrieval.retriever import Retriever
 from ..selection.selector_base import Selector
 from ..selection.token_selector import TokenSelector
 from ..stats import collect_metrics_total
+from .class_manager import MLClassManager
 from .data_manager import DataManager
 from .hawk_stub import HawkStub
 from .model import Model
@@ -63,6 +64,7 @@ class Mission(DataManagerContext, ModelContext):
         bootstrap_zip: bytes,
         initial_model: ModelArchive,
         train_strategy: TrainConfig,
+        class_list: list[str],
         validate: bool = False,
     ):
         super().__init__()
@@ -102,6 +104,7 @@ class Mission(DataManagerContext, ModelContext):
 
         self.initial_model = initial_model
         self._validate = validate
+        self.class_list = class_list
 
         # Indicates that the mission will seed the strategy with an initial set
         # of examples. The strategy should therefore hold off on returning
@@ -121,7 +124,15 @@ class Mission(DataManagerContext, ModelContext):
         self._results_condition = mp.Condition()
 
         self._abort_event = threading.Event()
+        logger.info(f"Class list in mission: {self.class_list}")
+        logger.info("Creating Class manager and class objects:")
+        self.class_manager = MLClassManager()
+        label_counter = 0  ## 0, 1, 2, ... starting with negative
+        for cls in self.class_list:
+            self.class_manager.add_class(cls, label_counter)
+            label_counter += 1
 
+        ## create class objects here.
         self._data_manager = DataManager(self)
         self.selector.add_context(self)
         self.retriever.add_context(self)
@@ -291,19 +302,24 @@ class Mission(DataManagerContext, ModelContext):
         return self._validate
 
     def new_labels_callback(
-        self, new_positives: int, new_negatives: int, retrain: bool = True
+        self,
+        new_positives: int,
+        new_negatives: int,
+        new_samples: list[int],
+        retrain: bool = True,
     ) -> None:
         if self._abort_event.is_set():
             return
         logger.info(
             "New labels call back has been called... "
-            f"positives: {new_positives}, negatives: {new_negatives}"
+            f"positives: {new_positives}, negatives: {new_negatives}, samples by class: {new_samples}"
         )
         end_t = time.time()
 
         if retrain:
             self.positives += new_positives
             self.negatives += new_negatives
+            ## add new samples list for multiclass, if necessary
 
         # add line here to only call the function below if the retrain policy
         # is not the sample interval policy or simply use an if statement and
@@ -437,7 +453,9 @@ class Mission(DataManagerContext, ModelContext):
 
             while not self._abort_event.is_set():
                 result = self._model.get_results()
+                # logger.info("Got result from model...")
                 items_processed = self.selector.add_result(result)
+                # logger.info("Just added result to selector queue...")
                 if (
                     isinstance(self.selector, TokenSelector)
                     and self.retriever.total_tiles == items_processed
@@ -547,7 +565,7 @@ class Mission(DataManagerContext, ModelContext):
             DatasetSplit.TRAIN
         ) as train_dir:  # important
             logger.info(f"Train dir {train_dir}")
-            model = self.trainer.train_model(train_dir)
+            model = self.trainer.train_model(train_dir, self.class_manager)
 
         eval_start = time.time()
         logger.info(f"Trained model in {eval_start - train_start:.3f} seconds")

@@ -229,6 +229,7 @@ class A2SAPI:
 
         # Setting up Mission with config params
         logger.info("Start setting up mission")
+        logger.info(f"Class list: {request.class_list}")
         mission = Mission(
             mission_id,
             request.scoutIndex,
@@ -242,6 +243,7 @@ class A2SAPI:
             request.bootstrapZip,
             request.initialModel,
             request.trainStrategy,
+            request.class_list,
             request.validate,
             # add base model field for radar missions
             # add request.train_strategy here to be able to pass to data manager.
