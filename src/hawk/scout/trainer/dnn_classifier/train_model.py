@@ -31,6 +31,7 @@ from sklearn.metrics import (
     precision_recall_curve,
     roc_auc_score,
 )
+from sklearn.preprocessing import label_binarize
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
 
@@ -254,7 +255,7 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
         print(f"Use GPU: {args.gpu} for training")
 
     print(f"=> using pre-trained model '{args.arch}'")
-    model = models.__dict__[args.arch](pretrained=True)
+    model = models.__dict__[args.arch](weights="ResNet50_Weights.DEFAULT")
     model, input_size = initialize_model(args.arch, args.num_classes, args.num_unfreeze)
 
     if not torch.cuda.is_available():
@@ -346,6 +347,7 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
     class_sample_count = torch.tensor(
         [(targets == t).sum() for t in torch.unique(targets, sorted=True)]
     )
+    logger.info(f"Class sample count: {class_sample_count}")
     total_samples = sum(class_sample_count)
     class_weights = [1 - (float(x) / float(total_samples)) for x in class_sample_count]
     # class_weight_neg = class_weights[0]/2
@@ -492,8 +494,9 @@ def set_parameter_requires_grad(model: nn.Module, unfreeze: int = 0) -> None:
             for param in child.parameters():
                 param.requires_grad = False
         else:
-            print("COunt:", count)
-            print("The following layer will be retrained:\n", child)
+            pass
+            # print("COunt:", count)
+            # print("The following layer will be retrained:\n", child)
 
 
 def initialize_model(
@@ -562,6 +565,7 @@ def initialize_model(
     else:
         print("Invalid model name, exiting...")
         exit()
+    logger.info(f"Number of classes: {num_classes}")
 
     return model_ft, input_size
 
@@ -625,14 +629,27 @@ def adjust_learning_rate(
     scheduler.step()
 
 
-def calculate_performance(y_true: Sequence[int], y_pred: Sequence[float]) -> float:
-    ap: float = average_precision_score(y_true, y_pred, average=None)
-    roc_auc = roc_auc_score(y_true, y_pred)
-    precision, recall, _ = precision_recall_curve(y_true, y_pred)
-    pr_auc = auc(recall, precision)
+def calculate_performance(
+    y_true: Sequence[Sequence[int]], y_pred: Sequence[Sequence[float]]
+) -> float:
+    if len(y_pred[0]) > 2:
+        y_true_bin = label_binarize(y_true, classes=list(range(len(y_pred[0]))))
+        ap_by_class: Sequence[float] = average_precision_score(
+            y_true_bin, y_pred, average=None
+        )
+        ap: float = sum(ap_by_class[1:]) / len(ap_by_class[1:])
+        logger.info(f" AP by class: {ap_by_class}")
+    else:
+        ap: float = average_precision_score(
+            y_true, np.array(y_pred)[:, 1], average=None
+        )
+    # roc_auc = roc_auc_score(y_true, y_pred)
+    # precision, recall, _ = precision_recall_curve(y_true, y_pred)
+    # pr_auc = auc(recall, precision)
+
     logger.info(f"AUC {ap}")
-    logger.info(f"ROC AUC {roc_auc}")
-    logger.info(f"PR AUC {pr_auc}")
+    # logger.info(f"ROC AUC {roc_auc}")
+    # logger.info(f"PR AUC {pr_auc}")
     return ap
 
 
@@ -664,9 +681,11 @@ def validate_model(
             loss = criterion(output, target)
 
             probability = torch.nn.functional.softmax(output, dim=1)
+            # logger.info(f"Prob: {probability}")
             probability = np.squeeze(probability.cpu().numpy())
             try:
-                probability = probability[:, 1]
+                # probability = probability[:, 1:] ## retain
+                # logger.info(f"Probs: {probability}")
                 y_pred.extend(probability)
                 y_true.extend(target.cpu())
             except Exception:
@@ -680,7 +699,7 @@ def validate_model(
             # measure elapsed time
             batch_time.update(time.time() - end)
             end = time.time()
-
+    
     auc = calculate_performance(y_true, y_pred)
 
     return auc

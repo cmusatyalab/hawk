@@ -95,6 +95,7 @@ class TopKSelector(SelectorBase):
                     logger.info(f"[Result] Id {result.id} Score {result.score}")
 
             self.priority_queue_length.inc()
+            ## need adjustment here to account for different simple methods for prioritizing sample, by default is sum of all pos classes
             self._priority_queues.put((-result.score, time_result, result))
             self._batch_added += 1
 

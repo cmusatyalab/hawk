@@ -25,6 +25,7 @@ BBoxes = List[Tuple[float, float, float, float, float]]
 @dataclass
 class ScriptLabeler:
     mission_dir: Path
+    class_list: list
     label_time: float = 0.0
     detect: bool = False
     gt_path: Path | None = None
@@ -37,9 +38,15 @@ class ScriptLabeler:
             assert self.gt_path.exists(), "Ground Truth directory does not exist"
 
         self.labeling_func = self.classify_func if not self.detect else self.detect_func
+        self.class_counter = [
+            0 for i in range(len(self.class_list))
+        ]  ## for multiclass support
 
     def classify_func(self, objectId: str) -> tuple[int, BBoxes]:
-        return 0 if objectId.startswith("/0/") else 1, []
+        return (
+            int(objectId.split("/")[1]),
+            [],
+        )  ## returns the label regardless if 0, 1, 2 (handles multiclass)
 
     def detect_func(self, objectId: str) -> tuple[int, BBoxes]:
         assert self.gt_path is not None
@@ -76,15 +83,20 @@ class ScriptLabeler:
             new_bboxes = pd.Series([boundingBoxes], index=[index])
 
             time.sleep(self.label_time)
+
             if imageLabel:
                 self.positives += 1
+                self.class_counter[imageLabel] += 1
+
             else:
                 self.negatives += 1
+                self.class_counter[0] += 1
 
             logger.info(
                 f"Labeling {index:06} {imageLabel} {objectId}, "
                 f"(Pos, Neg): ({self.positives}, {self.negatives})"
             )
+            logger.info(f"By class: ({self.class_list}, {self.class_counter})")
             self.mission_data.save_new_labels(new_label, new_bboxes)
 
     @classmethod
@@ -110,9 +122,13 @@ class ScriptLabeler:
             label_mode = "detect"
 
         gt_dir = Path(config["home-params"].get("label_dir", ""))
-        logger.info(f"GT DIR: {gt_dir}, {type(gt_dir)}")
+        # logger.info(f"GT DIR: {gt_dir}, {type(gt_dir)}")
 
-        return cls(mission_dir, label_time, label_mode == "detect", gt_dir)
+        dataset = config.get("dataset", {})
+        class_list = dataset.get("class_list", ["positive", "negative"])
+        logger.info(f"Class list: {class_list}")
+
+        return cls(mission_dir, class_list, label_time, label_mode == "detect", gt_dir)
 
 
 def main() -> int:
