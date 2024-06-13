@@ -168,8 +168,12 @@ for result in mission.unlabeled:
 ####
 # Here we generate an infinite sequence of columns to put stuff into.
 if "columns" not in st.session_state:
-    st.session_state.columns = 4
+    st.session_state["columns"] = 4
+if "rows" not in st.session_state:
+    st.session_state["rows"] = 2
+
 st.sidebar.slider("columns", min_value=1, max_value=8, key="columns")
+st.sidebar.slider("rows", min_value=1, max_value=8, key="rows")
 st.sidebar.toggle("Show Labeled", key="show_labeled")
 
 
@@ -182,15 +186,64 @@ def columns(ncols: int) -> Iterator[DeltaGenerator]:
 column = columns(st.session_state.columns)
 
 
-def display_radar_images(results: list[LabelSample]) -> None:
+def paginate(result_list: list[LabelSample]) -> list[LabelSample]:
+    """Paginate a list of results"""
+    nresults = len(result_list)
+    current_page = int(st.query_params.get("page", 1))
+    results_per_page = st.session_state.rows * st.session_state.columns
+    pages = int((nresults + results_per_page - 1) / results_per_page)
+
+    page = max(1, min(pages, current_page))
+    if page != current_page:
+        st.query_params["page"] = str(page)
+
+    start = results_per_page * (page - 1)
+    end = start + results_per_page
+    return result_list[start:end]
+
+
+def display_pagination(nresults: int) -> None:
+    current_page = int(st.query_params.get("page", 1))
+    results_per_page = st.session_state.rows * st.session_state.columns
+    pages = int((nresults + results_per_page - 1) / results_per_page)
+
+    def goto_page(current_page: int, pages: int) -> None:
+        chosen_page = st.session_state.chosen_page
+        if chosen_page == "first":
+            chosen_page = 1
+        if chosen_page == "prev":
+            chosen_page = max(1, current_page - 1)
+        if chosen_page == "next":
+            chosen_page = min(pages, current_page + 1)
+        if chosen_page == "last":
+            chosen_page = pages
+        st.query_params["page"] = str(chosen_page)
+
+    options = (
+        ["first", "prev"]
+        + list(range(1, current_page)[-5:])
+        + [current_page]
+        + list(range(current_page + 1, pages + 1)[:5])
+        + ["next", "last"]
+    )
+    st.session_state["chosen_page"] = current_page
+    st.radio(
+        "Navigate to page",
+        options,
+        key="chosen_page",
+        horizontal=True,
+        on_change=goto_page,
+        args=(current_page, pages),
+    )
+
+
+def display_radar_images(mission: Mission) -> None:
     exclude = mission.labeled if not st.session_state.show_labeled else set()
+    results = [result for result in mission.unlabeled if result.objectId not in exclude]
 
-    for index, result in enumerate(mission.unlabeled, start=1):
-        if result.objectId in exclude:
-            continue
-
+    for result in paginate(results):
         base = Path(result.objectId).stem
-        image = Path(mission.image_dir, f"{index:06}.jpeg")
+        image = Path(mission.image_dir, f"{result.index:06}.jpeg")
         stereo_image = Path(
             "/media/eric/Drive2/RADAR_DETECTION/train/stereo_left/", f"{base}_left.jpg"
         )  # stereo image for radar missions, if stereo image.exists(), etc.
@@ -218,32 +271,32 @@ def display_radar_images(results: list[LabelSample]) -> None:
                 st.image(str(image))
             st.radio(
                 "classification",
-                key=index,
+                key=result.index,
                 options=CLASSES,
                 disabled=result.objectId in mission.labeled,
                 label_visibility="collapsed",
                 horizontal=st.session_state.columns <= 4,
             )
+    display_pagination(len(results))
 
 
 def display_images(mission: Mission) -> None:
     exclude = mission.labeled if not st.session_state.show_labeled else set()
+    results = [result for result in mission.unlabeled if result.objectId not in exclude]
 
-    for index, result in enumerate(mission.unlabeled, start=1):
-        if result.objectId in exclude:
-            continue
-
-        image = Path(mission.image_dir, f"{index:06}.jpeg")
+    for result in paginate(results):
+        image = Path(mission.image_dir, f"{result.index:06}.jpeg")
         with next(column):
             st.image(str(image))
             st.radio(
                 "classification",
-                key=index,
+                key=result.index,
                 options=CLASSES,
                 disabled=result.objectId in mission.labeled,
                 label_visibility="collapsed",
                 horizontal=st.session_state.columns <= 4,
             )
+    display_pagination(len(results))
 
 
 config_file = mission.log_file
