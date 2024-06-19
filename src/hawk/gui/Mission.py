@@ -219,6 +219,9 @@ def display_pagination(nresults: int) -> None:
             chosen_page = pages
         st.query_params["page"] = str(chosen_page)
 
+    if pages <= 1:
+        return
+
     options = (
         ["first", "prev"]
         + list(range(1, current_page)[-5:])
