@@ -126,6 +126,7 @@ message Dataset {
     FileDataset tile = 3; // tile sampling
     FileDataset scope = 4; // scopecookie
     Streaming_Video video = 5; // ingest video stream
+    NetworkDataset network = 6;
   }
 }
 
@@ -138,10 +139,13 @@ message FileDataset {
 }
 
 message NetworkDataset {
-  string dataSourceAddr = 1; // host address of data server
-  int32 dataSourcePort = 2; // port of data server
-  double retrievalRate = 3; // requested samples per second
+  string dataPath = 1;
+  int32 tileSize = 2;
+  int32 numTiles = 3;
+  int32 timeout = 4;
   bool resizeTile = 5;
+  string dataServerAddr = 6; // host address of data server
+  int32 dataServerPort = 7; // port of data server
 }
 
 message Streaming_Video {

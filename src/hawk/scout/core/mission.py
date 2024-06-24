@@ -136,6 +136,8 @@ class Mission(DataManagerContext, ModelContext):
         self._data_manager = DataManager(self)
         self.selector.add_context(self)
         self.retriever.add_context(self)
+        self.retriever.scout_index = self._scout_index
+        
         self.object_count = 0
 
         self.stats_count = 0
@@ -453,24 +455,22 @@ class Mission(DataManagerContext, ModelContext):
 
             while not self._abort_event.is_set():
                 result = self._model.get_results()
-                # logger.info("Got result from model...")
                 items_processed = self.selector.add_result(result)
-                # logger.info("Just added result to selector queue...")
-                if (
-                    isinstance(self.selector, TokenSelector)
-                    and self.retriever.total_tiles == items_processed
-                ):
-                    self.selector.select_tiles(self.selector._k)
+                #if (
+                #    isinstance(self.selector, TokenSelector)
+                #    and self.retriever.total_tiles == items_processed
+                #):
+                #    self.selector.select_tiles(self.selector._k)  ## add final batch of samples for transmission once all tiles have been retrieved.
                 if items_processed > self.retriever.total_tiles - 200:
                     sent_to_model = self._model.get_request_count()
                     retrieved_objects = collect_metrics_total(
                         self.retriever.retrieved_objects
                     )
-                    logger.info(
-                        f"Items retrieved, {retrieved_objects}, "
-                        f"sent to model: {sent_to_model}, "
-                        f"total items processed: {items_processed}"
-                    )
+                    #logger.info(
+                    #    f"Items retrieved, {retrieved_objects}, "
+                    #    f"sent to model: {sent_to_model}, "
+                    #    f"total items processed: {items_processed}"
+                    #)
                 # if total number selected == total number of tiles, then
                 # call select_tiles one last time.
         except Exception as e:

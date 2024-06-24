@@ -26,6 +26,7 @@ from .video_parser import produce_video_frames
 class VideoRetriever(Retriever):
     def __init__(self, mission_id: str, dataset: Streaming_Video):
         super().__init__(mission_id)
+        self.network = False
         self._dataset = dataset
         self.timeout = 20
         self._start_time = time.time()

@@ -54,6 +54,7 @@ class TokenSelector(TopKSelector):
         self.result_queue.put(result)
 
     def _add_result(self, result: ResultProvider) -> None:
+        #logger.info("In Token add result...")
         assert self._mission is not None
         with self._insert_lock:
             self.sample_count += 1

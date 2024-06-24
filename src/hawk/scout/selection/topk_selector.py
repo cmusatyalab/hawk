@@ -76,6 +76,7 @@ class TopKSelector(SelectorBase):
 
     @log_exceptions
     def _add_result(self, result: ResultProvider) -> None:
+        logger.info("In TopK add result...")
         assert self._mission is not None
         with self._insert_lock:
             time_result = self._mission.mission_time()
@@ -106,6 +107,7 @@ class TopKSelector(SelectorBase):
             if self._batch_added >= self._batch_size or (
                 self._clear_event.is_set() and self._batch_added != 0
             ):
+                logger.info("Select tiles being called in add_result topk...")
                 self.select_tiles(self._k)
 
     @log_exceptions

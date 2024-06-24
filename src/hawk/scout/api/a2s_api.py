@@ -52,6 +52,7 @@ from ..retrain.retrain_policy_base import RetrainPolicyBase
 from ..retrain.sampleInterval_policy import SampleIntervalPolicy
 from ..retrieval.frame_retriever import FrameRetriever
 from ..retrieval.random_retriever import RandomRetriever
+from ..retrieval.network_retriever import NetworkRetriever
 from ..retrieval.retriever import Retriever
 from ..retrieval.tile_retriever import TileRetriever
 from ..retrieval.video_retriever import VideoRetriever
@@ -215,11 +216,11 @@ class A2SAPI:
 
         mission_id = MissionId(value=request.missionId)
         retrain_policy = self._get_retrain_policy(request.retrainPolicy, model_dir)
-        retriever = self._get_retriever(request.missionId, request.dataset)
         if request.retrainPolicy.HasField("sample"):
             assert isinstance(retrain_policy, SampleIntervalPolicy)
             retrain_policy.num_interval_sample(retriever.total_tiles)
         this_host = request.scouts[request.scoutIndex]
+        retriever = self._get_retriever(request.missionId, request.dataset, this_host)
         scouts = [HawkStub(scout, this_host) for scout in request.scouts]
 
         reexamination_strategy = self._get_reexamination_strategy(request.reexamination)
@@ -355,6 +356,7 @@ class A2SAPI:
         time_now = mission.mission_time()
         mission.log("SEARCH STATS (collecting...)")
 
+        logger.info("Before retriever get stats in a2s...")
         retriever_stats = mission.retriever.get_stats()
         selector_stats = mission.selector.get_stats()
 
@@ -563,7 +565,7 @@ class A2SAPI:
                 )
             )
 
-    def _get_retriever(self, mission_id: str, dataset: Dataset) -> Retriever:
+    def _get_retriever(self, mission_id: str, dataset: Dataset, this_host: str) -> Retriever:
         if dataset.HasField("tile"):
             return TileRetriever(mission_id, dataset.tile)
         elif dataset.HasField("frame"):
@@ -572,6 +574,8 @@ class A2SAPI:
             return RandomRetriever(mission_id, dataset.random)
         elif dataset.HasField("video"):
             return VideoRetriever(mission_id, dataset.video)
+        elif dataset.HasField("network"):
+            return NetworkRetriever(mission_id, dataset.network, this_host)
         else:
             raise NotImplementedError(
                 f"unknown dataset: {json_format.MessageToJson(dataset)}"

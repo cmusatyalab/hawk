@@ -27,6 +27,7 @@ from ..proto.messages_pb2 import (
     AbsolutePolicyConfig,
     Dataset,
     FileDataset,
+    NetworkDataset,
     MissionResults,
     MissionStats,
     ModelArchive,
@@ -236,6 +237,19 @@ class Admin:
                         timeout=timeout,
                     )
                 )
+            
+            elif dataset_type == "network":
+                network_config = dataset_config["network"]
+                dataset = Dataset(
+                    network=NetworkDataset(
+                        dataPath=dataset_config["index_path"],
+                        numTiles=int(dataset_config.get("tiles_per_frame", 200)),
+                        timeout=timeout,
+                        dataServerAddr=network_config["server_address"],
+                        dataServerPort=int(network_config["server_port"])
+                    )
+                )
+            
             elif dataset_type == "random" or dataset_type == "cookie":
                 dataset = Dataset(
                     random=FileDataset(
@@ -244,6 +258,7 @@ class Admin:
                         timeout=timeout,
                     )
                 )
+
             elif dataset_type == "video":
                 dataset = Dataset(
                     video=Streaming_Video(

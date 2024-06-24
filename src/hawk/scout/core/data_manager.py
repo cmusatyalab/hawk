@@ -426,7 +426,6 @@ class DataManager:
         new_positives = 0
         new_negatives = 0
         ### create simple list here of length num classes, which is reset to zero each time
-
         for label in subdir.iterdir():
             example_files = list(label.iterdir())
             if label.name == "1":
@@ -436,8 +435,7 @@ class DataManager:
             else:
                 new_negatives += len(example_files)
             if not label.name == "labels":
-                new_samples[int(label.name)] += 1  ## new manner to track samples
-
+                new_samples[int(label.name)] += len(example_files)  ## new manner to track samples
             for example_file in example_files:
                 for example_set in set_dirs:
                     old_path = self._remove_old_paths(

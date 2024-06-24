@@ -26,9 +26,9 @@ class PercentagePolicy(RetrainPolicyBase):
             self.new_examples += new_negatives
 
     def should_retrain(self) -> bool:
-        logger.info(
-            f"Testing retrain: {self.new_examples} >= 1.{self._threshold} * {self._previous_size} : {self.new_examples >= (1 + self._threshold) * self._previous_size}"
-        )
+        #logger.info(
+        #    f"Testing retrain: {self.new_examples} >= 1.{self._threshold} * {self._previous_size} : {self.new_examples >= (1 + self._threshold) * self._previous_size}"
+        #)
         return self.new_examples >= (1 + self._threshold) * self._previous_size
 
     def reset(self) -> None:

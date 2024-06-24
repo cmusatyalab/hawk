@@ -22,7 +22,7 @@ from .retriever import Retriever
 class RandomRetriever(Retriever):
     def __init__(self, mission_id: str, dataset: FileDataset):
         super().__init__(mission_id)
-
+        self.network = False
         self._dataset = dataset
         self._timeout = dataset.timeout
         self._resize = dataset.resizeTile

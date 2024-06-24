@@ -9,6 +9,7 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
+from logzero import logger
 
 from ...proto.messages_pb2 import HawkObject
 from ..context.data_manager_context import DataManagerContext
@@ -92,7 +93,11 @@ class Retriever(RetrieverBase):
             self._start_time = time.time()
 
         self._start_event.set()
-        threading.Thread(target=self.stream_objects, name="stream").start()
+        if self.network and self._network_server_host == self.this_host_name:
+            logger.info("Starting server thread in retriever...")
+            threading.Thread(target=self.server, name="network_server").start() ## launch server thread.
+        else:
+            threading.Thread(target=self.stream_objects, name="stream").start() ## start default thread for all retrievers and network clients
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -109,6 +114,10 @@ class Retriever(RetrieverBase):
         while self._context is None:
             self._context_event.wait()
         self._start_time = time.time()
+    
+    def server(self) -> None:
+        ## placeholder for server in network retriever
+        pass
 
     def set_tile_attributes(self, object_id: str, label: str) -> Dict[str, bytes]:
         attributes = {
