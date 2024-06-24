@@ -11,8 +11,8 @@ deploy:
       port: 22
       ##deployment_time: jknlnk
       ##model_version: 1
-    
-    
+
+
     - host: transvaal.diamond.cs.cmu.edu
       user: hawk
   scout_port: 7700
@@ -27,12 +27,12 @@ deploy:
 ## global policy for each type
 ## global start time: 300
 ##start on model 3
-### 
+###
 #  default_deploy_scout:
 #    start_time: 0
 #    on_model: 0
 #    mission_duration_percentage: 0
-#  default_deploy_home: 
+#  default_deploy_home:
 #    min_num_scout_destroyed: 0
 #    min_num_scouts_remaining: 0
 #  per_scout_override:

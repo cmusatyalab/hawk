@@ -51,8 +51,8 @@ from ..retrain.percentage_policy import PercentagePolicy
 from ..retrain.retrain_policy_base import RetrainPolicyBase
 from ..retrain.sampleInterval_policy import SampleIntervalPolicy
 from ..retrieval.frame_retriever import FrameRetriever
-from ..retrieval.random_retriever import RandomRetriever
 from ..retrieval.network_retriever import NetworkRetriever
+from ..retrieval.random_retriever import RandomRetriever
 from ..retrieval.retriever import Retriever
 from ..retrieval.tile_retriever import TileRetriever
 from ..retrieval.video_retriever import VideoRetriever
@@ -215,13 +215,16 @@ class A2SAPI:
         model_dir = root_dir / request.missionId / "model"
 
         mission_id = MissionId(value=request.missionId)
+
+        this_host = request.scouts[request.scoutIndex]
+        scouts = [HawkStub(scout, this_host) for scout in request.scouts]
+
+        retriever = self._get_retriever(request.missionId, request.dataset, this_host)
+
         retrain_policy = self._get_retrain_policy(request.retrainPolicy, model_dir)
         if request.retrainPolicy.HasField("sample"):
             assert isinstance(retrain_policy, SampleIntervalPolicy)
             retrain_policy.num_interval_sample(retriever.total_tiles)
-        this_host = request.scouts[request.scoutIndex]
-        retriever = self._get_retriever(request.missionId, request.dataset, this_host)
-        scouts = [HawkStub(scout, this_host) for scout in request.scouts]
 
         reexamination_strategy = self._get_reexamination_strategy(request.reexamination)
         selector = self._get_selector(
@@ -565,7 +568,9 @@ class A2SAPI:
                 )
             )
 
-    def _get_retriever(self, mission_id: str, dataset: Dataset, this_host: str) -> Retriever:
+    def _get_retriever(
+        self, mission_id: str, dataset: Dataset, this_host: str
+    ) -> Retriever:
         if dataset.HasField("tile"):
             return TileRetriever(mission_id, dataset.tile)
         elif dataset.HasField("frame"):

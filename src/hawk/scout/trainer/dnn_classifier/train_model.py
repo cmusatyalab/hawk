@@ -25,11 +25,8 @@ import torch.utils.data.distributed
 import torchvision.models as models
 import torchvision.transforms as transforms
 from logzero import logger
-from sklearn.metrics import (
-    auc,
+from sklearn.metrics import (  # auc, precision_recall_curve, roc_auc_score,
     average_precision_score,
-    precision_recall_curve,
-    roc_auc_score,
 )
 from sklearn.preprocessing import label_binarize
 from torch.optim.lr_scheduler import StepLR

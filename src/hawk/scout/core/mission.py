@@ -37,7 +37,6 @@ from ..retrain.sampleInterval_policy import SampleIntervalPolicy
 from ..retrieval.retriever import Retriever
 from ..selection.selector_base import Selector
 from ..selection.token_selector import TokenSelector
-from ..stats import collect_metrics_total
 from .class_manager import MLClassManager
 from .data_manager import DataManager
 from .hawk_stub import HawkStub
@@ -137,7 +136,7 @@ class Mission(DataManagerContext, ModelContext):
         self.selector.add_context(self)
         self.retriever.add_context(self)
         self.retriever.scout_index = self._scout_index
-        
+
         self.object_count = 0
 
         self.stats_count = 0
@@ -314,7 +313,8 @@ class Mission(DataManagerContext, ModelContext):
             return
         logger.info(
             "New labels call back has been called... "
-            f"positives: {new_positives}, negatives: {new_negatives}, samples by class: {new_samples}"
+            f"positives: {new_positives}, negatives: {new_negatives}, "
+            f"samples by class: {new_samples}"
         )
         end_t = time.time()
 
@@ -455,22 +455,15 @@ class Mission(DataManagerContext, ModelContext):
 
             while not self._abort_event.is_set():
                 result = self._model.get_results()
-                items_processed = self.selector.add_result(result)
-                #if (
+                # items_processed = \
+                self.selector.add_result(result)
+                ## add final batch of samples for transmission once all tiles
+                ## have been retrieved.
+                # if (
                 #    isinstance(self.selector, TokenSelector)
                 #    and self.retriever.total_tiles == items_processed
-                #):
-                #    self.selector.select_tiles(self.selector._k)  ## add final batch of samples for transmission once all tiles have been retrieved.
-                if items_processed > self.retriever.total_tiles - 200:
-                    sent_to_model = self._model.get_request_count()
-                    retrieved_objects = collect_metrics_total(
-                        self.retriever.retrieved_objects
-                    )
-                    #logger.info(
-                    #    f"Items retrieved, {retrieved_objects}, "
-                    #    f"sent to model: {sent_to_model}, "
-                    #    f"total items processed: {items_processed}"
-                    #)
+                # ):
+                #    self.selector.select_tiles(self.selector._k)
                 # if total number selected == total number of tiles, then
                 # call select_tiles one last time.
         except Exception as e:

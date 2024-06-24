@@ -264,7 +264,8 @@ class DataManager:
         new_negatives = self._context.class_manager.get_total_samples() - new_positives
 
         logger.info(
-            f" New positives {new_positives}  Negatives {new_negatives}, Samples by class: {new_samples}"
+            f" New positives {new_positives}  Negatives {new_negatives}, "
+            f"Samples by class: {new_samples}"
         )
 
         retrain = True
@@ -425,7 +426,7 @@ class DataManager:
         new_samples = [0 for i in range(len(self._context.class_manager.class_list))]
         new_positives = 0
         new_negatives = 0
-        ### create simple list here of length num classes, which is reset to zero each time
+        ### create simple list of length num classes, which is reset to zero each time
         for label in subdir.iterdir():
             example_files = list(label.iterdir())
             if label.name == "1":
@@ -435,7 +436,9 @@ class DataManager:
             else:
                 new_negatives += len(example_files)
             if not label.name == "labels":
-                new_samples[int(label.name)] += len(example_files)  ## new manner to track samples
+                new_samples[int(label.name)] += len(
+                    example_files
+                )  ## new manner to track samples
             for example_file in example_files:
                 for example_set in set_dirs:
                     old_path = self._remove_old_paths(

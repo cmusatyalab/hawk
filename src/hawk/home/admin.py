@@ -27,11 +27,11 @@ from ..proto.messages_pb2 import (
     AbsolutePolicyConfig,
     Dataset,
     FileDataset,
-    NetworkDataset,
     MissionResults,
     MissionStats,
     ModelArchive,
     ModelConfig,
+    NetworkDataset,
     PercentagePolicyConfig,
     ReexaminationStrategyConfig,
     RetrainPolicyConfig,
@@ -237,7 +237,7 @@ class Admin:
                         timeout=timeout,
                     )
                 )
-            
+
             elif dataset_type == "network":
                 network_config = dataset_config["network"]
                 dataset = Dataset(
@@ -246,10 +246,10 @@ class Admin:
                         numTiles=int(dataset_config.get("tiles_per_frame", 200)),
                         timeout=timeout,
                         dataServerAddr=network_config["server_address"],
-                        dataServerPort=int(network_config["server_port"])
+                        dataServerPort=int(network_config["server_port"]),
                     )
                 )
-            
+
             elif dataset_type == "random" or dataset_type == "cookie":
                 dataset = Dataset(
                     random=FileDataset(
