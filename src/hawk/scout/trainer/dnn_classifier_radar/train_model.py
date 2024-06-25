@@ -258,7 +258,7 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
         print(f"Use GPU: {args.gpu} for training")
 
     print(f"=> using pre-trained model '{args.arch}'")
-    model = models.__dict__[args.arch](weights="ResNet50_Weights.DEFAULT")
+    model = models.__dict__[args.arch](weights="ResNet18_Weights.DEFAULT")
     model, input_size = initialize_model(args.arch, args.num_classes, args.num_unfreeze)
 
     if not torch.cuda.is_available():

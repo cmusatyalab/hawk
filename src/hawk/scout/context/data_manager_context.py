@@ -5,10 +5,10 @@
 
 """Abstract class for data manager context
 """
+from __future__ import annotations
 
 from abc import abstractmethod
 from pathlib import Path
-from typing import Optional
 
 from ...proto.messages_pb2 import MissionId
 from .context_base import ContextBase
@@ -52,6 +52,6 @@ class DataManagerContext(ContextBase):
         pass
 
     @abstractmethod
-    def log(self, msg: str, end_t: Optional[float] = None) -> None:
+    def log(self, msg: str, end_t: float | None = None) -> None:
         """When logging is enabled, logs 'msg' to the logfile"""
         pass
