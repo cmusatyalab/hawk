@@ -7,7 +7,7 @@ from __future__ import annotations
 import sys
 import time
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Tuple, cast
 
@@ -25,12 +25,13 @@ BBoxes = List[Tuple[float, float, float, float, float]]
 @dataclass
 class ScriptLabeler:
     mission_dir: Path
-    class_list: list
+    class_list: list[str]
     label_time: float = 0.0
     detect: bool = False
     gt_path: Path | None = None
     positives = 0
     negatives = 0
+    class_counter: list[int] = field(init=False)
 
     def __post_init__(self) -> None:
         if self.detect:

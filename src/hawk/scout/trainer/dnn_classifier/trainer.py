@@ -14,7 +14,6 @@ import torch
 from logzero import logger
 
 from ...context.model_trainer_context import ModelContext
-from ...core.class_manager import MLClassManager
 from ...core.model_trainer import ModelTrainerBase
 from .model import DNNClassifierModel
 
@@ -63,9 +62,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
             self.args, path, version, mode=self.args["mode"], context=self.context
         )
 
-    def train_model(
-        self, train_dir: Path, class_manager: MLClassManager
-    ) -> DNNClassifierModel:
+    def train_model(self, train_dir: Path) -> DNNClassifierModel:
         # check mode if not hawk return model
         # EXPERIMENTAL
         if self.args["mode"] == "oracle":
@@ -88,7 +85,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
 
         # labels = [subdir.name for subdir in self._train_dir.iterdir()]
         ## refence class manager here to determine labels
-        labels = class_manager.get_labels()
+        labels = self.context.class_manager.get_labels()
         logger.info(f"List of labels in trainer: {labels}")
         num_classes = len(labels)
         # labels = ["0", "1"]

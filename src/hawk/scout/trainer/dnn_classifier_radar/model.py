@@ -2,12 +2,14 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import io
 import multiprocessing as mp
 import queue
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Sequence, Tuple, cast
+from typing import Any, Callable, Iterable, Sequence, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -33,7 +35,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 class DNNClassifierModelRadar(ModelBase):
     def __init__(
         self,
-        args: Dict[str, Any],
+        args: dict[str, Any],
         model_path: Path,
         version: int,
         mode: str,
@@ -63,6 +65,7 @@ class DNNClassifierModelRadar(ModelBase):
         self.args = args
 
         super().__init__(self.args, model_path, context)
+        assert self.context is not None
 
         self._arch = args["arch"]
         self._train_examples = args["train_examples"]
@@ -82,7 +85,7 @@ class DNNClassifierModelRadar(ModelBase):
 
     def preprocess(
         self, request: ObjectProvider
-    ) -> Tuple[ObjectProvider, torch.Tensor]:
+    ) -> tuple[ObjectProvider, torch.Tensor]:
         try:
             array = cast(npt.NDArray[Any], request.content)
             array = (array - np.min(array)) / (np.max(array) - np.min(array))
@@ -166,13 +169,13 @@ class DNNClassifierModelRadar(ModelBase):
 
         return model_ft
 
-    def get_predictions(self, inputs: torch.Tensor) -> Sequence[float]:
+    def get_predictions(self, inputs: torch.Tensor) -> Sequence[Sequence[float]]:
         with torch.no_grad():
             inputs = inputs.to(self._device)
             output = self._model(inputs)
 
             probability: torch.Tensor = torch.softmax(output, dim=1)
-            predictions: Sequence[float] = probability.cpu().numpy()[:, 1]
+            predictions: Sequence[Sequence[float]] = probability.cpu().numpy()
             return predictions
 
     @log_exceptions
@@ -220,7 +223,7 @@ class DNNClassifierModelRadar(ModelBase):
     def infer_dir(
         self,
         directory: Path,
-        callback_fn: Callable[[int, List[int], List[float]], TestResults],
+        callback_fn: Callable[[int, list[int], list[Sequence[float]]], TestResults],
     ) -> TestResults:
         dataset = datasets.ImageFolder(str(directory), transform=self._test_transforms)
         data_loader = DataLoader(
@@ -230,8 +233,8 @@ class DNNClassifierModelRadar(ModelBase):
             num_workers=mp.cpu_count(),
         )
 
-        targets: List[int] = []
-        predictions: List[float] = []
+        targets: list[int] = []
+        predictions: list[Sequence[float]] = []
         with torch.no_grad():
             for inputs, target in data_loader:
                 prediction = self.get_predictions(inputs)
@@ -246,7 +249,7 @@ class DNNClassifierModelRadar(ModelBase):
     def infer_path(
         self,
         test_file: Path,
-        callback_fn: Callable[[int, List[int], List[float]], TestResults],
+        callback_fn: Callable[[int, list[int], list[Sequence[float]]], TestResults],
     ) -> TestResults:
         image_list = []
         label_list = []
@@ -267,8 +270,8 @@ class DNNClassifierModelRadar(ModelBase):
             num_workers=mp.cpu_count(),
         )
 
-        targets: List[int] = []
-        predictions: List[float] = []
+        targets: list[int] = []
+        predictions: list[Sequence[float]] = []
         with torch.no_grad():
             for inputs, target in data_loader:
                 prediction = self.get_predictions(inputs)
@@ -295,8 +298,9 @@ class DNNClassifierModelRadar(ModelBase):
             raise Exception(f"ERROR: {test_path} does not exist")
 
     def _process_batch(
-        self, batch: List[Tuple[ObjectProvider, torch.Tensor]]
+        self, batch: list[tuple[ObjectProvider, torch.Tensor]]
     ) -> Iterable[ResultProvider]:
+        assert self.context is not None
         if self._model is None:
             if len(batch) > 0:
                 # put request back in queue
@@ -321,15 +325,20 @@ class DNNClassifierModelRadar(ModelBase):
                 box = [list(coord) for coord in boxes[i]]
                 result_object = batch[i][0]
                 if self._mode == "oracle":
-                    score = 0 if result_object.id.startswith("/0/") else 1
+                    num_classes = len(self.context.class_manager.classes)
+                    cls = int(result_object.id.split("/", 2)[1])
+                    score = [0.0] * num_classes
+                    score[cls] = 1.0
                 result_object.attributes.add({"score": str.encode(str(score))})
                 result_object.attributes.add({"boxes": str.encode(str(box))})
                 # add another attribute containing the estimated bounding boxes
                 # should be a list of cls, x,y,w,h ground truth bounding boxes
                 # will be added at home
                 results.append(
-                    ResultProvider(result_object, score, self.version)
-                )  # , box))
+                    ResultProvider(
+                        result_object, sum(score[1:]), self.version  # , box)
+                    )  ## score for priority queue is sum of all positive classes
+                )
         return results
 
     def stop(self) -> None:
@@ -338,11 +347,13 @@ class DNNClassifierModelRadar(ModelBase):
             self._running = False
             self._model = None
 
-    def patch_processing(self, img_batch):
+    def patch_processing(
+        self, img_batch: list[tuple[ObjectProvider, torch.Tensor]]
+    ) -> tuple[Sequence[Sequence[float]], list[list[tuple[int, int, int, int]]]]:
         num_image = 0
         tensors_for_predict = []
         crop_assign = []
-        boxes_list = []
+        boxes_list: list[list[tuple[int, int, int, int]]] = []
         ## loop through batch and determine which samples have potential instances
         for obj, tensor in img_batch:
             # select the patches and crop
@@ -368,7 +379,19 @@ class DNNClassifierModelRadar(ModelBase):
         predictions_tiles = self.get_predictions(input_tensors)
         predictions = []
         for crops in crop_assign:
-            predictions.append(max(predictions_tiles[crops[0] : crops[0] + len(crops)]))
+            predictions_per_sample = np.array(
+                predictions_tiles[crops[0] : crops[0] + len(crops)]
+            )
+            # across all patches for a given sample we combine the scores as folllows
+            # to make sure negative results don't diminish positive detections.
+            # collect highest confidence scores for all positive classes
+            # take lowest confidence for negative class
+            # renormalize to make sure everything still adds up to 1
+            min_negative = predictions_per_sample[:, 0:1].min(axis=0)
+            max_positive = predictions_per_sample[:, 1:].max(axis=0)
+            new_predictions = np.hstack([min_negative, max_positive])
+            new_predictions /= np.sum(new_predictions)
+            predictions.append(list(new_predictions))
 
         # find the set of n patches that are most likely to contain an object.
         # select a few additional patches of negative space
@@ -379,7 +402,9 @@ class DNNClassifierModelRadar(ModelBase):
         # logger.info(f"Predictions: {predictions}, box list: {boxes_list}")
         return predictions, boxes_list
 
-    def select_patches(self, source_img):
+    def select_patches(
+        self, source_img: npt.NDArray[np.uint8]
+    ) -> tuple[list[Image.Image], list[tuple[int, int, int, int]]]:
         # print(source_img.shape)
         threshold = 4.56 * 1.46  # Global median of negatives mult by constant factor
         binary_img = source_img.max(axis=2).transpose() > threshold
@@ -394,12 +419,12 @@ class DNNClassifierModelRadar(ModelBase):
             )
             or region.area < 4
         )
-        regions = [region for region in regions if not condition(region)]
+        regions = [region for region in regions if not condition(region)]  # type:ignore
 
         if not len(regions):
             return [], []
         box_distance_xthresh, box_distance_ythresh = 10, 10
-        merged_regions = []
+        merged_regions: list[tuple[int, int, int, int]] = []
         for region in regions:
             bbox = region.bbox
             width = bbox[3] - bbox[1]
@@ -407,34 +432,25 @@ class DNNClassifierModelRadar(ModelBase):
             ### merge smaller regions to larger regions
             is_adjacent = False
             for merged_region in merged_regions:
-                cond_1 = (
-                    region.bbox[0] - merged_region["bbox"][2] <= box_distance_ythresh
-                )
-                cond_2 = (
-                    merged_region["bbox"][0] - region.bbox[2] <= box_distance_ythresh
-                )
-                cond_3 = (
-                    region.bbox[1] - merged_region["bbox"][3] <= box_distance_xthresh
-                )
-                cond_4 = (
-                    merged_region["bbox"][1] - region.bbox[3] <= box_distance_xthresh
-                )
+                cond_1 = region.bbox[0] - merged_region[2] <= box_distance_ythresh
+                cond_2 = merged_region[0] - region.bbox[2] <= box_distance_ythresh
+                cond_3 = region.bbox[1] - merged_region[3] <= box_distance_xthresh
+                cond_4 = merged_region[1] - region.bbox[3] <= box_distance_xthresh
                 if cond_1 and cond_2 and cond_3 and cond_4:
-                    minr = min(region.bbox[0], merged_region["bbox"][0])
-                    minc = min(region.bbox[1], merged_region["bbox"][1])
-                    maxr = max(region.bbox[2], merged_region["bbox"][2])
-                    maxc = max(region.bbox[3], merged_region["bbox"][3])
-                    merged_regions.append({"bbox": (minr, minc, maxr, maxc)})
+                    minr = min(region.bbox[0], merged_region[0])
+                    minc = min(region.bbox[1], merged_region[1])
+                    maxr = max(region.bbox[2], merged_region[2])
+                    maxc = max(region.bbox[3], merged_region[3])
+                    merged_regions.append((minr, minc, maxr, maxc))
                     merged_regions.remove(merged_region)
                     is_adjacent = True
                     break
             if not is_adjacent:
-                merged_regions.append({"bbox": region.bbox})
+                merged_regions.append(region.bbox)
 
         padded_crops = []
         coords_list = []
-        for region in merged_regions:
-            bbox = region["bbox"]
+        for bbox in merged_regions:
             width, height = bbox[3] - bbox[1], bbox[2] - bbox[0]
             centerx = int(width / 2 + bbox[1])
             centery = int(height / 2 + bbox[0])
@@ -457,8 +473,8 @@ class DNNClassifierModelRadar(ModelBase):
                 ),
                 mode="constant",
             )
-            padded_image = Image.fromarray((padded_image * 255).astype(np.uint8))
-            padded_image = self._test_transforms(padded_image)
-            padded_crops.append(padded_image)
+            padded_pilimage = Image.fromarray((padded_image * 255).astype(np.uint8))
+            padded_pilimage = self._test_transforms(padded_pilimage)
+            padded_crops.append(padded_pilimage)
             coords_list.append((left_border, right_border, top_border, bottom_border))
         return padded_crops, coords_list

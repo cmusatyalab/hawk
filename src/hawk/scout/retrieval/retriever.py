@@ -10,8 +10,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
 
-from logzero import logger
-
 from ...proto.messages_pb2 import HawkObject
 from ..context.data_manager_context import DataManagerContext
 from ..core.object_provider import ObjectProvider
@@ -94,15 +92,12 @@ class Retriever(RetrieverBase):
             self._start_time = time.time()
 
         self._start_event.set()
-        if self.network and self._network_server_host == self.this_host_name:
-            logger.info("Starting server thread in retriever...")
-            threading.Thread(
-                target=self.server, name="network_server"
-            ).start()  ## launch server thread.
-        else:
-            threading.Thread(
-                target=self.stream_objects, name="stream"
-            ).start()  ## start default thread for all retrievers and network clients
+        self._run_threads()
+
+    def _run_threads(self) -> None:
+        """start default thread for all retrievers and network clients
+        can be overridden in derived classes such as the network_retriever."""
+        threading.Thread(target=self.stream_objects, name="stream").start()
 
     def stop(self) -> None:
         self._stop_event.set()

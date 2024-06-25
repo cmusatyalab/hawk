@@ -42,7 +42,11 @@ class DataManagerContext(ContextBase):
 
     @abstractmethod
     def new_labels_callback(
-        self, new_positives: int, new_negatives: int, retrain: bool = True
+        self,
+        new_positives: int,
+        new_negatives: int,
+        new_samples: list[int],
+        retrain: bool = True,
     ) -> None:
         """Adds new labels to the data directory"""
         pass

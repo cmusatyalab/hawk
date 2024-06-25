@@ -132,7 +132,7 @@ skip_glob = [
 [tool.mypy]
 strict = true
 files = ["src"]
-exclude = "^src/hawk/scout/trainer/(few_shot/|yolo.*/yolov5.*/)"
+exclude = "^src/hawk/scout/trainer/(few_shot/|yolo.*/|yolov5.*/)"
 plugins = ["numpy.typing.mypy_plugin"]
 
 [[tool.mypy.overrides]]
@@ -144,6 +144,7 @@ module = [
     "logzero.*",
     "matplotlib.*",
     "multiprocessing_logging.*",
+    "skimage.*",
     "sklearn.*",
     "streamlit_autorefresh",
     "websockets.*",

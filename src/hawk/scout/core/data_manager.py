@@ -417,7 +417,7 @@ class DataManager:
 
     def _promote_staging_examples_dir(
         self, subdir: Path, set_dirs: dict[DatasetSplitValue, list[Path]]
-    ) -> tuple[int, int]:
+    ) -> tuple[int, int, list[int]]:
         assert (
             subdir.name == self._to_dir(DatasetSplit.TRAIN)
             or subdir.name == self._to_dir(DatasetSplit.TEST)

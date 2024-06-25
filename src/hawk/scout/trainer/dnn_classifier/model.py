@@ -57,6 +57,7 @@ class DNNClassifierModel(ModelBase):
         self.args = args
 
         super().__init__(self.args, model_path, context)
+        assert self.context is not None
 
         self._arch = args["arch"]
         self._train_examples = args["train_examples"]
@@ -97,6 +98,7 @@ class DNNClassifierModel(ModelBase):
         return content.getvalue()
 
     def load_model(self, model_path: Path) -> torch.nn.Module:
+        assert self.context is not None
         model = self.initialize_model(
             self._arch, num_classes=len(self.context.class_manager.classes)
         )
@@ -155,7 +157,7 @@ class DNNClassifierModel(ModelBase):
 
         return model_ft
 
-    def get_predictions(self, inputs: torch.Tensor) -> Sequence[float]:
+    def get_predictions(self, inputs: torch.Tensor) -> Sequence[Sequence[float]]:
         with torch.no_grad():
             inputs = inputs.to(self._device)
             output = self._model(inputs)
@@ -214,7 +216,7 @@ class DNNClassifierModel(ModelBase):
     def infer_dir(
         self,
         directory: Path,
-        callback_fn: Callable[[int, List[int], List[float]], TestResults],
+        callback_fn: Callable[[int, List[int], List[Sequence[float]]], TestResults],
     ) -> TestResults:
         dataset = datasets.ImageFolder(str(directory), transform=self._test_transforms)
         data_loader = DataLoader(
@@ -225,7 +227,7 @@ class DNNClassifierModel(ModelBase):
         )
 
         targets: List[int] = []
-        predictions: List[float] = []
+        predictions: List[Sequence[float]] = []
         with torch.no_grad():
             for inputs, target in data_loader:
                 prediction = self.get_predictions(inputs)
@@ -240,7 +242,7 @@ class DNNClassifierModel(ModelBase):
     def infer_path(
         self,
         test_file: Path,
-        callback_fn: Callable[[int, List[int], List[float]], TestResults],
+        callback_fn: Callable[[int, List[int], List[Sequence[float]]], TestResults],
     ) -> TestResults:
         image_list = []
         label_list = []
@@ -262,7 +264,7 @@ class DNNClassifierModel(ModelBase):
         )
 
         targets: List[int] = []
-        predictions: List[float] = []
+        predictions: List[Sequence[float]] = []
         with torch.no_grad():
             for inputs, target in data_loader:
                 prediction = self.get_predictions(inputs)
@@ -291,6 +293,7 @@ class DNNClassifierModel(ModelBase):
     def _process_batch(
         self, batch: List[Tuple[ObjectProvider, torch.Tensor]]
     ) -> Iterable[ResultProvider]:
+        assert self.context is not None
         if self._model is None:
             if len(batch) > 0:
                 # put request back in queue
@@ -307,9 +310,10 @@ class DNNClassifierModel(ModelBase):
                 score = predictions[i]
                 result_object = batch[i][0]
                 if self._mode == "oracle":
-                    score = (
-                        0 if result_object.id.startswith("/0/") else 1
-                    )  ## modify this for multiclass oracle
+                    num_classes = len(self.context.class_manager.classes)
+                    cls = int(result_object.id.split("/", 2)[1])
+                    score = [0.0] * num_classes
+                    score[cls] = 1.0
                 result_object.attributes.add({"score": str.encode(str(score))})
                 results.append(
                     ResultProvider(

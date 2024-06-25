@@ -163,9 +163,12 @@ class ModelBase(Model):
     def calculate_performance(
         version: int,
         target_list: List[int],
-        pred_list: List[float],
+        pred_list: List[Sequence[float]],
         is_probability: bool = True,
     ) -> TestResults:
+        raise AssertionError(
+            "This code doesn't work because it assumes pred_list = list[float]"
+        )
         assert len(target_list) == len(pred_list)
         pred = np.array(pred_list)
         target = np.array(target_list)

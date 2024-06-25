@@ -627,7 +627,7 @@ def adjust_learning_rate(
 
 
 def calculate_performance(
-    y_true: Sequence[Sequence[int]], y_pred: Sequence[Sequence[float]]
+    y_true: Sequence[int], y_pred: Sequence[Sequence[float]]
 ) -> float:
     if len(y_pred[0]) > 2:
         y_true_bin = label_binarize(y_true, classes=list(range(len(y_pred[0]))))
@@ -637,9 +637,7 @@ def calculate_performance(
         ap: float = sum(ap_by_class[1:]) / len(ap_by_class[1:])
         logger.info(f" AP by class: {ap_by_class}")
     else:
-        ap: float = average_precision_score(
-            y_true, np.array(y_pred)[:, 1], average=None
-        )
+        ap = average_precision_score(y_true, np.array(y_pred)[:, 1], average=None)
     # roc_auc = roc_auc_score(y_true, y_pred)
     # precision, recall, _ = precision_recall_curve(y_true, y_pred)
     # pr_auc = auc(recall, precision)

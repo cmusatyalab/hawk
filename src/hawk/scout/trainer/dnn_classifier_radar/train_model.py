@@ -26,6 +26,7 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 from logzero import logger
 from sklearn.metrics import average_precision_score
+from sklearn.preprocessing import label_binarize
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
 
@@ -257,7 +258,7 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
         print(f"Use GPU: {args.gpu} for training")
 
     print(f"=> using pre-trained model '{args.arch}'")
-    model = models.__dict__[args.arch](pretrained=True)
+    model = models.__dict__[args.arch](weights="ResNet50_Weights.DEFAULT")
     model, input_size = initialize_model(args.arch, args.num_classes, args.num_unfreeze)
 
     if not torch.cuda.is_available():
@@ -351,7 +352,7 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
     class_sample_count = torch.tensor(
         [(targets == t).sum() for t in torch.unique(targets, sorted=True)]
     )
-    logger.info(f"CLass sample count: {class_sample_count}")
+    logger.info(f"Class sample count: {class_sample_count}")
     total_samples = sum(class_sample_count)
     # class_weights = [
     #     1 - (float(x) / float(total_samples)) for x in class_sample_count
@@ -499,8 +500,9 @@ def set_parameter_requires_grad(model: nn.Module, unfreeze: int = 0) -> None:
             for param in child.parameters():
                 param.requires_grad = False
         else:
-            print("COunt:", count)
-            print("The following layer will be retrained:\n", child)
+            pass
+            # print("COunt:", count)
+            # print("The following layer will be retrained:\n", child)
 
 
 def initialize_model(
@@ -577,6 +579,7 @@ def initialize_model(
     else:
         print("Invalid model name, exiting...")
         exit()
+    logger.info(f"Number of classes: {num_classes}")
 
     return model_ft, input_size
 
@@ -641,27 +644,24 @@ def adjust_learning_rate(
     scheduler.step()
 
 
-def calculate_performance(y_true: Sequence[int], y_pred: Sequence[float]) -> float:
-    # ap_by_class = average_precision_score(
-    #     label_binarize(y_true,classes=[0,1,2,3,4]), y_pred, average=None
-    # )
-    # logger.info(f"AUC across all classes: {ap_by_class}")
-    ap: float = average_precision_score(y_true, y_pred, average=None)
-    # ap_score = average_precision_score(y_true, y_pred, average=None)
-    # ap_score: float = average_precision_score(
-    # label_binarize(y_true, classes=[0, 1, 2, 3, 4]), y_pred, average="macro"
-    # )
-    # from sklearn.metrics import (
-    #     auc, confusion_matrix precision_recall_curve, roc_auc_score
-    # )
-    # confusion = confusion_matrix(y_true, y_pred)
-    # logger.info("COnfusion matrix: {}".format(confusion))
+def calculate_performance(
+    y_true: Sequence[int], y_pred: Sequence[Sequence[float]]
+) -> float:
+    if len(y_pred[0]) > 2:
+        y_true_bin = label_binarize(y_true, classes=list(range(len(y_pred[0]))))
+        ap_by_class: Sequence[float] = average_precision_score(
+            y_true_bin, y_pred, average=None
+        )
+        ap: float = sum(ap_by_class[1:]) / len(ap_by_class[1:])
+        logger.info(f" AP by class: {ap_by_class}")
+    else:
+        ap = average_precision_score(y_true, np.array(y_pred)[:, 1], average=None)
     # roc_auc = roc_auc_score(y_true, y_pred)
     # precision, recall, _ = precision_recall_curve(y_true, y_pred)
     # pr_auc = auc(recall, precision)
-    logger.info(f"AUC {ap}")
-    # logger.info(f"ROC AUC {roc_auc}")
-    # logger.info(f"PR AUC {pr_auc}")
+    logger.info(f"auc {ap}")
+    # logger.info(f"roc auc {roc_auc}")
+    # logger.info(f"pr auc {pr_auc}")
     return ap
 
 
@@ -713,9 +713,6 @@ def validate_model(
                 )
             """
             try:
-                # Comment the following line out if using multiclass
-                # (initial base model training for radar)
-                probability = probability[:, 1]
                 y_pred.extend(probability)
                 y_true.extend(target.cpu())
             except Exception:

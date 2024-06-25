@@ -5,6 +5,7 @@
 import io
 import math
 import queue
+import threading
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -24,7 +25,6 @@ from .retriever import Retriever
 class NetworkRetriever(Retriever):
     def __init__(self, mission_id: str, dataset: NetworkDataset, host_name: str):
         super().__init__(mission_id)
-        self.network = True
         self.this_host_name = host_name.split(":")[0]
         self._dataset = dataset
         self._network_server_host = dataset.dataServerAddr  ## pulled from home config
@@ -60,8 +60,15 @@ class NetworkRetriever(Retriever):
         self.total_images.set(len(self.images))
         self.total_objects.set(self.total_tiles)
 
-        self.request_counter_by_scout = {}
+        self.request_counter_by_scout: dict[int, int] = {}
         self.sample_count = 0
+
+    def _run_threads(self) -> None:
+        if self._network_server_host == self.this_host_name:
+            logger.info("Starting server thread in retriever...")
+            threading.Thread(target=self.server, name="network_server").start()
+        else:
+            super()._run_threads()
 
     def stream_objects(self) -> None:
         super().stream_objects()
@@ -75,7 +82,7 @@ class NetworkRetriever(Retriever):
         ## next will need to manage some flags for when network sample
         ## retrieval stop and starts, otherwise the net retriever should
         ## continuously send requests to the server.
-        scout_index = str(self.scout_index).encode("utf-8")
+        scout_index = str(self._context.scout_index).encode("utf-8")
         time_start = time.time()
         while True:
             ## need additional conditions here to break out of this loop, or to
@@ -89,8 +96,8 @@ class NetworkRetriever(Retriever):
             client_socket.send_multipart(msg)
 
             ### receive and process
-            content, label, path = client_socket.recv_multipart()
-            label, path = label.decode(), path.decode()
+            content, label_, path_ = client_socket.recv_multipart()
+            label, path = label_.decode(), path_.decode()
             object_id = f"/{label}/collection/id/" + path
             attributes = self.set_tile_attributes(object_id, label)
 
@@ -118,7 +125,7 @@ class NetworkRetriever(Retriever):
         socket = context.socket(zmq.REP)
         socket.bind(f"tcp://0.0.0.0:{self._network_server_port}")  ## setup socket
         logger.info("Server socket ready...")
-        sample_queue = queue.Queue()
+        sample_queue: queue.Queue[tuple[Path, str]] = queue.Queue()
         for line in self.contents:
             path, label = line.split()
             sample_queue.put((Path(path), label))
@@ -130,12 +137,11 @@ class NetworkRetriever(Retriever):
                 ## nothing particularly interesting about the request as of right now.
                 msg_parts = socket.recv_multipart()
                 scout_index, request_number = (
-                    part.decode("utf-8") for part in msg_parts
+                    int(part.decode("utf-8")) for part in msg_parts
                 )
                 ## update request counter by scout index
-                self.request_counter_by_scout[
-                    scout_index
-                ] = request_number  ## synchronizes counters with each client scout
+                ## synchronizes counters with each client scout
+                self.request_counter_by_scout[scout_index] = request_number
 
                 ### response
                 sample_path, sample_label = sample_queue.get()

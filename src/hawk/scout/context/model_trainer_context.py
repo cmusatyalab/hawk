@@ -11,6 +11,7 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Any, Tuple
 
+from ..core.class_manager import MLClassManager
 from ..core.object_provider import ObjectProvider
 from ..core.result_provider import ResultProvider
 from .context_base import ContextBase
@@ -20,6 +21,7 @@ class ModelContext(ContextBase):
     def __init__(self) -> None:
         self.model_input_queue: mp.Queue[Tuple[ObjectProvider, Any]] = mp.Queue()
         self.model_output_queue: mp.Queue[ResultProvider] = mp.Queue()
+        self.class_manager = MLClassManager()
 
     @property
     @abstractmethod

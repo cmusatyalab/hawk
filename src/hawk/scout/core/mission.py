@@ -37,7 +37,6 @@ from ..retrain.sampleInterval_policy import SampleIntervalPolicy
 from ..retrieval.retriever import Retriever
 from ..selection.selector_base import Selector
 from ..selection.token_selector import TokenSelector
-from .class_manager import MLClassManager
 from .data_manager import DataManager
 from .hawk_stub import HawkStub
 from .model import Model
@@ -124,18 +123,14 @@ class Mission(DataManagerContext, ModelContext):
 
         self._abort_event = threading.Event()
         logger.info(f"Class list in mission: {self.class_list}")
-        logger.info("Creating Class manager and class objects:")
-        self.class_manager = MLClassManager()
-        label_counter = 0  ## 0, 1, 2, ... starting with negative
-        for cls in self.class_list:
+        logger.info("Initializing Class manager and class objects:")
+        for label_counter, cls in enumerate(self.class_list):
             self.class_manager.add_class(cls, label_counter)
-            label_counter += 1
 
         ## create class objects here.
         self._data_manager = DataManager(self)
         self.selector.add_context(self)
         self.retriever.add_context(self)
-        self.retriever.scout_index = self._scout_index
 
         self.object_count = 0
 
@@ -558,7 +553,7 @@ class Mission(DataManagerContext, ModelContext):
             DatasetSplit.TRAIN
         ) as train_dir:  # important
             logger.info(f"Train dir {train_dir}")
-            model = self.trainer.train_model(train_dir, self.class_manager)
+            model = self.trainer.train_model(train_dir)
 
         eval_start = time.time()
         logger.info(f"Trained model in {eval_start - train_start:.3f} seconds")
