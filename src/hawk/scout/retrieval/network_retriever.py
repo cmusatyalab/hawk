@@ -117,8 +117,8 @@ class NetworkRetriever(Retriever):
                 if time_passed < self._timeout:
                     logger.info(f"About to sleep at: {time.time()}")
                     time.sleep(self._timeout - time_passed)
-            time_start = time.time()
-            ## may need to adjust timeout of 20 to accomodate higher retrieval rates.
+                time_start = time.time()
+            ## may need to adjust this timeout of 20 to accomodate higher retrieval rates.
 
     def server(self) -> None:
         context = zmq.Context()
