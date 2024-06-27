@@ -14,19 +14,19 @@ from streamlit_autorefresh import st_autorefresh
 
 from hawk.gui.elements import ABOUT_TEXT, Mission, page_header
 from hawk.home.label_utils import BoundingBox, LabelSample
-from hawk.mission_config import load_config
 
 if TYPE_CHECKING:
     from streamlit.delta_generator import DeltaGenerator
 
 start = time.time()
-page_header("Hawk Browser")
+mission = page_header("Hawk Browser")
 
 ####
 # If no mission has been selected direct the user to either select an existing
 # mission or configure/create a new one.
 banner = st.empty()
-if st.session_state.mission is None:
+
+if mission is None:
     with banner.container():
         st.title("Welcome to the Hawk Browser")
         st.markdown(
@@ -43,8 +43,6 @@ else:
     banner.title("Hawk Mission Results")
     # banner.write(st.session_state)
 
-
-mission = st.session_state.mission
 mission.resync()
 
 # classes, first one is expected to be the not-yet-labeled value, second is
@@ -301,9 +299,7 @@ def display_images(mission: Mission) -> None:
                 )
 
 
-config_file = mission.log_file
-config = load_config(config_file)
-train_strategy = config["train_strategy"]["type"]
+train_strategy = mission.config["train_strategy"]["type"]
 if train_strategy == "dnn_classifier_radar":
     display_radar_images(mission)  # only for radar missions
 else:
