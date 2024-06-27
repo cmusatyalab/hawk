@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterator
 
@@ -186,7 +187,8 @@ def columns(ncols: int) -> Iterator[DeltaGenerator]:
 column = columns(st.session_state.columns)
 
 
-def paginate(result_list: list[LabelSample]) -> list[LabelSample]:
+@contextmanager
+def paginate(result_list: list[LabelSample]) -> Iterator[list[LabelSample]]:
     """Paginate a list of results"""
     nresults = len(result_list)
     current_page = int(st.query_params.get("page", 1))
@@ -197,16 +199,15 @@ def paginate(result_list: list[LabelSample]) -> list[LabelSample]:
     if page != current_page:
         st.query_params["page"] = str(page)
 
+    # return slice of the original list based on current page
     start = results_per_page * (page - 1)
     end = start + results_per_page
-    return result_list[start:end]
+    yield result_list[start:end]
 
+    if pages <= 1:
+        return
 
-def display_pagination(nresults: int) -> None:
-    current_page = int(st.query_params.get("page", 1))
-    results_per_page = st.session_state.rows * st.session_state.columns
-    pages = int((nresults + results_per_page - 1) / results_per_page)
-
+    # display pagination
     def goto_page(current_page: int, pages: int) -> None:
         chosen_page = st.session_state.chosen_page
         if chosen_page == "first":
@@ -218,9 +219,6 @@ def display_pagination(nresults: int) -> None:
         if chosen_page == "last":
             chosen_page = pages
         st.query_params["page"] = str(chosen_page)
-
-    if pages <= 1:
-        return
 
     options = (
         ["first", "prev"]
@@ -244,62 +242,63 @@ def display_radar_images(mission: Mission) -> None:
     exclude = mission.labeled if not st.session_state.show_labeled else set()
     results = [result for result in mission.unlabeled if result.objectId not in exclude]
 
-    for result in paginate(results):
-        base = Path(result.objectId).stem
-        image = Path(mission.image_dir, f"{result.index:06}.jpeg")
-        stereo_image = Path(
-            "/media/eric/Drive2/RADAR_DETECTION/train/stereo_left/", f"{base}_left.jpg"
-        )  # stereo image for radar missions, if stereo image.exists(), etc.
-        with next(column):  # make a 1x2 container?
-            col1, col2 = st.columns(2)
-            with col1:
-                view_height = 800
-                img_height = 500
-                padding_top = (view_height - img_height) // 2
-                padding_bottom = view_height - img_height - padding_top
-                st.header("Stereo")
-                st.markdown(
-                    f"<div style='padding-top: {padding_top}px'></div>",
-                    unsafe_allow_html=True,
-                )
-                st.image(str(stereo_image), use_column_width=True)
-                st.markdown(
-                    f"<div style='padding-bottom: {padding_bottom}px'></div>",
-                    unsafe_allow_html=True,
-                )
+    with paginate(results) as page:
+        for result in page:
+            base = Path(result.objectId).stem
+            image = Path(mission.image_dir, f"{result.index:06}.jpeg")
+            stereo_image = Path(
+                "/media/eric/Drive2/RADAR_DETECTION/train/stereo_left/",
+                f"{base}_left.jpg",
+            )  # stereo image for radar missions, if stereo image.exists(), etc.
+            with next(column):  # make a 1x2 container?
+                col1, col2 = st.columns(2)
+                with col1:
+                    view_height = 800
+                    img_height = 500
+                    padding_top = (view_height - img_height) // 2
+                    padding_bottom = view_height - img_height - padding_top
+                    st.header("Stereo")
+                    st.markdown(
+                        f"<div style='padding-top: {padding_top}px'></div>",
+                        unsafe_allow_html=True,
+                    )
+                    st.image(str(stereo_image), use_column_width=True)
+                    st.markdown(
+                        f"<div style='padding-bottom: {padding_bottom}px'></div>",
+                        unsafe_allow_html=True,
+                    )
 
-            # col1.image(str(stereo_image))
-            with col2:
-                st.header("RD Map")
-                st.image(str(image))
-            st.radio(
-                "classification",
-                key=result.index,
-                options=CLASSES,
-                disabled=result.objectId in mission.labeled,
-                label_visibility="collapsed",
-                horizontal=st.session_state.columns <= 4,
-            )
-    display_pagination(len(results))
+                # col1.image(str(stereo_image))
+                with col2:
+                    st.header("RD Map")
+                    st.image(str(image))
+                st.radio(
+                    "classification",
+                    key=result.index,
+                    options=CLASSES,
+                    disabled=result.objectId in mission.labeled,
+                    label_visibility="collapsed",
+                    horizontal=st.session_state.columns <= 4,
+                )
 
 
 def display_images(mission: Mission) -> None:
     exclude = mission.labeled if not st.session_state.show_labeled else set()
     results = [result for result in mission.unlabeled if result.objectId not in exclude]
 
-    for result in paginate(results):
-        image = Path(mission.image_dir, f"{result.index:06}.jpeg")
-        with next(column):
-            st.image(str(image))
-            st.radio(
-                "classification",
-                key=result.index,
-                options=CLASSES,
-                disabled=result.objectId in mission.labeled,
-                label_visibility="collapsed",
-                horizontal=st.session_state.columns <= 4,
-            )
-    display_pagination(len(results))
+    with paginate(results) as page:
+        for result in page:
+            image = Path(mission.image_dir, f"{result.index:06}.jpeg")
+            with next(column):
+                st.image(str(image))
+                st.radio(
+                    "classification",
+                    key=result.index,
+                    options=CLASSES,
+                    disabled=result.objectId in mission.labeled,
+                    label_visibility="collapsed",
+                    horizontal=st.session_state.columns <= 4,
+                )
 
 
 config_file = mission.log_file
