@@ -20,6 +20,7 @@ from prometheus_client import Counter, Gauge, Histogram
 
 from .label_utils import index_jsonl, read_jsonl
 from .stats import (
+    HAWK_LABELED_CLASSES,
     HAWK_LABELED_OBJECTS,
     HAWK_LABELER_QUEUED_LENGTH,
     HAWK_LABELER_QUEUED_TIME,
@@ -36,11 +37,13 @@ class LabelerDiskQueue:
     mission_id: str
     scout_queue: ScoutQueue
     mission_dir: Path
+    class_list: list[str] = ["negative", "positive"]
     label_queue_size: int = 0
 
     token_semaphore: threading.BoundedSemaphore = field(init=False, repr=False)
 
-    labeled_objects: Counter = field(init=False)
+    labeled_objects: list[Counter] = field(init=False)
+    labeled_classes: Counter = field(init=False)
     queue_length: Gauge = field(init=False)
     queued_time: Histogram = field(init=False)
 
@@ -52,10 +55,18 @@ class LabelerDiskQueue:
         self.token_semaphore = threading.BoundedSemaphore(self.label_queue_size)
 
         # track labeler statistics
-        self.labeled_objects = HAWK_LABELED_OBJECTS
-        for label in [0, 1]:  # Hint to prometheus_client which labels we may use
+        self.labeled_objects = [
             HAWK_LABELED_OBJECTS.labels(
                 mission=self.mission_id, labeler="disk", label=label
+            )
+            for label in ["negative", "positive"]
+        ]
+
+        self.labeled_classes = HAWK_LABELED_CLASSES
+        # Hint to prometheus_client which class labels we may use
+        for class_name in self.class_list[1:]:
+            HAWK_LABELED_CLASSES.labels(
+                mission=self.mission_id, labeler="disk", class_name=class_name
             )
 
         self.queue_length = HAWK_LABELER_QUEUED_LENGTH.labels(
@@ -136,10 +147,15 @@ class LabelerDiskQueue:
             self.scout_queue.put(result)
 
             # update stats
-            label = "0" if not result.labels else "1"
-            self.labeled_objects.labels(
-                mission=self.mission_id, labeler="disk", label=label
-            ).inc()
+            is_positive = 0 if not result.labels else 1
+            self.labeled_objects[is_positive].inc()
+
+            for bbox in result.labels:
+                self.labeled_classes.labels(
+                    mission=self.mission_id,
+                    labeler="disk",
+                    class_name=self.class_list[bbox.label],
+                ).inc()
 
             # track time it took to apply label
             if result.queued is not None:

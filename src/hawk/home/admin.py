@@ -11,7 +11,7 @@ import os
 import socket
 import threading
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, TextIO
@@ -44,6 +44,7 @@ from ..proto.messages_pb2 import (
     TrainConfig,
 )
 from .stats import (
+    HAWK_LABELED_CLASSES,
     HAWK_LABELED_OBJECTS,
     HAWK_UNLABELED_RECEIVED,
     collect_metric_samples,
@@ -217,8 +218,8 @@ class Admin:
             video_file_list = dataset_config["video_list"]
         logger.info("Index {}".format(dataset_config["index_path"]))
         timeout = dataset_config.get("timeout", 20)
-        cls_list = dataset_config.get("class_list", ["negative", "positive"])
-        logger.info(f"CLass list: {cls_list}")
+        self.class_list = dataset_config.get("class_list", ["negative", "positive"])
+        logger.info(f"Class list: {self.class_list}")
 
         datasets = {}
         for index, _scout in enumerate(self.scouts):
@@ -399,7 +400,7 @@ class Admin:
                 bootstrapZip=bootstrap_zip,
                 bandwidthFunc=bandwidth_func,
                 validate=train_validate,
-                class_list=cls_list,
+                class_list=self.class_list,
             )
             msg = [
                 b"a2s_configure_scout",
@@ -481,18 +482,21 @@ class Admin:
 
                 stats = self.accumulate_mission_stats()
 
-                label_stats = collect_metric_samples(HAWK_LABELED_OBJECTS)
-                total_labeled = sum(sample.value for sample in label_stats)
-                negatives = sum(
-                    sample.value
-                    for sample in label_stats
-                    if sample.labels["label"] == "0"
-                )
+                objects: Counter[str] = Counter()
+                for sample in collect_metric_samples(HAWK_LABELED_OBJECTS):
+                    objects[sample.labels["label"]] += int(sample.value)
+
+                counts: Counter[str] = Counter()
+                for sample in collect_metric_samples(HAWK_LABELED_CLASSES):
+                    counts[sample.labels["label"]] += int(sample.value)
+                per_class_counts = {cls: counts[cls] for cls in self.class_list[1:]}
+
                 stats.update(
                     {
-                        "positives": int(total_labeled - negatives),
-                        "negatives": int(negatives),
+                        "positives": objects["positive"],
+                        "negatives": objects["negative"],
                         "bytes": collect_summary_total(HAWK_UNLABELED_RECEIVED),
+                        "count_by_class": per_class_counts,
                     }
                 )
 

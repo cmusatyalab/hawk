@@ -37,7 +37,7 @@ class BoundingBox:
         centerX, centerY = float(centerX_), float(centerY_)
         deltaX, deltaY = float(width) / 2, float(height) / 2
         return cls(
-            label=int(label),
+            label=int(label) + 1,
             minX=centerX - deltaX,
             minY=centerY - deltaY,
             maxX=centerX + deltaX,

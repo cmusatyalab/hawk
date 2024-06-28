@@ -135,11 +135,15 @@ def main() -> None:
             )
 
             logger.info("Starting Labeler Queue")
+            class_list = config.get("dataset", {}).get(
+                "class_list", ["negative", "positive"]
+            )
             label_queue_max = config.get("label-queue-max", 0)
             LabelerDiskQueue(
                 mission_id=mission_id,
                 scout_queue=scout_queue,
                 mission_dir=mission_dir,
+                class_list=class_list,
                 label_queue_size=label_queue_max,
             ).start()
 

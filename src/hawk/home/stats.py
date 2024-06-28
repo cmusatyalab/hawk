@@ -46,8 +46,13 @@ HAWK_LABELER_QUEUED_TIME = Histogram(
 )
 HAWK_LABELED_OBJECTS = Counter(
     "hawk_labeled_objects",
-    "Number of samples that were labeled",
+    "Number of samples that were labeled (negative/positive)",
     labelnames=["mission", "labeler", "label"],
+)
+HAWK_LABELED_CLASSES = Counter(
+    "hawk_labeled_classes",
+    "Count of of class labels/bounding boxes for all samples",
+    labelnames=["mission", "labeler", "class_name"],
 )
 HAWK_LABELED_QUEUE_LENGTH = Gauge(
     "hawk_labeled_queue_length",

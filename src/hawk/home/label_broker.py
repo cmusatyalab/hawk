@@ -40,6 +40,8 @@ def main() -> int:
     if args.label_queue_strategy is None:
         args.label_queue_strategy = config.get("label-queue-strategy", Strategy.FIFO)
 
+    class_list = config.get("dataset", {}).get("class_list", ["negative", "positive"])
+
     mission_id = args.mission_directory.name
 
     with suppress(KeyboardInterrupt):
@@ -58,6 +60,7 @@ def main() -> int:
             mission_id=mission_id,
             scout_queue=scout_queue,
             mission_dir=args.mission_directory,
+            class_list=class_list,
             label_queue_size=args.label_queue_size,
         ).start()
 

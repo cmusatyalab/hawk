@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import sys
 import time
+from collections import Counter
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -28,7 +29,7 @@ class ScriptLabeler:
     gt_path: Path | None = None
     positives = 0
     negatives = 0
-    class_counter: list[int] = field(init=False)
+    class_counter: Counter[str] = field(default_factory=Counter)
 
     def __post_init__(self) -> None:
         if self.detect:
@@ -36,15 +37,12 @@ class ScriptLabeler:
             assert self.gt_path.exists(), "Ground Truth directory does not exist"
 
         self.labeling_func = self.classify_func if not self.detect else self.detect_func
-        self.class_counter = [
-            0 for i in range(len(self.class_list))
-        ]  ## for multiclass support
 
     def classify_func(self, objectId: str) -> list[BoundingBox]:
         if objectId.startswith("/0/"):
             return []
-        label = int(objectId.split("/", 2)[1])
-        return [BoundingBox(label=label)]
+        class_index = int(objectId.split("/", 2)[1])
+        return [BoundingBox(label=class_index)]
 
     def detect_func(self, objectId: str) -> list[BoundingBox]:
         assert self.gt_path is not None
@@ -72,17 +70,18 @@ class ScriptLabeler:
         labels = list({bbox.label for bbox in result.labels})
         if labels:
             self.positives += 1
-            for imageLabel in labels:
-                self.class_counter[imageLabel] += 1
+            for class_index in labels:
+                class_name = self.class_list[class_index]
+                self.class_counter[class_name] += 1
         else:
             self.negatives += 1
-            self.class_counter[0] += 1
+            self.class_counter["negative"] += 1
 
         logger.info(
             f"Labeling {result.index:06} {labels} {result.objectId}, "
             f"(Pos, Neg): ({self.positives}, {self.negatives})"
         )
-        logger.info(f"By class: ({self.class_list}, {self.class_counter})")
+        logger.info(f"By class: {list(self.class_counter.items())}")
 
         self.mission_data.save_labeled([result])
 
@@ -111,9 +110,9 @@ class ScriptLabeler:
         gt_dir = Path(config["home-params"].get("label_dir", ""))
         # logger.info(f"GT DIR: {gt_dir}, {type(gt_dir)}")
 
-        dataset = config.get("dataset", {})
-        class_list = dataset.get("class_list", ["positive", "negative"])
-        logger.info(f"Class list: {class_list}")
+        class_list = config.get("dataset", {}).get(
+            "class_list", ["negative", "positive"]
+        )
 
         return cls(mission_dir, class_list, label_time, label_mode == "detect", gt_dir)
 
