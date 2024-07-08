@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import io
+import json
 import multiprocessing as mp
 import queue
 import time
@@ -314,7 +315,13 @@ class DNNClassifierModel(ModelBase):
                     cls = int(result_object.id.split("/", 2)[1])
                     score = [0.0] * num_classes
                     score[cls] = 1.0
-                result_object.attributes.add({"score": str.encode(str(score))})
+                score_dict = {
+                    label: float(score)
+                    for label, score in zip(self.context.class_manager.classes, score)
+                }
+                result_object.attributes.add(
+                    {"scores": json.dumps(score_dict).encode()}
+                )
                 results.append(
                     ResultProvider(
                         result_object, sum(score[1:]), self.version

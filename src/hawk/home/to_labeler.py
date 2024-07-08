@@ -7,7 +7,7 @@ from __future__ import annotations
 import io
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import InitVar, dataclass, field
 from itertools import count
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -37,17 +37,17 @@ class LabelerDiskQueue:
     mission_id: str
     scout_queue: ScoutQueue
     mission_dir: Path
-    class_list: list[str] = ["negative", "positive"]
+    class_hints: InitVar[list[str]]
     label_queue_size: int = 0
 
     token_semaphore: threading.BoundedSemaphore = field(init=False, repr=False)
 
-    labeled_objects: list[Counter] = field(init=False)
+    labeled_objects: Histogram = field(init=False)
     labeled_classes: Counter = field(init=False)
     queue_length: Gauge = field(init=False)
     queued_time: Histogram = field(init=False)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, class_hints: list[str] | None = None) -> None:
         if self.label_queue_size <= 0:
             self.label_queue_size = 9999
 
@@ -55,16 +55,13 @@ class LabelerDiskQueue:
         self.token_semaphore = threading.BoundedSemaphore(self.label_queue_size)
 
         # track labeler statistics
-        self.labeled_objects = [
-            HAWK_LABELED_OBJECTS.labels(
-                mission=self.mission_id, labeler="disk", label=label
-            )
-            for label in ["negative", "positive"]
-        ]
+        self.labeled_objects = HAWK_LABELED_OBJECTS.labels(
+            mission=self.mission_id, labeler="disk"
+        )
 
         self.labeled_classes = HAWK_LABELED_CLASSES
-        # Hint to prometheus_client which class labels we may use
-        for class_name in self.class_list[1:]:
+        # Hint to prometheus_client which class labels we may use later
+        for class_name in class_hints or []:
             HAWK_LABELED_CLASSES.labels(
                 mission=self.mission_id, labeler="disk", class_name=class_name
             )
@@ -147,14 +144,13 @@ class LabelerDiskQueue:
             self.scout_queue.put(result)
 
             # update stats
-            is_positive = 0 if not result.labels else 1
-            self.labeled_objects[is_positive].inc()
+            self.labeled_objects.observe(len(result.labels))
 
             for bbox in result.labels:
                 self.labeled_classes.labels(
                     mission=self.mission_id,
                     labeler="disk",
-                    class_name=self.class_list[bbox.label],
+                    class_name=bbox.label,
                 ).inc()
 
             # track time it took to apply label

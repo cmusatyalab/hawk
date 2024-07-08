@@ -59,23 +59,19 @@ CLASSES = ["?", "neg"] + mission_classes
 def update_labels(mission: Mission) -> None:
     """update labels to include pending labels"""
 
-    def extract_label_from_state(index: int) -> int:
-        class_ = st.session_state.get(index, "?")
-        return CLASSES.index(class_) - 2
-
     pending = []
     for result in mission.unlabeled:
         if result.objectId in mission.labeled:
             continue
 
-        label = extract_label_from_state(result.index)
-        if label == -2:  # unlabeled
+        class_name = st.session_state.get(result.index, "?")
+        if class_name not in CLASSES[1:]:  # unlabeled (or unknown class)
             continue
 
-        if label == -1:  # negative
+        if class_name == CLASSES[1]:  # negative
             result.labels = []
         else:
-            result.labels = [BoundingBox(label=label)]
+            result.labels = [BoundingBox(label=class_name)]
         pending.append(result)
     mission.save_labeled(pending)
 

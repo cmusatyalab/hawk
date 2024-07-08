@@ -40,7 +40,7 @@ HAWK_RETRIEVER_QUEUE_LENGTH = Gauge(
 HAWK_INFERENCED_OBJECTS = Histogram(
     "hawk_inferenced_objects",
     "Histogram to track confidence scores of inferenced objects (count/sum/buckets)",
-    labelnames=["mission", "gt"],
+    labelnames=["mission", "gt", "model_version"],
     buckets=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
 )
 

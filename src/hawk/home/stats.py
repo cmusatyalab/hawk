@@ -44,10 +44,11 @@ HAWK_LABELER_QUEUED_TIME = Histogram(
     labelnames=["mission", "labeler"],
     buckets=(0.5, 1.0, 2.5, 5.0, 7.5, 10.0, 25.0, 50.0, 75.0, 100.0),
 )
-HAWK_LABELED_OBJECTS = Counter(
+HAWK_LABELED_OBJECTS = Histogram(
     "hawk_labeled_objects",
-    "Number of samples that were labeled (negative/positive)",
-    labelnames=["mission", "labeler", "label"],
+    "Number of labels for each sample",
+    labelnames=["mission", "labeler"],
+    buckets=(0, 1, 2, 3),
 )
 HAWK_LABELED_CLASSES = Counter(
     "hawk_labeled_classes",
@@ -68,6 +69,29 @@ def collect_metric_samples(stat: Counter | Gauge) -> list[Sample]:
         for sample in metric.samples
         if not sample.name.endswith("_created")
     ]
+
+
+def collect_histogram_bucket(stat: Histogram, le: float) -> int:
+    value = str(float(le))
+    return int(
+        sum(
+            sample.value
+            for metric in stat.collect()
+            for sample in metric.samples
+            if sample.name.endswith("_bucket") and sample.labels["le"] == value
+        )
+    )
+
+
+def collect_summary_count(stat: Histogram | Summary) -> int:
+    return int(
+        sum(
+            sample.value
+            for metric in stat.collect()
+            for sample in metric.samples
+            if sample.name.endswith("_count")
+        )
+    )
 
 
 def collect_summary_total(stat: Histogram | Summary) -> int:

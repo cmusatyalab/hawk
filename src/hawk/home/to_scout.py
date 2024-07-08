@@ -18,7 +18,7 @@ from prometheus_client import Gauge, Histogram, Summary
 
 from ..ports import H2C_PORT, S2H_PORT
 from ..proto.messages_pb2 import LabelWrapper, SendLabels, SendTiles
-from .label_utils import BoundingBox, LabelSample
+from .label_utils import BoundingBox, ClassMap, LabelSample
 from .stats import (
     HAWK_LABELED_QUEUE_LENGTH,
     HAWK_UNLABELED_QUEUE_LENGTH,
@@ -45,19 +45,26 @@ class UnlabeledResult(LabelSample):
     data: bytes = b""
 
     @classmethod
-    def from_msg(cls, msg: bytes) -> UnlabeledResult:
+    def from_msg(cls, msg: bytes, class_map: ClassMap) -> UnlabeledResult:
         request = SendTiles()
         request.ParseFromString(msg)
 
         if "boxes" in request.attributes.keys():
             bb_string = request.attributes["boxes"].decode()
             bounding_boxes = [
-                BoundingBox.from_yolo(line)
+                BoundingBox.from_yolo(line, class_map)
                 for line in json.loads(bb_string).splitlines()
             ]
         else:
+            assert "scores" in request.attributes
             # classification case, scout thinks this could be a positive
-            bounding_boxes = [BoundingBox(label=0, score=request.score)]
+            logger.info(request.attributes["scores"])
+            scores = json.loads(request.attributes["scores"])
+            bounding_boxes = [
+                BoundingBox(label=label, score=score)
+                for label, score in scores.items()
+                if score
+            ]
 
         return cls(
             objectId=request.objectId,
@@ -73,6 +80,7 @@ class HomeToScoutWorker:
     mission_id: str
     scout: str
     h2c_port: int
+    class_map: ClassMap
     zmq_context: zmq.Context = field(  # type: ignore[type-arg]
         default_factory=zmq.Context, repr=False
     )
@@ -101,7 +109,7 @@ class HomeToScoutWorker:
     def put(self, result: LabelSample) -> None:
         """Queue a label from any thread which will be sent to the scout."""
         imageLabel = "0" if not result.labels else "1"
-        bboxes = [bbox.to_yolo() for bbox in result.labels]
+        bboxes = [bbox.to_yolo(self.class_map) for bbox in result.labels]
         label = LabelWrapper(
             objectId=result.objectId,
             scoutIndex=result.scoutIndex,
@@ -121,6 +129,7 @@ class ScoutQueue:
     mission_id: str
     strategy: Strategy
     scouts: list[str]
+    class_map: ClassMap
     h2c_port: int = H2C_PORT
     coordinator: int | None = None
 
@@ -142,6 +151,7 @@ class ScoutQueue:
                 mission_id=self.mission_id,
                 scout=scout,
                 h2c_port=self.h2c_port,
+                class_map=self.class_map,
                 zmq_context=self.zmq_context,
             )
             for scout in self.scouts
@@ -174,7 +184,7 @@ class ScoutQueue:
 
         while True:
             msg = socket.recv()
-            result = UnlabeledResult.from_msg(msg)
+            result = UnlabeledResult.from_msg(msg, self.class_map)
 
             self.unlabeled_received[result.scoutIndex].observe(len(msg))
 
@@ -209,6 +219,6 @@ class ScoutQueue:
         Will be sent to the scout that sent the original result or the coordinator.
         """
         scout_index = self.coordinator if self.coordinator else result.scoutIndex
-        label = 0 if not result.labels else 1
-        logger.info(f"Sending label {label} {result.scoutIndex} {result.objectId}")
+        label = "negative" if not result.labels else "positive"
+        logger.info(f"Sending {label} to {result.scoutIndex}: {result.objectId}")
         self.to_scout[scout_index].put(result)

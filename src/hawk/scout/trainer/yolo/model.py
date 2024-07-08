@@ -4,6 +4,7 @@
 
 import gc
 import io
+import json
 import multiprocessing as mp
 import os
 import queue
@@ -221,7 +222,11 @@ class YOLOModel(ModelBase):
                         score = 0
                     else:
                         score = 1
-                batch[i][0].attributes.add({"score": str.encode(str(score))})
+                score_dict = {
+                    label: float(score)
+                    for label, score in zip(self.context.class_manager.classes, score)
+                }
+                batch[i][0].attributes.add({"scores": json.dumps(score_dict).encode()})
                 results.append(ResultProvider(batch[i][0], score, self.version))
         return results
 

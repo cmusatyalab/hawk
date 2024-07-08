@@ -15,6 +15,7 @@ from prometheus_client import start_http_server as start_metrics_server
 from ..mission_config import load_config, write_config
 from ..ports import H2A_PORT, HOME_METRICS_PORT
 from .admin import Admin
+from .label_utils import ClassMap
 from .script_labeler import ScriptLabeler
 from .stats import HAWK_MISSION_STATUS
 from .to_labeler import LabelerDiskQueue
@@ -121,6 +122,11 @@ def main() -> None:
             processes.append(p)
             p.start()
 
+        class_list = config.get("dataset", {}).get(
+            "class_list", ["negative", "positive"]
+        )
+        class_map = ClassMap.from_list(class_list)
+
         # Start scout and labeler queues
         queues = config.get("queue-mode", "thread")
         if queues == "thread":
@@ -130,20 +136,18 @@ def main() -> None:
                 mission_id=mission_id,
                 strategy=strategy,
                 scouts=config.scouts,
+                class_map=class_map,
                 h2c_port=config.deploy.h2c_port,
                 zmq_context=context,
             )
 
             logger.info("Starting Labeler Queue")
-            class_list = config.get("dataset", {}).get(
-                "class_list", ["negative", "positive"]
-            )
             label_queue_max = config.get("label-queue-max", 0)
             LabelerDiskQueue(
                 mission_id=mission_id,
                 scout_queue=scout_queue,
                 mission_dir=mission_dir,
-                class_list=class_list,
+                class_hints=class_list,
                 label_queue_size=label_queue_max,
             ).start()
 

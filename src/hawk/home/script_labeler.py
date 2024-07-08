@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
-from hawk.home.label_utils import BoundingBox, LabelSample, MissionResults
+from hawk.home.label_utils import BoundingBox, ClassMap, LabelSample, MissionResults
 
 if TYPE_CHECKING:
     from hawk.mission_config import MissionConfig
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 @dataclass
 class ScriptLabeler:
     mission_dir: Path
-    class_list: list[str]
+    class_map: ClassMap
     label_time: float = 0.0
     detect: bool = False
     gt_path: Path | None = None
@@ -41,8 +41,9 @@ class ScriptLabeler:
     def classify_func(self, objectId: str) -> list[BoundingBox]:
         if objectId.startswith("/0/"):
             return []
-        class_index = int(objectId.split("/", 2)[1])
-        return [BoundingBox(label=class_index)]
+        class_index = objectId.split("/", 2)[1]
+        class_name = self.class_map[class_index]
+        return [BoundingBox(label=class_name)]
 
     def detect_func(self, objectId: str) -> list[BoundingBox]:
         assert self.gt_path is not None
@@ -52,7 +53,8 @@ class ScriptLabeler:
             return []
 
         return [
-            BoundingBox.from_yolo(line) for line in gt_file.read_text().splitlines()
+            BoundingBox.from_yolo(line, self.class_map)
+            for line in gt_file.read_text().splitlines()
         ]
 
     def run(self) -> None:
@@ -67,12 +69,10 @@ class ScriptLabeler:
     def label_data(self, result: LabelSample) -> None:
         result.labels = self.labeling_func(result.objectId)
 
-        labels = list({bbox.label for bbox in result.labels})
+        labels = list(bbox.label for bbox in result.labels)
         if labels:
             self.positives += 1
-            for class_index in labels:
-                class_name = self.class_list[class_index]
-                self.class_counter[class_name] += 1
+            self.class_counter.update(labels)
         else:
             self.negatives += 1
             self.class_counter["negative"] += 1
@@ -113,8 +113,9 @@ class ScriptLabeler:
         class_list = config.get("dataset", {}).get(
             "class_list", ["negative", "positive"]
         )
+        class_map = ClassMap.from_list(class_list)
 
-        return cls(mission_dir, class_list, label_time, label_mode == "detect", gt_dir)
+        return cls(mission_dir, class_map, label_time, label_mode == "detect", gt_dir)
 
 
 def main() -> int:
@@ -129,9 +130,10 @@ def main() -> int:
     args = parser.parse_args()
 
     class_list = ["negative"] + (args.label_class or ["positive"])
+    class_map = ClassMap.from_list(class_list)
 
     ScriptLabeler(
-        args.mission_directory, class_list, args.label_time, args.detect, args.gt_path
+        args.mission_directory, class_map, args.label_time, args.detect, args.gt_path
     ).run()
     return 0
 

@@ -117,8 +117,11 @@ hawk_labeler_queued_length: Gauge
 hawk_labeler_queued_time: Histogram
     Time elapsed from being written to unlabeled.jsonl until a label is sent back to the scout (seconds)
 
-hawk_labeled_objects{label="..."}: Counter
-    Number of samples that were labeled as the class specified by 'label'
+hawk_labeled_objects: Histogram
+    Number of labels returned by the labeler for each sample. A negative will have 0 labels.
+
+hawk_labeled_classes{class_name="..."}: Counter
+    Number of labels of a given class returned by the labeler.
 
 hawk_labeled_queue_length{scout="..."}: Gauge
     Number of labels queued to be sent back to each scout

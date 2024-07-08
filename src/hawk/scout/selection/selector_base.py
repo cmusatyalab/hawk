@@ -80,14 +80,25 @@ class Selector(metaclass=ABCMeta):
 
 class SelectorBase(Selector):
     def __init__(self, mission_id: str) -> None:
+        self._mission: Mission | None = None
+
         self.result_queue: queue.Queue[ResultProvider | None] = queue.Queue(maxsize=100)
 
         self.items_processed = 0
 
         self.mission_id = mission_id
         self.inferenced_objects = HAWK_INFERENCED_OBJECTS
-        for label in [0, 1]:  # Hint to prometheus_client which labels we might use
-            HAWK_INFERENCED_OBJECTS.labels(mission=mission_id, gt=str(label))
+
+        # currently a no-op, we would need to change initialization order so that
+        # the mission is created before selector, or at least pass the list of
+        # classes to the SelectorBase initializer
+        if self._mission is not None:
+            # Hint to prometheus_client which labels we might use
+            class_list = list(self._mission.class_manager.classes)
+            for class_name in ["negative"] + class_list[1:]:
+                HAWK_INFERENCED_OBJECTS.labels(
+                    mission=mission_id, gt=class_name, model_version="0"
+                )
 
         self.items_skipped = HAWK_SELECTOR_SKIPPED_OBJECTS.labels(mission=mission_id)
         self.priority_queue_length = HAWK_SELECTOR_PRIORITY_QUEUE_LENGTH.labels(
@@ -114,7 +125,6 @@ class SelectorBase(Selector):
 
         self._model_lock = threading.Lock()
         self._model_present = False
-        self._mission: Mission | None = None
         self.transmit_queue = None
 
         self._clear_event = threading.Event()
@@ -140,8 +150,20 @@ class SelectorBase(Selector):
         self.items_processed += 1
 
         # collect inference stats
+        # making sure the negative class is always called "negative" to make
+        # graphing easier
+        class_name = (
+            "negative"
+            if result.gt == 0
+            else self._mission.class_manager.label_name_dict[result.gt]
+            if self._mission is not None
+            else str(result.gt)
+        )
+        model_version = str(result.model_version)
         self.inferenced_objects.labels(
-            mission=self.mission_id, gt=str(result.gt)
+            mission=self.mission_id,
+            gt=class_name,
+            model_version=model_version,
         ).observe(result.score)
 
         with self._model_lock:

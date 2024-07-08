@@ -47,7 +47,9 @@ from .stats import (
     HAWK_LABELED_CLASSES,
     HAWK_LABELED_OBJECTS,
     HAWK_UNLABELED_RECEIVED,
+    collect_histogram_bucket,
     collect_metric_samples,
+    collect_summary_count,
     collect_summary_total,
 )
 
@@ -482,19 +484,18 @@ class Admin:
 
                 stats = self.accumulate_mission_stats()
 
-                objects: Counter[str] = Counter()
-                for sample in collect_metric_samples(HAWK_LABELED_OBJECTS):
-                    objects[sample.labels["label"]] += int(sample.value)
+                negatives = collect_histogram_bucket(HAWK_LABELED_OBJECTS, 0)
+                positives = collect_summary_count(HAWK_LABELED_OBJECTS) - negatives
 
                 counts: Counter[str] = Counter()
                 for sample in collect_metric_samples(HAWK_LABELED_CLASSES):
-                    counts[sample.labels["label"]] += int(sample.value)
+                    counts[sample.labels["class_name"]] += int(sample.value)
                 per_class_counts = {cls: counts[cls] for cls in self.class_list[1:]}
 
                 stats.update(
                     {
-                        "positives": objects["positive"],
-                        "negatives": objects["negative"],
+                        "positives": positives,
+                        "negatives": negatives,
                         "bytes": collect_summary_total(HAWK_UNLABELED_RECEIVED),
                         "count_by_class": per_class_counts,
                     }

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import io
+import json
 import multiprocessing as mp
 import queue
 import time
@@ -329,7 +330,13 @@ class DNNClassifierModelRadar(ModelBase):
                     cls = int(result_object.id.split("/", 2)[1])
                     score = [0.0] * num_classes
                     score[cls] = 1.0
-                result_object.attributes.add({"score": str.encode(str(score))})
+                score_dict = {
+                    label: float(score)
+                    for label, score in zip(self.context.class_manager.classes, score)
+                }
+                result_object.attributes.add(
+                    {"scores": json.dumps(score_dict).encode()}
+                )
                 result_object.attributes.add({"boxes": str.encode(str(box))})
                 # add another attribute containing the estimated bounding boxes
                 # should be a list of cls, x,y,w,h ground truth bounding boxes
