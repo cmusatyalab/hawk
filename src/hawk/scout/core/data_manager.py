@@ -429,10 +429,11 @@ class DataManager:
         ### create simple list of length num classes, which is reset to zero each time
         for label in subdir.iterdir():
             example_files = list(label.iterdir())
-            if label.name == "1":
-                new_positives += len(example_files)
-            elif label.name == "labels":
+            
+            if label.name == "labels":
                 pass
+            elif int(label.name) > 0:
+                new_positives += len(example_files)
             else:
                 new_negatives += len(example_files)
             if not label.name == "labels":
