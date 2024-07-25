@@ -64,7 +64,7 @@ class UnlabeledResult(LabelSample):
             bounding_boxes = [
                 BoundingBox(label=label, score=score)
                 for label, score in scores.items()
-                if score
+                if score and label != "negative"
             ]
 
         return cls(
