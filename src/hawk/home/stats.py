@@ -22,6 +22,11 @@ HAWK_UNLABELED_RECEIVED = Summary(
     "Size (_sum) and count (_count) of samples received from each scout",
     labelnames=["mission", "scout"],
 )
+HAWK_UNLABELED_RECEIVED_SCORE = Summary(
+    "hawk_unlabeled_received_score",
+    "Score (_sum) and count (_count) of samples received from each scout",
+    labelnames=["mission", "scout"],
+)
 HAWK_UNLABELED_QUEUE_LENGTH = Gauge(
     "hawk_unlabeled_queue_length",
     "Number of samples queued in priority queue before labeling",

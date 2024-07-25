@@ -108,6 +108,10 @@ hawk_survivability_threats_not_countered: Counter
 hawk_unlabeled_received{scout="..."}: Summary (_count, _sum)
     Number of samples received from each scout and cumulative message size.
 
+hawk_unlabeled_received_score{scout="..."}: Summary (_count, _sum)
+    Number of samples received from each scout and cumulative score.
+    Can be used to derive the top confidence values of the per-scout priority queues.
+
 hawk_unlabeled_queue_length: Gauge
     Length of the priority queue with samples waiting to be written to unlabeled.jsonl
 

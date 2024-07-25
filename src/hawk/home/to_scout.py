@@ -24,6 +24,7 @@ from .stats import (
     HAWK_UNLABELED_QUEUE_LENGTH,
     HAWK_UNLABELED_QUEUE_TIME,
     HAWK_UNLABELED_RECEIVED,
+    HAWK_UNLABELED_RECEIVED_SCORE,
 )
 
 
@@ -160,6 +161,10 @@ class ScoutQueue:
             HAWK_UNLABELED_RECEIVED.labels(mission=self.mission_id, scout=scout)
             for scout in self.scouts
         ]
+        self.unlabeled_received_score = [
+            HAWK_UNLABELED_RECEIVED_SCORE.labels(mission=self.mission_id, scout=scout)
+            for scout in self.scouts
+        ]
         self.unlabeled_queue_length = HAWK_UNLABELED_QUEUE_LENGTH.labels(
             mission=self.mission_id
         )
@@ -187,6 +192,7 @@ class ScoutQueue:
             result = UnlabeledResult.from_msg(msg, self.class_map)
 
             self.unlabeled_received[result.scoutIndex].observe(len(msg))
+            self.unlabeled_received_score[result.scoutIndex].observe(result.score)
 
             received += 1
             received_from_scout.update([result.scoutIndex])
