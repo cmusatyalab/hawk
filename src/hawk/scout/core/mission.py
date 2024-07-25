@@ -553,6 +553,7 @@ class Mission(DataManagerContext, ModelContext):
             DatasetSplit.TRAIN
         ) as train_dir:  # important
             logger.info(f"Train dir {train_dir}")
+            self.selector.add_easy_negatives(train_dir)
             model = self.trainer.train_model(train_dir)
 
         eval_start = time.time()

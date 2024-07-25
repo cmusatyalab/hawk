@@ -99,6 +99,10 @@ class DNNClassifierTrainer(ModelTrainerBase):
             raise Exception
 
         with open(trainpath, "w") as f:
+            # get easy negatives
+            for easy in list(train_dir.joinpath("-1").glob("*")):
+                f.write(f"{easy} 0\n")
+
             for label in labels:
                 for path in train_samples[label]:
                     f.write(f"{path} {label}\n")

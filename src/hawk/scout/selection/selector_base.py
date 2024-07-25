@@ -8,6 +8,7 @@ import queue
 import threading
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from logzero import logger
@@ -75,6 +76,11 @@ class Selector(metaclass=ABCMeta):
     @abstractmethod
     def get_stats(self) -> SelectorStats:
         """Returns current mission stats"""
+        pass
+
+    @abstractmethod
+    def add_easy_negatives(self, path: Path) -> None:
+        """Add unlabeled easy negatives to training set"""
         pass
 
 

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import queue
 import threading
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from logzero import logger
@@ -79,3 +80,7 @@ class ThresholdSelector(SelectorBase):
                 )
                 self.discard_queue_length.set(self._discard_queue.qsize())
                 self.num_revisited.inc(num_revisited)
+
+    def add_easy_negatives(self, path: Path) -> None:
+        """not implemented yet"""
+        pass

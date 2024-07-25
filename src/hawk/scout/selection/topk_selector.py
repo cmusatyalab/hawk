@@ -7,6 +7,7 @@ from __future__ import annotations
 import copy
 import os
 import queue
+import random
 import threading
 from collections import defaultdict
 from pathlib import Path
@@ -129,29 +130,30 @@ class TopKSelector(SelectorBase):
 
         if length_results < 10:
             return
-        result_list = sorted(result_list, key=lambda x: x.score, reverse=True)
 
         num_auto_negative = min(int(0.40 * length_results), 200)
-        auto_negative_list = result_list[-num_auto_negative:]
+        # result_list = sorted(result_list, key=lambda x: x.score)
+        # auto_negative_list = result_list[:num_auto_negative]
+        auto_negative_list = random.sample(result_list, num_auto_negative)
 
-        labels = [1 if "/1/" in item.id else 0 for item in auto_negative_list]
+        labels = [0 if item.id.startswith("/0/") else 1 for item in auto_negative_list]
         logger.info(
             f"[EASY NEG] Length of result list {length_results}"
             f" negatives added: {num_auto_negative}"
-            f" total labels: {sum(labels)}"
+            f" total false negatives: {sum(labels)}"
         )
 
         self.num_negatives_added += len(auto_negative_list)
 
         for result in auto_negative_list:
-            object_id = result.id
-            example = self._mission.retriever.read_object(object_id)
-            if example is None:
-                break
+            # object_id = result.id
+            # example = self._mission.retriever.read_object(object_id)
+            # if example is None:
+            #    break
+            example = result
             example_file = get_example_key(example.content)
-            example_path = negative_path / example_file
-            with example_path.open("wb") as f:
-                f.write(example.content)
+            example_path = negative_path.joinpath(example_file)
+            example_path.write_bytes(example.content)
             with self._insert_lock:
                 self.easy_negatives[self.version].append(example_path)
 
