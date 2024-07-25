@@ -37,6 +37,7 @@ from ..retrain.sampleInterval_policy import SampleIntervalPolicy
 from ..retrieval.retriever import Retriever
 from ..selection.selector_base import Selector
 from ..selection.token_selector import TokenSelector
+from ..stats import HAWK_MODEL_VERSION
 from .data_manager import DataManager
 from .hawk_stub import HawkStub
 from .model import Model
@@ -111,11 +112,13 @@ class Mission(DataManagerContext, ModelContext):
 
         self._model: Model | None = None
 
+        self._model_version = HAWK_MODEL_VERSION.labels(mission=mission_id)
+        self._model_version.set(-1)
+
         self._model_stats = TestResults(version=-1)
         self._model_lock = threading.Lock()
         self._initial_model_event = threading.Event()
         self._model_event = threading.Event()
-        self._last_trained_version = -1
         self._object_model_excess = 2000
 
         self._test_results: dict[int, list[list[tuple[int, float]]]] = defaultdict(list)
@@ -261,14 +264,10 @@ class Mission(DataManagerContext, ModelContext):
 
         with self._model_lock:
             self._model = None
+            self._model_version.set(-1)
             self._model_stats = TestResults(version=-1)
-            self._last_trained_version = -1
 
         self.selector.new_model(None)
-
-    def get_last_trained_version(self) -> int:
-        with self._model_lock:
-            return self._last_trained_version
 
     @property
     def scout_index(self) -> int:
@@ -587,8 +586,8 @@ class Mission(DataManagerContext, ModelContext):
                 logger.info("Stopping model")
                 self._model.stop()
             self._model = model
+            self._model_version.set(model.version)
             self._model_stats = model_stats
-            self._last_trained_version = model.version
         logger.info(f"Promoted New Model Version {model.version}")
         self.log(f"{time.ctime()} Promoted New Model Version {model.version}")
         # This ultimately calls the reexamination inference through the new

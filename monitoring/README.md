@@ -45,6 +45,11 @@ hawk_retriever_queue_length: Gauge
 ```
 
 ```
+hawk_model_version: Gauge
+    Model version used for inferencing
+```
+
+```
 hawk_inferenced_objects{gt="..."}: Histogram (_count, _sum, _buckets)
     Histogram buckets for confidence scores of inferenced samples broken down
     by mission and groundtruth

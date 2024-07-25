@@ -37,6 +37,12 @@ HAWK_RETRIEVER_QUEUE_LENGTH = Gauge(
     labelnames=["mission"],
 )
 
+HAWK_MODEL_VERSION = Gauge(
+    "hawk_model_version",
+    "Gauge to track the trained model iteration used for inference",
+    labelnames=["mission"],
+)
+
 HAWK_INFERENCED_OBJECTS = Histogram(
     "hawk_inferenced_objects",
     "Histogram to track confidence scores of inferenced objects (count/sum/buckets)",
