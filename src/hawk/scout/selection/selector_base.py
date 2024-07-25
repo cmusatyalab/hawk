@@ -251,7 +251,7 @@ class SelectorBase(Selector):
         ]
         processed_objects = sum(sample.value for sample in inferenced)
         positives_in_stream = sum(
-            sample.value for sample in inferenced if sample.labels["gt"] != "0"
+            sample.value for sample in inferenced if sample.labels["gt"] != "negative"
         )
 
         return SelectorStats(
