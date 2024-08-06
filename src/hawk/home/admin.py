@@ -7,7 +7,7 @@ from __future__ import annotations
 import base64
 import io
 import json
-import os
+import os, random
 import socket
 import threading
 import time
@@ -25,6 +25,7 @@ from ..mission_config import MissionConfig, load_config
 from ..ports import H2A_PORT
 from ..proto.messages_pb2 import (
     AbsolutePolicyConfig,
+    ChangeDeploymentStatus,
     Dataset,
     FileDataset,
     MissionResults,
@@ -33,6 +34,7 @@ from ..proto.messages_pb2 import (
     ModelConfig,
     NetworkDataset,
     PercentagePolicyConfig,
+    PerScoutSCMLOptions,
     ReexaminationStrategyConfig,
     RetrainPolicyConfig,
     SampleIntervalPolicyConfig,
@@ -75,6 +77,7 @@ class Admin:
         self.scout_stubs: dict[int, zmq.Socket[Literal[zmq.SocketType.REP]]] = {}
         self.log_files: dict[int, TextIO] = {}
         self.test_path = ""
+        self.scml = False
 
     def start(self) -> Admin:
         threading.Thread(target=self.receive_from_home, daemon=True).start()
@@ -108,6 +111,10 @@ class Admin:
         self.end_time = int(config.get("end-time", 5000))
 
         self.scouts = config.scouts
+
+        # scout deployment status
+        # self.active_scouts = 
+        # self.idle_scouts = 
 
         # homeIP
         home_ip = self._home_ip
@@ -250,6 +257,7 @@ class Admin:
                         timeout=timeout,
                         dataServerAddr=network_config["server_address"],
                         dataServerPort=int(network_config["server_port"]),
+                        dataBalanceMode=dataset_config["data_rate_balance"]
                     )
                 )
 
@@ -347,6 +355,41 @@ class Admin:
                 content=model_content,
             )
 
+        # base model (primarily for radar)
+        base_model_path = train_config.get("base_model_path", "")
+        
+        # deployment options
+        deployment_options = config.get("scml_deploy_options", "")
+        scml_deploy_options = {}
+        self.scout_deployment_status = {} ## Active, Idle, or Dead
+        self.num_active_scouts = 0 ## To send periodically to every scout for purposes of retrieval rate
+        if deployment_options:
+            self.scml = True
+            default_deploy_scout = deployment_options["default_deploy_scout"]
+            default_start_time = int(default_deploy_scout.get("start_time", 0))
+            default_on_model = int(default_deploy_scout.get("on_model", 0))
+            mission_duration_percentage = int(default_deploy_scout.get("mission_duration_percentage", 0))
+
+            ## home conditions to trigger new scout activation
+            default_deploy_home = deployment_options["default_deploy_home"]
+            self.min_num_scout_destroyed = default_deploy_home["min_num_scouts_destroyed"]
+            self.min_num_scouts_remaining = default_deploy_home["min_num_scouts_remaining"]
+            self.deploy_on_any_loss = default_deploy_home["min_num_scouts_remaining"]
+            
+        else:
+            default_start_time, default_on_model, mission_duration_percentage = 0, 0, 0
+        
+        for scout in self.scouts:
+            scml_deploy_options[scout] = PerScoutSCMLOptions(scout_dict={"start_time":default_start_time, "start_on_model":default_on_model, "mission_percentage":mission_duration_percentage})
+            logger.info("SCML: {}".format(scml_deploy_options[scout]))
+            if default_start_time > 0 or default_on_model > 0 or mission_duration_percentage > 0:
+                self.scout_deployment_status[scout] = "Idle"
+            else:
+                self.scout_deployment_status[scout] = "Active"
+                self.num_active_scouts += 1
+
+        ## for per scout configurations, loop through scouts again and set unique configurations, to be added here.
+            
         # bootstrapZip
         bootstrap_path = train_config.get("bootstrap_path", "")
         bootstrap_zip = b""
@@ -369,11 +412,15 @@ class Admin:
         a2s_port = config.deploy.a2s_port
 
         self.scout_stubs = {}
+        self.stub_socket = {}
+        self.socket_stub = {}
         for index, host in enumerate(self.scouts):
             ip = socket.gethostbyname(host)
             stub = self._zmq_context.socket(zmq.REQ)
             stub.connect(f"tcp://{ip}:{a2s_port}")
             self.scout_stubs[index] = stub
+            self.stub_socket[host] = stub
+            self.socket_stub[stub] = host
 
         # setup ScoutConfiguration
         # Call a2s_configure_scout and wait for success message
@@ -403,6 +450,7 @@ class Admin:
                 bandwidthFunc=bandwidth_func,
                 validate=train_validate,
                 class_list=self.class_list,
+                scml_deploy_opts=scml_deploy_options[self.scouts[index]],
             )
             msg = [
                 b"a2s_configure_scout",
@@ -452,6 +500,11 @@ class Admin:
 
         logger.info("Start msg received")
 
+        if self.scml:
+            threading.Thread(target=self.scml_deployment_status, daemon=True).start()
+        ## start tracking scml deployment status of each scout
+
+
     def stop_mission(self) -> None:
         """Explicit stop Mission command"""
         # close per-scout log files to suspend stats collection
@@ -468,6 +521,46 @@ class Admin:
 
         for stub in self.scout_stubs.values():
             stub.recv()
+    
+    def scml_deployment_status(self) -> None:
+        ## loop to get deployment status from each scout, and check if scout has died, deploy new scout if necessary.
+        dead_scouts = []
+        while True:
+            new_dead_scouts = 0
+            ## send the current number of active scouts and get the current deployment statuses from all scouts
+            for stub in self.scout_stubs.values():
+                msg = [b"a2s_get_deploy_status",
+                        str(self.num_active_scouts).encode('utf-8')                       
+                ]
+                stub.send_multipart(msg)
+            for stub in self.scout_stubs.values():
+                response = stub.recv()
+                self.scout_deployment_status[self.socket_stub[stub]] = response.decode() ## set the current scout status
+                if self.scout_deployment_status[self.socket_stub[stub]] == "Dead" and self.socket_stub[stub] not in dead_scouts: ## check if scout went from active to idle (died or some other future reason)
+                    dead_scouts.append(self.socket_stub[stub]) 
+                    new_dead_scouts += 1
+                #logger.info(f"Scout Status: {self.socket_stub[stub]}, {self.scout_deployment_status[self.socket_stub[stub]]}")
+            active_scouts = [self.scout_deployment_status[scout] for scout in self.scout_deployment_status.keys() if self.scout_deployment_status[scout] == "Active"]
+            idle_scouts = [self.scout_deployment_status[scout] for scout in self.scout_deployment_status.keys() if self.scout_deployment_status[scout] == "Idle"]
+            
+            ## Check whether scout has died and how many idle scouts to deploy, according to configurations
+            if new_dead_scouts > 0:
+                if self.deploy_on_any_loss: ## from home deploy config
+                    num_scouts_to_deploy = min(new_dead_scouts, len(idle_scouts)) ## deploy 1 new scout for each that has died (if available)                
+                elif len(active_scouts) < self.min_num_scouts_remaining : ## deploy number of scouts up to threshold number (if available)
+                    num_scouts_to_deploy = min(self.min_num_scouts_remaining - len(active_scouts), len(idle_scouts))
+                for i in range(num_scouts_to_deploy): 
+                    activating_scout = idle_scouts.pop(random.randint(0,len(idle_scouts) - 1)) ## pick a random idle scout to deploy
+                    self.num_active_scouts += 1
+                    data = ChangeDeploymentStatus(ActiveStatus=True, NumActiveScouts=self.num_active_scouts)
+                    msg = [b"a2s_change_deploy_status",
+                        data.SerializeToString()
+                        ]
+                    self.stub_socket[activating_scout].send_multipart(msg)
+                    self.stub_socket[activating_scout].recv()
+        
+            time.sleep(10)       
+
 
     def get_mission_stats(self) -> None:
         count = 1

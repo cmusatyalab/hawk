@@ -30,6 +30,7 @@ message ScoutConfiguration {
   map<int32, string> bandwidthFunc = 14;
   bool validate = 15;
   repeated string class_list = 16;
+  PerScoutSCMLOptions scml_deploy_opts = 17;
 }
 
 message MissionStats {
@@ -146,6 +147,7 @@ message NetworkDataset {
   bool resizeTile = 5;
   string dataServerAddr = 6; // host address of data server
   int32 dataServerPort = 7; // port of data server
+  string dataBalanceMode = 8; // 'locally_constant' or 'globally_constant'
 }
 
 message Streaming_Video {
@@ -244,4 +246,13 @@ message SendTiles {
 
 message SendLabels {
   LabelWrapper label = 1;
+}
+
+message PerScoutSCMLOptions {
+  map<string, int32> scout_dict = 1;
+}
+
+message ChangeDeploymentStatus {
+  bool ActiveStatus = 1;
+  int32 NumActiveScouts = 2;
 }

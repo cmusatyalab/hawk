@@ -15,7 +15,7 @@ import zmq
 from logzero import logger
 from PIL import Image
 
-from ...proto.messages_pb2 import NetworkDataset
+from ...proto.messages_pb2 import NetworkDataset, PerScoutSCMLOptions, ChangeDeploymentStatus
 from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
 from ..stats import collect_metrics_total
@@ -26,24 +26,28 @@ class NetworkRetriever(Retriever):
     def __init__(self, mission_id: str, dataset: NetworkDataset, host_name: str):
         super().__init__(mission_id)
         self.this_host_name = host_name.split(":")[0]
-        self._dataset = dataset
+        self.dataset = dataset
         self._network_server_host = dataset.dataServerAddr  ## pulled from home config
         self._network_server_port = (
             dataset.dataServerPort
         )  ## 6105 ## pulled from home config
+        self.scml_active_mode = False # Not yet received a deliberate command from home to deploy
+        self.scml_active_condition = True # True unless local scout deploy conditions prevent
+        self.data_rate_balance = dataset.dataBalanceMode
+        
         self._timeout = dataset.timeout  ## from home config default 20
         self._resize = dataset.resizeTile
         logger.info("In NETWORK RETRIEVER INIT...")
 
-        index_file = Path(self._dataset.dataPath)
+        index_file = Path(self.dataset.dataPath)
         self._data_root = index_file.parent.parent
         self.contents = index_file.read_text().splitlines()
         self.total_tiles = len(self.contents)
         ## for network retriever, will update total_tiles to equal tiles
         ## processes as clients unaware of total tiles per scout a priori
 
-        num_tiles = self._dataset.numTiles
-        key_len = math.ceil(self.total_tiles / num_tiles)
+        self.num_tiles = self.dataset.numTiles
+        key_len = math.ceil(self.total_tiles / self.num_tiles)
 
         keys = np.arange(key_len)
         per_frame = np.array_split(self.contents, key_len)
@@ -84,7 +88,24 @@ class NetworkRetriever(Retriever):
         ## continuously send requests to the server.
         scout_index = str(self._context.scout_index).encode("utf-8")
         time_start = time.time()
-        while True:
+        mission_time_start = time.time()
+        logger.info("SCML options from mission: {}".format(self._context.scml_deploy_options))                
+        while True: 
+            #logger.info(f"Active mode and active condition: {self.scml_active_mode}, {self.scml_active_condition}")
+            if ((time.time() - mission_time_start) < self._context.scml_deploy_options["start_time"]) or (self._context._model.version < self._context.scml_deploy_options["start_on_model"]): ## too early to start retrieving, recheck every 5 seconds
+                self.scml_active_condition = False
+            else:
+                self.scml_active_condition = True
+            
+            if self.scml_active_mode or self.scml_active_condition: ## if sent deployment order from home or preset conditions are reached.  Future work: going from Active back to Idle.
+                self.current_deployment_mode = "Active"
+            else:
+                self.current_deployment_mode = "Idle"              
+
+            if not (self.current_deployment_mode == "Active"): ## i.e. if it's Dead or Idle, 'Dead' not fully implemented yet
+                    logger.info("Too early to start retrieving or in idle mode...{}".format(time.time() - mission_time_start))
+                    time.sleep(5)
+                    continue
             ## need additional conditions here to break out of this loop, or to
             ## block at some line before retrieving the next sample.
             ## prepare and send request
@@ -110,7 +131,7 @@ class NetworkRetriever(Retriever):
                 )
             )
 
-            if self.sample_count % self._dataset.numTiles == 0:
+            if self.sample_count % self.num_tiles == 0:
                 retrieved_tiles = collect_metrics_total(self.retrieved_objects)
                 logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
                 time_passed = time.time() - time_start
@@ -122,6 +143,7 @@ class NetworkRetriever(Retriever):
             ## retrieval rates.
 
     def server(self) -> None:
+        self.current_deployment_mode = "Server"
         context = zmq.Context()
         socket = context.socket(zmq.REP)
         socket.bind(f"tcp://0.0.0.0:{self._network_server_port}")  ## setup socket

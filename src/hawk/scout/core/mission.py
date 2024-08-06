@@ -64,6 +64,7 @@ class Mission(DataManagerContext, ModelContext):
         initial_model: ModelArchive,
         train_strategy: TrainConfig,
         class_list: list[str],
+        scml_deploy_options: dict,
         validate: bool = False,
     ):
         super().__init__()
@@ -104,6 +105,7 @@ class Mission(DataManagerContext, ModelContext):
         self.initial_model = initial_model
         self._validate = validate
         self.class_list = class_list
+        self.scml_deploy_options = scml_deploy_options
 
         # Indicates that the mission will seed the strategy with an initial set
         # of examples. The strategy should therefore hold off on returning
