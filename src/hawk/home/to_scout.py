@@ -59,8 +59,8 @@ class UnlabeledResult(LabelSample):
         else:
             assert "scores" in request.attributes
             # classification case, scout thinks this could be a positive
-            logger.info(request.attributes["scores"])
             scores = json.loads(request.attributes["scores"])
+            logger.debug(f"Received sample, inferenced scores {scores}")
             bounding_boxes = [
                 BoundingBox(label=label, score=score)
                 for label, score in scores.items()

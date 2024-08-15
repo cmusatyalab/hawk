@@ -129,7 +129,7 @@ class LabelerDiskQueue:
         logger.info("Started reading labeled results from labeler")
 
         # skip previously labeled results
-        labeled = index_jsonl(labeled_jsonl)[0]
+        labeled, _ = index_jsonl(labeled_jsonl)
 
         # read labeled results and forward to the scouts
         for result in read_jsonl(labeled_jsonl, exclude=labeled, tail=True):

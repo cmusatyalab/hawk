@@ -17,6 +17,7 @@ from logzero import logger
 from .utils import tailf
 
 if TYPE_CHECKING:
+    from collections.abc import Container
     from os import PathLike
 
 
@@ -168,12 +169,12 @@ def index_jsonl(
 ) -> tuple[set[str], int]:
     """Returns a set of all unique ids in the given jsonl file.
     Returns both the set and the number of lines parsed."""
-    if index is None:
-        index = set()
-
     jsonl_path = Path(jsonl)
     if not jsonl_path.exists():
-        return index, skip
+        return set(), 0
+
+    if index is None:
+        index = set()
 
     n = 0  # in case the file is empty
     with jsonl_path.open() as fp:
@@ -187,7 +188,7 @@ def index_jsonl(
 
 def read_jsonl(
     jsonl: PathLike[str] | str,
-    exclude: set[str] | dict[str, Any] | None = None,
+    exclude: Container[str] | None = None,
     skip: int = 0,
     tail: bool = False,
 ) -> Iterator[LabelSample]:
@@ -212,7 +213,9 @@ def read_jsonl(
             if index <= skip:
                 continue
             obj = json.loads(line)
-            if obj["objectId"] in exclude:
+            objectId = obj["objectId"]
+            if objectId in exclude:
+                logger.debug(f"Not loading previously labeled {objectId}")
                 continue
             yield LabelSample.from_dict(obj, index)
 
@@ -255,9 +258,9 @@ class MissionResults:
     ) -> Iterator[LabelSample]:
         if exclude_labeled:
             self.resync_labeled()
-            exclude = self.labeled
+            exclude: Container[str] = self.labeled
         else:
-            exclude = dict()
+            exclude = set()
         yield from read_jsonl(self.unlabeled_jsonl, exclude=exclude, tail=tail)
 
     def save_labeled(self, results: list[LabelSample]) -> None:
@@ -268,6 +271,7 @@ class MissionResults:
             for result in results:
                 # skip already labeled results
                 if result.objectId in self.labeled:
+                    logger.debug(f"Not saving previously labeled {result.objectId}")
                     continue
 
                 # skip if there are still unclassified bounding boxes?
