@@ -12,10 +12,15 @@ from ..core.model import Model
 from ..core.result_provider import ResultProvider
 
 if TYPE_CHECKING:
+    from ..retrieval.retriever import Retriever
+
     ReexaminationQueueType = queue.PriorityQueue[Tuple[float, float, ResultProvider]]
 
 
 class ReexaminationStrategy(metaclass=ABCMeta):
+    def __init__(self, retriever: Retriever):
+        self.retriever = retriever
+
     @property
     @abstractmethod
     def reexamines_old_results(self) -> bool:

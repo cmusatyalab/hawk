@@ -226,7 +226,9 @@ class A2SAPI:
             assert isinstance(retrain_policy, SampleIntervalPolicy)
             retrain_policy.num_interval_sample(retriever.total_tiles)
 
-        reexamination_strategy = self._get_reexamination_strategy(request.reexamination)
+        reexamination_strategy = self._get_reexamination_strategy(
+            request.reexamination, retriever
+        )
         selector = self._get_selector(
             request.missionId, request.selector, reexamination_strategy
         )
@@ -552,15 +554,17 @@ class A2SAPI:
             )
 
     def _get_reexamination_strategy(
-        self, reexamination_strategy: ReexaminationStrategyConfig
+        self,
+        reexamination_strategy: ReexaminationStrategyConfig,
+        retriever: Retriever,
     ) -> ReexaminationStrategy:
         reexamination_type = reexamination_strategy.type
         if reexamination_type == "none":
-            return NoReexaminationStrategy()
+            return NoReexaminationStrategy(retriever)
         elif reexamination_type == "top":
-            return TopReexaminationStrategy(reexamination_strategy.k)
+            return TopReexaminationStrategy(retriever, reexamination_strategy.k)
         elif reexamination_type == "full":
-            return FullReexaminationStrategy()
+            return FullReexaminationStrategy(retriever)
         else:
             raise NotImplementedError(
                 "unknown reexamination strategy: {}".format(

@@ -90,6 +90,7 @@ class FSLModel(ModelBase):
         self, request: ObjectProvider
     ) -> Tuple[ObjectProvider, Sequence[float]]:
         try:
+            assert isinstance(request.content, bytes)
             image = Image.open(io.BytesIO(request.content))
 
             if image.mode != "RGB":
