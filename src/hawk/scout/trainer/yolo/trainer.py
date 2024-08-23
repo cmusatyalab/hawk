@@ -25,7 +25,7 @@ torch.multiprocessing.set_sharing_strategy("file_system")
 
 class YOLOTrainer(ModelTrainerBase):
     def __init__(self, context: ModelContext, args: Dict[str, str]):
-        super().__init__(args)
+        super().__init__(context, args)
 
         self.args["test_dir"] = self.args.get("test_dir", "")
         self.args["batch-size"] = int(self.args.get("batch-size", 16))
@@ -34,8 +34,6 @@ class YOLOTrainer(ModelTrainerBase):
             self.args.get("initial_model_epochs", 30)
         )
         self.train_initial_model = False
-
-        self.context = context
 
         logger.info(f"Model_dir {self.context.model_dir}")
 
@@ -172,10 +170,19 @@ class YOLOTrainer(ModelTrainerBase):
             "--data",
             str(data_file),
         ]
+        capture_files = [data_file, trainpath, train_dir]
+
+        # if not self.train_initial_model:
+        #     capture_files.append(weights)
+
         if self.args["test_dir"]:
             cmd.extend(["--noval", "False"])
+            capture_files.append(valpath)
 
-        logger.info(f"TRAIN CMD \n {shlex.join(cmd)}")
+        cmd_str = shlex.join(cmd)
+        self.capture_trainingset(cmd_str, capture_files)
+
+        logger.info(f"TRAIN CMD \n {cmd_str}")
         proc = subprocess.Popen(cmd)
         proc.communicate()
         if not model_savepath.exists():

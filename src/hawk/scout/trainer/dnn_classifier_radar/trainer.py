@@ -22,7 +22,7 @@ torch.multiprocessing.set_sharing_strategy("file_system")
 
 class DNNClassifierTrainerRadar(ModelTrainerBase):
     def __init__(self, context: ModelContext, args: Dict[str, str]):
-        super().__init__(args)
+        super().__init__(context, args)
 
         self.args["test_dir"] = self.args.get("test_dir", "")
         self.args["arch"] = self.args.get("arch", "resnet50")
@@ -33,8 +33,6 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
         )
         self.train_initial_model = False
         self.testpath = self.args["test_dir"]
-
-        self.context = context
 
         logger.info(f"Model_dir {self.context.model_dir}")
 
@@ -156,15 +154,22 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
             "--num-classes",
             str(num_classes),
         ]
+        capture_files = [trainpath, train_dir]
 
         if self.train_initial_model:
             self.train_initial_model = False
         else:
             cmd.extend(["--resume", str(self.prev_path)])
+            # capture_files.append(self.prev_path)
 
         if self.args["test_dir"]:
             cmd.extend(["--valpath", str(self.args["test_dir"])])
-        logger.info(f"TRAIN CMD\n {shlex.join(cmd)}")
+            capture_files.append(valpath)
+
+        cmd_str = shlex.join(cmd)
+        self.capture_trainingset(cmd_str, capture_files)
+
+        logger.info(f"TRAIN CMD\n {cmd_str}")
         proc = subprocess.Popen(cmd)
         proc.communicate()
 
