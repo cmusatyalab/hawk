@@ -146,14 +146,13 @@ class TopKSelector(SelectorBase):
         self.num_negatives_added += len(auto_negative_list)
 
         for result in auto_negative_list:
-            # object_id = result.id
-            # example = self._mission.retriever.read_object(object_id)
-            # if example is None:
-            #    break
-            example = result
-            example_file = get_example_key(example.content)
+            example_data = result.read_object(self._mission.retriever)
+            if example_data is None:
+                continue
+
+            example_file = get_example_key(example_data)
             example_path = negative_path.joinpath(example_file)
-            example_path.write_bytes(example.content)
+            example_path.write_bytes(example_data)
             with self._insert_lock:
                 self.easy_negatives[self.version].append(example_path)
 
@@ -179,7 +178,9 @@ class TopKSelector(SelectorBase):
                     self._priority_queues,
                     num_revisited,
                 ) = self._reexamination_strategy.get_new_queues(
-                    model, self._priority_queues, self._mission.start_time
+                    model,
+                    self._priority_queues,
+                    self._mission.start_time,
                 )
 
                 self.priority_queue_length.set(self._priority_queues.qsize())

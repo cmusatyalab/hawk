@@ -685,6 +685,9 @@ def validate_model(
     with torch.no_grad():
         end = time.time()
         for images, target in tqdm(val_loader):
+            if len(images) == 1:
+                continue
+
             if torch.cuda.is_available():
                 images = images.cuda(non_blocking=True)
                 target = target.cuda(non_blocking=True)

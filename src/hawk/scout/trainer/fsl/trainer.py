@@ -25,7 +25,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class FSLTrainer(ModelTrainerBase):
     def __init__(self, context: ModelContext, args: Dict[str, str]):
-        super().__init__(args)
+        super().__init__(context, args)
 
         assert "support_path" in self.args
         assert "fsl_traindir" in self.args
@@ -38,8 +38,6 @@ class FSLTrainer(ModelTrainerBase):
         )
         self.train_initial_model = False
         self.testpath = self.args["test_dir"]
-
-        self.context = context
 
         logger.info(f"Model_dir {self.context.model_dir}")
 

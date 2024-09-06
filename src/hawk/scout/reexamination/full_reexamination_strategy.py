@@ -40,8 +40,10 @@ class FullReexaminationStrategy(ReexaminationStrategy):
             pass
 
         reexamine = [
-            ObjectProvider(item[-1].id, item[-1].content, item[-1].attributes)
-            for item in to_reexamine
+            obj
+            for _, _, result in to_reexamine
+            if (obj := ObjectProvider.from_result_provider(result, self.retriever))
+            is not None
         ]
 
         results = model.infer(reexamine)

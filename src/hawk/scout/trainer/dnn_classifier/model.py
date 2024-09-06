@@ -78,6 +78,7 @@ class DNNClassifierModel(ModelBase):
     def preprocess(
         self, request: ObjectProvider
     ) -> Tuple[ObjectProvider, torch.Tensor]:
+        assert isinstance(request.content, bytes)
         image = Image.open(io.BytesIO(request.content))
 
         if image.mode != "RGB":

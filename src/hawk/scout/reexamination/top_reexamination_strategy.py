@@ -15,11 +15,13 @@ from ..core.object_provider import ObjectProvider
 from .reexamination_strategy import ReexaminationStrategy
 
 if TYPE_CHECKING:
+    from ..retrieval.retriever import Retriever
     from .reexamination_strategy import ReexaminationQueueType
 
 
 class TopReexaminationStrategy(ReexaminationStrategy):
-    def __init__(self, k: int):
+    def __init__(self, retriever: Retriever, k: int):
+        super().__init__(retriever)
         self._k = k
 
     @property
@@ -47,8 +49,10 @@ class TopReexaminationStrategy(ReexaminationStrategy):
             return old_queues, 0
 
         reexamine = [
-            ObjectProvider(item[-1].id, item[-1].content, item[-1].attributes)
-            for item in to_reexamine
+            obj
+            for _, _, result in to_reexamine
+            if (obj := ObjectProvider.from_result_provider(result, self.retriever))
+            is not None
         ]
 
         results = model.infer(reexamine)

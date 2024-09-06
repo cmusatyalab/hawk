@@ -2,16 +2,28 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-from typing import Optional
+from __future__ import annotations
 
-from .object_provider import ObjectProvider
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..retrieval.retriever import Retriever
+    from .object_provider import ObjectProvider
 
 
 class ResultProvider:
-    def __init__(self, obj: ObjectProvider, score: float, model_version: Optional[int]):
+    def __init__(
+        self,
+        obj: ObjectProvider,
+        score: float,
+        model_version: int | None = None,
+    ):
         self.id = obj.id
-        self.content = obj.content
         self.attributes = obj.attributes
         self.gt = obj.gt
         self.score = score
         self.model_version = model_version
+
+    def read_object(self, retriever: Retriever) -> bytes | None:
+        obj = retriever.read_object(self.id)
+        return obj.content if obj is not None else None

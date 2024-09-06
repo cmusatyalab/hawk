@@ -10,7 +10,7 @@ import multiprocessing as mp
 import queue
 import time
 from pathlib import Path
-from typing import Any, Callable, Iterable, Sequence, cast
+from typing import Any, Callable, Iterable, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -87,11 +87,11 @@ class DNNClassifierModelRadar(ModelBase):
     def preprocess(
         self, request: ObjectProvider
     ) -> tuple[ObjectProvider, torch.Tensor]:
-        try:
-            array = cast(npt.NDArray[Any], request.content)
+        if isinstance(request.content, npt.NDArray):
+            array = request.content
             array = (array - np.min(array)) / (np.max(array) - np.min(array))
             image = Image.fromarray((array * 255).astype(np.uint8))
-        except Exception:
+        else:
             image = Image.open(io.BytesIO(request.content))
 
             if image.mode != "RGB":
@@ -364,6 +364,7 @@ class DNNClassifierModelRadar(ModelBase):
         ## loop through batch and determine which samples have potential instances
         for obj, tensor in img_batch:
             # select the patches and crop
+            assert isinstance(obj.content, npt.NDArray)
             cropped_images, coords = self.select_patches(obj.content)
             num_crops = len(cropped_images)
 
