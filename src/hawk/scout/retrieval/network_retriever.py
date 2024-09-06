@@ -15,7 +15,7 @@ import zmq
 from logzero import logger
 from PIL import Image
 
-from ...proto.messages_pb2 import NetworkDataset, PerScoutSCMLOptions, ChangeDeploymentStatus
+from ...proto.messages_pb2 import NetworkDataset
 from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
 from ..stats import collect_metrics_total
@@ -28,13 +28,13 @@ class NetworkRetriever(Retriever):
         self.this_host_name = host_name.split(":")[0]
         self.dataset = dataset
         self._network_server_host = dataset.dataServerAddr  ## pulled from home config
-        self._network_server_port = (
-            dataset.dataServerPort
-        )  ## 6105 ## pulled from home config
-        self.scml_active_mode = False # Not yet received a deliberate command from home to deploy
-        self.scml_active_condition = True # True unless local scout deploy conditions prevent
+        self._network_server_port = dataset.dataServerPort  ## pulled from home config
+        # Not yet received a deliberate command from home to deploy
+        self.scml_active_mode = False
+        # True unless local scout deploy conditions prevent
+        self.scml_active_condition = True
         self.data_rate_balance = dataset.dataBalanceMode
-        
+
         self._timeout = dataset.timeout  ## from home config default 20
         self._resize = dataset.resizeTile
         logger.info("In NETWORK RETRIEVER INIT...")
@@ -89,23 +89,38 @@ class NetworkRetriever(Retriever):
         scout_index = str(self._context.scout_index).encode("utf-8")
         time_start = time.time()
         mission_time_start = time.time()
-        logger.info("SCML options from mission: {}".format(self._context.scml_deploy_options))                
-        while True: 
-            #logger.info(f"Active mode and active condition: {self.scml_active_mode}, {self.scml_active_condition}")
-            if ((time.time() - mission_time_start) < self._context.scml_deploy_options["start_time"]) or (self._context._model.version < self._context.scml_deploy_options["start_on_model"]): ## too early to start retrieving, recheck every 5 seconds
+        logger.info(f"SCML options from mission: {self._context.scml_deploy_options}")
+        while True:
+            # logger.info(
+            #     "Active mode and active condition: "
+            #     f"{self.scml_active_mode}, {self.scml_active_condition}"
+            # )
+            if (
+                (time.time() - mission_time_start)
+                < self._context.scml_deploy_options["start_time"]
+            ) or (
+                self._context._model.version
+                < self._context.scml_deploy_options["start_on_model"]
+            ):  ## too early to start retrieving, recheck every 5 seconds
                 self.scml_active_condition = False
             else:
                 self.scml_active_condition = True
-            
-            if self.scml_active_mode or self.scml_active_condition: ## if sent deployment order from home or preset conditions are reached.  Future work: going from Active back to Idle.
+
+            ## if sent deployment order from home or preset conditions are reached.
+            ## Future work: going from Active back to Idle.
+            if self.scml_active_mode or self.scml_active_condition:
                 self.current_deployment_mode = "Active"
             else:
-                self.current_deployment_mode = "Idle"              
+                self.current_deployment_mode = "Idle"
 
-            if not (self.current_deployment_mode == "Active"): ## i.e. if it's Dead or Idle, 'Dead' not fully implemented yet
-                    logger.info("Too early to start retrieving or in idle mode...{}".format(time.time() - mission_time_start))
-                    time.sleep(5)
-                    continue
+            ## i.e. if it's Dead or Idle, 'Dead' not fully implemented yet
+            if self.current_deployment_mode != "Active":
+                logger.info(
+                    "Too early to start retrieving or in idle mode... "
+                    f"{time.time() - mission_time_start}"
+                )
+                time.sleep(5)
+                continue
             ## need additional conditions here to break out of this loop, or to
             ## block at some line before retrieving the next sample.
             ## prepare and send request

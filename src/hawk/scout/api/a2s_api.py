@@ -25,6 +25,7 @@ from PIL import Image
 
 from ...proto import Empty
 from ...proto.messages_pb2 import (
+    ChangeDeploymentStatus,
     Dataset,
     ImportModel,
     MissionId,
@@ -35,8 +36,6 @@ from ...proto.messages_pb2 import (
     ScoutConfiguration,
     SelectiveConfig,
     TestResults,
-    PerScoutSCMLOptions,
-    ChangeDeploymentStatus,
 )
 from ..core.hawk_stub import HawkStub
 from ..core.mission import Mission
@@ -140,15 +139,15 @@ class A2SAPI:
         return reply.encode()
 
     def a2s_get_deploy_status(self, msg: bytes) -> bytes:
-        '''get depl status'''        
+        """get depl status"""
         try:
-            reply = self._a2s_get_deploy_status(msg)            
+            reply = self._a2s_get_deploy_status(msg)
         except Exception as e:
             reply = f"ERROR: {e}"
         return reply.encode()
 
     def a2s_change_deploy_status(self, msg: bytes) -> bytes:
-        '''change depl status'''
+        """change depl status"""
         request = ChangeDeploymentStatus()
         request.ParseFromString(msg)
         try:
@@ -162,20 +161,31 @@ class A2SAPI:
         mission = self._manager.get_mission()
         if mission.retriever.dataset.dataBalanceMode == "globally_constant":
             num_scouts = int(msg.decode())
-            mission.retriever.num_tiles = int(mission.retriever.dataset.numTiles*7/num_scouts) # update number of tiles read every 20 seconds to account for globally_constant, otherwise leave as default locally_constant.  Fewer scouts than 7 results in higher inference rate than 180 per 20 seconds.
+            # update number of tiles read every 20 seconds to account for
+            # globally_constant, otherwise leave as default locally_constant.
+            # Fewer scouts than 7 results in higher inference rate than 180 per
+            # 20 seconds.
+            mission.retriever.num_tiles = int(
+                mission.retriever.dataset.numTiles * 7 / num_scouts
+            )
         status = mission.retriever.current_deployment_mode
-        return status 
-    
+        return status
+
     def _a2s_change_deploy_status(self, msg: ChangeDeploymentStatus) -> None:
         mission = self._manager.get_mission()
-        if mission.retriever.dataset.dataBalanceMode == "globally_constant":            
-            mission.retriever.num_tiles = int(mission.retriever.dataset.numTiles*7/msg.NumActiveScouts) # update number of tiles read every 20 seconds to account for globally_constant, otherwise leave as default locally_constant.  Fewer scouts than 7 results in higher inference rate than 180 per 20 seconds.
+        if mission.retriever.dataset.dataBalanceMode == "globally_constant":
+            # update number of tiles read every 20 seconds to account for
+            # globally_constant, otherwise leave as default locally_constant.
+            # Fewer scouts than 7 results in higher inference rate than 180 per
+            # 20 seconds.
+            mission.retriever.num_tiles = int(
+                mission.retriever.dataset.numTiles * 7 / msg.NumActiveScouts
+            )
         if msg.ActiveStatus:
             mission.retriever.scml_active_mode = True
         else:
             mission.retriever.scml_active_mode = False
         return
-        
 
     def a2s_get_mission_stats(self, _arg: bytes) -> bytes:
         """API call to send mission stats to HOME
@@ -270,7 +280,6 @@ class A2SAPI:
         selector = self._get_selector(
             request.missionId, request.selector, reexamination_strategy
         )
-        
 
         # Setting up Mission with config params
         logger.info("Start setting up mission")
@@ -389,7 +398,6 @@ class A2SAPI:
             b.communicate()
             torch.cuda.empty_cache()
             gc.collect()
-
 
     @log_exceptions
     def _a2s_get_mission_stats(self) -> MissionStats:
