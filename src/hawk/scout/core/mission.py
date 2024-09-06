@@ -64,7 +64,7 @@ class Mission(DataManagerContext, ModelContext):
         initial_model: ModelArchive,
         train_strategy: TrainConfig,
         class_list: list[str],
-        scml_deploy_options: dict,
+        scml_deploy_options: dict[str, int],
         validate: bool = False,
     ):
         super().__init__()
@@ -598,3 +598,7 @@ class Mission(DataManagerContext, ModelContext):
 
         if should_notify:
             self._initial_model_event.set()
+
+    @property
+    def model_version(self) -> int:
+        return self._model.version if self._model is not None else -1

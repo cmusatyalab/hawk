@@ -65,7 +65,12 @@ class RetrieverBase(metaclass=ABCMeta):
 
 
 class Retriever(RetrieverBase):
-    def __init__(self, mission_id: str) -> None:
+    def __init__(
+        self,
+        mission_id: str,
+        tiles_per_interval: int = 200,
+        globally_constant_rate: bool = False,
+    ) -> None:
         self._context: Optional[DataManagerContext] = None
         self._context_event = threading.Event()
         self._start_event = threading.Event()
@@ -75,6 +80,20 @@ class Retriever(RetrieverBase):
         self.result_queue: queue.Queue[ObjectProvider] = queue.Queue()
         self.server_id = get_server_ids()[0]
         self.total_tiles = 0
+
+        # These parameters control the rate at which tiles are retrieved and
+        # inferenced at the scout. If we want to achieve a globally constant
+        # rate during a SCML scenario, we periodically update the active scout
+        # ratio and only process `tiles_per_interval / active_scout_ratio`
+        # tiles at a time so that when scouts are added or lost, the remaining
+        # scouts adjust their processing rate to compensate.
+        # Currently only used by network_retriever
+        self.tiles_per_interval: int = tiles_per_interval
+        self.active_scout_ratio: float = 1.0
+        self.globally_constant_rate: bool = globally_constant_rate
+
+        self.current_deployment_mode = "Idle"
+        self.scml_active_mode: Optional[bool] = None
 
         self.total_images = HAWK_RETRIEVER_TOTAL_IMAGES.labels(mission=mission_id)
         self.total_objects = HAWK_RETRIEVER_TOTAL_OBJECTS.labels(mission=mission_id)
@@ -114,6 +133,7 @@ class Retriever(RetrieverBase):
         while self._context is None:
             self._context_event.wait()
         self._start_time = time.time()
+        self.current_deployment_mode = "Active"
 
     def server(self) -> None:
         ## placeholder for server in network retriever

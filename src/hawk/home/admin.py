@@ -381,7 +381,6 @@ class Admin:
             self.min_num_scout_destroyed = default_deploy["min_num_scouts_destroyed"]
             self.min_num_scouts_remaining = default_deploy["min_num_scouts_remaining"]
             self.deploy_on_any_loss = default_deploy["min_num_scouts_remaining"]
-
         else:
             default_start_time, default_on_model, mission_duration_percentage = 0, 0, 0
 
@@ -546,10 +545,11 @@ class Admin:
             new_dead_scouts = 0
             ## send the current number of active scouts and get the current
             ## deployment statuses from all scouts
+            active_scout_ratio = self.num_active_scouts / len(self.scout_stubs)
             for stub in self.scout_stubs.values():
                 msg = [
-                    b"a2s_get_deploy_status",
-                    str(self.num_active_scouts).encode("utf-8"),
+                    b"a2s_sync_deploy_status",
+                    str(active_scout_ratio).encode("utf-8"),
                 ]
                 stub.send_multipart(msg)
             for stub in self.scout_stubs.values():
@@ -596,8 +596,9 @@ class Admin:
                         random.randint(0, len(idle_scouts) - 1)
                     )  ## pick a random idle scout to deploy
                     self.num_active_scouts += 1
+                    active_scout_ratio = self.num_active_scouts / len(self.scout_stubs)
                     data = ChangeDeploymentStatus(
-                        ActiveStatus=True, NumActiveScouts=self.num_active_scouts
+                        ActiveStatus=True, ActiveScoutRatio=active_scout_ratio
                     )
                     msg = [b"a2s_change_deploy_status", data.SerializeToString()]
                     self.stub_socket[activating_scout].send_multipart(msg)

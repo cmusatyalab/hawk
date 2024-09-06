@@ -25,6 +25,8 @@ class DataManagerContext(ContextBase):
         path to the TRAIN/TEST split
     """
 
+    scml_deploy_options: dict[str, int]
+
     @property
     @abstractmethod
     def mission_id(self) -> MissionId:
@@ -54,4 +56,10 @@ class DataManagerContext(ContextBase):
     @abstractmethod
     def log(self, msg: str, end_t: float | None = None) -> None:
         """When logging is enabled, logs 'msg' to the logfile"""
+        pass
+
+    @property
+    @abstractmethod
+    def model_version(self) -> int:
+        """Returns the current model version used for inferencing"""
         pass

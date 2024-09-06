@@ -24,13 +24,16 @@ from .retriever import Retriever
 
 class NetworkRetriever(Retriever):
     def __init__(self, mission_id: str, dataset: NetworkDataset, host_name: str):
-        super().__init__(mission_id)
+        globally_constant_rate = dataset.dataBalanceMode == "globally_constant"
+        super().__init__(
+            mission_id,
+            tiles_per_interval=dataset.numTiles,
+            globally_constant_rate=globally_constant_rate,
+        )
         self.this_host_name = host_name.split(":")[0]
-        self.dataset = dataset
+        self._dataset = dataset
         self._network_server_host = dataset.dataServerAddr  ## pulled from home config
         self._network_server_port = dataset.dataServerPort  ## pulled from home config
-        # Not yet received a deliberate command from home to deploy
-        self.scml_active_mode = False
         # True unless local scout deploy conditions prevent
         self.scml_active_condition = True
         self.data_rate_balance = dataset.dataBalanceMode
@@ -39,15 +42,14 @@ class NetworkRetriever(Retriever):
         self._resize = dataset.resizeTile
         logger.info("In NETWORK RETRIEVER INIT...")
 
-        index_file = Path(self.dataset.dataPath)
+        index_file = Path(self._dataset.dataPath)
         self._data_root = index_file.parent.parent
         self.contents = index_file.read_text().splitlines()
         self.total_tiles = len(self.contents)
         ## for network retriever, will update total_tiles to equal tiles
         ## processes as clients unaware of total tiles per scout a priori
 
-        self.num_tiles = self.dataset.numTiles
-        key_len = math.ceil(self.total_tiles / self.num_tiles)
+        key_len = math.ceil(self.total_tiles / self.tiles_per_interval)
 
         keys = np.arange(key_len)
         per_frame = np.array_split(self.contents, key_len)
@@ -77,6 +79,11 @@ class NetworkRetriever(Retriever):
     def stream_objects(self) -> None:
         super().stream_objects()
         assert self._context is not None
+
+        # network retriever remains idle until we get the network connection
+        # up and the scml conditions are satisfied.
+        self.current_deployment_mode = "Idle"
+
         context = zmq.Context()
         client_socket = context.socket(zmq.REQ)
         client_socket.connect(
@@ -91,30 +98,28 @@ class NetworkRetriever(Retriever):
         mission_time_start = time.time()
         logger.info(f"SCML options from mission: {self._context.scml_deploy_options}")
         while True:
-            # logger.info(
-            #     "Active mode and active condition: "
-            #     f"{self.scml_active_mode}, {self.scml_active_condition}"
-            # )
-            if (
-                (time.time() - mission_time_start)
-                < self._context.scml_deploy_options["start_time"]
-            ) or (
-                self._context._model.version
-                < self._context.scml_deploy_options["start_on_model"]
-            ):  ## too early to start retrieving, recheck every 5 seconds
-                self.scml_active_condition = False
-            else:
-                self.scml_active_condition = True
-
             ## if sent deployment order from home or preset conditions are reached.
-            ## Future work: going from Active back to Idle.
-            if self.scml_active_mode or self.scml_active_condition:
-                self.current_deployment_mode = "Active"
+            if self.scml_active_mode is not None:
+                active = self.scml_active_mode
             else:
-                self.current_deployment_mode = "Idle"
+                active = False
+                mission_time = time.time() - mission_time_start
+                model_version = self._context.model_version
+                scml_deploy_options = self._context.scml_deploy_options
+
+                if "start_time" in scml_deploy_options:
+                    active |= mission_time >= scml_deploy_options["start_time"]
+                if "start_on_model" in scml_deploy_options:
+                    active |= model_version >= scml_deploy_options["start_on_model"]
+                if "end_time" in scml_deploy_options:
+                    active &= mission_time < scml_deploy_options["end_time"]
+                if "end_on_model" in scml_deploy_options:
+                    active &= model_version < scml_deploy_options["end_on_model"]
+
+            self.current_deployment_mode = "Active" if active else "Idle"
 
             ## i.e. if it's Dead or Idle, 'Dead' not fully implemented yet
-            if self.current_deployment_mode != "Active":
+            if not active:
                 logger.info(
                     "Too early to start retrieving or in idle mode... "
                     f"{time.time() - mission_time_start}"
@@ -146,7 +151,16 @@ class NetworkRetriever(Retriever):
                 )
             )
 
-            if self.sample_count % self.num_tiles == 0:
+            ## XXX The following logic/sleep loop should probably move into
+            ## the Retriever base class to avoid unnecessary code duplication.
+            if not self.globally_constant_rate:
+                num_tiles = self.tiles_per_interval
+            elif self.active_scout_ratio == 0.0:
+                num_tiles = self.sample_count  # avoid divide by 0, just sleep
+            else:  # adjust local retrieval rate to compensate for lost scouts
+                num_tiles = int(self.tiles_per_interval / self.active_scout_ratio)
+
+            if self.sample_count % num_tiles == 0:
                 retrieved_tiles = collect_metrics_total(self.retrieved_objects)
                 logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
                 time_passed = time.time() - time_start

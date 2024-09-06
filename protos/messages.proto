@@ -254,5 +254,5 @@ message PerScoutSCMLOptions {
 
 message ChangeDeploymentStatus {
   bool ActiveStatus = 1;
-  int32 NumActiveScouts = 2;
+  float ActiveScoutRatio = 2;
 }
