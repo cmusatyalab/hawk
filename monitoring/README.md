@@ -84,6 +84,10 @@ hawk_selector_priority_queue_length: Gauge
 hawk_selector_revisited_objects: Counter
     Number of reexamined samples
 
+hawk_selector_dequeued_objects{gt="..."}: Histogram (_count, _sum, _buckets)
+    Histogram buckets for samples dequeued from the priority queue to be
+    forwarded to home for labeling.
+
 hawk_selector_result_queue_length: Gauge
     Number of samples queued for sending to hawk_home
 ```

@@ -80,6 +80,12 @@ HAWK_SELECTOR_REVISITED_OBJECTS = Counter(
     "Number of reexamined samples",
     labelnames=["mission"],
 )
+HAWK_SELECTOR_DEQUEUED_OBJECTS = Histogram(
+    "hawk_selector_dequeued_objects",
+    "Histogram to track confidence scores of objects sent to home (count/sum/buckets)",
+    labelnames=["mission", "gt", "model_version"],
+    buckets=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
+)
 HAWK_SELECTOR_RESULT_QUEUE_LENGTH = Gauge(
     "hawk_selector_result_queue_length",
     "Number of samples queued for sending to hawk_home",

@@ -114,7 +114,7 @@ class Mission(DataManagerContext, ModelContext):
 
         self._model: Model | None = None
 
-        self._model_version = HAWK_MODEL_VERSION.labels(mission=mission_id)
+        self._model_version = HAWK_MODEL_VERSION.labels(mission=mission_id.value)
         self._model_version.set(-1)
 
         self._model_stats = TestResults(version=-1)
