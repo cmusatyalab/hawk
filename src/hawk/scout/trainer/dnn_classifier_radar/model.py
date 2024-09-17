@@ -87,7 +87,7 @@ class DNNClassifierModelRadar(ModelBase):
     def preprocess(
         self, request: ObjectProvider
     ) -> tuple[ObjectProvider, torch.Tensor]:
-        if isinstance(request.content, npt.NDArray):
+        if isinstance(request.content, (np.ndarray, np.generic)):
             array = request.content
             array = (array - np.min(array)) / (np.max(array) - np.min(array))
             image = Image.fromarray((array * 255).astype(np.uint8))
@@ -317,6 +317,7 @@ class DNNClassifierModelRadar(ModelBase):
             if self.pick_patches:
                 predictions, boxes = self.patch_processing(batch)
                 # logger.info(f"Num pred:{len(predictions)}, Num boxes:{len(boxes)}")
+                logger.info("Pick patches is True")
             else:
                 tensors = torch.stack([f[1] for f in batch])
                 predictions = self.get_predictions(tensors)
@@ -337,7 +338,11 @@ class DNNClassifierModelRadar(ModelBase):
                 result_object.attributes.add(
                     {"scores": json.dumps(score_dict).encode()}
                 )
-                result_object.attributes.add({"boxes": str.encode(str(box))})
+
+
+                #result_object.attributes.add(
+                ##    {"boxes": json.dumps(box).encode()}
+                #)
                 # add another attribute containing the estimated bounding boxes
                 # should be a list of cls, x,y,w,h ground truth bounding boxes
                 # will be added at home
@@ -356,7 +361,9 @@ class DNNClassifierModelRadar(ModelBase):
 
     def patch_processing(
         self, img_batch: list[tuple[ObjectProvider, torch.Tensor]]
-    ) -> tuple[Sequence[Sequence[float]], list[list[tuple[int, int, int, int]]]]:
+    ) -> tuple[
+        Sequence[Sequence[float]], list[list[tuple[int, int, int, int]]]
+    ]:
         num_image = 0
         tensors_for_predict = []
         crop_assign = []
@@ -364,7 +371,7 @@ class DNNClassifierModelRadar(ModelBase):
         ## loop through batch and determine which samples have potential instances
         for obj, tensor in img_batch:
             # select the patches and crop
-            assert isinstance(obj.content, npt.NDArray)
+            assert isinstance(obj.content, (np.ndarray, np.generic))
             cropped_images, coords = self.select_patches(obj.content)
             num_crops = len(cropped_images)
 

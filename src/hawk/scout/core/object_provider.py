@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 from PIL import Image
+import numpy.typing as npt
 
 if TYPE_CHECKING:
     import numpy.typing as npt
