@@ -272,7 +272,9 @@ class A2SAPI:
 
         # Setting up Mission with config params
         logger.info("Start setting up mission")
-        logger.info(f"Class list: {request.class_list}")
+        logger.info(
+            f"Class list: {request.class_list}, {request.novel_class_discovery}"
+        )
         mission = Mission(
             mission_id,
             request.scoutIndex,
@@ -289,6 +291,7 @@ class A2SAPI:
             list(request.class_list),
             dict(request.scml_deploy_opts.scout_dict),
             request.validate,
+            request.novel_class_discovery,
             # add base model field for radar missions
             # add request.train_strategy here to be able to pass to data manager.
         )
@@ -385,8 +388,6 @@ class A2SAPI:
             bandwidth_cmd = ["fireqos", "stop"]
             b = subprocess.Popen(bandwidth_cmd)
             b.communicate()
-            torch.cuda.empty_cache()
-            gc.collect()
 
     @log_exceptions
     def _a2s_get_mission_stats(self) -> MissionStats:

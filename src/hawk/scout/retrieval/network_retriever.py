@@ -102,10 +102,14 @@ class NetworkRetriever(Retriever):
             if self.scml_active_mode is not None:
                 active = self.scml_active_mode
             else:
-                active = False
+                    
                 mission_time = time.time() - mission_time_start
                 model_version = self._context.model_version
                 scml_deploy_options = self._context.scml_deploy_options
+                active =   (                                                    
+                     "start_time" not in scml_deploy_options                     
+                     and "start_on_model" not in scml_deploy_options             
+                    )
 
                 if "start_time" in scml_deploy_options:
                     active |= mission_time >= scml_deploy_options["start_time"]
@@ -159,10 +163,11 @@ class NetworkRetriever(Retriever):
                 num_tiles = self.sample_count  # avoid divide by 0, just sleep
             else:  # adjust local retrieval rate to compensate for lost scouts
                 num_tiles = int(self.tiles_per_interval / self.active_scout_ratio)
-
+            
             if self.sample_count % num_tiles == 0:
                 retrieved_tiles = collect_metrics_total(self.retrieved_objects)
                 logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
+                logger.info(f"Num tiles, {num_tiles}, tiles per interval: {self.tiles_per_interval}, active scout ratio: {self.active_scout_ratio}")
                 time_passed = time.time() - time_start
                 if time_passed < self._timeout:
                     logger.info(f"About to sleep at: {time.time()}")
@@ -173,6 +178,7 @@ class NetworkRetriever(Retriever):
 
     def server(self) -> None:
         self.current_deployment_mode = "Server"
+        served_samples = 0
         context = zmq.Context()
         socket = context.socket(zmq.REP)
         socket.bind(f"tcp://0.0.0.0:{self._network_server_port}")  ## setup socket
@@ -211,6 +217,9 @@ class NetworkRetriever(Retriever):
                         str(sample_path).encode("utf-8"),
                     ]
                 )
+                served_samples += 1
+                if served_samples % 200 == 0:
+                    logger.info(f"Server has served {served_samples} / {len(self.contents)} samples...")
 
         except Exception as e:
             logger.exception()
