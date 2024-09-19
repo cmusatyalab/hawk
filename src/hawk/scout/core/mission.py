@@ -377,7 +377,7 @@ class Mission(DataManagerContext, ModelContext):
         self.selector.clear()
         logger.info("Selector clear called in mission.py...")
         self.log_file.close()
-        sys.exit(0)
+        #sys.exit(0)
 
     def log(self, msg: str, end_t: float | None = None) -> None:
         if not self.enable_logfile:

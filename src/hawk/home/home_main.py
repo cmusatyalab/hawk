@@ -172,9 +172,8 @@ def main() -> None:
         logger.error(e)
     finally:
         mission_status.state("stopped")
-        stop_event.set()
-        # home_admin.stop_mission()
         time.sleep(10)
+        home_admin.stop_mission()
         for p in processes:
             p.terminate()
         logger.info("Mission stopped")
