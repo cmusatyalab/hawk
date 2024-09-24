@@ -6,6 +6,7 @@ from __future__ import annotations
 import math
 import random
 from collections import defaultdict
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import numpy as np
@@ -108,7 +109,7 @@ def shuffle_and_generate_index_files(
 
     print("** Distributing index files")
 
-    for i, scout in enumerate(config.scouts):
+    for i, scout in enumerate(config.deploy.scouts):
         with NamedTemporaryFile(mode="w", delete=True) as fp:
             fp.write("\n".join(div_files[i]))
             fp.write("\n")
@@ -129,7 +130,6 @@ def split_dataset(args: argparse.Namespace) -> int:
 if __name__ == "__main__":
     import argparse
     import sys
-    from pathlib import Path
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", "--dry-run", action="store_true")
