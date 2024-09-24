@@ -2,8 +2,8 @@ DEVICE=ens1f1
 INTERFACE_SPEED=10Mbit
 
 DIAMOND_SERVERS="128.2.212.184 128.2.212.185 128.2.212.186 128.2.212.187 128.2.212.188 128.2.212.189 128.2.212.190 128.2.212.191"
-DELPHI_PORT=6177
-MODEL_PORT=2222
+S2C_PORT=6177
+H2C_PORT=6101
 
 
 interface $DEVICE cmu bidirectional rate $INTERFACE_SPEED minrate 10kbit
@@ -12,4 +12,4 @@ interface $DEVICE cmu bidirectional rate $INTERFACE_SPEED minrate 10kbit
      match output dst "$DIAMOND_SERVERS"
 
   class client min $SCOUT2CLIENT_SPEED max $SCOUT2CLIENT_SPEED qdisc netem options "delay $SCOUT2CLIENT_DELAY"
-    match tcp ports "$DELPHI_PORT","$MODEL_PORT"
+    match tcp ports "$S2C_PORT","$H2C_PORT"
