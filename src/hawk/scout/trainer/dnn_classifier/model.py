@@ -178,18 +178,20 @@ class DNNClassifierModel(ModelBase):
         requests = []
         timeout = 5
         next_infer = time.time() + timeout
-        while self._running:
+        while self._running: ## or len(requests) > 0:
             try:
                 request = self.request_queue.get(timeout=1)
                 requests.append(request)
 
-                if len(requests) < self._batch_size:
+                if len(requests) < self._batch_size and self._running: ## what if len(requests) is 1 and self._running is False?  Inference the last sample or put back into the inference queue: self.request_queue.put(request)
                     continue
             except queue.Empty:
-                if len(requests) == 0 or time.time() < next_infer:
+                if (len(requests) == 0 or time.time() < next_infer) and self._running:
+                    #logger.info(f"\nMay be during model transition, we lose samples: {len(requests)}, delay too short: {time.time()}, < {next_infer}, self._running: {self._running}") ## or we could do a put back into the request_queue
                     continue
 
             start_infer = time.time()
+            #logger.info(f"\nFeeding {len(requests)} to inference...\n")
             results = self._process_batch(requests)
             logger.info(
                 f"Process batch took {time.time()-start_infer}s for {len(requests)}"
@@ -197,6 +199,7 @@ class DNNClassifierModel(ModelBase):
             for result in results:
                 self.result_count += 1
                 self.result_queue.put(result)
+                ## this is a possible place to add results to another queue for clustering 
 
             requests = []
             # next_infer = start_infer + timeout
