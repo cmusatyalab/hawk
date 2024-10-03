@@ -423,7 +423,8 @@ class Mission(DataManagerContext, ModelContext):
                         f"(new version {self._model.version} available)"
                     )
                     ## make sure to put this back in retriever put object
-                    self.retriever.put_objects(retriever_object)
+                    self.retriever.put_objects(retriever_object, dup=True)
+                    logger.info("\n\nATTENTION --- PUTTING OBJECT BACK  IN RETRIEVER QUEUE\n\n")
                     return
 
                 # pop single retriever object from retriever result queue
@@ -465,6 +466,9 @@ class Mission(DataManagerContext, ModelContext):
                 result = self._model.get_results()
                 # items_processed = \
                 self.selector.add_result(result)
+                ## line here to send result object to clustering process
+                ## write attributes from result object to a file
+
                 ## add final batch of samples for transmission once all tiles
                 ## have been retrieved.
                 # if (

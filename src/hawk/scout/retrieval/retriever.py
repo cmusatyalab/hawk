@@ -152,8 +152,9 @@ class Retriever(RetrieverBase):
         self.queue_length.dec()
         return result
 
-    def put_objects(self, result_object: ObjectProvider) -> None:
-        self.retrieved_objects.inc()
+    def put_objects(self, result_object: ObjectProvider, dup = False) -> None:
+        if not dup:
+            self.retrieved_objects.inc()
         try:
             self.queue_length.inc()
             self.result_queue.put_nowait(result_object)
