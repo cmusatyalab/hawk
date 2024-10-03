@@ -31,6 +31,7 @@ message ScoutConfiguration {
   bool validate = 15;
   repeated string class_list = 16;
   PerScoutSCMLOptions scml_deploy_opts = 17;
+  bool novel_class_discovery = 18;
 }
 
 message MissionStats {

@@ -60,6 +60,7 @@ def main() -> None:
     bandwidth = config.get("bandwidth", "100")
     assert int(bandwidth) in [
         100,
+        50,
         30,
         12,
     ], f"Fireqos script may not exist for {bandwidth}"
@@ -73,10 +74,13 @@ def main() -> None:
 
     # create local directories
     log_dir = mission_dir / "logs"
+    trace_dir = mission_dir / "traces"
     config["home-params"]["log_dir"] = str(log_dir)
     end_file = log_dir / "end"
 
     log_dir.mkdir(parents=True)
+    trace_dir.mkdir()
+
 
     # Save final config file to log_dir
     # this includes scope derived parameters, normalized bandwidth, and

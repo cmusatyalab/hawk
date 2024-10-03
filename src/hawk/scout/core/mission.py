@@ -38,6 +38,7 @@ from ..retrieval.retriever import Retriever
 from ..selection.selector_base import Selector
 from ..selection.token_selector import TokenSelector
 from ..stats import HAWK_MODEL_VERSION
+from ..trainer.novel_class_discover import clustering_function
 from .data_manager import DataManager
 from .hawk_stub import HawkStub
 from .model import Model
@@ -66,6 +67,7 @@ class Mission(DataManagerContext, ModelContext):
         class_list: list[str],
         scml_deploy_options: dict[str, int],
         validate: bool = False,
+        novel_class_discovery: bool = False,
     ):
         super().__init__()
         logger.info("Initialization")
@@ -98,6 +100,8 @@ class Mission(DataManagerContext, ModelContext):
         self.selector = selector
         self.bootstrap_zip = bootstrap_zip
         self.train_strategy = train_strategy
+        self.novel_class_discovery = novel_class_discovery
+        logger.info(f"Novel CLass discovery: {self.novel_class_discovery}")
 
         if isinstance(self._retrain_policy, SampleIntervalPolicy):
             self._retrain_policy.total_tiles = self.retriever.total_tiles
@@ -193,6 +197,16 @@ class Mission(DataManagerContext, ModelContext):
             for k in dir(s2s_object)
             if callable(getattr(s2s_object, k)) and k.startswith("s2s_")
         }
+
+        ## setup clustering process, if needed
+        if self.novel_class_discovery:
+            # clustering_input: mp.Queue[ResultProvider] = mp.Queue()
+            feature_vector_file_name = "mission_dir/tb/novel_class.txt"
+            p = mp.Process(
+                target=clustering_function,
+                args=(feature_vector_file_name,),
+            )
+            p.start()
 
     def setup_trainer(self, trainer: ModelTrainer) -> None:
         logger.info("Setting up trainer")

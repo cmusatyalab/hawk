@@ -346,6 +346,7 @@ class A2SAPI:
         bandwidth_map = {
             "100k": "/root/fireqos/scenario-100k.conf",
             "30k": "/root/fireqos/scenario-30k.conf",
+            "50k": "/root/fireqos/scenario-50k.conf",
             "12k": "/root/fireqos/scenario-12k.conf",
         }
         logger.info(bandwidth_func)

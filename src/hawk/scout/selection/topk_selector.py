@@ -77,7 +77,6 @@ class TopKSelector(SelectorBase):
 
     @log_exceptions
     def _add_result(self, result: ResultProvider) -> None:
-        logger.info("In TopK add result...")
         assert self._mission is not None
         with self._insert_lock:
             time_result = self._mission.mission_time()
