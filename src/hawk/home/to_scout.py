@@ -53,8 +53,7 @@ class UnlabeledResult(LabelSample):
         if "boxes" in request.attributes.keys():
             bb_string = request.attributes["boxes"].decode()
             bounding_boxes = [
-                BoundingBox.from_yolo(line, class_map)
-                for line in json.loads(bb_string).splitlines()
+                BoundingBox.from_yolo(line, class_map) for line in json.loads(bb_string)
             ]
         else:
             assert "scores" in request.attributes
