@@ -191,10 +191,10 @@ class DNNClassifierModelRadar(ModelBase):
                 request = self.request_queue.get(timeout=1)
                 requests.append(request)
 
-                if len(requests) < self._batch_size:
+                if len(requests) < self._batch_size and self._running:
                     continue
             except queue.Empty:
-                if len(requests) == 0 or time.time() < next_infer:
+                if (len(requests) == 0 or time.time() < next_infer) and self._running:
                     continue
 
             start_infer = time.time()
@@ -209,6 +209,7 @@ class DNNClassifierModelRadar(ModelBase):
             requests = []
             # next_infer = start_infer + timeout
             next_infer = time.time() + timeout
+            logger.info(f"Total results inferenced by model: {self.result_count}")
 
     def infer(self, requests: Sequence[ObjectProvider]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:
