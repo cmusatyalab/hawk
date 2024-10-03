@@ -364,14 +364,13 @@ class Admin:
         # deployment options
         deployment_options = config.get("scml_deploy_options", "")
         self.scout_deployment_status = {}  ## Active, Idle, or Dead
+        scml_deploy_options = {scout: PerScoutSCMLOptions(scout_dict={}) for scout in self.scouts}
 
         ## To send periodically to every scout for purposes of retrieval rate
         self.num_active_scouts = 0
+        
 
-        if deployment_options:
-            scml_deploy_options = {
-                scout: PerScoutSCMLOptions(scout_dict={}) for scout in self.scouts
-            }
+        if deployment_options:            
             self.scml = True
             default_deploy_scout = deployment_options.get("default_deploy_scout", [])
             if default_deploy_scout:
@@ -464,6 +463,7 @@ class Admin:
 
         # bandwidthFunc
         bandwidth_config = config["bandwidth"]
+        logger.info(f"BW config: {bandwidth_config}")
         assert len(self.scouts) == len(
             bandwidth_config
         ), f"Length Bandwidth {len(bandwidth_config)} does not match {len(self.scouts)}"
