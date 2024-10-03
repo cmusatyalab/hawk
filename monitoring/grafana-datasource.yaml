@@ -9,7 +9,7 @@ datasources:
 
     jsonData:
       prometheusType: Prometheus
-      prometheusVersion: 2.52.0
+      prometheusVersion: 2.53.0
       cacheLevel: 'High'
       disableRecordingRules: false
       incrementalQueryOverlapWindow: 10m

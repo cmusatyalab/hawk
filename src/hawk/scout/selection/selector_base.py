@@ -17,6 +17,7 @@ from ..core.model import Model
 from ..core.result_provider import ResultProvider
 from ..stats import (
     HAWK_INFERENCED_OBJECTS,
+    HAWK_SELECTOR_DEQUEUED_OBJECTS,
     HAWK_SELECTOR_PRIORITY_QUEUE_LENGTH,
     HAWK_SELECTOR_RESULT_QUEUE_LENGTH,
     HAWK_SELECTOR_REVISITED_OBJECTS,
@@ -94,6 +95,7 @@ class SelectorBase(Selector):
 
         self.mission_id = mission_id
         self.inferenced_objects = HAWK_INFERENCED_OBJECTS
+        self.selector_dequeued_objects = HAWK_SELECTOR_DEQUEUED_OBJECTS
 
         # currently a no-op, we would need to change initialization order so that
         # the mission is created before selector, or at least pass the list of
@@ -103,6 +105,9 @@ class SelectorBase(Selector):
             class_list = list(self._mission.class_manager.classes)
             for class_name in ["negative"] + class_list[1:]:
                 HAWK_INFERENCED_OBJECTS.labels(
+                    mission=mission_id, gt=class_name, model_version="0"
+                )
+                HAWK_SELECTOR_DEQUEUED_OBJECTS.labels(
                     mission=mission_id, gt=class_name, model_version="0"
                 )
 
@@ -148,6 +153,15 @@ class SelectorBase(Selector):
     def add_context(self, context: Mission) -> None:
         self._mission = context
 
+    def _class_id_to_name(self, gt: int) -> str:
+        # making sure the negative class is always called "negative" to make
+        # graphing easier
+        if gt == 0:
+            return "negative"
+        if self._mission is None:
+            return str(gt)
+        return self._mission.class_manager.label_name_dict[gt]
+
     def add_result(self, result: ResultProvider | None) -> int:
         """Add processed results from model to selection strategy"""
         if result is None:
@@ -156,15 +170,7 @@ class SelectorBase(Selector):
         self.items_processed += 1
 
         # collect inference stats
-        # making sure the negative class is always called "negative" to make
-        # graphing easier
-        class_name = (
-            "negative"
-            if result.gt == 0
-            else self._mission.class_manager.label_name_dict[result.gt]
-            if self._mission is not None
-            else str(result.gt)
-        )
+        class_name = self._class_id_to_name(result.gt)
         model_version = str(result.model_version)
         self.inferenced_objects.labels(
             mission=self.mission_id,
@@ -235,6 +241,17 @@ class SelectorBase(Selector):
             try:
                 result = self.result_queue.get(timeout=10)
                 self.result_queue_length.dec()
+
+                # collect stats about objects sent to home
+                if result is not None:
+                    class_name = self._class_id_to_name(result.gt)
+                    model_version = str(result.model_version)
+                    self.selector_dequeued_objects.labels(
+                        mission=self.mission_id,
+                        gt=class_name,
+                        model_version=model_version,
+                    ).observe(result.score)
+
                 return result
             except queue.Empty:
                 pass

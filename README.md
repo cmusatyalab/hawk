@@ -45,7 +45,7 @@ Provide relevant data and model parameters in the [config file.](/configs/dota_s
 - home-params: the mission directory on home specifices where on the home station (from where the missino is launched) to aggregate and store mission logs from all scouts.
 - dataset: This field contains information that tells Hawk how to read incoming data
     - type: random, tile, and a few others.  Because all tiles were derived from original, larger images, random simply treats all tiles as independent of each other, even if two were derived from the same image, and are thus assigned to scouts randomly.
-    - stream_path: this is the path to the file (locally) that contains the entire list of image samples and associated labels to be read by the scouts.  Format is: <path/to/image.jpg> <label> An example stream file can be found here: [example_DOTA_stream_file](/configs/stream_example_DOTA_roundabout.txt) This file is used with the split_data.py script in a later step.
+    - stream_path: this is the path to the file (locally) that contains the entire list of image samples and associated labels to be read by the scouts.  Format is: <path/to/image.jpg> <label> An example stream file can be found here: [example_DOTA_stream_file](/configs/stream_example_DOTA_roundabout.txt) This file is used by `hawk_deploy split` in a later step.
     - index_path: this is the path to the file on each individual scout that is read by the respective scout.  Thus, each the file located at this location on each scout is unique from those on other scouts.
     - tiles_per_frame: By default, each scout inferences an entire image's worth of tiles in 20 seconds.  Therefore, this number determines how many total tiles are inferenced for every 20 seconds, to simply control the rate of inference by the scouts.
 - retrain_policy: Logical conditions to determine when to retrain the existing model.
@@ -81,10 +81,10 @@ The stream file on home provided in [config file.](/configs/dota_sample_config.y
 ...
 where the labels are either 1 or 0 (pos or neg).  If using the DOTA dataset, all original images should be tiled to dimensions of 256x256, which can be done by referencing [DOTA Dev Kit](https://github.com/CAPTAIN-WHU/DOTA_devkit/tree/master).  This file thus points to data samples to be inferenced by the scouts.
 
-The user can specify the index file (dataset: index_path) that will be generated from running the split_data.py script below.
+The user can specify the index file (dataset: index_path) that will be generated from running `hawk_deploy split` below.
 Run the following cmd to split the dataset across participating scouts
 ```bash
-poetry run python scripts/split_data.py configs/dota_sample_config.yml
+poetry run hawk_deploy split configs/dota_sample_config.yml
 ```
 After running this script, the list of all samples from the stream file  will be approximately evenly split across the number of scouts defined in the config file.  These new per-scout index files will be stored on each respective scout at the location specified by dataset: index_path in the config file.
 
