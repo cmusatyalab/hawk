@@ -362,58 +362,86 @@ class Admin:
         # base_model_path = train_config.get("base_model_path", "")
 
         # deployment options
-        deployment_options = config.get("scml_deploy_options", "")        
+        deployment_options = config.get("scml_deploy_options", "")
         self.scout_deployment_status = {}  ## Active, Idle, or Dead
 
         ## To send periodically to every scout for purposes of retrieval rate
         self.num_active_scouts = 0
-        
 
         if deployment_options:
-            scml_deploy_options = {scout: PerScoutSCMLOptions(scout_dict={}) for scout in self.scouts}
+            scml_deploy_options = {
+                scout: PerScoutSCMLOptions(scout_dict={}) for scout in self.scouts
+            }
             self.scml = True
             default_deploy_scout = deployment_options.get("default_deploy_scout", [])
             if default_deploy_scout:
-                for scout in self.scouts:                
-                    for deploy_option in default_deploy_scout:                    
-                        scml_deploy_options[scout].scout_dict[deploy_option] = default_deploy_scout[deploy_option] ## populate default values for present fields
+                for scout in self.scouts:
+                    for deploy_option in default_deploy_scout:
+                        scml_deploy_options[scout].scout_dict[
+                            deploy_option
+                        ] = default_deploy_scout[
+                            deploy_option
+                        ]  ## populate default values for present fields
 
             ## home conditions to trigger new scout activation
             default_deploy_home = deployment_options["default_deploy_home"]
-            self.min_num_scout_destroyed = default_deploy_home.get("min_num_scouts_destroyed", 0)
-            self.min_num_scouts_remaining = default_deploy_home.get("min_num_scouts_remaining", 0)
-            self.deploy_on_any_loss = default_deploy_home.get("deploy_on_any_loss", False)
+            self.min_num_scout_destroyed = default_deploy_home.get(
+                "min_num_scouts_destroyed", 0
+            )
+            self.min_num_scouts_remaining = default_deploy_home.get(
+                "min_num_scouts_remaining", 0
+            )
+            self.deploy_on_any_loss = default_deploy_home.get(
+                "deploy_on_any_loss", False
+            )
 
             ## Add the per scout override to set conditions for individual scouts.
             per_scout_override = deployment_options.get("per_scout_override", [])
             if per_scout_override:
                 for scout in per_scout_override:
                     scout_options = per_scout_override[scout]
-                    if scout_options: ## if actually has fields to override
-                        for option in scout_options:              
-                            scml_deploy_options[scout].scout_dict[option] = scout_options[option] ## if set, updates any scout unique configurations from the default values
-            
+                    if scout_options:  ## if actually has fields to override
+                        for option in scout_options:
+                            # if set, updates any scout unique configurations
+                            # from the default values
+                            scml_deploy_options[scout].scout_dict[
+                                option
+                            ] = scout_options[option]
+
             for scout in self.scouts:
-                if scml_deploy_options[scout].scout_dict.get('start_time', 0) > 0 or scml_deploy_options[scout].scout_dict.get('start_on_model',0) > 0 or          scml_deploy_options[scout].scout_dict.get('start_mission_duration_percentage', 0) > 0:
-                    self.scout_deployment_status[scout] = 'Idle'
+                if (
+                    scml_deploy_options[scout].scout_dict.get("start_time", 0) > 0
+                    or scml_deploy_options[scout].scout_dict.get("start_on_model", 0)
+                    > 0
+                    or scml_deploy_options[scout].scout_dict.get(
+                        "start_mission_duration_percentage", 0
+                    )
+                    > 0
+                ):
+                    self.scout_deployment_status[scout] = "Idle"
                 else:
-                    self.scout_deployment_status[scout] = 'Active'
-                    if dataset_type == 'network':
-                        if network_config['server_address'] != scout: 
+                    self.scout_deployment_status[scout] = "Active"
+                    if dataset_type == "network":
+                        if network_config["server_address"] != scout:
                             self.num_active_scouts += 1
 
         else:
-            default_start_time, default_on_model, default_mission_duration_percentage = 0, 0, 0
+            (
+                default_start_time,
+                default_on_model,
+                default_mission_duration_percentage,
+            ) = (0, 0, 0)
 
-            for scout in self.scouts: ## for no scml basic config. LL as normal
+            scml_deploy_options = {}
+            for scout in self.scouts:  ## for no scml basic config. LL as normal
                 scml_deploy_options[scout] = PerScoutSCMLOptions(
                     scout_dict={
                         "start_time": default_start_time,
                         "start_on_model": default_on_model,
-                        "mission_percentage": default_mission_duration_percentage,             
+                        "mission_percentage": default_mission_duration_percentage,
                     }
                 )
-            logger.info(f"SCML: {scml_deploy_options[scout]}")
+                logger.info(f"SCML: {scml_deploy_options[scout]}")
             if (
                 default_start_time > 0
                 or default_on_model > 0
@@ -422,8 +450,8 @@ class Admin:
                 self.scout_deployment_status[scout] = "Idle"
             else:
                 self.scout_deployment_status[scout] = "Active"
-                if dataset_type == 'network':
-                    if network_config['server_address'] != scout:
+                if dataset_type == "network":
+                    if network_config["server_address"] != scout:
                         self.num_active_scouts += 1
         logger.info(f"Num active scouts: {self.num_active_scouts}")
 
@@ -569,11 +597,16 @@ class Admin:
             new_dead_scouts = 0
             ## send the current number of active scouts and get the current
             ## deployment statuses from all scouts
-            if self.dataset_type == 'network':
-                active_scout_ratio = self.num_active_scouts / (len(self.scout_stubs) - 1)
+            if self.dataset_type == "network":
+                active_scout_ratio = self.num_active_scouts / (
+                    len(self.scout_stubs) - 1
+                )
             else:
                 active_scout_ratio = self.num_active_scouts / len(self.scout_stubs)
-            logger.info(f"Ratio: {active_scout_ratio}, active: {self.num_active_scouts}, total: {len(self.scout_stubs) - 1}")
+            logger.info(
+                f"Ratio: {active_scout_ratio}, active: {self.num_active_scouts}, "
+                f"total: {len(self.scout_stubs) - 1}"
+            )
             for stub in self.scout_stubs.values():
                 msg = [
                     b"a2s_sync_deploy_status",
@@ -597,11 +630,13 @@ class Admin:
                 #     f"{self.scout_deployment_status[self.socket_stub[stub]]}"
                 # )
             active_scouts = [
-                scout for scout in self.scout_deployment_status.keys()
+                scout
+                for scout in self.scout_deployment_status.keys()
                 if self.scout_deployment_status[scout] == "Active"
             ]
             idle_scouts = [
-                scout for scout in self.scout_deployment_status.keys()
+                scout
+                for scout in self.scout_deployment_status.keys()
                 if self.scout_deployment_status[scout] == "Idle"
             ]
             logger.info(f"Active scouts: {active_scouts}")
