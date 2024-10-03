@@ -328,7 +328,7 @@ class DNNClassifierModel(ModelBase):
                 )
                 results.append(
                     ResultProvider(
-                        result_object, sum(score[1:]), self.version
+                        result_object, sum(score[1:]), self.version, None
                     )  ## score for priority queue is sum of all positive classes
                 )
         return results
