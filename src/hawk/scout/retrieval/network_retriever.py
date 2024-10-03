@@ -102,19 +102,27 @@ class NetworkRetriever(Retriever):
             if self.scml_active_mode is not None:
                 active = self.scml_active_mode
             else:
-                    
                 mission_time = time.time() - mission_time_start
                 model_version = self._context.model_version
                 scml_deploy_options = self._context.scml_deploy_options
-                active =   (                                                    
-                     "start_time" not in scml_deploy_options                     
-                     and "start_on_model" not in scml_deploy_options             
-                    )
+
+                # when start conditions are specified we should only switch to
+                # active state when any of the start conditions are triggered.
+                # Otherwise we assume we begin from an active state that may
+                # get disabled by any not_before_ or end_ conditions.
+                start_conditions = {"start_time", "start_on_model"}
+                active = bool(start_conditions.intersection(scml_deploy_options))
 
                 if "start_time" in scml_deploy_options:
                     active |= mission_time >= scml_deploy_options["start_time"]
                 if "start_on_model" in scml_deploy_options:
                     active |= model_version >= scml_deploy_options["start_on_model"]
+
+                if "not_before_time" in scml_deploy_options:
+                    active &= mission_time >= scml_deploy_options["not_before_time"]
+                if "not_before_model" in scml_deploy_options:
+                    active &= model_version >= scml_deploy_options["not_before_model"]
+
                 if "end_time" in scml_deploy_options:
                     active &= mission_time < scml_deploy_options["end_time"]
                 if "end_on_model" in scml_deploy_options:
@@ -163,11 +171,15 @@ class NetworkRetriever(Retriever):
                 num_tiles = self.sample_count  # avoid divide by 0, just sleep
             else:  # adjust local retrieval rate to compensate for lost scouts
                 num_tiles = int(self.tiles_per_interval / self.active_scout_ratio)
-            
+
             if self.sample_count % num_tiles == 0:
                 retrieved_tiles = collect_metrics_total(self.retrieved_objects)
                 logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
-                logger.info(f"Num tiles, {num_tiles}, tiles per interval: {self.tiles_per_interval}, active scout ratio: {self.active_scout_ratio}")
+                logger.info(
+                    f"Num tiles, {num_tiles}, "
+                    f"tiles per interval: {self.tiles_per_interval}, "
+                    f"active scout ratio: {self.active_scout_ratio}"
+                )
                 time_passed = time.time() - time_start
                 if time_passed < self._timeout:
                     logger.info(f"About to sleep at: {time.time()}")
@@ -219,7 +231,10 @@ class NetworkRetriever(Retriever):
                 )
                 served_samples += 1
                 if served_samples % 200 == 0:
-                    logger.info(f"Server has served {served_samples} / {len(self.contents)} samples...")
+                    logger.info(
+                        f"Server has served {served_samples} / "
+                        f"{len(self.contents)} samples..."
+                    )
 
         except Exception as e:
             logger.exception()
