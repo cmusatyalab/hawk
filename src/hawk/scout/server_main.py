@@ -71,7 +71,8 @@ def main() -> None:
             logger.info(f"Received A2S call {method.decode()} {len(req)}")
             reply = a2s_methods[method](req)
             socket.send(reply)
-            if method == 'a2s_stop_mission': sys.exit(0)
+            if method == b"a2s_stop_mission":
+                break
     except KeyboardInterrupt:
         pass
     except Exception as e:

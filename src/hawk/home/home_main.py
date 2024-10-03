@@ -81,7 +81,6 @@ def main() -> None:
     log_dir.mkdir(parents=True)
     trace_dir.mkdir()
 
-
     # Save final config file to log_dir
     # this includes scope derived parameters, normalized bandwidth, and
     # home-params.log_dir

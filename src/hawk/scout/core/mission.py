@@ -7,7 +7,6 @@ from __future__ import annotations
 import io
 import multiprocessing as mp
 import os
-import sys
 import threading
 import time
 import zipfile
@@ -391,7 +390,6 @@ class Mission(DataManagerContext, ModelContext):
         self.selector.clear()
         logger.info("Selector clear called in mission.py...")
         self.log_file.close()
-        #sys.exit(0)
 
     def log(self, msg: str, end_t: float | None = None) -> None:
         if not self.enable_logfile:

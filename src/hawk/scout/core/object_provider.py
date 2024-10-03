@@ -8,12 +8,10 @@ import io
 from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
-from PIL import Image
 import numpy.typing as npt
+from PIL import Image
 
 if TYPE_CHECKING:
-    import numpy.typing as npt
-
     from ..retrieval.retriever import Retriever
     from .attribute_provider import AttributeProvider
     from .result_provider import ResultProvider

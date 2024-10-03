@@ -144,8 +144,8 @@ class LabelerDiskQueue:
             self.scout_queue.put(result)
 
             # update stats
-            detections = sum(1 for bbox in result.labels if bbox.label != 'negative')
-            self.labeled_objects.observe(detections) ## modify
+            detections = sum(1 for bbox in result.labels if bbox.label != "negative")
+            self.labeled_objects.observe(detections)
 
             for bbox in result.labels:
                 self.labeled_classes.labels(

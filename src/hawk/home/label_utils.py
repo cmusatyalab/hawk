@@ -97,7 +97,7 @@ class BoundingBox:
         centerX, centerY = float(centerX_), float(centerY_)
         deltaX, deltaY = float(width) / 2, float(height) / 2
         try:
-            class_name = class_map[int(label)]# + 1]
+            class_name = class_map[int(label)]  # + 1]
         except ValueError:
             class_name = class_map[label]
         return cls(
@@ -118,7 +118,9 @@ class BoundingBox:
         deltaX = self.maxX - self.minX
         deltaY = self.maxY - self.minY
         label = (
-            self.label if class_map is None else class_map.name_to_label(self.label)# - 1
+            self.label
+            if class_map is None
+            else class_map.name_to_label(self.label)  # - 1
         )
         return f"{label} {centerX} {centerY} {deltaX} {deltaY}"
 

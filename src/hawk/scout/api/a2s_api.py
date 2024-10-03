@@ -7,7 +7,6 @@
 
 import base64
 import dataclasses
-import gc
 import glob
 import io
 import json
@@ -18,7 +17,6 @@ import zipfile
 from pathlib import Path
 from typing import Dict
 
-import torch
 from google.protobuf import json_format
 from logzero import logger
 from PIL import Image
