@@ -165,6 +165,10 @@ class LabelSample:
         labels = [BoundingBox.from_dict(label) for label in obj.pop("labels", [])]
         return cls(line=line, labels=labels, **obj)
 
+    @property
+    def classes(self) -> set(str):
+        return {bbox.label for bbox in self.labels}
+
 
 def index_jsonl(
     jsonl: PathLike[str] | str, skip: int = 0, index: set[str] | None = None
@@ -254,6 +258,10 @@ class MissionResults:
         if new_unlabeled:
             self.unlabeled.extend(new_unlabeled)
             self.unlabeled_offset = new_unlabeled[-1].index
+
+    @property
+    def classes(self) -> set[str]:
+        return self.unlabeled[-1].classes if self.unlabeled else set()
 
     def read_unlabeled(
         self, exclude_labeled: bool = True, tail: bool = False

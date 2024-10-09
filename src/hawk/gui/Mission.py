@@ -45,10 +45,10 @@ else:
 
 mission.resync()
 
-# classes, first one is expected to be the not-yet-labeled value, second is
-# negative, followed by the various classes in the mission
-mission_classes = ["pos"]
-CLASSES = ["?", "neg"] + mission_classes
+# classes, first one is expected to be the negative value followed by the
+# various classes in the mission
+CLASSES = ["negative"]
+CLASSES.extend(mission.classes)
 
 # banner.write(data)
 
@@ -64,11 +64,16 @@ def update_labels(mission: Mission) -> None:
         if result.objectId in mission.labeled:
             continue
 
-        class_name = st.session_state.get(result.index, "?")
-        if class_name not in CLASSES[1:]:  # unlabeled (or unknown class)
+        class_name = st.session_state.get(result.index)
+        if class_name is None:  # unlabeled
             continue
 
-        if class_name == CLASSES[1]:  # negative
+        # strip off confidence score
+        class_name = class_name.rsplit(maxsplit=1)[0]
+        if class_name not in CLASSES:  # (unknown class)
+            continue
+
+        if class_name == CLASSES[0]:  # negative
             result.labels = []
         else:
             result.labels = [BoundingBox(label=class_name)]
@@ -80,7 +85,7 @@ def clear_labels(mission: Mission) -> None:
     """clear pending (uncommitted) label values"""
     for result in mission.unlabeled:
         if result.objectId not in mission.labeled:
-            st.session_state[result.index] = "?"
+            st.session_state[result.index] = None
 
 
 col1, col2 = st.sidebar.columns(2)
@@ -157,7 +162,7 @@ for result in mission.unlabeled:
 
     labels = mission.labeled[result.objectId]
     label = -1 if not labels else 0
-    st.session_state[result.index] = CLASSES[label + 2]
+    st.session_state[result.index] = CLASSES[label + 1]
 
 
 ####
@@ -232,6 +237,22 @@ def paginate(result_list: list[LabelSample]) -> Iterator[list[LabelSample]]:
     )
 
 
+def classification_pulldown(result: LabelSample) -> None:
+    scores = {bbox.label: bbox.score for bbox in result.labels}
+    options = ["negative"] + [
+        f"{cls} ({scores.get(cls, 0):.02f})" for cls in CLASSES[1:]
+    ]
+    st.selectbox(
+        "classification",
+        key=result.index,
+        options=options,
+        index=None,
+        placeholder="Select class...",
+        disabled=result.objectId in mission.labeled,
+        label_visibility="collapsed",
+    )
+
+
 def display_radar_images(mission: Mission) -> None:
     exclude = mission.labeled if not st.session_state.show_labeled else set()
     results = [result for result in mission.unlabeled if result.objectId not in exclude]
@@ -266,14 +287,8 @@ def display_radar_images(mission: Mission) -> None:
                 with col2:
                     st.header("RD Map")
                     st.image(str(image))
-                st.radio(
-                    "classification",
-                    key=result.index,
-                    options=CLASSES,
-                    disabled=result.objectId in mission.labeled,
-                    label_visibility="collapsed",
-                    horizontal=st.session_state.columns <= 4,
-                )
+
+                classification_pulldown(result)
 
 
 def display_images(mission: Mission) -> None:
@@ -285,14 +300,7 @@ def display_images(mission: Mission) -> None:
             image = Path(mission.image_dir, f"{result.index:06}.jpeg")
             with next(column):
                 st.image(str(image))
-                st.radio(
-                    "classification",
-                    key=result.index,
-                    options=CLASSES,
-                    disabled=result.objectId in mission.labeled,
-                    label_visibility="collapsed",
-                    horizontal=st.session_state.columns <= 4,
-                )
+                classification_pulldown(result)
 
 
 train_strategy = mission.config["train_strategy"]["type"]
