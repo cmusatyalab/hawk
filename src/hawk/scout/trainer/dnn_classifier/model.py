@@ -323,8 +323,13 @@ class DNNClassifierModel(ModelBase):
                     label: float(score)
                     for label, score in zip(self.context.class_manager.classes, score)
                 }
+                detection_list = [
+                    {
+                     'cls_scores': score_dict
+                    }
+                ]
                 result_object.attributes.add(
-                    {"scores": json.dumps(score_dict).encode()}
+                    {"detections": json.dumps(detection_list).encode()}
                 )
                 results.append(
                     ResultProvider(
