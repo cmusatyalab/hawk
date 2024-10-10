@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
-from hawk.home.label_utils import BoundingBox, ClassMap, LabelSample, MissionResults
+from hawk.home.label_utils import ClassMap, Detection, LabelSample, MissionResults
 
 if TYPE_CHECKING:
     from hawk.mission_config import MissionConfig
@@ -38,24 +38,26 @@ class ScriptLabeler:
 
         self.labeling_func = self.classify_func if not self.detect else self.detect_func
 
-    def classify_func(self, objectId: str) -> list[BoundingBox]:
+    def classify_func(self, objectId: str) -> list[Detection]:
         if objectId.startswith("/0/"):
             return []
         class_index = objectId.split("/", 2)[1]
         class_name = self.class_map[class_index]
-        return [BoundingBox(label=class_name)]
+        return [Detection(cls_scores={class_name: 1.0})]
 
-    def detect_func(self, objectId: str) -> list[BoundingBox]:
+    def detect_func(self, objectId: str) -> list[Detection]:
         assert self.gt_path is not None
         gt_name = Path(objectId).with_suffix(".txt").name
         gt_file = self.gt_path / gt_name
         if not gt_file.exists():
             return []
 
-        return [
-            BoundingBox.from_yolo(line, self.class_map)
-            for line in gt_file.read_text().splitlines()
-        ]
+        return list(
+            Detection.merge_detections(
+                Detection.from_yolo(line, self.class_map)
+                for line in gt_file.read_text().splitlines()
+            )
+        )
 
     def run(self) -> None:
         self.mission_data = MissionResults(self.mission_dir)
@@ -67,9 +69,12 @@ class ScriptLabeler:
                 time.sleep(self.label_time)
 
     def label_data(self, result: LabelSample) -> None:
-        result.labels = self.labeling_func(result.objectId)
+        result.detections = self.labeling_func(result.objectId)
 
-        labels = list(bbox.label for bbox in result.labels)
+        # if there are multiple detections for the same class we count all of them
+        labels = list(
+            cls for detection in result.detections for cls in detection.cls_scores
+        )
         if labels:
             self.positives += 1
             self.class_counter.update(labels)

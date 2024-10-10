@@ -18,7 +18,7 @@ from prometheus_client import Gauge, Histogram, Summary
 
 from ..ports import H2C_PORT, S2H_PORT
 from ..proto.messages_pb2 import LabelWrapper, SendLabels, SendTiles
-from .label_utils import BoundingBox, ClassMap, LabelSample
+from .label_utils import ClassMap, Detection, LabelSample
 from .stats import (
     HAWK_LABELED_QUEUE_LENGTH,
     HAWK_UNLABELED_QUEUE_LENGTH,
@@ -50,27 +50,21 @@ class UnlabeledResult(LabelSample):
         request = SendTiles()
         request.ParseFromString(msg)
 
-        if "boxes" in request.attributes.keys():
-            bb_string = request.attributes["boxes"].decode()
-            bounding_boxes = [
-                BoundingBox.from_yolo(line, class_map) for line in json.loads(bb_string)
-            ]
-        else:
-            assert "scores" in request.attributes
-            # classification case, scout thinks this could be a positive
-            scores = json.loads(request.attributes["scores"])
-            logger.debug(f"Received sample, inferenced scores {scores}")
-            bounding_boxes = [
-                BoundingBox(label=label, score=score)
-                for label, score in scores.items()
-                if score and label != "negative"
-            ]
+        # scout thinks it might have found some positives
+        # cleanup and merge class scores for identical regions
+        detections = list(
+            Detection.merge_detections(
+                Detection.from_dict(detection)
+                for detection in json.loads(request.attributes["detections"])
+            )
+        )
+        logger.debug(f"Received sample, inferenced scores {detections}")
 
         return cls(
             objectId=request.objectId,
             scoutIndex=request.scoutIndex,
             score=request.score,
-            labels=bounding_boxes,
+            detections=detections,
             data=request.attributes["thumbnail.jpeg"],
         )
 
@@ -108,8 +102,12 @@ class HomeToScoutWorker:
 
     def put(self, result: LabelSample) -> None:
         """Queue a label from any thread which will be sent to the scout."""
-        imageLabel = "0" if not result.labels else "1"
-        bboxes = [bbox.to_yolo(self.class_map) for bbox in result.labels]
+        imageLabel = "0" if not result.detections else "1"
+        bboxes = [
+            bbox
+            for detection in result.detections
+            for bbox in detection.to_yolo(self.class_map)
+        ]
         label = LabelWrapper(
             objectId=result.objectId,
             scoutIndex=result.scoutIndex,
@@ -224,6 +222,6 @@ class ScoutQueue:
         Will be sent to the scout that sent the original result or the coordinator.
         """
         scout_index = self.coordinator if self.coordinator else result.scoutIndex
-        label = "negative" if not result.labels else "positive"
+        label = "negative" if not result.detections else "positive"
         logger.info(f"Sending {label} to {result.scoutIndex}: {result.objectId}")
         self.to_scout[scout_index].put(result)

@@ -60,7 +60,7 @@ class LabelerDiskQueue:
         )
 
         self.labeled_classes = HAWK_LABELED_CLASSES
-        # Hint to prometheus_client which class labels we may use later
+        # Hint to prometheus_client which class names we may use later
         for class_name in class_hints or []:
             HAWK_LABELED_CLASSES.labels(
                 mission=self.mission_id, labeler="disk", class_name=class_name
@@ -144,15 +144,16 @@ class LabelerDiskQueue:
             self.scout_queue.put(result)
 
             # update stats
-            detections = sum(1 for bbox in result.labels if bbox.label != "negative")
+            detections = len(result.detections)
             self.labeled_objects.observe(detections)
 
-            for bbox in result.labels:
-                self.labeled_classes.labels(
-                    mission=self.mission_id,
-                    labeler="disk",
-                    class_name=bbox.label,
-                ).inc()
+            for detection in result.detections:
+                for cls in detection.cls_scores:
+                    self.labeled_classes.labels(
+                        mission=self.mission_id,
+                        labeler="disk",
+                        class_name=cls,
+                    ).inc()
 
             # track time it took to apply label
             if result.queued is not None:

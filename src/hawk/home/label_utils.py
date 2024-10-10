@@ -78,38 +78,63 @@ class ClassMap:
             return class_name
 
 
-@dataclass
-class BoundingBox:
-    label: str
-    score: float = 1.0
+@dataclass(order=True)
+class Detection:
+    # canonical min/max coordinates which are easier to draw in browser
     minX: float = 0.0
     minY: float = 0.0
     maxX: float = 1.0
     maxY: float = 1.0
 
-    @classmethod
-    def from_dict(cls, obj: dict[str, Any]) -> BoundingBox:
-        return cls(**obj)
+    cls_scores: dict[str, float] = field(default_factory=dict)
+
+    # center x/y/width/height output from yolo (and easier to cluster?)
+    x: InitVar[float | None] = None
+    y: InitVar[float | None] = None
+    w: InitVar[float] = 1.0
+    h: InitVar[float] = 1.0
+
+    def __post_init__(
+        self, x: float | None, y: float | None, w: float, h: float
+    ) -> None:
+        if x is not None:
+            w /= 2
+            self.minX = x - w
+            self.maxX = x + w
+        if y is not None:
+            h /= 2
+            self.minY = y - h
+            self.maxY = y + h
 
     @classmethod
-    def from_yolo(cls, line: str, class_map: ClassMap) -> BoundingBox:
-        label, centerX_, centerY_, width, height, *score = line.split()
-        centerX, centerY = float(centerX_), float(centerY_)
-        deltaX, deltaY = float(width) / 2, float(height) / 2
+    def from_dict(cls, obj: dict[str, Any]) -> Detection:
+        # filter out negatives (and 0 scores)
+        cls_scores = {
+            cls: score
+            for cls, score in obj.pop("cls_scores", {}).items()
+            if score and cls not in ["", "neg", "negative"]
+        }
+        return cls(cls_scores=cls_scores, **obj)
+
+    @classmethod
+    def from_yolo(cls, line: str, class_map: ClassMap) -> Detection:
+        label, centerX, centerY, width, height, *_score = line.split()
         try:
             class_name = class_map[int(label)]  # + 1]
         except ValueError:
             class_name = class_map[label]
+        score = float(_score[0]) if _score else 1.0
         return cls(
-            label=class_name,
-            minX=centerX - deltaX,
-            minY=centerY - deltaY,
-            maxX=centerX + deltaX,
-            maxY=centerY + deltaY,
-            score=float(score[0]) if score else 1.0,
+            cls_scores={class_name: score},
+            x=float(centerX),
+            y=float(centerY),
+            w=float(width),
+            h=float(height),
         )
 
-    def to_yolo(self, class_map: ClassMap | None = None) -> str:
+    def to_yolo(
+        self, class_map: ClassMap | None = None, with_scores: bool = False
+    ) -> Iterator[str]:
         """Yolo, using only positive classes counting from 0
         If no class_map has been given, will use class names instead.
         """
@@ -117,12 +142,42 @@ class BoundingBox:
         centerY = (self.maxY + self.minY) / 2
         deltaX = self.maxX - self.minX
         deltaY = self.maxY - self.minY
-        label = (
-            self.label
-            if class_map is None
-            else class_map.name_to_label(self.label)  # - 1
-        )
-        return f"{label} {centerX} {centerY} {deltaX} {deltaY}"
+        for cls, score in self.cls_scores.items():
+            label = cls if class_map is None else class_map.name_to_label(cls)  # - 1
+            score_str = f" {score}" if with_scores else ""
+            yield f"{label} {centerX} {centerY} {deltaX} {deltaY}{score_str}"
+
+    @classmethod
+    def merge_detections(cls, detections: Iterator[Detection]) -> Iterator[Detection]:
+        prev: Detection | None = None
+
+        # relies on the fact that the coordinates come before the cls_scores...
+        for cur in sorted(detections):
+            if prev is None:
+                prev = cur
+                continue
+
+            if prev.coords == cur.coords:
+                prev.cls_scores.update(cur.cls_scores)
+                continue
+
+            yield prev
+            prev = cur
+
+        if prev is not None:
+            yield prev
+
+    @property
+    def classes(self) -> set[str]:
+        return {cls for cls in self.cls_scores}
+
+    @property
+    def coords(self) -> tuple[float, float, float, float]:
+        return self.minX, self.minY, self.maxX, self.maxY
+
+    @property
+    def max_score(self) -> float:
+        return max(self.cls_scores.values())
 
 
 @dataclass
@@ -133,15 +188,11 @@ class LabelSample:
     objectId: str  # unique object id
     scoutIndex: int  # index of originating scout
     queued: float = field(default_factory=time.time)
-    labels: list[BoundingBox] = field(default_factory=list)
+    detections: list[Detection] = field(default_factory=list)
     line: InitVar[int] = -1  # used to track line number in jsonl file
 
     def __post_init__(self, line: int) -> None:
         self.index = line
-
-    @property
-    def score(self) -> float:
-        return max(bbox.score for bbox in self.labels) if self.labels else 0.0
 
     def to_jsonl(self, fp: TextIO) -> None:
         jsonl = json.dumps(
@@ -149,7 +200,7 @@ class LabelSample:
                 objectId=self.objectId,
                 scoutIndex=self.scoutIndex,
                 queued=self.queued,
-                labels=[asdict(bbox) for bbox in self.labels],
+                detections=[asdict(detection) for detection in self.detections],
             )
         )
         fp.write(f"{jsonl}\n")
@@ -158,16 +209,30 @@ class LabelSample:
         """Yolo using class labels that start counting at 0
         Will use class names when class_map is None
         """
-        return "".join(label.to_yolo(class_map) + "\n" for label in self.labels)
+        return "".join(
+            line + "\n"
+            for detection in self.detections
+            for line in detection.to_yolo(class_map)
+        )
 
     @classmethod
     def from_dict(cls, obj: dict[str, Any], line: int = -1) -> LabelSample:
-        labels = [BoundingBox.from_dict(label) for label in obj.pop("labels", [])]
-        return cls(line=line, labels=labels, **obj)
+        detections = [
+            Detection.from_dict(detection) for detection in obj.pop("detections", [])
+        ]
+        return cls(line=line, detections=detections, **obj)
 
     @property
-    def classes(self) -> set(str):
-        return {bbox.label for bbox in self.labels}
+    def classes(self) -> set[str]:
+        return set.union(*[detection.classes for detection in self.detections])
+
+    @property
+    def max_score(self) -> float:
+        return (
+            max(detection.max_score for detection in self.detections)
+            if self.detections
+            else 0.0
+        )
 
 
 def index_jsonl(
@@ -233,7 +298,7 @@ class MissionResults:
     labeled_jsonl: Path = field(init=False, repr=False)
     unlabeled_jsonl: Path = field(init=False, repr=False)
 
-    labeled: dict[str, list[BoundingBox]] = field(default_factory=dict)
+    labeled: dict[str, int] = field(default_factory=dict)
     labeled_offset: int = 0
 
     unlabeled: list[LabelSample] = field(default_factory=list)
@@ -246,7 +311,9 @@ class MissionResults:
     def resync_labeled(self) -> None:
         new_labels = list(read_jsonl(self.labeled_jsonl, skip=self.labeled_offset))
         if new_labels:
-            self.labeled.update((label.objectId, label.labels) for label in new_labels)
+            self.labeled.update(
+                (label.objectId, len(label.detections)) for label in new_labels
+            )
             self.labeled_offset = new_labels[-1].index
 
     def resync(self) -> None:
@@ -285,9 +352,9 @@ class MissionResults:
                     continue
 
                 # skip if there are still unclassified bounding boxes?
-                if sum(
-                    1 for bbox in result.labels if bbox.label == "" or bbox.score != 1.0
-                ):
-                    continue
+                for detection in result.detections:
+                    for cls, score in detection.cls_scores.items():
+                        if not cls or score != 1.0:
+                            continue
 
                 result.to_jsonl(fp)

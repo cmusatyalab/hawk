@@ -13,7 +13,7 @@ import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 
 from hawk.gui.elements import ABOUT_TEXT, Mission, page_header
-from hawk.home.label_utils import BoundingBox, LabelSample
+from hawk.home.label_utils import Detection, LabelSample
 
 if TYPE_CHECKING:
     from streamlit.delta_generator import DeltaGenerator
@@ -74,9 +74,9 @@ def update_labels(mission: Mission) -> None:
             continue
 
         if class_name == CLASSES[0]:  # negative
-            result.labels = []
+            result.detections = []
         else:
-            result.labels = [BoundingBox(label=class_name)]
+            result.detections = [Detection(cls_scores={class_name: 1.0})]
         pending.append(result)
     mission.save_labeled(pending)
 
@@ -115,7 +115,7 @@ def update_statistics(mission: Mission) -> bool:
 
     # compute home stats from received and labeled samples
     total_labeled = len(mission.labeled)
-    negative_labeled = sum(1 for labels in mission.labeled.values() if not labels)
+    negative_labeled = sum(1 for nlabels in mission.labeled.values() if nlabels == 0)
     positive_labeled = total_labeled - negative_labeled
     positive_label_ratio = (
         int(100 * positive_labeled / total_labeled) if total_labeled else 0
@@ -160,9 +160,10 @@ for result in mission.unlabeled:
     if result.objectId not in mission.labeled:
         continue
 
-    labels = mission.labeled[result.objectId]
-    label = -1 if not labels else 0
-    st.session_state[result.index] = CLASSES[label + 1]
+    ## XXX broken, labels are not int and we can have multiple detections per object
+    # labels = mission.labeled[result.objectId]
+    # label = -1 if not labels else 0
+    # st.session_state[result.index] = CLASSES[label + 1]
 
 
 ####
@@ -237,8 +238,8 @@ def paginate(result_list: list[LabelSample]) -> Iterator[list[LabelSample]]:
     )
 
 
-def classification_pulldown(result: LabelSample) -> None:
-    scores = {bbox.label: bbox.score for bbox in result.labels}
+def classification_pulldown(mission: Mission, result: LabelSample) -> None:
+    scores = result.detections[0].cls_scores if result.detections else {}
     options = ["negative"] + [
         f"{cls} ({scores.get(cls, 0):.02f})" for cls in CLASSES[1:]
     ]
@@ -288,7 +289,7 @@ def display_radar_images(mission: Mission) -> None:
                     st.header("RD Map")
                     st.image(str(image))
 
-                classification_pulldown(result)
+                classification_pulldown(mission, result)
 
 
 def display_images(mission: Mission) -> None:
@@ -300,7 +301,7 @@ def display_images(mission: Mission) -> None:
             image = Path(mission.image_dir, f"{result.index:06}.jpeg")
             with next(column):
                 st.image(str(image))
-                classification_pulldown(result)
+                classification_pulldown(mission, result)
 
 
 train_strategy = mission.config["train_strategy"]["type"]

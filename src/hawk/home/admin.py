@@ -364,13 +364,14 @@ class Admin:
         # deployment options
         deployment_options = config.get("scml_deploy_options", "")
         self.scout_deployment_status = {}  ## Active, Idle, or Dead
-        scml_deploy_options = {scout: PerScoutSCMLOptions(scout_dict={}) for scout in self.scouts}
+        scml_deploy_options = {
+            scout: PerScoutSCMLOptions(scout_dict={}) for scout in self.scouts
+        }
 
         ## To send periodically to every scout for purposes of retrieval rate
         self.num_active_scouts = 0
-        
 
-        if deployment_options:            
+        if deployment_options:
             self.scml = True
             default_deploy_scout = deployment_options.get("default_deploy_scout", [])
             if default_deploy_scout:
