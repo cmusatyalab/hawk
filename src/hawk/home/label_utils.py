@@ -7,10 +7,11 @@
 from __future__ import annotations
 
 import json
+import sys
 import time
-from dataclasses import InitVar, asdict, dataclass, field
+from dataclasses import InitVar, dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterator, TextIO
+from typing import TYPE_CHECKING, Any, Iterable, Iterator, TextIO
 
 from logzero import logger
 
@@ -27,7 +28,9 @@ class ClassMap:
     inverse_map: dict[str, int] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
-        self.inverse_map = {name: label for label, name in self.class_map.items()}
+        self.inverse_map = {
+            sys.intern(name): label for label, name in self.class_map.items()
+        }
 
     @classmethod
     def from_list(cls, classes: list[str]) -> ClassMap:
@@ -110,7 +113,7 @@ class Detection:
     def from_dict(cls, obj: dict[str, Any]) -> Detection:
         # filter out negatives (and 0 scores)
         cls_scores = {
-            cls: score
+            sys.intern(cls): score
             for cls, score in obj.pop("cls_scores", {}).items()
             if score and cls not in ["", "neg", "negative"]
         }
@@ -125,11 +128,25 @@ class Detection:
             class_name = class_map[label]
         score = float(_score[0]) if _score else 1.0
         return cls(
-            cls_scores={class_name: score},
+            cls_scores={sys.intern(class_name): score},
             x=float(centerX),
             y=float(centerY),
             w=float(width),
             h=float(height),
+        )
+
+    def to_dict(self, class_map: ClassMap | None = None) -> dict[str, Any]:
+        """asdict but if class_map is given we add missing classes to cls_scores."""
+        # don't include negative class (0) from class_map
+        classes: Iterable[str] = (
+            class_map.classes[1:] if class_map is not None else self.classes
+        )
+        return dict(
+            minX=self.minX,
+            minY=self.minY,
+            maxX=self.maxX,
+            maxY=self.maxY,
+            cls_scores={cls: self.cls_scores.get(cls, 0.0) for cls in classes},
         )
 
     def to_yolo(
@@ -194,13 +211,15 @@ class LabelSample:
     def __post_init__(self, line: int) -> None:
         self.index = line
 
-    def to_jsonl(self, fp: TextIO) -> None:
+    def to_jsonl(self, fp: TextIO, class_map: ClassMap | None = None) -> None:
         jsonl = json.dumps(
             dict(
                 objectId=self.objectId,
                 scoutIndex=self.scoutIndex,
                 queued=self.queued,
-                detections=[asdict(detection) for detection in self.detections],
+                detections=[
+                    detection.to_dict(class_map) for detection in self.detections
+                ],
             )
         )
         fp.write(f"{jsonl}\n")

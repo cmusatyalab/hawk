@@ -150,7 +150,7 @@ def main() -> None:
                 mission_id=mission_id,
                 scout_queue=scout_queue,
                 mission_dir=mission_dir,
-                class_hints=class_list,
+                class_map=class_map,
                 label_queue_size=label_queue_max,
             ).start()
 

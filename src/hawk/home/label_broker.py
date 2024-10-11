@@ -63,7 +63,7 @@ def main() -> int:
             mission_id=mission_id,
             scout_queue=scout_queue,
             mission_dir=args.mission_directory,
-            class_hints=class_list,
+            class_map=class_map,
             label_queue_size=args.label_queue_size,
         ).start()
 

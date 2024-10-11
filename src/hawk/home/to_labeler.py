@@ -7,7 +7,7 @@ from __future__ import annotations
 import io
 import threading
 import time
-from dataclasses import InitVar, dataclass, field
+from dataclasses import dataclass, field
 from itertools import count
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -18,7 +18,7 @@ import numpy as np
 from logzero import logger
 from prometheus_client import Counter, Gauge, Histogram
 
-from .label_utils import index_jsonl, read_jsonl
+from .label_utils import ClassMap, index_jsonl, read_jsonl
 from .stats import (
     HAWK_LABELED_CLASSES,
     HAWK_LABELED_OBJECTS,
@@ -37,7 +37,7 @@ class LabelerDiskQueue:
     mission_id: str
     scout_queue: ScoutQueue
     mission_dir: Path
-    class_hints: InitVar[list[str]]
+    class_map: ClassMap
     label_queue_size: int = 0
 
     token_semaphore: threading.BoundedSemaphore = field(init=False, repr=False)
@@ -47,7 +47,7 @@ class LabelerDiskQueue:
     queue_length: Gauge = field(init=False)
     queued_time: Histogram = field(init=False)
 
-    def __post_init__(self, class_hints: list[str] | None = None) -> None:
+    def __post_init__(self) -> None:
         if self.label_queue_size <= 0:
             self.label_queue_size = 9999
 
@@ -61,7 +61,7 @@ class LabelerDiskQueue:
 
         self.labeled_classes = HAWK_LABELED_CLASSES
         # Hint to prometheus_client which class names we may use later
-        for class_name in class_hints or []:
+        for class_name in self.class_map.classes:
             HAWK_LABELED_CLASSES.labels(
                 mission=self.mission_id, labeler="disk", class_name=class_name
             )
@@ -117,7 +117,7 @@ class LabelerDiskQueue:
 
             # append metadata to unlabeled.jsonl file
             with unlabeled_jsonl.open("a") as fp:
-                result.to_jsonl(fp)
+                result.to_jsonl(fp, self.class_map)
 
             # logger.info(f"Meta: {count:06} {meta_json}")
             self.scout_queue.task_done()
