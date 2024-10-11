@@ -441,7 +441,6 @@ class Admin:
                         "mission_percentage": default_mission_duration_percentage,
                     }
                 )
-                logger.info(f"SCML: {scml_deploy_options[scout]}")
             if (
                 default_start_time > 0
                 or default_on_model > 0
@@ -453,7 +452,6 @@ class Admin:
                 if dataset_type == "network":
                     if network_config["server_address"] != scout:
                         self.num_active_scouts += 1
-        logger.info(f"Num active scouts: {self.num_active_scouts}")
 
         # bootstrapZip
         bootstrap_path = train_config.get("bootstrap_path", "")

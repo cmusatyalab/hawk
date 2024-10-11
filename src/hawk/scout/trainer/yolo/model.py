@@ -11,6 +11,8 @@ import queue
 import time
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, cast
+import numpy.typing as npt
+
 
 import torch
 import torchvision.transforms as transforms
@@ -117,14 +119,14 @@ class YOLOModel(ModelBase):
         )
         return model
 
-    def get_predictions(self, inputs: torch.Tensor) -> List[float]:
+    def get_predictions(self, inputs: torch.Tensor) -> Tuple[List[float], List[npt.NDArray]]:
         assert self._model is not None
         with torch.no_grad():
             output = self._model(inputs, detection=True).pred
             predictions = [out.cpu().numpy() for out in output]
             probability = [max(pred[:, 4]) if len(pred) else 0 for pred in predictions]
             logger.info(f"Returning probability:{probability}")
-            return probability
+            return probability, predictions
 
     @log_exceptions
     def _infer_results(self) -> None:
@@ -213,10 +215,11 @@ class YOLOModel(ModelBase):
         results = []
         with self._model_lock:
             tensors = torch.stack([f[1] for f in batch]).to(self._device)
-            predictions = self.get_predictions(tensors)
+            prediction_scores, detections = self.get_predictions(tensors)
             del tensors
             for i in range(len(batch)):
-                score = predictions[i]
+                score = prediction_scores[i]
+                detections_per_sample = detections[i]
                 if self._mode == "oracle":
                     if "/0/" in batch[i][0].id:
                         score = 0
@@ -226,7 +229,20 @@ class YOLOModel(ModelBase):
                     label: float(score)
                     for label, score in zip(self.context.class_manager.classes, score)
                 }
-                batch[i][0].attributes.add({"scores": json.dumps(score_dict).encode()})
+
+                ## create the detections list
+                if len(detections_per_sample):
+                    detection_list = [
+                        {key: float(val) for key, val in zip(detections_per_sample[i,:4])}
+                        for i in range(len(detections_per_sample))
+                    ]
+                    for i, det in enumerate(detection_list):
+                        det['cls_scores'] = {detections_per_sample[i, 6]: detections_per_sample[i, 4],
+                                            }   
+                else:
+                    detection_list = []
+
+                batch[i][0].attributes.add({"detections": json.dumps(detection_list).encode()})
                 results.append(ResultProvider(batch[i][0], score, self.version))
         return results
 
