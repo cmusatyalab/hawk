@@ -83,31 +83,33 @@ class ClassMap:
 
 @dataclass(order=True)
 class Detection:
-    # canonical min/max coordinates which are easier to draw in browser
-    minX: float = 0.0
-    minY: float = 0.0
-    maxX: float = 1.0
-    maxY: float = 1.0
+    # normalized center x/y/width/height output as used in yolo
+    x: float = 0.5
+    y: float = 0.5
+    w: float = 1.0
+    h: float = 1.0
 
-    cls_scores: dict[str, float] = field(default_factory=dict)
+    # we only compare regions, so two detections with different scores compare as equal!
+    cls_scores: dict[str, float] = field(default_factory=dict, compare=False)
 
-    # center x/y/width/height output from yolo (and easier to cluster?)
-    x: InitVar[float | None] = None
-    y: InitVar[float | None] = None
-    w: InitVar[float] = 1.0
-    h: InitVar[float] = 1.0
+    minX: InitVar[float | None] = None
+    minY: InitVar[float | None] = None
+    maxX: InitVar[float | None] = None
+    maxY: InitVar[float | None] = None
 
     def __post_init__(
-        self, x: float | None, y: float | None, w: float, h: float
+        self,
+        minX: float | None,
+        minY: float | None,
+        maxX: float | None,
+        maxY: float | None,
     ) -> None:
-        if x is not None:
-            w /= 2
-            self.minX = x - w
-            self.maxX = x + w
-        if y is not None:
-            h /= 2
-            self.minY = y - h
-            self.maxY = y + h
+        if minX is not None and maxX is not None:
+            self.x = (maxX + minX) / 2
+            self.w = maxX - minX
+        if minY is not None and maxY is not None:
+            self.y = (maxY + minY) / 2
+            self.h = maxY - minY
 
     @classmethod
     def from_dict(cls, obj: dict[str, Any]) -> Detection:
@@ -122,62 +124,61 @@ class Detection:
     @classmethod
     def from_yolo(cls, line: str, class_map: ClassMap) -> Detection:
         label, centerX, centerY, width, height, *_score = line.split()
+
         try:
             class_name = class_map[int(label)]  # + 1]
         except ValueError:
             class_name = class_map[label]
         score = float(_score[0]) if _score else 1.0
+
         return cls(
-            cls_scores={sys.intern(class_name): score},
             x=float(centerX),
             y=float(centerY),
             w=float(width),
             h=float(height),
+            cls_scores={class_name: score},
         )
 
     def to_dict(self, class_map: ClassMap | None = None) -> dict[str, Any]:
         """asdict but if class_map is given we add missing classes to cls_scores."""
-        # don't include negative class (0) from class_map
+        # don't include negative class from class_map
         classes: Iterable[str] = (
             class_map.classes[1:] if class_map is not None else self.classes
         )
         return dict(
-            minX=self.minX,
-            minY=self.minY,
-            maxX=self.maxX,
-            maxY=self.maxY,
+            x=self.x,
+            y=self.y,
+            w=self.w,
+            h=self.h,
             cls_scores={cls: self.cls_scores.get(cls, 0.0) for cls in classes},
         )
 
     def to_yolo(
         self, class_map: ClassMap | None = None, with_scores: bool = False
     ) -> Iterator[str]:
-        """Yolo, using only positive classes counting from 0
-        If no class_map has been given, will use class names instead.
+        """Yolo uses only positive classes counting from 0.
+        If no class_map has been given we will use class names instead.
         """
-        centerX = (self.maxX + self.minX) / 2
-        centerY = (self.maxY + self.minY) / 2
-        deltaX = self.maxX - self.minX
-        deltaY = self.maxY - self.minY
         for cls, score in self.cls_scores.items():
-            label = cls if class_map is None else class_map.name_to_label(cls)  # - 1
+            label = cls if class_map is None else class_map.name_to_label(cls) - 1
             score_str = f" {score}" if with_scores else ""
-            yield f"{label} {centerX} {centerY} {deltaX} {deltaY}{score_str}"
+            yield f"{label} {self.x} {self.y} {self.w} {self.h}{score_str}"
 
     @classmethod
     def merge_detections(cls, detections: Iterator[Detection]) -> Iterator[Detection]:
         prev: Detection | None = None
 
-        # relies on the fact that the coordinates come before the cls_scores...
         for cur in sorted(detections):
             if prev is None:
                 prev = cur
                 continue
 
-            if prev.coords == cur.coords:
+            # we only compare the regions (xywh) and not the scores
+            if prev == cur:
                 prev.cls_scores.update(cur.cls_scores)
                 continue
 
+            # drop detections with no scores?
             yield prev
             prev = cur
 
@@ -187,10 +188,6 @@ class Detection:
     @property
     def classes(self) -> set[str]:
         return {cls for cls in self.cls_scores}
-
-    @property
-    def coords(self) -> tuple[float, float, float, float]:
-        return self.minX, self.minY, self.maxX, self.maxY
 
     @property
     def max_score(self) -> float:
