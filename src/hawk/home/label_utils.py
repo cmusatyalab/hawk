@@ -160,7 +160,7 @@ class Detection:
         If no class_map has been given we will use class names instead.
         """
         for cls, score in self.cls_scores.items():
-            label = cls if class_map is None else class_map.name_to_label(cls) - 1
+            label = cls if class_map is None else class_map.name_to_label(cls)  # - 1
             score_str = f" {score}" if with_scores else ""
             yield f"{label} {self.x} {self.y} {self.w} {self.h}{score_str}"
 
@@ -169,25 +169,28 @@ class Detection:
         prev: Detection | None = None
 
         for cur in sorted(detections):
-            if prev is None:
-                prev = cur
-                continue
-
             # we only compare the regions (xywh) and not the scores
             if prev == cur:
+                assert prev is not None
                 prev.cls_scores.update(cur.cls_scores)
                 continue
 
             # drop detections with no scores?
-            yield prev
+            if prev is not None and prev.has_scores:
+                yield prev
             prev = cur
 
-        if prev is not None:
+        # and yield any remaining detection
+        if prev is not None and prev.has_scores:
             yield prev
 
     @property
     def classes(self) -> set[str]:
         return {cls for cls in self.cls_scores}
+
+    @property
+    def has_scores(self) -> bool:
+        return sum(self.cls_scores.values()) != 0.0
 
     @property
     def max_score(self) -> float:
