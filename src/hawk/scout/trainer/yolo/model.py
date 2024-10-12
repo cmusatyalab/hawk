@@ -225,20 +225,16 @@ class YOLOModel(ModelBase):
                         score = 0
                     else:
                         score = 1
-                score_dict = {
-                    label: float(score)
-                    for label, score in zip(self.context.class_manager.classes, score)
-                }
 
                 ## create the detections list
                 if len(detections_per_sample):
                     detection_list = [
-                        {key: float(val) for key, val in zip(detections_per_sample[i,:4])}
-                        for i in range(len(detections_per_sample))
+                        {key: float(val) for key, val in zip(['x','y','w','h'], (detections_per_sample[j,:4]/640).astype(float).tolist())} ## divide by 640 as yolo resizes coordinates to 640 x 640
+                        for j in range(len(detections_per_sample))
                     ]
-                    for i, det in enumerate(detection_list):
-                        det['cls_scores'] = {detections_per_sample[i, 6]: detections_per_sample[i, 4],
-                                            }   
+                    for k, det in enumerate(detection_list):
+                        det['cls_scores'] = {self.context.class_manager.label_name_dict[int(detections_per_sample[k, 5]) + 1]: float(detections_per_sample[k, 4]),
+                                            }   ## the "+ 1" here is to translate output class 0 to 1, or 1 to 2, etc. because with yolo class 0 is the first positive class.
                 else:
                     detection_list = []
 
