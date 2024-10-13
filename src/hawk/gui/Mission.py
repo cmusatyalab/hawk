@@ -13,7 +13,7 @@ import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 
 from hawk.gui.elements import ABOUT_TEXT, Mission, page_header
-from hawk.home.label_utils import Detection, LabelSample
+from hawk.home.label_utils import ClassName, Detection, LabelSample
 
 if TYPE_CHECKING:
     from streamlit.delta_generator import DeltaGenerator
@@ -47,7 +47,7 @@ mission.resync()
 
 # classes, first one is expected to be the negative value followed by the
 # various classes in the mission
-CLASSES = ["negative"]
+CLASSES = [ClassName("negative")]
 CLASSES.extend(mission.classes)
 
 # banner.write(data)

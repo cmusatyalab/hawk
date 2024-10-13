@@ -106,7 +106,7 @@ class HomeToScoutWorker:
         bboxes = [
             bbox
             for detection in result.detections
-            for bbox in detection.to_yolo(self.class_map)
+            for bbox in detection.to_yoloish(self.class_map)
         ]
         label = LabelWrapper(
             objectId=result.objectId,

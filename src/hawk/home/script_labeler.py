@@ -41,8 +41,12 @@ class ScriptLabeler:
     def classify_func(self, objectId: str) -> list[Detection]:
         if objectId.startswith("/0/"):
             return []
-        class_index = objectId.split("/", 2)[1]
-        class_name = self.class_map[class_index]
+        class_value = objectId.split("/", 2)[1]
+        try:
+            class_index = int(class_value) - 1
+            class_name = self.class_map[class_index]
+        except ValueError:
+            class_name = self.class_map[class_value]
         return [Detection(cls_scores={class_name: 1.0})]
 
     def detect_func(self, objectId: str) -> list[Detection]:
@@ -115,9 +119,7 @@ class ScriptLabeler:
         gt_dir = Path(config["home-params"].get("label_dir", ""))
         # logger.info(f"GT DIR: {gt_dir}, {type(gt_dir)}")
 
-        class_list = config.get("dataset", {}).get(
-            "class_list", ["negative", "positive"]
-        )
+        class_list = config.get("dataset", {}).get("class_list", ["positive"])
         class_map = ClassMap.from_list(class_list)
 
         return cls(mission_dir, class_map, label_time, label_mode == "detect", gt_dir)
@@ -134,7 +136,7 @@ def main() -> int:
     parser.add_argument("mission_directory", type=Path, nargs="?", default=".")
     args = parser.parse_args()
 
-    class_list = ["negative"] + (args.label_class or ["positive"])
+    class_list = args.label_class or ["positive"]
     class_map = ClassMap.from_list(class_list)
 
     ScriptLabeler(

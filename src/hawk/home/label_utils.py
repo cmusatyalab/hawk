@@ -11,7 +11,7 @@ import sys
 import time
 from dataclasses import InitVar, dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Iterator, TextIO
+from typing import TYPE_CHECKING, Any, Iterable, Iterator, NewType, TextIO
 
 from logzero import logger
 
@@ -22,63 +22,49 @@ if TYPE_CHECKING:
     from os import PathLike
 
 
+ClassName = NewType("ClassName", str)
+
+
 @dataclass
 class ClassMap:
-    class_map: dict[int, str]
-    inverse_map: dict[str, int] = field(init=False, repr=False)
+    """ClassMap contains a list of class names, it tracks positive classes only."""
 
-    def __post_init__(self) -> None:
-        self.inverse_map = {
-            sys.intern(name): label for label, name in self.class_map.items()
-        }
+    classes: list[ClassName]
 
     @classmethod
     def from_list(cls, classes: list[str]) -> ClassMap:
-        """Create a mapping from a list by applying incrementing label numbers"""
-        return cls(class_map=dict(enumerate(classes)))
+        """Create a list of all positive class names"""
+        return cls(
+            classes=[
+                ClassName(sys.intern(name))
+                for name in classes
+                if name not in ["", "neg", "negative"]
+            ]
+        )
 
-    @property
-    def classes(self) -> list[str]:
-        return list(self.inverse_map)
-
-    def __getitem__(self, item: int | str) -> str:
-        """Tries to accept either labels or names and maps them to class names
-        Will create new labels for previously unseen class names (or labels).
+    def __getitem__(self, item: int | str) -> ClassName:
+        """Tries to accept either numeric labels or names and maps them to class names
+        Will create new class labels for unknown class names.
+        Raises IndexError when we see a class label that we have no name for.
         """
         try:
             class_label = int(item)
         except ValueError:
             class_label = self.name_to_label(str(item))
-        return self.label_to_name(class_label)
+        return self.classes[class_label]
 
-    def __setitem__(self, label: int, name: str) -> None:
-        """Adds a new class label <> name mapping."""
-        assert label not in self.class_map
-        assert name not in self.inverse_map
-        self.class_map[label] = name
-        self.inverse_map[name] = label
-
-    def name_to_label(self, class_name: str) -> int:
+    def name_to_label(self, name: str) -> int:
         """Returns label for the given class.
         Creates a new label for the class if it did not previously exist.
         """
+        class_name = ClassName(name)
         try:
-            return self.inverse_map[class_name]
+            return self.classes.index(class_name)
         except ValueError:
-            new_label = max(self.class_map) + 1
+            new_label = len(self.classes)
             logger.warning(f"Adding unknown class {class_name} with label {new_label}")
-            self[new_label] = class_name
+            self.classes.append(class_name)
             return new_label
-
-    def label_to_name(self, class_label: int) -> str:
-        """Given a label, return the associated class name."""
-        try:
-            return self.class_map[class_label]
-        except IndexError:
-            class_name = str(class_label)
-            logger.warning(f"Adding unknown class label {class_label}")
-            self[class_label] = class_name
-            return class_name
 
 
 @dataclass(order=True)
@@ -90,7 +76,7 @@ class Detection:
     h: float = 1.0
 
     # we only compare regions, so two detections with different scores compare as equal!
-    cls_scores: dict[str, float] = field(default_factory=dict, compare=False)
+    cls_scores: dict[ClassName, float] = field(default_factory=dict, compare=False)
 
     minX: InitVar[float | None] = None
     minY: InitVar[float | None] = None
@@ -115,7 +101,7 @@ class Detection:
     def from_dict(cls, obj: dict[str, Any]) -> Detection:
         # filter out negatives (and 0 scores)
         cls_scores = {
-            sys.intern(cls): score
+            ClassName(sys.intern(cls)): score
             for cls, score in obj.pop("cls_scores", {}).items()
             if score and cls not in ["", "neg", "negative"]
         }
@@ -125,10 +111,7 @@ class Detection:
     def from_yolo(cls, line: str, class_map: ClassMap) -> Detection:
         label, centerX, centerY, width, height, *_score = line.split()
 
-        try:
-            class_name = class_map[int(label)]  # + 1]
-        except ValueError:
-            class_name = class_map[label]
+        class_name = class_map[label]
         score = float(_score[0]) if _score else 1.0
 
         return cls(
@@ -142,8 +125,8 @@ class Detection:
     def to_dict(self, class_map: ClassMap | None = None) -> dict[str, Any]:
         """asdict but if class_map is given we add missing classes to cls_scores."""
         # don't include negative class from class_map
-        classes: Iterable[str] = (
-            class_map.classes[1:] if class_map is not None else self.classes
+        classes: Iterable[ClassName] = (
+            class_map.classes if class_map is not None else self.classes
         )
         return dict(
             x=self.x,
@@ -153,16 +136,26 @@ class Detection:
             cls_scores={cls: self.cls_scores.get(cls, 0.0) for cls in classes},
         )
 
-    def to_yolo(
-        self, class_map: ClassMap | None = None, with_scores: bool = False
-    ) -> Iterator[str]:
-        """Yolo uses only positive classes counting from 0.
-        If no class_map has been given we will use class names instead.
+    def to_yoloish(self, class_map: ClassMap) -> Iterator[str]:
+        """Yolo (and ClassMap) index positive classes counting from 0.
+        But scouts are 1-indexed because they include an implicit negative class 0.
         """
-        for cls, score in self.cls_scores.items():
-            label = cls if class_map is None else class_map.name_to_label(cls)  # - 1
-            score_str = f" {score}" if with_scores else ""
-            yield f"{label} {self.x} {self.y} {self.w} {self.h}{score_str}"
+        for class_name in self.cls_scores:
+            label = class_map.name_to_label(class_name) + 1
+            # TODO send class_name instead of class_label to the scout
+            yield f"{label} {self.x} {self.y} {self.w} {self.h}"
+
+    @property
+    def classes(self) -> set[ClassName]:
+        return {cls for cls in self.cls_scores}
+
+    @property
+    def has_scores(self) -> bool:
+        return sum(self.cls_scores.values()) != 0.0
+
+    @property
+    def max_score(self) -> float:
+        return max(self.cls_scores.values())
 
     @classmethod
     def merge_detections(cls, detections: Iterator[Detection]) -> Iterator[Detection]:
@@ -184,18 +177,6 @@ class Detection:
         if prev is not None and prev.has_scores:
             yield prev
 
-    @property
-    def classes(self) -> set[str]:
-        return {cls for cls in self.cls_scores}
-
-    @property
-    def has_scores(self) -> bool:
-        return sum(self.cls_scores.values()) != 0.0
-
-    @property
-    def max_score(self) -> float:
-        return max(self.cls_scores.values())
-
 
 @dataclass
 class LabelSample:
@@ -211,6 +192,13 @@ class LabelSample:
     def __post_init__(self, line: int) -> None:
         self.index = line
 
+    @classmethod
+    def from_dict(cls, obj: dict[str, Any], line: int = -1) -> LabelSample:
+        detections = [
+            Detection.from_dict(detection) for detection in obj.pop("detections", [])
+        ]
+        return cls(line=line, detections=detections, **obj)
+
     def to_jsonl(self, fp: TextIO, class_map: ClassMap | None = None) -> None:
         jsonl = json.dumps(
             dict(
@@ -224,25 +212,18 @@ class LabelSample:
         )
         fp.write(f"{jsonl}\n")
 
-    def to_yolo(self, class_map: ClassMap | None = None) -> str:
-        """Yolo using class labels that start counting at 0
-        Will use class names when class_map is None
+    def to_yoloish(self, class_map: ClassMap) -> str:
+        """Yolo (and class_map) use class labels that start counting at 0
+        But hawk scouts count positive classes from 1, so this is 'yolo-ish'
         """
         return "".join(
             line + "\n"
             for detection in self.detections
-            for line in detection.to_yolo(class_map)
+            for line in detection.to_yoloish(class_map)
         )
 
-    @classmethod
-    def from_dict(cls, obj: dict[str, Any], line: int = -1) -> LabelSample:
-        detections = [
-            Detection.from_dict(detection) for detection in obj.pop("detections", [])
-        ]
-        return cls(line=line, detections=detections, **obj)
-
     @property
-    def classes(self) -> set[str]:
+    def classes(self) -> set[ClassName]:
         return set.union(*[detection.classes for detection in self.detections])
 
     @property
@@ -346,7 +327,7 @@ class MissionResults:
             self.unlabeled_offset = new_unlabeled[-1].index
 
     @property
-    def classes(self) -> set[str]:
+    def classes(self) -> set[ClassName]:
         return self.unlabeled[-1].classes if self.unlabeled else set()
 
     def read_unlabeled(
