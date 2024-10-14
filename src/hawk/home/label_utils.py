@@ -47,10 +47,15 @@ class ClassMap:
         Will create new class labels for unknown class names.
         Raises IndexError when we see a class label that we have no name for.
         """
-        try:
-            class_label = int(item)
-        except ValueError:
-            class_label = self.name_to_label(str(item))
+        if isinstance(item, int):
+            class_label = item
+        elif item in self.classes:
+            class_label = self.classes.index(item)
+        else:
+            try:
+                class_label = int(item)
+            except ValueError:
+                class_label = self.name_to_label(str(item))
         return self.classes[class_label]
 
     def name_to_label(self, name: str) -> int:
