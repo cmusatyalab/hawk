@@ -49,8 +49,8 @@ class ClassMap:
         """
         if isinstance(item, int):
             class_label = item
-        elif item in self.classes:
-            class_label = self.classes.index(item)
+        elif (class_name := ClassName(item)) in self.classes:
+            class_label = self.classes.index(class_name)
         else:
             try:
                 class_label = int(item)
@@ -131,7 +131,7 @@ class Detection:
         """asdict but if class_map is given we add missing classes to cls_scores."""
         # don't include negative class from class_map
         classes: Iterable[ClassName] = (
-            class_map.classes if class_map is not None else self.classes
+            class_map.classes if class_map is not None else self.classes()
         )
         return dict(
             x=self.x,
@@ -150,7 +150,6 @@ class Detection:
             # TODO send class_name instead of class_label to the scout
             yield f"{label} {self.x} {self.y} {self.w} {self.h}"
 
-    @property
     def classes(self) -> set[ClassName]:
         return {cls for cls in self.cls_scores}
 
@@ -229,7 +228,7 @@ class LabelSample:
 
     @property
     def classes(self) -> set[ClassName]:
-        return set.union(*[detection.classes for detection in self.detections])
+        return set.union(*[detection.classes() for detection in self.detections])
 
     @property
     def max_score(self) -> float:

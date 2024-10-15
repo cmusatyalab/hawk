@@ -102,7 +102,13 @@ class HomeToScoutWorker:
 
     def put(self, result: LabelSample) -> None:
         """Queue a label from any thread which will be sent to the scout."""
-        imageLabel = "0" if not result.detections else "1"
+        if result.detections:
+            # Assumes some class in the first detection corresponds to the
+            # classification of the whole image.
+            class_name = result.detections[0].classes().pop()
+            imageLabel = self.class_map.classes.index(class_name) + 1
+        else:
+            imageLabel = 0
         bboxes = [
             bbox
             for detection in result.detections
@@ -111,7 +117,7 @@ class HomeToScoutWorker:
         label = LabelWrapper(
             objectId=result.objectId,
             scoutIndex=result.scoutIndex,
-            imageLabel=imageLabel,
+            imageLabel=str(imageLabel),
             boundingBoxes=bboxes,
         )
         msg = SendLabels(label=label).SerializeToString()
