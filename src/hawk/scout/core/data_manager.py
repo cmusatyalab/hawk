@@ -71,7 +71,7 @@ class DataManager:
         """Store the tile content along with labels in the scout"""
         bounding_boxes = tile.label.boundingBoxes
         label_num = tile.label.imageLabel
-        if label_num == "1":
+        if int(label_num) > 0:
             self._total_positives += 1
         # logger.info(f"Original tile name: {tile.obj.objectId}")
         # logger.info(f" NEW TOTAL POSITIVES: {self._total_positives}\n\n")
@@ -336,7 +336,7 @@ class DataManager:
 
                 if label != "-1":
                     # 0 or 1 or ...
-                    label_dir = self._staging_dir / example_subdir / label
+                    label_dir = self._staging_dir / example_subdir / label ## yolo mission images will be stored in whatever directory designated by imagelabel above, one of the classes from one of the detections.
                     label_dir.mkdir(parents=True, exist_ok=True)
                     example_path = label_dir / example_file
                     if self._radar_crop:
@@ -347,12 +347,12 @@ class DataManager:
                     else:
                         with example_path.open("wb") as f:
                             f.write(obj.content)
-                    if bounding_boxes:
+                    if self.train_type.HasField("yolo"):
                         label_dir = self._staging_dir / example_subdir / "labels"
                         label_dir.mkdir(parents=True, exist_ok=True)
                         example_path = label_dir / (example_file.split(".")[0] + ".txt")
                         with example_path.open("w") as f:
-                            f.write("\n".join(bounding_boxes))
+                            f.write("\n".join(bounding_boxes)) ## write an empty .txt file for detection images if no detections.
 
                 else:
                     ignore_file = self._staging_dir / IGNORE_FILE[0]
@@ -427,7 +427,7 @@ class DataManager:
         new_positives = 0
         new_negatives = 0
         ### create simple list of length num classes, which is reset to zero each time
-        for label in subdir.iterdir():
+        for label in subdir.iterdir(): ## label is 0 1 ... labels
             example_files = list(label.iterdir())
 
             if label.name == "labels":
@@ -461,8 +461,18 @@ class DataManager:
                     example_set = DatasetSplit.TRAIN
 
                 self._increment_example_count(example_set, label.name, 1)
-                example_dir = (
-                    self._examples_dir / self._to_dir(example_set) / label.name
+                
+                if self.train_type.HasField("yolo") and label.name != "labels":
+                        if int(label.name) > 0:
+                            example_dir = (self._examples_dir / self._to_dir(example_set) / "1"
+                )
+                        else:
+                            example_dir = (self._examples_dir / self._to_dir(example_set) / "0"
+                            )
+                        ## when promoting staging examples for yolo mission, ensure they are promoted into examples directories 0/ and 1/, otherwise store in the proper class for classification
+                else:
+                    example_dir = (
+                        self._examples_dir / self._to_dir(example_set) / label.name
                 )
                 example_dir.mkdir(parents=True, exist_ok=True)
                 example_path = example_dir / example_file.name
