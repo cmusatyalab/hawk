@@ -95,7 +95,7 @@ class YOLOTrainer(ModelTrainerBase):
         model_savepath = self.context.model_path(new_version, template="model-{}.pt")
         trainpath = self.context.model_path(new_version, template="train-{}.txt")
 
-        labels = ["1"]
+        labels = ["1"] ## can change this to also train on empty (no detection) images in 0/ directory from examples dir
         train_samples = {
             label: glob.glob(str(train_dir / label / "*")) for label in labels
         }
@@ -133,7 +133,7 @@ class YOLOTrainer(ModelTrainerBase):
                         break
             else:
                 num_epochs = int(online_epochs)
-
+        ## NEED TO MODIFY "nc" and names according to the class list.
         data_dict = {
             "path": str(self.context.model_dir),
             "train": str(trainpath),
@@ -169,6 +169,8 @@ class YOLOTrainer(ModelTrainerBase):
             str(self.args["image-size"]),
             "--data",
             str(data_file),
+            #"--freeze", ## if wanting to freeze backbone
+            #str(10),
         ]
         capture_files = [data_file, trainpath, train_dir]
 

@@ -58,7 +58,7 @@ class UnlabeledResult(LabelSample):
                 for detection in json.loads(request.attributes["detections"])
             )
         )
-        logger.debug(f"Received sample, inferenced scores {detections}")
+        #logger.debug(f"Received sample, inferenced scores {detections}")
 
         return cls(
             objectId=request.objectId,
