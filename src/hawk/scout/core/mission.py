@@ -67,6 +67,7 @@ class Mission(DataManagerContext, ModelContext):
         scml_deploy_options: dict[str, int],
         validate: bool = False,
         novel_class_discovery: bool = False,
+        sub_class_discovery: bool = False,
     ):
         super().__init__()
         logger.info("Initialization")
@@ -100,6 +101,7 @@ class Mission(DataManagerContext, ModelContext):
         self.bootstrap_zip = bootstrap_zip
         self.train_strategy = train_strategy
         self.novel_class_discovery = novel_class_discovery
+        self.sub_class_discovery = sub_class_discovery
         logger.info(f"Novel CLass discovery: {self.novel_class_discovery}")
 
         if isinstance(self._retrain_policy, SampleIntervalPolicy):
@@ -198,12 +200,12 @@ class Mission(DataManagerContext, ModelContext):
         }
 
         ## setup clustering process, if needed
-        if self.novel_class_discovery:
+        if self.novel_class_discovery or self.sub_class_discovery:
             # clustering_input: mp.Queue[ResultProvider] = mp.Queue()
             feature_vector_file_name = "mission_dir/tb/novel_class.txt"
             p = mp.Process(
                 target=clustering_function,
-                args=(feature_vector_file_name,),
+                args=(feature_vector_file_name,self.novel_class_discovery, self.sub_class_discovery),
             )
             p.start()
 
@@ -495,6 +497,7 @@ class Mission(DataManagerContext, ModelContext):
                     scoutIndex=self._scout_index,
                     score=result.score,
                     version=result.model_version,
+                    feature_vector=result.feature_vector,
                     attributes=result.attributes.get(),
                 )
                 pipe.send(tile.SerializeToString())

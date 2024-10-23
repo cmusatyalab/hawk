@@ -231,7 +231,6 @@ class Admin:
         timeout = dataset_config.get("timeout", 20)
         self.class_list = dataset_config.get("class_list", ["negative", "positive"])
         logger.info(f"Class list: {self.class_list}")
-        self.novel_class_discovery = dataset_config.get("novel_class_discovery", False)
 
         datasets = {}
         for index, _scout in enumerate(self.scouts):
@@ -361,7 +360,7 @@ class Admin:
         # base model (primarily for radar)
         # base_model_path = train_config.get("base_model_path", "")
 
-        # deployment options
+        # SCML deployment options
         deployment_options = config.get("scml_deploy_options", "")
         self.scout_deployment_status = {}  ## Active, Idle, or Dead
         scml_deploy_options = {
@@ -453,6 +452,11 @@ class Admin:
                     if network_config["server_address"] != scout:
                         self.num_active_scouts += 1
 
+
+        ## subclass and novel class discovery
+        self.novel_class_discovery = config.get("novel_class_discovery", False)
+        self.sub_class_discovery = config.get("sub_class_discovery", False)
+
         # bootstrapZip
         bootstrap_path = train_config.get("bootstrap_path", "")
         bootstrap_zip = b""
@@ -495,7 +499,6 @@ class Admin:
 
         logger.info(self._mission_id)
         logger.info(s2s_scouts)
-        logger.info(f"Class discovery: {self.novel_class_discovery}")
 
         for index, stub in self.scout_stubs.items():
             scout_config = ScoutConfiguration(
@@ -517,6 +520,7 @@ class Admin:
                 class_list=self.class_list,
                 scml_deploy_opts=scml_deploy_options[self.scouts[index]],
                 novel_class_discovery=self.novel_class_discovery,
+                sub_class_discovery=self.sub_class_discovery,
             )
             msg = [
                 b"a2s_configure_scout",

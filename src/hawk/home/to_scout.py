@@ -11,6 +11,9 @@ import time
 from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
+import torch
+import numpy as np
+import io
 
 import zmq
 from logzero import logger
@@ -44,6 +47,7 @@ class Strategy(Enum):
 class UnlabeledResult(LabelSample):
     score: float = 1.0
     data: bytes = b""
+    feature_vector: torch.Tensor | None = None
 
     @classmethod
     def from_msg(cls, msg: bytes, class_map: ClassMap) -> UnlabeledResult:
@@ -59,12 +63,15 @@ class UnlabeledResult(LabelSample):
             )
         )
         #logger.debug(f"Received sample, inferenced scores {detections}")
-
+        feature_vector = request.feature_vector
+        if feature_vector:
+            feature_vector = torch.load(io.BytesIO(request.feature_vector))
         return cls(
             objectId=request.objectId,
             scoutIndex=request.scoutIndex,
             score=request.score,
             detections=detections,
+            feature_vector=feature_vector,
             data=request.attributes["thumbnail.jpeg"],
         )
 

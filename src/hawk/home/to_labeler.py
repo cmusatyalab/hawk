@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 from logzero import logger
 from prometheus_client import Counter, Gauge, Histogram
 
@@ -83,6 +84,8 @@ class LabelerDiskQueue:
         unlabeled_jsonl = self.mission_dir / "unlabeled.jsonl"
         tile_dir = self.mission_dir / "images"
         tile_dir.mkdir(exist_ok=True)
+        fv_dir = self.mission_dir / "feature_vectors"
+        fv_dir.mkdir(exist_ok=True)
 
         # check how many unlabeled samples we have already processed
         # (we may have restarted the hawk_label_broker process)
@@ -103,11 +106,14 @@ class LabelerDiskQueue:
 
             # write result image file to disk
             tile_jpeg = tile_dir.joinpath(f"{index:06}.jpeg")
+            feature_vector_path = fv_dir.joinpath(f"{index:06}.pt")
             if result.objectId.endswith(".npy"):  # for radar missions with .npy files
                 self.gen_heatmap(result.data, tile_jpeg)
             else:
                 tile_jpeg.write_bytes(result.data)
             logger.info(f"SAVED TILE {tile_jpeg}")
+            if result.feature_vector:
+                torch.save(result.feature_vector, feature_vector_path)
 
             # update queued time so we can track labeling delay.
             result.queued = time.time()

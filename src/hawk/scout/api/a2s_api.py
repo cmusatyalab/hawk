@@ -271,7 +271,7 @@ class A2SAPI:
         # Setting up Mission with config params
         logger.info("Start setting up mission")
         logger.info(
-            f"Class list: {request.class_list}, {request.novel_class_discovery}"
+            f"Class list: {request.class_list}, Novel class discovery: {request.novel_class_discovery}, Sub class discovery: {request.sub_class_discovery}"
         )
         mission = Mission(
             mission_id,
@@ -290,6 +290,7 @@ class A2SAPI:
             dict(request.scml_deploy_opts.scout_dict),
             request.validate,
             request.novel_class_discovery,
+            request.sub_class_discovery,
             # add base model field for radar missions
             # add request.train_strategy here to be able to pass to data manager.
         )

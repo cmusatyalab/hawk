@@ -70,6 +70,9 @@ class DNNClassifierModel(ModelBase):
         self._model.to(self._device)
         self._model.eval()
         self._running = True
+        self.extract_feature_vector = False
+        if self.context.novel_class_discovery or self.context.sub_class_discovery:
+            self.extract_feature_vector = True
 
     @property
     def version(self) -> int:
@@ -161,6 +164,9 @@ class DNNClassifierModel(ModelBase):
 
     def get_predictions(self, inputs: torch.Tensor) -> Sequence[Sequence[float]]:
         with torch.no_grad():
+            if self.extract_feature_vector:
+                handle = self._model.avgpool.register_forward_hook(self.forward_hook)
+                ## avgpool module is based on the resnet architecture, will need to add additional support for appropriate layer to extract feature vector from other models.
             inputs = inputs.to(self._device)
             output = self._model(inputs)
             probability: torch.Tensor = torch.softmax(output, dim=1)
@@ -314,6 +320,10 @@ class DNNClassifierModel(ModelBase):
             for i in range(len(batch)):
                 score = predictions[i]
                 result_object = batch[i][0]
+                feature_vector = self.batch_feature_vectors[i] if self.extract_feature_vector else None
+                fv_bytes = io.BytesIO()
+                torch.save(feature_vector, fv_bytes)
+                final_fv = fv_bytes.getvalue() if feature_vector is not None else None
                 if self._mode == "oracle":
                     num_classes = len(self.context.class_manager.classes)
                     cls = int(result_object.id.split("/", 2)[1])
@@ -333,7 +343,7 @@ class DNNClassifierModel(ModelBase):
                 )
                 results.append(
                     ResultProvider(
-                        result_object, sum(score[1:]), self.version, None
+                        result_object, sum(score[1:]), self.version, final_fv
                     )  ## score for priority queue is sum of all positive classes
                 )
         return results
@@ -343,3 +353,8 @@ class DNNClassifierModel(ModelBase):
         with self._model_lock:
             self._running = False
             self._model = None
+
+
+    def forward_hook(self, module, input, output):
+        self.batch_feature_vectors = output.detach().cpu()
+        self.batch_feature_vectors = self.batch_feature_vectors.reshape(self.batch_feature_vectors.shape[0],-1)

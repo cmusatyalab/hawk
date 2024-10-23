@@ -32,6 +32,7 @@ message ScoutConfiguration {
   repeated string class_list = 16;
   PerScoutSCMLOptions scml_deploy_opts = 17;
   bool novel_class_discovery = 18;
+  bool sub_class_discovery = 19;
 }
 
 message MissionStats {
@@ -243,6 +244,7 @@ message SendTiles {
   double score = 3;
   int32 version = 4;
   map<string, bytes> attributes = 5;
+  bytes feature_vector = 6;
 }
 
 message SendLabels {
