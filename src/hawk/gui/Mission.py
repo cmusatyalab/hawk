@@ -261,10 +261,13 @@ def display_radar_images(mission: Mission) -> None:
     with paginate(results) as page:
         for result in page:
             base = Path(result.objectId).stem
+
             image = Path(mission.image_dir, f"{result.index:06}.jpeg")
+            if '_' in base:
+                stereo_base = base.split("_")[0]
             stereo_image = Path(
                 "/media/eric/Drive2/RADAR_DETECTION/train/stereo_left/",
-                f"{base}_left.jpg",
+                f"{stereo_base}_left.jpg",
             )  # stereo image for radar missions, if stereo image.exists(), etc.
             with next(column):  # make a 1x2 container?
                 col1, col2 = st.columns(2)

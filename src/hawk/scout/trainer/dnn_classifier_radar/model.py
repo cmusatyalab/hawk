@@ -336,8 +336,14 @@ class DNNClassifierModelRadar(ModelBase):
                     label: float(score)
                     for label, score in zip(self.context.class_manager.classes, score)
                 }
+
+                detection_list = [
+                    {
+                     'cls_scores': score_dict
+                    }
+                ]
                 result_object.attributes.add(
-                    {"scores": json.dumps(score_dict).encode()}
+                    {"detections": json.dumps(detection_list).encode()}
                 )
 
 
@@ -349,7 +355,7 @@ class DNNClassifierModelRadar(ModelBase):
                 # will be added at home
                 results.append(
                     ResultProvider(
-                        result_object, sum(score[1:]), self.version  # , box)
+                        result_object, sum(score[1:]), self.version, None  # , box)
                     )  ## score for priority queue is sum of all positive classes
                 )
         return results
