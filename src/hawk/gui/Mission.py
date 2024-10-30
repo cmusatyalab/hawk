@@ -5,15 +5,15 @@
 from __future__ import annotations
 
 import time
-from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterator
 
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
+from streamlit_label_kit import detection as st_detection
 
-from hawk.gui.elements import ABOUT_TEXT, Mission, page_header
-from hawk.home.label_utils import ClassName, Detection, LabelSample
+from hawk.gui.elements import ABOUT_TEXT, Mission, page_header, paginate
+from hawk.home.label_utils import Detection, LabelSample
 
 if TYPE_CHECKING:
     from streamlit.delta_generator import DeltaGenerator
@@ -43,12 +43,13 @@ else:
     banner.title("Hawk Mission Results")
     # banner.write(st.session_state)
 
+if "saves" not in st.session_state:
+    st.session_state.saves = {}
+
 mission.resync()
 
-# classes, first one is expected to be the negative value followed by the
-# various classes in the mission
-CLASSES = [ClassName("negative")]
-CLASSES.extend(mission.classes)
+# list of positive classes in the mission
+CLASSES = list(mission.classes)
 
 # banner.write(data)
 
@@ -60,25 +61,34 @@ def update_labels(mission: Mission) -> None:
     """update labels to include pending labels"""
 
     pending = []
-    for result in mission.unlabeled:
-        if result.objectId in mission.labeled:
+    for sample in mission.unlabeled:
+        if sample.objectId in mission.labeled:
             continue
 
-        class_name = st.session_state.get(result.index)
+        save = st.session_state.saves.get(sample.index)
+        if save is not None:
+            result = sample.replace(save)
+            pending.append(result)
+            continue
+
+        class_name = st.session_state.get(sample.index)
         if class_name is None:  # unlabeled
             continue
 
         # strip off confidence score
         class_name = class_name.rsplit(maxsplit=1)[0]
-        if class_name not in CLASSES:  # (unknown class)
+        if class_name == "negative":  # negative
+            result = sample.replace([])
+        elif class_name in CLASSES:  # (known class)
+            detections = [Detection(scores={class_name: 1.0})]
+            result = sample.replace(detections)
+        else:  # (unknown class)
             continue
 
-        if class_name == CLASSES[0]:  # negative
-            result.detections = []
-        else:
-            result.detections = [Detection(cls_scores={class_name: 1.0})]
         pending.append(result)
+
     mission.save_labeled(pending)
+    st.session_state.saves = {}
 
 
 def clear_labels(mission: Mission) -> None:
@@ -86,6 +96,7 @@ def clear_labels(mission: Mission) -> None:
     for result in mission.unlabeled:
         if result.objectId not in mission.labeled:
             st.session_state[result.index] = None
+    st.session_state.saves = {}
 
 
 col1, col2 = st.sidebar.columns(2)
@@ -115,7 +126,9 @@ def update_statistics(mission: Mission) -> bool:
 
     # compute home stats from received and labeled samples
     total_labeled = len(mission.labeled)
-    negative_labeled = sum(1 for nlabels in mission.labeled.values() if nlabels == 0)
+    negative_labeled = sum(
+        1 for label in mission.labeled.values() if not label.detections
+    )
     positive_labeled = total_labeled - negative_labeled
     positive_label_ratio = (
         int(100 * positive_labeled / total_labeled) if total_labeled else 0
@@ -165,7 +178,6 @@ for result in mission.unlabeled:
     # label = -1 if not labels else 0
     # st.session_state[result.index] = CLASSES[label + 1]
 
-
 ####
 # Here we generate an infinite sequence of columns to put stuff into.
 if "columns" not in st.session_state:
@@ -187,62 +199,13 @@ def columns(ncols: int) -> Iterator[DeltaGenerator]:
 column = columns(st.session_state.columns)
 
 
-@contextmanager
-def paginate(result_list: list[LabelSample]) -> Iterator[list[LabelSample]]:
-    """Paginate a list of results"""
-    nresults = len(result_list)
-    current_page = int(st.query_params.get("page", 1))
-    results_per_page = st.session_state.rows * st.session_state.columns
-    pages = int((nresults + results_per_page - 1) / results_per_page)
-
-    page = max(1, min(pages, current_page))
-    if page != current_page:
-        st.query_params["page"] = str(page)
-
-    # return slice of the original list based on current page
-    start = results_per_page * (page - 1)
-    end = start + results_per_page
-    yield result_list[start:end]
-
-    if pages <= 1:
-        return
-
-    # display pagination
-    def goto_page(current_page: int, pages: int) -> None:
-        chosen_page = st.session_state.chosen_page
-        if chosen_page == "first":
-            chosen_page = 1
-        if chosen_page == "prev":
-            chosen_page = max(1, current_page - 1)
-        if chosen_page == "next":
-            chosen_page = min(pages, current_page + 1)
-        if chosen_page == "last":
-            chosen_page = pages
-        st.query_params["page"] = str(chosen_page)
-
-    options = (
-        ["first", "prev"]
-        + list(range(1, current_page)[-5:])
-        + [current_page]
-        + list(range(current_page + 1, pages + 1)[:5])
-        + ["next", "last"]
-    )
-    st.session_state["chosen_page"] = current_page
-    st.radio(
-        "Navigate to page",
-        options,
-        key="chosen_page",
-        horizontal=True,
-        on_change=goto_page,
-        args=(current_page, pages),
-    )
-
-
-def classification_pulldown(mission: Mission, result: LabelSample) -> None:
-    scores = result.detections[0].cls_scores if result.detections else {}
-    options = ["negative"] + [
-        f"{cls} ({scores.get(cls, 0):.02f})" for cls in CLASSES[1:]
-    ]
+def classification_pulldown(
+    mission: Mission, result: LabelSample, key: str | int | None = None
+) -> None:
+    scores = result.detections[0].scores if result.detections else {}
+    options = ["negative"] + [f"{cls} ({scores.get(cls, 0):.02f})" for cls in CLASSES]
+    if key is None:
+        key = result.index
     st.selectbox(
         "classification",
         key=result.index,
@@ -263,8 +226,7 @@ def display_radar_images(mission: Mission) -> None:
             base = Path(result.objectId).stem
             stereo_base = base.split("_", 1)[0]
 
-            image = result.unique_name(mission.image_dir, ".jpeg")
-
+            image = mission.image_path(result)
             stereo_image = Path(
                 "/media/eric/Drive2/RADAR_DETECTION/train/stereo_left/",
                 f"{stereo_base}_left.jpg",
@@ -295,16 +257,115 @@ def display_radar_images(mission: Mission) -> None:
                 classification_pulldown(mission, result)
 
 
+@st.dialog("Annotation Editor", width="large")
+def annotation_editor_popup(mission: Mission, sample: LabelSample) -> None:
+    image = mission.image_path(sample)
+    out = st_detection(
+        image_path=str(image),
+        label_list=CLASSES,
+        bbox_format="REL_CXYWH",
+        image_height=512,
+        image_width=512,
+        ui_size="large",
+        class_select_position="bottom",
+        component_alignment="center",
+        bbox_show_label=True,
+        # bbox_show_info=True,
+        read_only=sample.objectId in mission.labeled,
+        key=f"{sample.index}_editor",
+        **st.session_state.editstate,
+    )
+    # with st.expander("See more"):
+    #     st.image(str(image))
+    if st.button("Ok"):
+        if out is not None and out["key"] != 0:
+            st.session_state.saves[sample.index] = [
+                Detection.from_labelkit(bbox, CLASSES) for bbox in out["bbox"]
+            ]
+        st.rerun()
+
+
+def detection_ui(mission: Mission, sample: LabelSample) -> None:
+    labeled_result = mission.labeled.get(sample.objectId)
+    inprogress_bboxes = st.session_state.saves.get(sample.index)
+
+    # state is previously saved, in progress, or a new estimate from inference
+    if labeled_result is not None:
+        sample = sample.replace(labeled_result.detections)
+    elif inprogress_bboxes is not None:
+        sample = sample.replace(inprogress_bboxes)
+
+    labelkit_args = sample.to_labelkit_args(CLASSES)
+
+    # draw image with bounding boxes
+    image = mission.image_path(sample)
+    st_detection(
+        image_path=str(image),
+        label_list=CLASSES,
+        bbox_format="REL_CXYWH",
+        ui_size="small",
+        class_select_position="none",
+        bbox_show_label=True,
+        read_only=True,
+        **labelkit_args,
+    )
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Edit", key=f"{sample.index}_edit"):
+            st.session_state.editstate = labelkit_args
+            annotation_editor_popup(mission, sample)
+
+    with col2:
+        new = labeled_result is None and inprogress_bboxes is None
+
+        if not new:
+            st.session_state[f"{sample.index}_fb"] = not not sample.detections
+
+        feedback = st.feedback("thumbs", key=f"{sample.index}_fb")
+        if new and feedback is not None:
+            if not feedback:
+                st.session_state.saves[sample.index] = []
+                if sample.detections:
+                    st.rerun()
+            elif new:
+                st.session_state.saves[sample.index] = sample.detections
+
+
+@st.dialog("Image Viewer", width="large")
+def image_classifier_popup(mission: Mission, sample: LabelSample) -> None:
+    image = mission.image_path(sample)
+    st.image(str(image), use_column_width=True)
+    # with st.expander("See more"):
+    #     st.image(str(image))
+    classification_pulldown(mission, sample, key=f"{sample.index}_view")
+    if st.button("Ok"):
+        st.rerun()
+
+
+def classification_ui(mission: Mission, sample: LabelSample) -> None:
+    image = mission.image_path(sample)
+    st.image(str(image))
+
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        if st.button("View", key=f"{sample.index}_view"):
+            image_classifier_popup(mission, sample)
+    with col2:
+        classification_pulldown(mission, sample)
+
+
 def display_images(mission: Mission) -> None:
     exclude = mission.labeled if not st.session_state.show_labeled else set()
     results = [result for result in mission.unlabeled if result.objectId not in exclude]
 
     with paginate(results) as page:
         for result in page:
-            image = result.unique_name(mission.image_dir, ".jpeg")
             with next(column):
-                st.image(str(image))
-                classification_pulldown(mission, result)
+                if result.is_classification:
+                    classification_ui(mission, result)
+                else:
+                    detection_ui(mission, result)
 
 
 train_strategy = mission.config["train_strategy"]["type"]

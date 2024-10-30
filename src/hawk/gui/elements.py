@@ -6,13 +6,14 @@ from __future__ import annotations
 
 import argparse
 import json
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 import streamlit as st
 
-from hawk.home.label_utils import MissionResults
+from hawk.home.label_utils import LabelSample, MissionResults
 from hawk.mission_config import MissionConfig, load_config
 
 ABOUT_TEXT = """\
@@ -54,9 +55,8 @@ class Mission(MissionResults):
             self._config = load_config(self.config_file)
         return self._config
 
-    @property
-    def image_dir(self) -> Path:
-        return Path(self.mission_dir, "images")
+    def image_path(self, sample: LabelSample) -> Path:
+        return sample.unique_name(Path(self.mission_dir) / "images", ".jpeg")
 
     @property
     def config_file(self) -> Path:
@@ -130,3 +130,54 @@ def page_header(title: str) -> Mission | None:
         on_change=reset_mission_state,
     )
     return load_mission(mission)
+
+
+@contextmanager
+def paginate(result_list: list[LabelSample]) -> Iterator[list[LabelSample]]:
+    """Paginate a list of results"""
+    nresults = len(result_list)
+    current_page = int(st.query_params.get("page", 1))
+    results_per_page = st.session_state.rows * st.session_state.columns
+    pages = int((nresults + results_per_page - 1) / results_per_page)
+
+    page = max(1, min(pages, current_page))
+    if page != current_page:
+        st.query_params["page"] = str(page)
+
+    # return slice of the original list based on current page
+    start = results_per_page * (page - 1)
+    end = start + results_per_page
+    yield result_list[start:end]
+
+    if pages <= 1:
+        return
+
+    # display pagination
+    def goto_page(current_page: int, pages: int) -> None:
+        chosen_page = st.session_state.chosen_page
+        if chosen_page == "first":
+            chosen_page = 1
+        if chosen_page == "prev":
+            chosen_page = max(1, current_page - 1)
+        if chosen_page == "next":
+            chosen_page = min(pages, current_page + 1)
+        if chosen_page == "last":
+            chosen_page = pages
+        st.query_params["page"] = str(chosen_page)
+
+    options = (
+        ["first", "prev"]
+        + list(range(1, current_page)[-5:])
+        + [current_page]
+        + list(range(current_page + 1, pages + 1)[:5])
+        + ["next", "last"]
+    )
+    st.session_state["chosen_page"] = current_page
+    st.radio(
+        "Navigate to page",
+        options,
+        key="chosen_page",
+        horizontal=True,
+        on_change=goto_page,
+        args=(current_page, pages),
+    )

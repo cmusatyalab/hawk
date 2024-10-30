@@ -6,13 +6,23 @@
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import sys
 import time
 from dataclasses import InitVar, dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Iterator, NewType, TextIO
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Iterable,
+    Iterator,
+    NewType,
+    Sequence,
+    TextIO,
+    TypedDict,
+)
 
 from logzero import logger
 
@@ -22,8 +32,17 @@ if TYPE_CHECKING:
     from collections.abc import Container
     from os import PathLike
 
-
 ClassName = NewType("ClassName", str)
+
+
+class LabelKitArgs(TypedDict):
+    bboxes: list[tuple[float, float, float, float]]
+    labels: list[int]
+
+
+class LabelKitOut(TypedDict):
+    bboxes: tuple[float, float, float, float]
+    labels: int
 
 
 @dataclass
@@ -82,7 +101,7 @@ class Detection:
     h: float = 1.0
 
     # we only compare regions, so two detections with different scores compare as equal!
-    cls_scores: dict[ClassName, float] = field(default_factory=dict, compare=False)
+    scores: dict[ClassName, float] = field(default_factory=dict, compare=False)
 
     minX: InitVar[float | None] = None
     minY: InitVar[float | None] = None
@@ -106,12 +125,12 @@ class Detection:
     @classmethod
     def from_dict(cls, obj: dict[str, Any]) -> Detection:
         # filter out negatives (and 0 scores)
-        cls_scores = {
+        scores = {
             ClassName(sys.intern(cls)): score
-            for cls, score in obj.pop("cls_scores", {}).items()
+            for cls, score in obj.pop("scores", obj.pop("cls_scores", {})).items()
             if score and cls not in ["", "neg", "negative"]
         }
-        return cls(cls_scores=cls_scores, **obj)
+        return cls(scores=scores, **obj)
 
     @classmethod
     def from_yolo(cls, line: str, class_map: ClassMap) -> Detection:
@@ -125,11 +144,22 @@ class Detection:
             y=float(centerY),
             w=float(width),
             h=float(height),
-            cls_scores={class_name: score},
+            scores={class_name: score},
+        )
+
+    @classmethod
+    def from_labelkit(cls, obj: LabelKitOut, classes: Sequence[ClassName]) -> Detection:
+        class_name = classes[obj["labels"]]
+        return cls(*obj["bboxes"], scores={class_name: 1.0})
+
+    def to_labelkit(self, classes: Sequence[ClassName]) -> LabelKitOut:
+        return dict(
+            bboxes=(self.x, self.y, self.w, self.h),
+            labels=classes.index(self.top_class()),
         )
 
     def to_dict(self, class_map: ClassMap | None = None) -> dict[str, Any]:
-        """asdict but if class_map is given we add missing classes to cls_scores."""
+        """asdict but if class_map is given we add missing classes to scores."""
         # don't include negative class from class_map
         classes: Iterable[ClassName] = (
             class_map.classes if class_map is not None else self.classes()
@@ -139,28 +169,42 @@ class Detection:
             y=self.y,
             w=self.w,
             h=self.h,
-            cls_scores={cls: self.cls_scores.get(cls, 0.0) for cls in classes},
+            scores={cls: self.scores.get(cls, 0.0) for cls in classes},
         )
 
     def to_yoloish(self, class_map: ClassMap) -> Iterator[str]:
         """Yolo (and ClassMap) index positive classes counting from 0.
         But scouts are 1-indexed because they include an implicit negative class 0.
         """
-        for class_name in self.cls_scores:
+        for class_name in self.scores:
             label = class_map.name_to_label(class_name) + 1
             # TODO send class_name instead of class_label to the scout
             yield f"{label} {self.x} {self.y} {self.w} {self.h}"
 
+    def by_score(self) -> list[tuple[ClassName, float]]:
+        return sorted(self.scores.items(), key=lambda x: x[1], reverse=True)
+
     def classes(self) -> set[ClassName]:
-        return {cls for cls in self.cls_scores}
+        return {cls for cls in self.scores}
 
     @property
     def has_scores(self) -> bool:
-        return sum(self.cls_scores.values()) != 0.0
+        return sum(self.scores.values()) != 0.0
+
+    def top_class(self) -> ClassName:
+        return self.by_score()[0][0]
 
     @property
     def max_score(self) -> float:
-        return max(self.cls_scores.values())
+        return max(self.scores.values())
+
+    @property
+    def min_X(self) -> float:
+        return self.x - self.w / 2
+
+    @property
+    def min_Y(self) -> float:
+        return self.y - self.h / 2
 
     @classmethod
     def merge_detections(cls, detections: Iterator[Detection]) -> Iterator[Detection]:
@@ -170,7 +214,7 @@ class Detection:
             # we only compare the regions (xywh) and not the scores
             if prev == cur:
                 assert prev is not None
-                prev.cls_scores.update(cur.cls_scores)
+                prev.scores.update(cur.scores)
                 continue
 
             # drop detections with no scores?
@@ -204,6 +248,9 @@ class LabelSample:
         ]
         return cls(line=line, detections=detections, **obj)
 
+    def replace(self, detections: list[Detection]) -> LabelSample:
+        return dataclasses.replace(self, detections=detections, line=self.index)
+
     def to_jsonl(
         self, fp: TextIO, class_map: ClassMap | None = None, **kwargs: int | str | float
     ) -> None:
@@ -230,9 +277,26 @@ class LabelSample:
             for line in detection.to_yoloish(class_map)
         )
 
+    def to_labelkit_args(self, classes: Sequence[ClassName]) -> LabelKitArgs:
+        bboxes = [bbox.to_labelkit(classes) for bbox in self.detections]
+        return dict(
+            bboxes=[out["bboxes"] for out in bboxes],
+            labels=[out["labels"] for out in bboxes],
+        )
+
     @property
     def classes(self) -> set[ClassName]:
         return set.union(*[detection.classes() for detection in self.detections])
+
+    @property
+    def is_classification(self) -> bool:
+        # heuristically a single detection covering the whole image should be a
+        # classification result
+        return (
+            len(self.detections) == 1
+            and self.detections[0].w == 1.0
+            and self.detections[0].h == 1.0
+        )
 
     @property
     def max_score(self) -> float:
@@ -310,7 +374,7 @@ class MissionResults:
     labeled_jsonl: Path = field(init=False, repr=False)
     unlabeled_jsonl: Path = field(init=False, repr=False)
 
-    labeled: dict[str, int] = field(default_factory=dict)
+    labeled: dict[str, LabelSample] = field(default_factory=dict)
     labeled_offset: int = 0
 
     unlabeled: list[LabelSample] = field(default_factory=list)
@@ -323,9 +387,7 @@ class MissionResults:
     def resync_labeled(self) -> None:
         new_labels = list(read_jsonl(self.labeled_jsonl, skip=self.labeled_offset))
         if new_labels:
-            self.labeled.update(
-                (label.objectId, len(label.detections)) for label in new_labels
-            )
+            self.labeled.update((label.objectId, label) for label in new_labels)
             self.labeled_offset = new_labels[-1].index
 
     def resync(self) -> None:
@@ -365,7 +427,7 @@ class MissionResults:
 
                 # skip if there are still unclassified bounding boxes?
                 for detection in result.detections:
-                    for cls, score in detection.cls_scores.items():
+                    for cls, score in detection.scores.items():
                         if not cls or score != 1.0:
                             continue
 

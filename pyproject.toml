@@ -18,6 +18,7 @@ packages = [
 python = "^3.8"
 cattrs = ">=23.1.0"
 logzero = "^1.5.0"
+matplotlib = "^3.6"
 numpy = "^1.18.1"
 prometheus-client = "^0.20.0"
 protobuf = "^3.11.4"
@@ -33,8 +34,8 @@ pandas = {version = "^2.0", optional = true}
 pillow = { version = "^9.5.0", optional = true }
 python-dateutil = { version = "^2.8.1", optional = true }
 streamlit = {version = "^1.30.0", optional = true, python = "!=3.9.7"}
-streamlit-autorefresh = { version = "^1.0.1", optional = true, python = "!=3.9.7" }
-matplotlib = { version = "^3.6"}
+streamlit-autorefresh = {version = "^1.0.1", optional = true, python = "!=3.9.7"}
+streamlit-label-kit = {version = "^0.1.2", optional = true, python = "!=3.9.7"}
 
 # scout
 albumentations = { version = "^1.3.1", optional = true }
@@ -72,7 +73,7 @@ home = [
     "python-dateutil",
     "streamlit",
     "streamlit-autorefresh",
-    "matplotlib",
+    "streamlit-label-kit",
 ]
 scout = [
     "albumentations",
@@ -147,6 +148,7 @@ module = [
     "skimage.*",
     "sklearn.*",
     "streamlit_autorefresh",
+    "streamlit_label_kit",
     "websockets.*",
 ]
 ignore_missing_imports = true

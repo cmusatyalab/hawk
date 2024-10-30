@@ -47,7 +47,7 @@ class ScriptLabeler:
             class_name = self.class_map[class_index]
         except ValueError:
             class_name = self.class_map[class_value]
-        return [Detection(cls_scores={class_name: 1.0})]
+        return [Detection(scores={class_name: 1.0})]
 
     def detect_func(self, objectId: str) -> list[Detection]:
         assert self.gt_path is not None
@@ -77,7 +77,7 @@ class ScriptLabeler:
 
         # if there are multiple detections for the same class we count all of them
         labels = list(
-            cls for detection in result.detections for cls in detection.cls_scores
+            cls for detection in result.detections for cls in detection.scores
         )
         if labels:
             self.positives += 1

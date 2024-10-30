@@ -245,7 +245,7 @@ class YOLOModel(ModelBase):
                         # the "+ 1" here is to translate output class 0 to 1,
                         # or 1 to 2, etc. because with yolo class 0 is the
                         # first positive class.
-                        det["cls_scores"] = {
+                        det["scores"] = {
                             self.context.class_manager.label_name_dict[
                                 int(detections_per_sample[k, 5]) + 1
                             ]: float(detections_per_sample[k, 4]),

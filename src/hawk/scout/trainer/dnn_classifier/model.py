@@ -216,8 +216,7 @@ class DNNClassifierModel(ModelBase):
             for result in results:
                 self.result_count += 1
                 self.result_queue.put(result)
-                # this is a possible place to add results to another queue for
-                # clustering
+                # this is a possible place to add results to a queue for clustering
 
             requests = []
             # next_infer = start_infer + timeout
@@ -349,7 +348,7 @@ class DNNClassifierModel(ModelBase):
                     label: float(score)
                     for label, score in zip(self.context.class_manager.classes, score)
                 }
-                detection_list = [{"cls_scores": score_dict}]
+                detection_list = [{"scores": score_dict}]
                 result_object.attributes.add(
                     {"detections": json.dumps(detection_list).encode()}
                 )
