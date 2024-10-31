@@ -13,7 +13,7 @@ from streamlit_autorefresh import st_autorefresh
 from streamlit_label_kit import detection as st_detection
 
 from hawk.gui.elements import ABOUT_TEXT, Mission, page_header, paginate
-from hawk.home.label_utils import Detection, LabelSample
+from hawk.home.label_utils import ClassName, Detection, LabelSample
 
 if TYPE_CHECKING:
     from streamlit.delta_generator import DeltaGenerator
@@ -69,23 +69,6 @@ def update_labels(mission: Mission) -> None:
         if save is not None:
             result = sample.replace(save)
             pending.append(result)
-            continue
-
-        class_name = st.session_state.get(sample.index)
-        if class_name is None:  # unlabeled
-            continue
-
-        # strip off confidence score
-        class_name = class_name.rsplit(maxsplit=1)[0]
-        if class_name == "negative":  # negative
-            result = sample.replace([])
-        elif class_name in CLASSES:  # (known class)
-            detections = [Detection(scores={class_name: 1.0})]
-            result = sample.replace(detections)
-        else:  # (unknown class)
-            continue
-
-        pending.append(result)
 
     mission.save_labeled(pending)
     st.session_state.saves = {}
@@ -93,9 +76,6 @@ def update_labels(mission: Mission) -> None:
 
 def clear_labels(mission: Mission) -> None:
     """clear pending (uncommitted) label values"""
-    for result in mission.unlabeled:
-        if result.objectId not in mission.labeled:
-            st.session_state[result.index] = None
     st.session_state.saves = {}
 
 
@@ -168,15 +148,6 @@ def update_statistics(mission: Mission) -> bool:
 if update_statistics(mission):
     st_autorefresh(interval=2000, key="refresh")
 
-# sync session_state to persisted (on-disk) labels
-for result in mission.unlabeled:
-    if result.objectId not in mission.labeled:
-        continue
-
-    ## XXX broken, labels are not int and we can have multiple detections per object
-    # labels = mission.labeled[result.objectId]
-    # label = -1 if not labels else 0
-    # st.session_state[result.index] = CLASSES[label + 1]
 
 ####
 # Here we generate an infinite sequence of columns to put stuff into.
@@ -200,61 +171,77 @@ column = columns(st.session_state.columns)
 
 
 def classification_pulldown(
-    mission: Mission, result: LabelSample, key: str | int | None = None
+    mission: Mission, result: LabelSample, key: str | None = None
 ) -> None:
     scores = result.detections[0].scores if result.detections else {}
     options = ["negative"] + [f"{cls} ({scores.get(cls, 0):.02f})" for cls in CLASSES]
-    if key is None:
-        key = result.index
-    st.selectbox(
+
+    default_key = f"{result.index}_cls"
+    key = key or default_key
+
+    # if we are initializing a new selectbox with no previously saved state
+    labeled_result = mission.labeled.get(result.objectId)
+    if key not in st.session_state:
+        # find previously saved or in-progress detections
+        if labeled_result is not None:
+            detections = labeled_result.detections
+        else:
+            detections = st.session_state.saves.get(result.index)
+
+        # if we found detections, pre-select the given option
+        if detections is not None:
+            if detections:
+                class_name = detections[0].top_class()
+                class_index = CLASSES.index(class_name) + 1
+            else:
+                class_index = 0
+
+            st.session_state[key] = options[class_index]
+
+    classification = st.selectbox(
         "classification",
-        key=result.index,
         options=options,
+        key=key,
         index=None,
         placeholder="Select class...",
-        disabled=result.objectId in mission.labeled,
+        disabled=labeled_result is not None,
         label_visibility="collapsed",
     )
 
+    if classification is not None:
+        if classification != "negative":
+            class_name = ClassName(classification.rsplit(" ", 1)[0])
+            st.session_state.saves[result.index] = [Detection(scores={class_name: 1.0})]
+        else:
+            st.session_state.saves[result.index] = []
 
-def display_radar_images(mission: Mission) -> None:
-    exclude = mission.labeled if not st.session_state.show_labeled else set()
-    results = [result for result in mission.unlabeled if result.objectId not in exclude]
+        if key != default_key:
+            st.session_state[default_key] = classification
 
-    with paginate(results) as page:
-        for result in page:
-            base = Path(result.objectId).stem
-            stereo_base = base.split("_", 1)[0]
 
-            image = mission.image_path(result)
-            stereo_image = Path(
-                "/media/eric/Drive2/RADAR_DETECTION/train/stereo_left/",
-                f"{stereo_base}_left.jpg",
-            )  # stereo image for radar missions, if stereo image.exists(), etc.
-            with next(column):  # make a 1x2 container?
-                col1, col2 = st.columns(2)
-                with col1:
-                    view_height = 800
-                    img_height = 500
-                    padding_top = (view_height - img_height) // 2
-                    padding_bottom = view_height - img_height - padding_top
-                    st.header("Stereo")
-                    st.markdown(
-                        f"<div style='padding-top: {padding_top}px'></div>",
-                        unsafe_allow_html=True,
-                    )
-                    st.image(str(stereo_image), use_column_width=True)
-                    st.markdown(
-                        f"<div style='padding-bottom: {padding_bottom}px'></div>",
-                        unsafe_allow_html=True,
-                    )
+@st.dialog("Image Viewer", width="large")
+def image_classifier_popup(mission: Mission, sample: LabelSample) -> None:
+    image = mission.image_path(sample)
+    st.image(str(image), use_column_width=True)
 
-                # col1.image(str(stereo_image))
-                with col2:
-                    st.header("RD Map")
-                    st.image(str(image))
+    # with st.expander("See more"):
+    #     st.image(str(image))
 
-                classification_pulldown(mission, result)
+    classification_pulldown(mission, sample, key=f"{sample.index}_cls_popup")
+    if st.button("Ok"):
+        st.rerun()
+
+
+def classification_ui(mission: Mission, sample: LabelSample) -> None:
+    image = mission.image_path(sample)
+    st.image(str(image))
+
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        if st.button("View", key=f"{sample.index}_view"):
+            image_classifier_popup(mission, sample)
+    with col2:
+        classification_pulldown(mission, sample)
 
 
 @st.dialog("Annotation Editor", width="large")
@@ -332,27 +319,43 @@ def detection_ui(mission: Mission, sample: LabelSample) -> None:
                 st.session_state.saves[sample.index] = sample.detections
 
 
-@st.dialog("Image Viewer", width="large")
-def image_classifier_popup(mission: Mission, sample: LabelSample) -> None:
-    image = mission.image_path(sample)
-    st.image(str(image), use_column_width=True)
-    # with st.expander("See more"):
-    #     st.image(str(image))
-    classification_pulldown(mission, sample, key=f"{sample.index}_view")
-    if st.button("Ok"):
-        st.rerun()
+def display_radar_images(mission: Mission) -> None:
+    exclude = mission.labeled if not st.session_state.show_labeled else set()
+    results = [result for result in mission.unlabeled if result.objectId not in exclude]
 
+    with paginate(results) as page:
+        for result in page:
+            base = Path(result.objectId).stem
+            stereo_base = base.split("_", 1)[0]
 
-def classification_ui(mission: Mission, sample: LabelSample) -> None:
-    image = mission.image_path(sample)
-    st.image(str(image))
+            image = mission.image_path(result)
+            stereo_image = Path(
+                "/media/eric/Drive2/RADAR_DETECTION/train/stereo_left/",
+                f"{stereo_base}_left.jpg",
+            )  # stereo image for radar missions, if stereo image.exists(), etc.
+            with next(column):  # make a 1x2 container?
+                col1, col2 = st.columns(2)
+                with col1:
+                    view_height = 800
+                    img_height = 500
+                    padding_top = (view_height - img_height) // 2
+                    padding_bottom = view_height - img_height - padding_top
+                    st.header("Stereo")
+                    st.markdown(
+                        f"<div style='padding-top: {padding_top}px'></div>",
+                        unsafe_allow_html=True,
+                    )
+                    st.image(str(stereo_image), use_column_width=True)
+                    st.markdown(
+                        f"<div style='padding-bottom: {padding_bottom}px'></div>",
+                        unsafe_allow_html=True,
+                    )
 
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        if st.button("View", key=f"{sample.index}_view"):
-            image_classifier_popup(mission, sample)
-    with col2:
-        classification_pulldown(mission, sample)
+                with col2:
+                    st.header("RD Map")
+                    st.image(str(image))
+
+                classification_pulldown(mission, result)
 
 
 def display_images(mission: Mission) -> None:
