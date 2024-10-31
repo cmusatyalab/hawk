@@ -20,7 +20,7 @@ from prometheus_client import Gauge, Histogram, Summary
 
 from ..ports import H2C_PORT, S2H_PORT
 from ..proto.messages_pb2 import LabelWrapper, SendLabels, SendTiles
-from .label_utils import ClassMap, Detection, LabelSample
+from .label_utils import ClassMap, Detection, LabelSample, ObjectId
 from .stats import (
     HAWK_LABELED_QUEUE_LENGTH,
     HAWK_UNLABELED_QUEUE_LENGTH,
@@ -66,7 +66,7 @@ class UnlabeledResult(LabelSample):
         if feature_vector:
             feature_vector = torch.load(io.BytesIO(request.feature_vector))
         return cls(
-            objectId=request.objectId,
+            objectId=ObjectId(request.objectId),
             scoutIndex=request.scoutIndex,
             score=request.score,
             detections=detections,

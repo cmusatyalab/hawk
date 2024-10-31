@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from os import PathLike
 
 ClassName = NewType("ClassName", str)
+ObjectId = NewType("ObjectId", str)
 
 
 class LabelKitArgs(TypedDict):
@@ -232,7 +233,7 @@ class LabelSample:
     """Representation of an unlabeled tile received from a scout on it's way
     to getting labeled, or a labeled result being passed back to the scout"""
 
-    objectId: str  # unique object id
+    objectId: ObjectId  # unique object id
     scoutIndex: int  # index of originating scout
     queued: float = field(default_factory=time.time)
     detections: list[Detection] = field(default_factory=list)
@@ -312,8 +313,8 @@ class LabelSample:
 
 
 def index_jsonl(
-    jsonl: PathLike[str] | str, skip: int = 0, index: set[str] | None = None
-) -> tuple[set[str], int]:
+    jsonl: PathLike[str] | str, skip: int = 0, index: set[ObjectId] | None = None
+) -> tuple[set[ObjectId], int]:
     """Returns a set of all unique ids in the given jsonl file.
     Returns both the set and the number of lines parsed."""
     jsonl_path = Path(jsonl)
@@ -329,13 +330,13 @@ def index_jsonl(
             if n <= skip:
                 continue
             obj = json.loads(line)
-            index.add(obj["objectId"])
+            index.add(ObjectId(obj["objectId"]))
     return index, n
 
 
 def read_jsonl(
     jsonl: PathLike[str] | str,
-    exclude: Container[str] | None = None,
+    exclude: Container[ObjectId] | None = None,
     skip: int = 0,
     tail: bool = False,
 ) -> Iterator[LabelSample]:
@@ -360,7 +361,7 @@ def read_jsonl(
             if index <= skip:
                 continue
             obj = json.loads(line)
-            objectId = obj["objectId"]
+            objectId = ObjectId(obj["objectId"])
             if objectId in exclude:
                 logger.debug(f"Not loading previously labeled {objectId}")
                 continue
@@ -374,7 +375,7 @@ class MissionResults:
     labeled_jsonl: Path = field(init=False, repr=False)
     unlabeled_jsonl: Path = field(init=False, repr=False)
 
-    labeled: dict[str, LabelSample] = field(default_factory=dict)
+    labeled: dict[ObjectId, LabelSample] = field(default_factory=dict)
     labeled_offset: int = 0
 
     unlabeled: list[LabelSample] = field(default_factory=list)
@@ -409,7 +410,7 @@ class MissionResults:
     ) -> Iterator[LabelSample]:
         if exclude_labeled:
             self.resync_labeled()
-            exclude: Container[str] = self.labeled
+            exclude: Container[ObjectId] = self.labeled
         else:
             exclude = set()
         yield from read_jsonl(self.unlabeled_jsonl, exclude=exclude, tail=tail)

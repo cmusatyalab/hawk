@@ -74,7 +74,7 @@ def update_labels(mission: Mission) -> None:
     st.session_state.saves = {}
 
 
-def clear_labels(mission: Mission) -> None:
+def clear_labels() -> None:
     """clear pending (uncommitted) label values"""
     st.session_state.saves = {}
 
@@ -83,7 +83,7 @@ col1, col2 = st.sidebar.columns(2)
 with col1:
     st.button("Submit Labels", on_click=update_labels, args=(mission,))
 with col2:
-    st.button("Clear Labels", on_click=clear_labels, args=(mission,))
+    st.button("Clear Labels", on_click=clear_labels)
 
 statistics = st.sidebar.empty()
 
