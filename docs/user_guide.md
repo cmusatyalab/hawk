@@ -146,7 +146,7 @@ for transmission. These tiles are publised by the scouts using
 with their meta-data and saves them in "images" and "meta" directory
 respectively. The labels from the annotator are saved in the "labels" directory.
 The outbound process reads from this directory and sends the
-[labels](messages.md#LabelWrapper) to the coordinator.  The coordinator calls
+[labels](messages.md#SendLabel) to the coordinator.  The coordinator calls
 <i>s2s_get_tile</i> to fetch the tile content from the parent scout if the label
 is a positive.  It then invokes <i>s2s_add_tile_and_label</i> to distribute the
 labeled tile along with its content to other scouts. This continues till the end of the mission.

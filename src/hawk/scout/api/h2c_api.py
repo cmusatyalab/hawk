@@ -10,8 +10,6 @@ from multiprocessing.connection import _ConnectionBase
 import zmq
 from logzero import logger
 
-from ...proto.messages_pb2 import SendLabels
-
 
 class H2CSubscriber:
     @staticmethod
@@ -23,9 +21,6 @@ class H2CSubscriber:
 
         Args:
             label_conn: mp.Pipe connection object
-
-        Returns:
-            str: serializes LabelWrapper message
         """
         context = zmq.Context()
         socket = context.socket(zmq.PULL)
@@ -33,10 +28,7 @@ class H2CSubscriber:
         try:
             while True:
                 msg = socket.recv()
-                resp = SendLabels()
-                resp.ParseFromString(msg)
-                label = resp.label.SerializeToString()
-                label_conn.send(label)
+                label_conn.send(msg)
         except Exception as e:
             logger.exception(e)
             raise e

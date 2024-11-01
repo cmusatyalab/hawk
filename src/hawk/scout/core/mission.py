@@ -20,9 +20,9 @@ from logzero import logger
 from ...proto.messages_pb2 import (
     DatasetSplit,
     LabeledTile,
-    LabelWrapper,
     MissionId,
     ModelArchive,
+    SendLabel,
     SendTiles,
     TestResults,
 )
@@ -227,7 +227,7 @@ class Mission(DataManagerContext, ModelContext):
     def store_labeled_tile(self, tile: LabeledTile) -> None:
         self._data_manager.store_labeled_tile(tile)
 
-    def distribute_label(self, label: LabelWrapper) -> None:
+    def distribute_label(self, label: SendLabel) -> None:
         self._data_manager.distribute_label(label)
 
     def get_test_results(self) -> TestResults:
@@ -515,7 +515,7 @@ class Mission(DataManagerContext, ModelContext):
                     msg = pipe.recv()
                 except EOFError:
                     continue
-                request = LabelWrapper()
+                request = SendLabel()
                 request.ParseFromString(msg)
                 self.distribute_label(request)
                 if isinstance(self.selector, TokenSelector):

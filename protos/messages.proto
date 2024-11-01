@@ -211,27 +211,6 @@ message TopReexaminationStrategyConfig {
 message FullReexaminationStrategyConfig {
 }
 
-message TileMetadata {
-  string objectId = 1;
-  LabelWrapper label = 2;
-}
-
-message LabeledTile {
-  HawkObject obj = 1;
-  LabelWrapper label = 2;
-}
-
-message TokenMessage {
-  LabelWrapper label = 1;
-}
-
-message LabelWrapper {
-  string objectId = 1;
-  int32 scoutIndex = 2;
-  string imageLabel = 3;
-  repeated string boundingBoxes = 4;
-}
-
 message HawkObject {
   string objectId = 1;
   bytes content = 2;
@@ -247,8 +226,32 @@ message SendTiles {
   bytes feature_vector = 6;
 }
 
-message SendLabels {
-  LabelWrapper label = 1;
+// send labels for an object back from home to scout
+message SendLabel {
+  string objectId = 1;
+  int32 scoutIndex = 2;
+  repeated BoundingBox boundingBoxes = 3;
+}
+
+// propagate (positive) labels and other associated data to other scouts
+message LabeledTile {
+  HawkObject obj = 1;
+  repeated BoundingBox boundingBoxes = 2;
+}
+
+// classification and confidence score for a region of the image
+// x,y,w,h are coordinates relative to the size of the image, with x and y
+// being the center of the region.
+// The whole image would be represented as [x=0.5, y=0.5, w=1.0, h=1.0].
+// Classification only describes the whole image, detection may have one or
+// more smaller regions. A negative sample has no associated bounding boxes.
+message BoundingBox {
+  float x = 1;
+  float y = 2;
+  float w = 3;
+  float h = 4;
+  string class_name = 5;
+  float confidence = 6;
 }
 
 message PerScoutSCMLOptions {

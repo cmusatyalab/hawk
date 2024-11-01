@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Callable, Iterable, Iterator
 import numpy as np
 from logzero import logger
 
-from ...proto.messages_pb2 import DatasetSplit, HawkObject, LabeledTile, LabelWrapper
+from ...proto.messages_pb2 import DatasetSplit, HawkObject, LabeledTile, SendLabel
 from .utils import get_example_key
 
 if TYPE_CHECKING:
@@ -69,27 +69,24 @@ class DataManager:
 
     def store_labeled_tile(self, tile: LabeledTile) -> None:
         """Store the tile content along with labels in the scout"""
-        bounding_boxes = tile.label.boundingBoxes
-        label_num = tile.label.imageLabel
-        if int(label_num) > 0:
+        if tile.boundingBoxes:
             self._total_positives += 1
         # logger.info(f"Original tile name: {tile.obj.objectId}")
         # logger.info(f" NEW TOTAL POSITIVES: {self._total_positives}\n\n")
-        if not self._radar_crop or not bounding_boxes:
+        if not self._radar_crop or not tile.boundingBoxes:
             self._store_labeled_examples([tile], None)
             # logger.info("Stored negative examples...")
         else:
             with io.BytesIO(tile.obj.content) as fp:
                 np_arr = np.load(fp)
             crop_list = []
-            for box in bounding_boxes:
+            for box in tile.boundingBoxes:
                 # crop each
-                cls, x_, y_, w_, h_ = box.split()
                 x, y = (
-                    int(np.round(float(x_) * 63)),
-                    int(np.round(float(y_) * 255)),
-                    # int(np.round(float(w_) * 63)),
-                    # int(np.round(float(h_) * 255)),
+                    int(np.round(box.x * 63)),
+                    int(np.round(box.y * 255)),
+                    # int(np.round(box.w * 63)),
+                    # int(np.round(box.h * 255)),
                 )
                 # predetermined crop dimensions derived from mean + 1 stdev
                 # across all object instances of raddet dataset.
@@ -113,22 +110,19 @@ class DataManager:
                 with io.BytesIO() as tmp:
                     np.save(tmp, crop_arr_padded)
                     crop_arr_bytes = tmp.getvalue()
-                crop_label = LabelWrapper(
-                    objectId="", scoutIndex=99, imageLabel=cls, boundingBoxes=[]
-                )
 
                 crop_tile = LabeledTile(
                     obj=HawkObject(objectId="", content=crop_arr_bytes, attributes={}),
-                    label=crop_label,
+                    boundingBoxes=[box],
                 )
                 crop_list.append(crop_tile)
             self._store_labeled_examples(crop_list, None)
 
         return
 
-    def distribute_label(self, label: LabelWrapper) -> None:
+    def distribute_label(self, label: SendLabel) -> None:
         scout_index = label.scoutIndex
-        if int(label.imageLabel) > 0:
+        if label.boundingBoxes:
             self._positives += 1
         else:
             self._negatives += 1
@@ -159,14 +153,15 @@ class DataManager:
         # Save labeled tile
         labeled_tile = LabeledTile(
             obj=obj,
-            label=label,
+            boundingBoxes=label.boundingBoxes,
         )
 
         # save copy of original image and label to examples dir for future training
         self._context.store_labeled_tile(labeled_tile)
 
-        if label.imageLabel == "0":  # only send positives to other scouts
+        if not label.boundingBoxes:  # only send positives to other scouts
             return
+
         # Transmit
         for i, stub in enumerate(self._context.scouts):  # send positives to all scouts
             if i in [self._context.scout_index, scout_index]:
@@ -300,6 +295,14 @@ class DataManager:
             else:
                 child.unlink()
 
+    def _class_to_label(self, class_name: str) -> int:
+        try:
+            # XXX here is where I expect to fail on new classes.
+            return self._context.class_manager.classes[class_name].label
+        except KeyError:
+            logger.error(f"unknown class {class_name} encountered, skipping")
+            return -1
+
     def _store_labeled_examples(
         self,
         examples: Iterable[LabeledTile],
@@ -326,38 +329,48 @@ class DataManager:
                     example_file, old_dirs
                 )  ## what is the purpose of this function?
 
-                label = example.label.imageLabel
-                bounding_boxes = example.label.boundingBoxes
+                if not example.boundingBoxes:
+                    # negative sample
+                    label = 0
+                elif (
+                    example.boundingBoxes[0].w == 1.0
+                    and example.boundingBoxes[0].h == 1.0
+                ):
+                    # classification
+                    class_name = example.boundingBoxes[0].class_name
+                    label = self._class_to_label(class_name)
+                else:
+                    # detection
+                    label = 1
 
                 if self._validate:
-                    example_subdir = "unspecified"
+                    example_subdir = self._staging_dir / "unspecified"
                 else:
-                    example_subdir = self._to_dir(DatasetSplit.TRAIN)
+                    example_subdir = self._staging_dir / self._to_dir(
+                        DatasetSplit.TRAIN
+                    )
 
-                if label != "-1":
+                if label != -1:
                     # 0 or 1 or ...
-                    ## yolo mission images will be stored in whatever directory
-                    ## designated by imagelabel above, one of the classes from
-                    ## one of the detections.
-                    label_dir = self._staging_dir / example_subdir / label
-                    label_dir.mkdir(parents=True, exist_ok=True)
-                    example_path = label_dir / example_file
+                    example_path = example_subdir / str(label) / example_file
+                    example_path.parent.mkdir(parents=True, exist_ok=True)
                     if self._radar_crop:
                         with io.BytesIO(obj.content) as fp:
                             arr = np.load(fp)
                         arr = arr.reshape((64, 256, 3))
                         np.save(example_path, arr)
                     else:
-                        with example_path.open("wb") as f:
-                            f.write(obj.content)
-                    if self.train_type.HasField("yolo"):
-                        label_dir = self._staging_dir / example_subdir / "labels"
-                        label_dir.mkdir(parents=True, exist_ok=True)
-                        example_path = label_dir / (example_file.split(".")[0] + ".txt")
-                        with example_path.open("w") as f:
-                            f.write("\n".join(bounding_boxes))
-                            # write an empty .txt file if no detections.
+                        example_path.write_bytes(obj.content)
 
+                    label_path = (example_subdir / "labels" / example_file).with_suffix(
+                        ".txt"
+                    )
+                    label_path.parent.mkdir(parents=True, exist_ok=True)
+                    with label_path.open("w") as f:
+                        for bbox in example.boundingBoxes:
+                            # -1 because yolo counts positive classes from 0
+                            label = self._class_to_label(bbox.class_name) - 1
+                            f.write(f"{label} {bbox.x} {bbox.y} {bbox.w} {bbox.h}\n")
                 else:
                     ignore_file = self._staging_dir / IGNORE_FILE[0]
                     with ignore_file.open("a+") as f:

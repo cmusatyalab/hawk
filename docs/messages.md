@@ -32,12 +32,11 @@ List of protobuf messages used in Hawk RPC calls.
 *   [ThresholdConfig](#ThresholdConfig)
 *   [PushPullConfig](#PushPullConfig)
 *   [ReexaminationStrategyConfig](#ReexaminationStrategyConfig)
-*   [TileMetadata](#TileMetadata)
-*   [LabeledTile](#LabeledTile)
-*   [LabelWrapper](#LabelWrapper)
 *   [HawkObject](#HawkObject)
 *   [SendTiles](#SendTiles)
-*   [SendLabels](#SendLabels)
+*   [SendLabel](#SendLabels)
+*   [LabeledTile](#LabeledTile)
+*   [BoundingBox](#BoundingBox)
 
 * * *
 
@@ -235,32 +234,11 @@ One of:
 | batchSize| int32| True | Number of tiles processed before selecting|
 | bandwidth | double| True | Fraction of bandwidth used for transmission|
 
-
 ### **ReexaminationStrategyConfig**
 | Fields  | Type  | Required | Description |
 | ------------ |-----|----------| -----|
 | type | string | True | Type of reexamination (top/ none/ full/)|
 | k | int32| True | Number of tiles selected|
-
-### **TileMetadata**
-| Fields  | Type  | Description |
-| ------------ |---------------| -----|
-|objectId | string| Tile identifier|
-|label | LabelWrapper| Tile label|
-
-### **LabeledTile**
-| Fields  | Type  | Description |
-| ------------ |---------------| -----|
-|object | HawkObject| Tile content and metadata|
-|label | LabelWrapper| Tile label |
-
-### **LabelWrapper**
-| Fields  | Type  | Description |
-| ------------ |---------------| -----|
-|objectId | string| Tile identifier|
-|scoutIndex | int32 | Index of parent scout |
-|imageLabel | string| Image label|
-|boundingBoxes | repeated string| List of bounding boxes xywh format|
 
 ### **HawkObject**
 | Fields  | Type  | Description |
@@ -278,7 +256,25 @@ One of:
 | version | int32| Model Version|
 | attributes | map<bytes, bytes>| Tile metadata|
 
-### **SendLabels**
+### **SendLabel**
 | Fields  | Type  | Description |
 | ------------ |---------------| -----|
-|label | LabelWrapper| Tile label |
+| objectId | string | Tile identifier|
+| scoutIndex | int32 | Index of parent scout |
+| boundingBoxes | repeated BoundingBox | List of bounding boxes |
+
+### **LabeledTile**
+| Fields  | Type  | Description |
+| ------------ |---------------| -----|
+| object | HawkObject | Tile content and metadata|
+| boundingBoxes | repeated BoundingBox | List of bounding boxes |
+
+### **BoundingBox**
+| Fields  | Type  | Description |
+| ------------ |---------------| -----|
+| x | float| center x of region relative to image width |
+| y | float| center y of region relative to image height |
+| w | float| region width of relative to image width (1.0 for classification) |
+| h | float| region height of relative to image height (1.0 for classification) |
+| class_name | string | Name of class |
+| confidence | float | confidence score |

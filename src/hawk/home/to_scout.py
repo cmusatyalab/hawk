@@ -19,7 +19,7 @@ from logzero import logger
 from prometheus_client import Gauge, Histogram, Summary
 
 from ..ports import H2C_PORT, S2H_PORT
-from ..proto.messages_pb2 import LabelWrapper, SendLabels, SendTiles
+from ..proto.messages_pb2 import BoundingBox, SendLabel, SendTiles
 from .label_utils import ClassMap, Detection, LabelSample, ObjectId
 from .stats import (
     HAWK_LABELED_QUEUE_LENGTH,
@@ -80,7 +80,6 @@ class HomeToScoutWorker:
     mission_id: str
     scout: str
     h2c_port: int
-    class_map: ClassMap
     zmq_context: zmq.Context = field(  # type: ignore[type-arg]
         default_factory=zmq.Context, repr=False
     )
@@ -108,25 +107,23 @@ class HomeToScoutWorker:
 
     def put(self, result: LabelSample) -> None:
         """Queue a label from any thread which will be sent to the scout."""
-        if result.detections:
-            # Assumes some class in the first detection corresponds to the
-            # classification of the whole image.
-            class_name = result.detections[0].classes().pop()
-            imageLabel = self.class_map.classes.index(class_name) + 1
-        else:
-            imageLabel = 0
         bboxes = [
-            bbox
-            for detection in result.detections
-            for bbox in detection.to_yoloish(self.class_map)
+            BoundingBox(
+                x=bbox.x,
+                y=bbox.y,
+                w=bbox.w,
+                h=bbox.h,
+                class_name=class_name,
+                confidence=1.0,
+            )
+            for bbox in result.detections
+            for class_name in bbox.scores
         ]
-        label = LabelWrapper(
+        msg = SendLabel(
             objectId=result.objectId,
             scoutIndex=result.scoutIndex,
-            imageLabel=str(imageLabel),
             boundingBoxes=bboxes,
-        )
-        msg = SendLabels(label=label).SerializeToString()
+        ).SerializeToString()
 
         # update statistic first to avoid negative queue lengths when
         # the thread with queue.get and queue_length.dec gets to run first
@@ -161,7 +158,6 @@ class ScoutQueue:
                 mission_id=self.mission_id,
                 scout=scout,
                 h2c_port=self.h2c_port,
-                class_map=self.class_map,
                 zmq_context=self.zmq_context,
             )
             for scout in self.scouts

@@ -14,7 +14,7 @@ import zmq
 from logzero import logger
 
 from ...proto import Empty
-from ...proto.messages_pb2 import LabeledTile, LabelWrapper
+from ...proto.messages_pb2 import LabeledTile, SendLabel
 
 if TYPE_CHECKING:
     from ..core.mission import Mission
@@ -59,20 +59,19 @@ class S2SServicer:
         Call made by COORDINATOR to (PARENT) scout where image is present
 
         Args:
-            msg: serialized LabelWrapper message
+            msg: serialized SendLabel message
 
         Returns:
             str: transmits serialized HawkObject message
         """
         try:
-            request = LabelWrapper()
-            request.ParseFromString(msg)
-            label = request
+            label = SendLabel()
+            label.ParseFromString(msg)
             # Fetch data from dataretriever
             obj = self._mission.retriever.read_object(label.objectId)
             assert obj is not None
             # Assuming data requirement in Distribute positives
-            if label.imageLabel != "0":
+            if label.boundingBoxes:
                 # Transmit data to coordinator
                 response = obj.SerializeToString()
                 logger.info(
@@ -82,8 +81,10 @@ class S2SServicer:
                 )
             else:
                 response = Empty
-            # Store labels
-            self._mission.store_labeled_tile(LabeledTile(obj=obj, label=label))
+
+            # Store labels (positives and negatives since we're the originating scout)
+            labeled_tile = LabeledTile(obj=obj, boundingBoxes=label.boundingBoxes)
+            self._mission.store_labeled_tile(labeled_tile)
         except Exception as e:
             logger.exception(e)
             response = Empty

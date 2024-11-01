@@ -140,9 +140,12 @@ class LabelerDiskQueue:
             # release next unlabeled result to labeler
             self.token_semaphore.release()
 
+            # This unassuming line is the main workhorse where we queue the new
+            # label to be sent back to the scout where the sample originated.
+            # The story continues in to_scout.HomeToScout...
             self.scout_queue.put(result)
 
-            # update stats
+            # The rest of this function is just updating stats
             detections = len(result.detections)
             self.labeled_objects.observe(detections)
 

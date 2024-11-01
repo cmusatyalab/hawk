@@ -4,7 +4,7 @@
 
 from logzero import logger
 
-from ...proto.messages_pb2 import LabelWrapper
+from ...proto.messages_pb2 import SendLabel
 from ..core.result_provider import ResultProvider
 from ..core.utils import log_exceptions
 from ..reexamination.reexamination_strategy import ReexaminationStrategy
@@ -43,7 +43,7 @@ class TokenSelector(TopKSelector):
             logger.info(f"Put tile number {i} into result queue.")
 
     @log_exceptions
-    def receive_token_message(self, label: LabelWrapper) -> None:
+    def receive_token_message(self, label: SendLabel) -> None:
         # the self._insert_lock is held during reexecution when the priority
         # queues may be replaced with new ones
         with self._insert_lock:

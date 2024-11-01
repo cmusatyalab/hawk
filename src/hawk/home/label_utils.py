@@ -173,15 +173,6 @@ class Detection:
             scores={cls: self.scores.get(cls, 0.0) for cls in classes},
         )
 
-    def to_yoloish(self, class_map: ClassMap) -> Iterator[str]:
-        """Yolo (and ClassMap) index positive classes counting from 0.
-        But scouts are 1-indexed because they include an implicit negative class 0.
-        """
-        for class_name in self.scores:
-            label = class_map.name_to_label(class_name) + 1
-            # TODO send class_name instead of class_label to the scout
-            yield f"{label} {self.x} {self.y} {self.w} {self.h}"
-
     def by_score(self) -> list[tuple[ClassName, float]]:
         return sorted(self.scores.items(), key=lambda x: x[1], reverse=True)
 
@@ -267,16 +258,6 @@ class LabelSample:
             )
         )
         fp.write(f"{jsonl}\n")
-
-    def to_yoloish(self, class_map: ClassMap) -> str:
-        """Yolo (and class_map) use class labels that start counting at 0
-        But hawk scouts count positive classes from 1, so this is 'yolo-ish'
-        """
-        return "".join(
-            line + "\n"
-            for detection in self.detections
-            for line in detection.to_yoloish(class_map)
-        )
 
     def to_labelkit_args(self, classes: Sequence[ClassName]) -> LabelKitArgs:
         bboxes = [bbox.to_labelkit(classes) for bbox in self.detections]
