@@ -50,6 +50,14 @@ mission.resync()
 
 # list of positive classes in the mission
 CLASSES = list(mission.classes)
+inprogress_classes = {
+    cls
+    for bboxes in st.session_state.saves.values()
+    for det in bboxes
+    for cls in det.scores
+    if cls not in CLASSES
+}
+CLASSES.extend(inprogress_classes)
 
 # banner.write(data)
 
@@ -159,6 +167,18 @@ if "rows" not in st.session_state:
 st.sidebar.slider("columns", min_value=1, max_value=8, key="columns")
 st.sidebar.slider("rows", min_value=1, max_value=8, key="rows")
 st.sidebar.toggle("Show Labeled", key="show_labeled")
+
+
+# To inject a new class into the classification/detection.
+def reset_new_class() -> None:
+    for key in st.session_state:
+        if key.endswith("_cls"):
+            del st.session_state[key]
+
+
+new_class = st.sidebar.text_input("New Class", on_change=reset_new_class)
+if new_class and new_class not in CLASSES:
+    CLASSES.append(ClassName(new_class))
 
 
 def columns(ncols: int) -> Iterator[DeltaGenerator]:

@@ -287,7 +287,7 @@ class LabelSample:
 
     @property
     def classes(self) -> set[ClassName]:
-        return set.union(*[detection.classes() for detection in self.detections])
+        return set.union(set(), *[detection.classes() for detection in self.detections])
 
     @property
     def is_classification(self) -> bool:
@@ -403,7 +403,11 @@ class MissionResults:
 
     @property
     def classes(self) -> set[ClassName]:
-        return self.unlabeled[-1].classes if self.unlabeled else set()
+        scout_classes = self.unlabeled[-1].classes if self.unlabeled else set()
+        local_classes = {
+            cls for result in self.labeled.values() for cls in result.classes
+        }
+        return scout_classes | local_classes
 
     def read_unlabeled(
         self, exclude_labeled: bool = True, tail: bool = False
