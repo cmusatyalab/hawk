@@ -443,20 +443,23 @@ class DataManager:
         new_samples = [0 for i in range(len(self._context.class_manager.class_list))]
         new_positives = 0
         new_negatives = 0
+
         ### create simple list of length num classes, which is reset to zero each time
         for label in subdir.iterdir():  ## label is 0 1 ... labels
+            # labels will get moved along with their data
+            if label.name == "labels":
+                continue
+
             example_files = list(label.iterdir())
 
-            if label.name == "labels":
-                pass
-            elif int(label.name) > 0:
+            if int(label.name) > 0:
                 new_positives += len(example_files)
             else:
                 new_negatives += len(example_files)
-            if not label.name == "labels":
-                new_samples[int(label.name)] += len(
-                    example_files
-                )  ## new manner to track samples
+
+            # new way to track samples
+            new_samples[int(label.name)] += len(example_files)
+
             for example_file in example_files:
                 for example_set in set_dirs:
                     old_path = self._remove_old_paths(
@@ -479,25 +482,18 @@ class DataManager:
 
                 self._increment_example_count(example_set, label.name, 1)
 
-                if self.train_type.HasField("yolo") and label.name != "labels":
-                    if int(label.name) > 0:
-                        example_dir = (
-                            self._examples_dir / self._to_dir(example_set) / "1"
-                        )
-                    else:
-                        example_dir = (
-                            self._examples_dir / self._to_dir(example_set) / "0"
-                        )
-                    # when promoting staging examples for yolo mission, ensure
-                    # they are promoted into examples directories 0/ and 1/,
-                    # otherwise store in the proper class for classification
-                else:
-                    example_dir = (
-                        self._examples_dir / self._to_dir(example_set) / label.name
-                    )
-                example_dir.mkdir(parents=True, exist_ok=True)
-                example_path = example_dir / example_file.name
+                example_set_path = self._examples_dir / self._to_dir(example_set)
+                example_path = example_set_path / label.name / example_file.name
+                example_path.parent.mkdir(parents=True, exist_ok=True)
                 example_file.rename(example_path)
+
+                # move associated labels/<file_stem>.txt file
+                label_file = (subdir / "labels" / example_file.name).with_suffix(".txt")
+                if label_file.exists():
+                    label_path = example_set_path / "labels" / label_file.name
+                    label_path.parent.mkdir(parents=True, exist_ok=True)
+                    label_file.rename(label_path)
+
         return new_positives, new_negatives, new_samples
 
     def _get_example_count(self, example_set: DatasetSplitValue, label: str) -> int:
