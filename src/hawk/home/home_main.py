@@ -21,6 +21,7 @@ from .stats import HAWK_MISSION_STATUS
 from .to_labeler import LabelerDiskQueue
 from .to_scout import ScoutQueue, Strategy
 from .utils import define_scope, get_ip
+from . import sub_class_clustering
 
 
 # Usage: python -m hawk.home.home_main config/config.yml
@@ -156,6 +157,13 @@ def main() -> None:
 
             logger.info("Starting Scout Queue")
             scout_queue.start()
+
+        # Start sub class clustering process if set in config file
+        if config.get("sub_class_discovery", False):
+            p = mp.Process(target=sub_class_clustering.main, args=(mission_dir,))
+            processes.append(p)
+            p.start()
+
 
         # Send config file to admin
         # send msg "<config> <path to config file>"

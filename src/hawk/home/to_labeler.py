@@ -105,15 +105,15 @@ class LabelerDiskQueue:
             )
 
             # write result image file to disk
-            tile_jpeg = tile_dir.joinpath(f"{index:06}.jpeg")
-            feature_vector_path = fv_dir.joinpath(f"{index:06}.pt")
+            tile_jpeg = result.unique_name(tile_dir, ".jpeg")
+            fv_path = result.unique_name(fv_dir, ".pt")
             if result.objectId.endswith(".npy"):  # for radar missions with .npy files
                 self.gen_heatmap(result.data, tile_jpeg)
             else:
                 tile_jpeg.write_bytes(result.data)
             logger.info(f"SAVED TILE {tile_jpeg}")
-            if result.feature_vector:
-                torch.save(result.feature_vector, feature_vector_path)
+            if result.feature_vector is not None:
+                torch.save(result.feature_vector, fv_path)
 
             # update queued time so we can track labeling delay.
             result.queued = time.time()

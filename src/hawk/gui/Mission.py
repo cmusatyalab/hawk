@@ -262,7 +262,7 @@ def display_radar_images(mission: Mission) -> None:
         for result in page:
             base = Path(result.objectId).stem
 
-            image = Path(mission.image_dir, f"{result.index:06}.jpeg")
+            image = result.unique_name(mission.image_dir, ".jpeg")
             if '_' in base:
                 stereo_base = base.split("_")[0]
             stereo_image = Path(
@@ -301,7 +301,7 @@ def display_images(mission: Mission) -> None:
 
     with paginate(results) as page:
         for result in page:
-            image = Path(mission.image_dir, f"{result.index:06}.jpeg")
+            image = result.unique_name(mission.image_dir, ".jpeg")
             with next(column):
                 st.image(str(image))
                 classification_pulldown(mission, result)
