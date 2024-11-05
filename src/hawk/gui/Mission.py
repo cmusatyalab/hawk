@@ -261,10 +261,10 @@ def display_radar_images(mission: Mission) -> None:
     with paginate(results) as page:
         for result in page:
             base = Path(result.objectId).stem
+            stereo_base = base.split("_", 1)[0]
 
             image = result.unique_name(mission.image_dir, ".jpeg")
-            if '_' in base:
-                stereo_base = base.split("_")[0]
+
             stereo_image = Path(
                 "/media/eric/Drive2/RADAR_DETECTION/train/stereo_left/",
                 f"{stereo_base}_left.jpg",

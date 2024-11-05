@@ -452,7 +452,6 @@ class Admin:
                     if network_config["server_address"] != scout:
                         self.num_active_scouts += 1
 
-
         ## subclass and novel class discovery
         self.novel_class_discovery = config.get("novel_class_discovery", False)
         self.sub_class_discovery = config.get("sub_class_discovery", False)

@@ -271,7 +271,9 @@ class A2SAPI:
         # Setting up Mission with config params
         logger.info("Start setting up mission")
         logger.info(
-            f"Class list: {request.class_list}, Novel class discovery: {request.novel_class_discovery}, Sub class discovery: {request.sub_class_discovery}"
+            f"Class list: {request.class_list}, "
+            f"Novel class discovery: {request.novel_class_discovery}, "
+            f"Sub class discovery: {request.sub_class_discovery}"
         )
         mission = Mission(
             mission_id,

@@ -11,9 +11,8 @@ import queue
 import time
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, cast
+
 import numpy.typing as npt
-
-
 import torch
 import torchvision.transforms as transforms
 from logzero import logger
@@ -119,7 +118,9 @@ class YOLOModel(ModelBase):
         )
         return model
 
-    def get_predictions(self, inputs: torch.Tensor) -> Tuple[List[float], List[npt.NDArray]]:
+    def get_predictions(
+        self, inputs: torch.Tensor
+    ) -> Tuple[List[float], List[npt.NDArray]]:
         assert self._model is not None
         with torch.no_grad():
             output = self._model(inputs, detection=True).pred
@@ -229,16 +230,32 @@ class YOLOModel(ModelBase):
                 ## create the detections list
                 if len(detections_per_sample):
                     detection_list = [
-                        {key: float(val) for key, val in zip(['x','y','w','h'], (detections_per_sample[j,:4]/640).astype(float).tolist())} ## divide by 640 as yolo resizes coordinates to 640 x 640
+                        {
+                            key: float(val)
+                            for key, val in zip(
+                                ["x", "y", "w", "h"],
+                                (detections_per_sample[j, :4] / 640)
+                                .astype(float)
+                                .tolist(),
+                            )
+                        }  ## divide by 640 as yolo resizes coordinates to 640 x 640
                         for j in range(len(detections_per_sample))
                     ]
                     for k, det in enumerate(detection_list):
-                        det['cls_scores'] = {self.context.class_manager.label_name_dict[int(detections_per_sample[k, 5]) + 1]: float(detections_per_sample[k, 4]),
-                                            }   ## the "+ 1" here is to translate output class 0 to 1, or 1 to 2, etc. because with yolo class 0 is the first positive class.
+                        # the "+ 1" here is to translate output class 0 to 1,
+                        # or 1 to 2, etc. because with yolo class 0 is the
+                        # first positive class.
+                        det["cls_scores"] = {
+                            self.context.class_manager.label_name_dict[
+                                int(detections_per_sample[k, 5]) + 1
+                            ]: float(detections_per_sample[k, 4]),
+                        }
                 else:
                     detection_list = []
 
-                batch[i][0].attributes.add({"detections": json.dumps(detection_list).encode()})
+                batch[i][0].attributes.add(
+                    {"detections": json.dumps(detection_list).encode()}
+                )
                 results.append(ResultProvider(batch[i][0], score, self.version))
         return results
 

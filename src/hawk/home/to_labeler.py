@@ -8,7 +8,6 @@ import io
 import threading
 import time
 from dataclasses import dataclass, field
-from itertools import count
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -87,13 +86,7 @@ class LabelerDiskQueue:
         fv_dir = self.mission_dir / "feature_vectors"
         fv_dir.mkdir(exist_ok=True)
 
-        # check how many unlabeled samples we have already processed
-        # (we may have restarted the hawk_label_broker process)
-        # this can be much faster if we don't actually try to index/json decode
-        # but the assumption is that most of the time the file will be empty
-        _, lines = index_jsonl(unlabeled_jsonl)
-
-        for index in count(lines + 1):
+        while True:
             # block until the labeler is ready to accept more.
             self.token_semaphore.acquire()
 
@@ -106,13 +99,14 @@ class LabelerDiskQueue:
 
             # write result image file to disk
             tile_jpeg = result.unique_name(tile_dir, ".jpeg")
-            fv_path = result.unique_name(fv_dir, ".pt")
             if result.objectId.endswith(".npy"):  # for radar missions with .npy files
                 self.gen_heatmap(result.data, tile_jpeg)
             else:
                 tile_jpeg.write_bytes(result.data)
             logger.info(f"SAVED TILE {tile_jpeg}")
+
             if result.feature_vector is not None:
+                fv_path = result.unique_name(fv_dir, ".pt")
                 torch.save(result.feature_vector, fv_path)
 
             # update queued time so we can track labeling delay.
@@ -125,7 +119,6 @@ class LabelerDiskQueue:
             with unlabeled_jsonl.open("a") as fp:
                 result.to_jsonl(fp, self.class_map)
 
-            # logger.info(f"Meta: {count:06} {meta_json}")
             self.scout_queue.task_done()
 
     def labeler_to_home(self) -> None:

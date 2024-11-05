@@ -325,7 +325,7 @@ class DNNClassifierModelRadar(ModelBase):
 
             for i in range(len(batch)):
                 score = predictions[i]
-                box = [list(coord) for coord in boxes[i]]
+                # box = [list(coord) for coord in boxes[i]]
                 result_object = batch[i][0]
                 if self._mode == "oracle":
                     num_classes = len(self.context.class_manager.classes)
@@ -337,19 +337,14 @@ class DNNClassifierModelRadar(ModelBase):
                     for label, score in zip(self.context.class_manager.classes, score)
                 }
 
-                detection_list = [
-                    {
-                     'cls_scores': score_dict
-                    }
-                ]
+                detection_list = [{"cls_scores": score_dict}]
                 result_object.attributes.add(
                     {"detections": json.dumps(detection_list).encode()}
                 )
 
-
-                #result_object.attributes.add(
+                # result_object.attributes.add(
                 ##    {"boxes": json.dumps(box).encode()}
-                #)
+                # )
                 # add another attribute containing the estimated bounding boxes
                 # should be a list of cls, x,y,w,h ground truth bounding boxes
                 # will be added at home
@@ -368,9 +363,7 @@ class DNNClassifierModelRadar(ModelBase):
 
     def patch_processing(
         self, img_batch: list[tuple[ObjectProvider, torch.Tensor]]
-    ) -> tuple[
-        Sequence[Sequence[float]], list[list[tuple[int, int, int, int]]]
-    ]:
+    ) -> tuple[Sequence[Sequence[float]], list[list[tuple[int, int, int, int]]]]:
         num_image = 0
         tensors_for_predict = []
         crop_assign = []

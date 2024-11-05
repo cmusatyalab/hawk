@@ -11,17 +11,21 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Any, Tuple
 
-from ..core.class_manager import MLClassManager
+from logzero import logger
+
 from ..core.object_provider import ObjectProvider
 from ..core.result_provider import ResultProvider
 from .context_base import ContextBase
 
 
 class ModelContext(ContextBase):
-    def __init__(self) -> None:
+    def __init__(self, novel_class_discovery: bool, sub_class_discovery: bool) -> None:
         self.model_input_queue: mp.Queue[Tuple[ObjectProvider, Any]] = mp.Queue()
         self.model_output_queue: mp.Queue[ResultProvider] = mp.Queue()
-        self.class_manager = MLClassManager()
+
+        self.novel_class_discovery = novel_class_discovery
+        self.sub_class_discovery = sub_class_discovery
+        logger.info(f"Novel Class discovery: {self.novel_class_discovery}")
 
     @property
     @abstractmethod

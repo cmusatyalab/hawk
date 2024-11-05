@@ -165,8 +165,10 @@ class DNNClassifierModel(ModelBase):
     def get_predictions(self, inputs: torch.Tensor) -> Sequence[Sequence[float]]:
         with torch.no_grad():
             if self.extract_feature_vector:
-                handle = self._model.avgpool.register_forward_hook(self.forward_hook)
-                ## avgpool module is based on the resnet architecture, will need to add additional support for appropriate layer to extract feature vector from other models.
+                self._model.avgpool.register_forward_hook(self.forward_hook)
+                # avgpool module is based on the resnet architecture, will need
+                # to add additional support for appropriate layer to extract
+                # feature vector from other models.
             inputs = inputs.to(self._device)
             output = self._model(inputs)
             probability: torch.Tensor = torch.softmax(output, dim=1)
@@ -184,20 +186,29 @@ class DNNClassifierModel(ModelBase):
         requests = []
         timeout = 5
         next_infer = time.time() + timeout
-        while self._running: ## or len(requests) > 0:
+        while self._running:  ## or len(requests) > 0:
             try:
                 request = self.request_queue.get(timeout=1)
                 requests.append(request)
 
-                if len(requests) < self._batch_size and self._running: ## what if len(requests) is 1 and self._running is False?  Inference the last sample or put back into the inference queue: self.request_queue.put(request)
+                if len(requests) < self._batch_size and self._running:
+                    # what if len(requests) is 1 and self._running is False?
+                    # Inference the last sample or put back into the queue?
+                    # self.request_queue.put(request)
                     continue
             except queue.Empty:
                 if (len(requests) == 0 or time.time() < next_infer) and self._running:
-                    #logger.info(f"\nMay be during model transition, we lose samples: {len(requests)}, delay too short: {time.time()}, < {next_infer}, self._running: {self._running}") ## or we could do a put back into the request_queue
+                    # logger.info(
+                    #     "May be during model transition,"
+                    #     f" we lose samples: {len(requests)},"
+                    #     f" delay too short: {time.time()} < {next_infer},"
+                    #     f" self._running: {self._running}"
+                    # )
+                    # or we could do a put back into the request_queue
                     continue
 
             start_infer = time.time()
-            #logger.info(f"\nFeeding {len(requests)} to inference...\n")
+            # logger.info(f"\nFeeding {len(requests)} to inference...\n")
             results = self._process_batch(requests)
             logger.info(
                 f"Process batch took {time.time()-start_infer}s for {len(requests)}"
@@ -205,7 +216,8 @@ class DNNClassifierModel(ModelBase):
             for result in results:
                 self.result_count += 1
                 self.result_queue.put(result)
-                ## this is a possible place to add results to another queue for clustering 
+                # this is a possible place to add results to another queue for
+                # clustering
 
             requests = []
             # next_infer = start_infer + timeout
@@ -320,7 +332,11 @@ class DNNClassifierModel(ModelBase):
             for i in range(len(batch)):
                 score = predictions[i]
                 result_object = batch[i][0]
-                feature_vector = self.batch_feature_vectors[i] if self.extract_feature_vector else None
+                feature_vector = (
+                    self.batch_feature_vectors[i]
+                    if self.extract_feature_vector
+                    else None
+                )
                 fv_bytes = io.BytesIO()
                 torch.save(feature_vector, fv_bytes)
                 final_fv = fv_bytes.getvalue() if feature_vector is not None else None
@@ -333,11 +349,7 @@ class DNNClassifierModel(ModelBase):
                     label: float(score)
                     for label, score in zip(self.context.class_manager.classes, score)
                 }
-                detection_list = [
-                    {
-                     'cls_scores': score_dict
-                    }
-                ]
+                detection_list = [{"cls_scores": score_dict}]
                 result_object.attributes.add(
                     {"detections": json.dumps(detection_list).encode()}
                 )
@@ -354,7 +366,10 @@ class DNNClassifierModel(ModelBase):
             self._running = False
             self._model = None
 
-
-    def forward_hook(self, module, input, output):
+    def forward_hook(
+        self, module: torch.nn.Module, input: torch.Tensor, output: torch.Tensor
+    ) -> None:
         self.batch_feature_vectors = output.detach().cpu()
-        self.batch_feature_vectors = self.batch_feature_vectors.reshape(self.batch_feature_vectors.shape[0],-1)
+        self.batch_feature_vectors = self.batch_feature_vectors.reshape(
+            self.batch_feature_vectors.shape[0], -1
+        )

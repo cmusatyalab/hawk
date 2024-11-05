@@ -5,16 +5,21 @@
 """Abstract class for mission context
 """
 
+from __future__ import annotations
+
 import time
 from abc import ABCMeta, abstractmethod
-from typing import List, Optional
 
+from ..core.class_manager import MLClassManager
 from ..core.hawk_stub import HawkStub
 
 
 class ContextBase(metaclass=ABCMeta):
     # Time when the mission was started
     start_time: float
+
+    def __init__(self) -> None:
+        self.class_manager = MLClassManager()
 
     @property
     @abstractmethod
@@ -24,11 +29,11 @@ class ContextBase(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def scouts(self) -> List[HawkStub]:
+    def scouts(self) -> list[HawkStub]:
         """List of connections to other participating scouts"""
         pass
 
-    def mission_time(self, end_t: Optional[float] = None) -> float:
+    def mission_time(self, end_t: float | None = None) -> float:
         """Compute time elapsed since mission was started"""
         if end_t is None:
             end_t = time.time()

@@ -69,7 +69,7 @@ class Mission(DataManagerContext, ModelContext):
         novel_class_discovery: bool = False,
         sub_class_discovery: bool = False,
     ):
-        super().__init__()
+        super().__init__(novel_class_discovery, sub_class_discovery)
         logger.info("Initialization")
         self.start_time = time.time()
         self._id = mission_id
@@ -100,9 +100,6 @@ class Mission(DataManagerContext, ModelContext):
         self.selector = selector
         self.bootstrap_zip = bootstrap_zip
         self.train_strategy = train_strategy
-        self.novel_class_discovery = novel_class_discovery
-        self.sub_class_discovery = sub_class_discovery
-        logger.info(f"Novel CLass discovery: {self.novel_class_discovery}")
 
         if isinstance(self._retrain_policy, SampleIntervalPolicy):
             self._retrain_policy.total_tiles = self.retriever.total_tiles
@@ -202,10 +199,12 @@ class Mission(DataManagerContext, ModelContext):
         ## setup clustering process, if needed
         if self.novel_class_discovery or self.sub_class_discovery:
             # clustering_input: mp.Queue[ResultProvider] = mp.Queue()
-            feature_vector_file_name = "mission_dir/tb/novel_class.txt"
             p = mp.Process(
                 target=clustering_function,
-                args=(feature_vector_file_name,self.novel_class_discovery, self.sub_class_discovery),
+                args=(
+                    self.novel_class_discovery,
+                    self.sub_class_discovery,
+                ),
             )
             p.start()
 
@@ -426,7 +425,9 @@ class Mission(DataManagerContext, ModelContext):
                     )
                     ## make sure to put this back in retriever put object
                     self.retriever.put_objects(retriever_object, dup=True)
-                    logger.info("\n\nATTENTION --- PUTTING OBJECT BACK  IN RETRIEVER QUEUE\n\n")
+                    logger.info(
+                        "\n\nATTENTION --- PUTTING OBJECT BACK  IN RETRIEVER QUEUE\n\n"
+                    )
                     return
 
                 # pop single retriever object from retriever result queue

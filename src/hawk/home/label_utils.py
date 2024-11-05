@@ -6,10 +6,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 import time
-import hashlib
 from dataclasses import InitVar, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Iterator, NewType, TextIO
@@ -204,7 +204,9 @@ class LabelSample:
         ]
         return cls(line=line, detections=detections, **obj)
 
-    def to_jsonl(self, fp: TextIO, class_map: ClassMap | None = None, **kwargs) -> None:
+    def to_jsonl(
+        self, fp: TextIO, class_map: ClassMap | None = None, **kwargs: int | str | float
+    ) -> None:
         jsonl = json.dumps(
             dict(
                 objectId=self.objectId,
@@ -213,14 +215,10 @@ class LabelSample:
                 detections=[
                     detection.to_dict(class_map) for detection in self.detections
                 ],
-                **kwargs
+                **kwargs,
             )
         )
         fp.write(f"{jsonl}\n")
-    
-
-    def unique_name(self, dir: Path, suffix:str) -> Path:
-        return Path(dir, (hashlib.md5(self.objectId.encode())).hexdigest()).with_suffix(suffix)
 
     def to_yoloish(self, class_map: ClassMap) -> str:
         """Yolo (and class_map) use class labels that start counting at 0
@@ -243,6 +241,10 @@ class LabelSample:
             if self.detections
             else 0.0
         )
+
+    def unique_name(self, directory: Path, suffix: str) -> Path:
+        uuid = hashlib.md5(self.objectId.encode()).hexdigest()
+        return directory.joinpath(uuid).with_suffix(suffix)
 
 
 def index_jsonl(

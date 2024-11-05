@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import queue
 import threading
@@ -11,10 +12,8 @@ import time
 from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
-import torch
-import numpy as np
-import io
 
+import torch
 import zmq
 from logzero import logger
 from prometheus_client import Gauge, Histogram, Summary
@@ -62,7 +61,7 @@ class UnlabeledResult(LabelSample):
                 for detection in json.loads(request.attributes["detections"])
             )
         )
-        #logger.debug(f"Received sample, inferenced scores {detections}")
+        # logger.debug(f"Received sample, inferenced scores {detections}")
         feature_vector = request.feature_vector
         if feature_vector:
             feature_vector = torch.load(io.BytesIO(request.feature_vector))

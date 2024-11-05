@@ -133,7 +133,7 @@ def main() -> int:
     parser.add_argument("--detect", action="store_true")
     parser.add_argument("--label-class", action="append")
     parser.add_argument("--gt-path", type=Path)
-    parser.add_argument("--mission_directory", type=Path, nargs="?", default=".")
+    parser.add_argument("mission_directory", type=Path, nargs="?", default=".")
     args = parser.parse_args()
 
     class_list = args.label_class or ["positive"]

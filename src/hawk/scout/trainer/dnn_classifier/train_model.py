@@ -178,12 +178,14 @@ def main() -> None:
         train_worker(args.gpu, ngpus_per_node, args)
 
 
-def write_scores(file_path, y_pred, y_true):
-    if os.path.exists(file_path): ## remove if already exists
+def write_scores(file_path: Path, y_pred: list[int], y_true: list[int]) -> None:
+    if os.path.exists(file_path):  ## remove if already exists
         os.remove(file_path)
-    with open(file_path, 'w') as f:
+    with open(file_path, "w") as f:
         for i, pred in enumerate(y_pred):
-            f.write(f"{pred:0.4f} {y_true[i]}\n") ## write all predictions and labels to each line
+            f.write(
+                f"{pred:0.4f} {y_true[i]}\n"
+            )  ## write all predictions and labels to each line
 
 
 def eval_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None:
@@ -718,7 +720,11 @@ def validate_model(
         ## here write all samples to file if write scores is a valid file path
         if args.write_scores is not None:
             assert os.path.exists(os.path.dirname(args.write_scores))
-            write_scores(args.write_scores, [pred[1] for pred in y_pred], [label.item() for label in y_true])
+            write_scores(
+                args.write_scores,
+                [pred[1] for pred in y_pred],
+                [label.item() for label in y_true],
+            )
 
     auc = calculate_performance(y_true, y_pred)
 

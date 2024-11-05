@@ -9,7 +9,7 @@ import time
 from logzero import logger
 
 
-def clustering_function(file_name, novel_class_discovery, sub_class_discovery) -> None:
+def clustering_function(novel_class_discovery: bool, sub_class_discovery: bool) -> None:
     while True:
         logger.info("Running novel class discovery...")
         time.sleep(5)
