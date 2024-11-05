@@ -31,7 +31,7 @@ class FrameRetriever(Retriever):
         self._resize = dataset.resizeTile
         index_file = Path(self._dataset.dataPath)
         self.tilesize = 256 if self._dataset.tileSize == 0 else self._dataset.tileSize
-        self.overlap = 100 if 100 < 0.5 * self.tilesize else 0
+        self.overlap = 100 if 0.5 * self.tilesize > 100 else 0
         self.padding = True
         self.slide = self.tilesize - self.overlap
 
@@ -102,11 +102,9 @@ class FrameRetriever(Retriever):
 
             self._context.log(f"RETRIEVE: File {key}")
             tiles = list(self.split_frame(key))
-            logger.info(
-                "Retrieved Image:{} Tiles:{} @ {}".format(
-                    key, len(tiles), time.time() - self._start_time
-                )
-            )
+            elapsed = time.time() - self._start_time
+            logger.info(f"Retrieved Image:{key} Tiles:{len(tiles)} @ {elapsed}")
+
             # bump total_objects to account for the tiles in this frame
             self.total_objects.inc(len(tiles) - 1)
 

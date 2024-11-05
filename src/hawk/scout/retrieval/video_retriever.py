@@ -32,7 +32,7 @@ class VideoRetriever(Retriever):
         self._start_time = time.time()
         self.padding = True
         self.tilesize = 250
-        self.overlap = 100 if 100 < 0.5 * self.tilesize else 0
+        self.overlap = 100 if 0.5 * self.tilesize > 100 else 0
         self.slide = 250
         self.video_file_path = dataset.video_path
         self.frame_producer_queue: mp.Queue[
@@ -160,7 +160,7 @@ class VideoRetriever(Retriever):
                 """attributes = {
                     'Device-Name': str.encode(get_server_ids()[0]),
                     '_ObjectID': str.encode(object_id),
-                    ATTR_GT_LABEL: str.encode(str(label)),
+                    ATTR_GT_LABEL: str.encode(label),
                 }"""
                 attributes = self.set_tile_attributes(object_id, label)
 

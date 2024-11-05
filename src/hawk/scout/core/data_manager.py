@@ -56,11 +56,12 @@ class DataManager:
         self._total_positives = 0
         self._negatives = 0
         self.train_type = self._context.train_strategy
-        self._radar_crop = False
         # logger.info(f"Training strategy: {self.train_type}")
-        if self.train_type.HasField("dnn_classifier_radar"):
-            if self.train_type.dnn_classifier_radar.args["pick_patches"]:
-                self._radar_crop = True
+        self._radar_crop = (
+            self.train_type.HasField("dnn_classifier_radar")
+            and self.train_type.dnn_classifier_radar.args["pick_patches"]
+        )
+
         logger.info(f"Class list: {self._context.class_list}")
         logger.info(f"Class manager: {self._context.class_manager}")
 
@@ -151,10 +152,7 @@ class DataManager:
             return
 
         # Save labeled tile
-        labeled_tile = LabeledTile(
-            obj=obj,
-            boundingBoxes=label.boundingBoxes,
-        )
+        labeled_tile = LabeledTile(obj=obj, boundingBoxes=label.boundingBoxes)
 
         # save copy of original image and label to examples dir for future training
         self._context.store_labeled_tile(labeled_tile)

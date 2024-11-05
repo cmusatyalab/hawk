@@ -34,11 +34,13 @@ def dumpstacks(_: Any, __: Any) -> None:
     id2name = {th.ident: th.name for th in threading.enumerate()}
     code = []
     for threadId, stack in sys._current_frames().items():
-        code.append("\n# Thread: %s(%d)" % (id2name.get(threadId, ""), threadId))
+        thread_name = id2name.get(threadId, "")
+        code.append(f"\n# Thread: {thread_name}({threadId})")
         for filename, lineno, name, line in traceback.extract_stack(stack):
-            code.append('File: "%s", line %d, in %s' % (filename, lineno, name))
+            code.append(f'File: "{filename}", line {lineno}, in {name}')
+            line = line.strip()
             if line:
-                code.append("  %s" % (line.strip()))
+                code.append(f"  {line}")
     print("\n".join(code))
 
 

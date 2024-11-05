@@ -195,9 +195,9 @@ class FSLModel(ModelBase):
                 score = predictions[i]
                 if self._mode == "oracle":
                     if "/0/" in batch[i][0].id:
-                        score = 0
+                        score = 0.0
                     else:
-                        score = 1
+                        score = 1.0
                 batch[i][0].attributes.add({"score": str.encode(str(score))})
                 yield ResultProvider(batch[i][0], score, self.version)
 

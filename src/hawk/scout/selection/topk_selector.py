@@ -89,11 +89,10 @@ class TopKSelector(SelectorBase):
             if result.gt:
                 logger.info(f"Queueing {result.id} Score {result.score}")
 
-            if self._mode == "oracle":
-                if int(result.score) == 1:
-                    self.result_queue_length.inc()
-                    self.result_queue.put(result)
-                    logger.info(f"[Result] Id {result.id} Score {result.score}")
+            if self._mode == "oracle" and int(result.score) == 1:
+                self.result_queue_length.inc()
+                self.result_queue.put(result)
+                logger.info(f"[Result] Id {result.id} Score {result.score}")
 
             self.priority_queue_length.inc()
             ## need adjustment here to account for different simple methods for
@@ -169,7 +168,7 @@ class TopKSelector(SelectorBase):
                 self._mode = model.mode
                 self.model_examples = model.train_examples.get("1", 0)
                 if version != self.version:
-                    versions = [v for v in self.easy_negatives.keys() if v <= version]
+                    versions = [v for v in self.easy_negatives if v <= version]
                     for v in versions:
                         self.delete_examples(self.easy_negatives[v])
 

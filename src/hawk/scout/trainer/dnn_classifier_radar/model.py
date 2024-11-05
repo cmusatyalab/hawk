@@ -427,14 +427,19 @@ class DNNClassifierModelRadar(ModelBase):
         labeled_binary_img = label(binary_img, connectivity=2)
         regions = regionprops(labeled_binary_img)
 
-        condition = (
-            lambda region: (
+        # skimage.measure seems to be untyped
+        class _RegionProperties:
+            area: float
+            bbox: tuple[int, int, int, int]
+            centroid: tuple[int, int]
+
+        def condition(region: _RegionProperties) -> bool:
+            return (
                 (31 <= region.centroid[1] <= 33)
                 and (region.bbox[3] - region.bbox[1] < 3)
-            )
-            or region.area < 4
-        )
-        regions = [region for region in regions if not condition(region)]  # type:ignore
+            ) or region.area < 4
+
+        regions = [region for region in regions if not condition(region)]
 
         if not len(regions):
             return [], []

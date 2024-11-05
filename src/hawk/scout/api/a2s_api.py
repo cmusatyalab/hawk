@@ -539,12 +539,9 @@ class A2SAPI:
             return ModelPolicy(str(model_dir))
         elif retrain_policy.HasField("sample"):
             return SampleIntervalPolicy(retrain_policy.sample.num_intervals)
-        else:
-            raise NotImplementedError(
-                "unknown retrain policy: {}".format(
-                    json_format.MessageToJson(retrain_policy)
-                )
-            )
+
+        msg = f"unknown retrain policy: {json_format.MessageToJson(retrain_policy)}"
+        raise NotImplementedError(msg)
 
     def _get_selector(
         self,
@@ -589,10 +586,9 @@ class A2SAPI:
                 selector.diversity.total_countermeasures,
                 reexamination_strategy,
             )
-        else:
-            raise NotImplementedError(
-                f"unknown selector: {json_format.MessageToJson(selector)}"
-            )
+
+        msg = f"unknown selector: {json_format.MessageToJson(selector)}"
+        raise NotImplementedError(msg)
 
     def _get_reexamination_strategy(
         self,
@@ -606,12 +602,12 @@ class A2SAPI:
             return TopReexaminationStrategy(retriever, reexamination_strategy.k)
         elif reexamination_type == "full":
             return FullReexaminationStrategy(retriever)
-        else:
-            raise NotImplementedError(
-                "unknown reexamination strategy: {}".format(
-                    json_format.MessageToJson(reexamination_strategy)
-                )
-            )
+
+        msg = (
+            "unknown reexamination strategy: "
+            f"{json_format.MessageToJson(reexamination_strategy)}"
+        )
+        raise NotImplementedError(msg)
 
     def _get_retriever(
         self, mission_id: str, dataset: Dataset, this_host: str
@@ -626,7 +622,6 @@ class A2SAPI:
             return VideoRetriever(mission_id, dataset.video)
         elif dataset.HasField("network"):
             return NetworkRetriever(mission_id, dataset.network, this_host)
-        else:
-            raise NotImplementedError(
-                f"unknown dataset: {json_format.MessageToJson(dataset)}"
-            )
+
+        msg = f"unknown dataset: {json_format.MessageToJson(dataset)}"
+        raise NotImplementedError(msg)

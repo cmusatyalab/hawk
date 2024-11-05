@@ -59,11 +59,10 @@ class YOLOTrainer(ModelTrainerBase):
         if version == -1:
             version = self.get_new_version()
 
-        if self.args["mode"] != "oracle":
-            if path is None or not path.is_file():
-                assert len(content)
-                path = self.context.model_path(version, template="model-{}.pt")
-                path.write_bytes(content)
+        if self.args["mode"] != "oracle" and (path is None or not path.is_file()):
+            assert len(content)
+            path = self.context.model_path(version, template="model-{}.pt")
+            path.write_bytes(content)
 
         assert path is not None
 
@@ -150,10 +149,7 @@ class YOLOTrainer(ModelTrainerBase):
         with open(data_file, "w") as outfile:
             yaml.dump(data_dict, outfile, default_flow_style=False)
 
-        if self.train_initial_model:
-            weights = Path("yolov5s.pt")
-        else:
-            weights = self.prev_path
+        weights = Path("yolov5s.pt") if self.train_initial_model else self.prev_path
 
         cmd = [
             sys.executable,

@@ -322,7 +322,7 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
         sampler=train_sampler,
     )
 
-    args.validate = True if args.valpath else False
+    args.validate = bool(args.valpath)
     logger.info(f"Validate {args.validate}")
     if args.validate:
         val_path = args.valpath
@@ -771,7 +771,6 @@ class AverageMeter:
         return fmtstr.format(**self.__dict__)
 
     def summary(self) -> str:
-        fmtstr = ""
         if self.summary_type is Summary.NONE:
             fmtstr = ""
         elif self.summary_type is Summary.AVERAGE:
@@ -781,7 +780,8 @@ class AverageMeter:
         elif self.summary_type is Summary.COUNT:
             fmtstr = "{name} {count:.3f}"
         else:
-            raise ValueError("invalid summary type %r" % self.summary_type)
+            msg = f"invalid summary type {self.summary_type!r}"
+            raise ValueError(msg)
 
         return fmtstr.format(**self.__dict__)
 

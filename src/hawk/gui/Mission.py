@@ -327,7 +327,7 @@ def detection_ui(mission: Mission, sample: LabelSample) -> None:
         new = labeled_result is None and inprogress_bboxes is None
 
         if not new:
-            st.session_state[f"{sample.index}_fb"] = not not sample.detections
+            st.session_state[f"{sample.index}_fb"] = bool(sample.detections)
 
         feedback = st.feedback("thumbs", key=f"{sample.index}_fb")
         if new and feedback is not None:

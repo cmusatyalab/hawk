@@ -75,9 +75,8 @@ class S2SServicer:
                 # Transmit data to coordinator
                 response = obj.SerializeToString()
                 logger.info(
-                    "Fetch Tile for id {} parent {} Reply {}".format(
-                        label.objectId, label.scoutIndex, len(response)
-                    )
+                    f"Fetch Tile for id {label.objectId} parent {label.scoutIndex}"
+                    f" Reply {len(response)}"
                 )
             else:
                 response = Empty

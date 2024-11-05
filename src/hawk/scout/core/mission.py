@@ -70,9 +70,11 @@ class Mission(DataManagerContext, ModelContext):
         novel_class_discovery: bool = False,
         sub_class_discovery: bool = False,
     ):
-        super().__init__(novel_class_discovery, sub_class_discovery)
-        logger.info("Initialization")
+        super().__init__()
+
         self.start_time = time.time()
+
+        logger.info("Initialization")
         self._id = mission_id
         self.positives = 0
         self.negatives = 0
@@ -135,15 +137,14 @@ class Mission(DataManagerContext, ModelContext):
         self.class_manager = MLClassManager()
         for label_counter, cls in enumerate(self.class_list):
             self.class_manager.add_class(cls, label_counter)
+        self.novel_class_discovery = novel_class_discovery
+        self.sub_class_discovery = sub_class_discovery
+        logger.info(f"Novel Class discovery: {self.novel_class_discovery}")
 
         ## create class objects here.
         self._data_manager = DataManager(self)
         self.selector.add_context(self)
         self.retriever.add_context(self)
-
-        self.object_count = 0
-
-        self.stats_count = 0
 
         # setup_result_connections()
         logger.info("SETTING UP S2H API")
@@ -353,17 +354,16 @@ class Mission(DataManagerContext, ModelContext):
             return
 
         if not isinstance(self._retrain_policy, SampleIntervalPolicy):
-            if self._retrain_policy.should_retrain():
-                should_retrain = True
+            # if self._retrain_policy.should_retrain():
+            #     should_retrain = True
+            # else:
+            #     with self._model_lock:
+            #        should_retrain = self._model is None
 
-            else:
-                # with self._model_lock:
-                #    model = self._model
-                # should_retrain = model is None
-                should_retrain = False
+            should_retrain = self._retrain_policy.should_retrain()
+
             if should_retrain:
                 self._retrain_policy.reset()
-
                 self._model_event.set()
 
     def start(self) -> None:
@@ -382,9 +382,12 @@ class Mission(DataManagerContext, ModelContext):
             self.stop()
 
     def stop(self) -> None:
-        if not self._abort_event.is_set():
-            if self._model is not None and self.enable_logfile:
-                self.log(f"{self._model.version} SEARCH STOPPED")
+        if (
+            not self._abort_event.is_set()
+            and self._model is not None
+            and self.enable_logfile
+        ):
+            self.log(f"{self._model.version} SEARCH STOPPED")
 
         # Stop Mission
         self.enable_logfile = False

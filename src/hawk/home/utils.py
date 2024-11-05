@@ -47,18 +47,21 @@ def parse_cookie(data: str) -> tuple[str, list[str]]:
     try:
         data = base64.b64decode(data).decode()
     except TypeError:
-        raise logger.error("Invalid Base64 data")
+        logger.exception("Invalid Base64 data")
+        raise
     # Split signature, header, and body
     try:
         signature, data = data.split("\n", 1)
         header, body = data.split("\n\n", 1)
     except ValueError:
-        raise logger.error("Malformed cookie")
+        logger.exception("Malformed cookie")
+        raise
     # Decode signature
     try:
         binascii.unhexlify(signature)
     except TypeError:
-        raise logger.error("Malformed signature")
+        logger.exception("Malformed signature")
+        raise
     # Parse headers
     for line in header.splitlines():
         k, v = line.split(":", 1)

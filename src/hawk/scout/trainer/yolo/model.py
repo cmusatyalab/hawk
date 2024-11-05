@@ -218,6 +218,9 @@ class YOLOModel(ModelBase):
             tensors = torch.stack([f[1] for f in batch]).to(self._device)
             prediction_scores, detections = self.get_predictions(tensors)
             del tensors
+
+            assert self.context is not None
+
             for i in range(len(batch)):
                 score = prediction_scores[i]
                 detections_per_sample = detections[i]

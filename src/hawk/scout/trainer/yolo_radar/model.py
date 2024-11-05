@@ -212,6 +212,8 @@ class YOLOModelRadar(ModelBase):
                     self.request_queue.put(req)
             return []
 
+        assert self.context is not None
+
         results = []
         with self._model_lock:
             tensors = torch.stack([f[1] for f in batch]).to(self._device)

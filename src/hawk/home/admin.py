@@ -420,9 +420,11 @@ class Admin:
                     self.scout_deployment_status[scout] = "Idle"
                 else:
                     self.scout_deployment_status[scout] = "Active"
-                    if dataset_type == "network":
-                        if network_config["server_address"] != scout:
-                            self.num_active_scouts += 1
+                    if (
+                        dataset_type == "network"
+                        and network_config["server_address"] != scout
+                    ):
+                        self.num_active_scouts += 1
 
         else:
             (
@@ -448,9 +450,11 @@ class Admin:
                 self.scout_deployment_status[scout] = "Idle"
             else:
                 self.scout_deployment_status[scout] = "Active"
-                if dataset_type == "network":
-                    if network_config["server_address"] != scout:
-                        self.num_active_scouts += 1
+                if (
+                    dataset_type == "network"
+                    and network_config["server_address"] != scout
+                ):
+                    self.num_active_scouts += 1
 
         ## subclass and novel class discovery
         self.novel_class_discovery = config.get("novel_class_discovery", False)
@@ -633,12 +637,12 @@ class Admin:
                 # )
             active_scouts = [
                 scout
-                for scout in self.scout_deployment_status.keys()
+                for scout in self.scout_deployment_status
                 if self.scout_deployment_status[scout] == "Active"
             ]
             idle_scouts = [
                 scout
-                for scout in self.scout_deployment_status.keys()
+                for scout in self.scout_deployment_status
                 if self.scout_deployment_status[scout] == "Idle"
             ]
             logger.info(f"Active scouts: {active_scouts}")
@@ -724,23 +728,20 @@ class Admin:
                         f.write("\n")
                     break
 
-                if stats["processedObjects"] != 0:
-                    # if stats['processedObjects'] == stats['totalObjects'] or (
-                    #     stats['retrieved_tiles'] == stats['totalObjects'] and
-                    #     prev_bytes == stats['bytes'] and
-                    #     prev_processed == stats['processedObjects']
-                    #   ):
-                    if stats["processedObjects"] == stats["totalObjects"]:
-                        logger.info("Processed all objects, waiting 60 seconds...")
-                        if not processed_complete:
-                            finish_time = time.time() + 60
-                            processed_complete = True
-                        # time.sleep(60)
-                        # self.stop_event.set()
-                        # logger.info("End mission")
-                        # with open(self.end_file, "w") as f:
-                        #    f.write("\n")
-                        # break
+                if (
+                    stats["processedObjects"] != 0
+                    and stats["processedObjects"] == stats["totalObjects"]
+                ):
+                    logger.info("Processed all objects, waiting 60 seconds...")
+                    if not processed_complete:
+                        finish_time = time.time() + 60
+                        processed_complete = True
+                    # time.sleep(60)
+                    # self.stop_event.set()
+                    # logger.info("End mission")
+                    # with open(self.end_file, "w") as f:
+                    #    f.write("\n")
+                    # break
 
                 # prev_bytes = stats["bytes"]
                 # prev_processed = stats["processedObjects"]

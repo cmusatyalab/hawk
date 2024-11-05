@@ -10,7 +10,6 @@ from __future__ import annotations
 import time
 from abc import ABCMeta, abstractmethod
 
-from ..core.class_manager import MLClassManager
 from ..core.hawk_stub import HawkStub
 
 

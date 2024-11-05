@@ -40,7 +40,7 @@ class RandomRetriever(Retriever):
         keys = np.arange(key_len)
         per_frame = np.array_split(contents, key_len)
 
-        self.img_tile_map = defaultdict(list)
+        self.img_tile_map: dict[str, list[str]] = defaultdict(list)
         for i, tiles_per_frame in enumerate(per_frame):
             k = keys[i]
             for content in tiles_per_frame:
@@ -64,18 +64,15 @@ class RandomRetriever(Retriever):
             self.retrieved_images.inc()
 
             tiles = self.img_tile_map[key]
-            logger.info(
-                "Retrieved Image:{} Tiles:{} @ {}".format(
-                    key, len(tiles), time.time() - self._start_time
-                )
-            )
+            elapsed = time.time() - self._start_time
+            logger.info(f"Retrieved Image:{key} Tiles:{len(tiles)} @ {elapsed}")
+
             for tile in tiles:
                 parts = tile.split()
+                image_path = Path(parts[0])
                 if len(parts) == 1:
-                    image_path = parts[0]
                     label = "0"
                 else:
-                    image_path = parts[0]
                     label = parts[1]
 
                 object_id = f"/{label}/collection/id/" + str(image_path)
