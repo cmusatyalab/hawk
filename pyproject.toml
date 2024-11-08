@@ -163,7 +163,7 @@ follow_imports = "skip"
 follow_imports_for_stubs = true
 
 [tool.poe]
-include = "tasks.toml"
+include = "poe_tasks.toml"
 
 [tool.pytest.ini_options]
 filterwarnings = [
