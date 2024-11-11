@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import io
-import json
 import multiprocessing as mp
 import queue
 import time
@@ -21,7 +20,7 @@ from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.object_provider import ObjectProvider
-from ...core.result_provider import ResultProvider
+from ...core.result_provider import BoundingBox, ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
 
 torch.multiprocessing.set_sharing_strategy("file_system")
@@ -344,17 +343,22 @@ class DNNClassifierModel(ModelBase):
                     cls = int(result_object.id.split("/", 2)[1])
                     score = [0.0] * num_classes
                     score[cls] = 1.0
-                score_dict = {
-                    label: float(score)
-                    for label, score in zip(self.context.class_manager.classes, score)
-                }
-                detection_list = [{"scores": score_dict}]
-                result_object.attributes.add(
-                    {"detections": json.dumps(detection_list).encode()}
-                )
+                bboxes: list[BoundingBox] = [
+                    {
+                        "class_name": class_name,
+                        "confidence": float(score),
+                    }
+                    for class_name, score in zip(
+                        self.context.class_manager.classes, score
+                    )
+                ]
                 results.append(
                     ResultProvider(
-                        result_object, sum(score[1:]), self.version, final_fv
+                        result_object,
+                        sum(score[1:]),
+                        bboxes,
+                        self.version,
+                        final_fv,
                     )  ## score for priority queue is sum of all positive classes
                 )
         return results

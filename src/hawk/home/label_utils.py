@@ -124,6 +124,13 @@ class Detection:
             self.h = maxY - minY
 
     @classmethod
+    def from_boundingbox(
+        cls, x: float, y: float, w: float, h: float, class_name: str, confidence: float
+    ) -> Detection:
+        _class_name = ClassName(sys.intern(class_name))
+        return cls(x=x, y=y, w=w, h=h, scores={_class_name: confidence})
+
+    @classmethod
     def from_dict(cls, obj: dict[str, Any]) -> Detection:
         # filter out negatives (and 0 scores)
         scores = {

@@ -18,12 +18,13 @@ from typing import TYPE_CHECKING
 from logzero import logger
 
 from ...proto.messages_pb2 import (
+    BoundingBox,
     DatasetSplit,
     LabeledTile,
     MissionId,
     ModelArchive,
     SendLabel,
-    SendTiles,
+    SendTile,
     TestResults,
 )
 from ..api.h2c_api import H2CSubscriber
@@ -495,16 +496,28 @@ class Mission(DataManagerContext, ModelContext):
         try:
             while True:  # not self._abort_event.is_set():
                 result = self.selector.get_result()
-
                 if result is None:
                     break
-                tile = SendTiles(
+
+                bboxes = [
+                    BoundingBox(
+                        x=bbox.get("x", 0.5),
+                        y=bbox.get("y", 0.5),
+                        w=bbox.get("w", 1.0),
+                        h=bbox.get("h", 1.0),
+                        class_name=bbox["class_name"],
+                        confidence=bbox["confidence"],
+                    )
+                    for bbox in result.bboxes
+                ]
+
+                tile = SendTile(
                     objectId=result.id,
                     scoutIndex=self._scout_index,
-                    score=result.score,
                     version=result.model_version,
                     feature_vector=result.feature_vector,
                     attributes=result.attributes.get(),
+                    boundingBoxes=bboxes,
                 )
                 pipe.send(tile.SerializeToString())
         except Exception as e:

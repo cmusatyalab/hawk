@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import io
-import json
 import queue
 import threading
 import time
@@ -19,8 +18,8 @@ from logzero import logger
 from prometheus_client import Gauge, Histogram, Summary
 
 from ..ports import H2C_PORT, S2H_PORT
-from ..proto.messages_pb2 import BoundingBox, SendLabel, SendTiles
-from .label_utils import ClassMap, Detection, LabelSample, ObjectId
+from ..proto.messages_pb2 import BoundingBox, SendLabel, SendTile
+from .label_utils import Detection, LabelSample, ObjectId
 from .stats import (
     HAWK_LABELED_QUEUE_LENGTH,
     HAWK_UNLABELED_QUEUE_LENGTH,
@@ -49,26 +48,34 @@ class UnlabeledResult(LabelSample):
     feature_vector: torch.Tensor | None = None
 
     @classmethod
-    def from_msg(cls, msg: bytes, class_map: ClassMap) -> UnlabeledResult:
-        request = SendTiles()
+    def from_msg(cls, msg: bytes) -> UnlabeledResult:
+        request = SendTile()
         request.ParseFromString(msg)
 
         # scout thinks it might have found some positives
+        # filter out negatives (and 0 confidence scores)
         # cleanup and merge class scores for identical regions
         detections = list(
             Detection.merge_detections(
-                Detection.from_dict(detection)
-                for detection in json.loads(request.attributes["detections"])
+                Detection.from_boundingbox(
+                    bbox.x, bbox.y, bbox.w, bbox.h, bbox.class_name, bbox.confidence
+                )
+                for bbox in request.boundingBoxes
+                if bbox.confidence and bbox.class_name not in ["", "neg", "negative"]
             )
         )
+
         # logger.debug(f"Received sample, inferenced scores {detections}")
+        score = max(detection.max_score for detection in detections)
+
         feature_vector = request.feature_vector
         if feature_vector:
             feature_vector = torch.load(io.BytesIO(request.feature_vector))
+
         return cls(
             objectId=ObjectId(request.objectId),
             scoutIndex=request.scoutIndex,
-            score=request.score,
+            score=score,
             detections=detections,
             feature_vector=feature_vector,
             data=request.attributes["thumbnail.jpeg"],
@@ -136,7 +143,6 @@ class ScoutQueue:
     mission_id: str
     strategy: Strategy
     scouts: list[str]
-    class_map: ClassMap
     h2c_port: int = H2C_PORT
     coordinator: int | None = None
 
@@ -194,7 +200,7 @@ class ScoutQueue:
 
         while True:
             msg = socket.recv()
-            result = UnlabeledResult.from_msg(msg, self.class_map)
+            result = UnlabeledResult.from_msg(msg)
 
             self.unlabeled_received[result.scoutIndex].observe(len(msg))
             self.unlabeled_received_score[result.scoutIndex].observe(result.score)

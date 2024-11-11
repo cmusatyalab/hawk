@@ -20,7 +20,7 @@ from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.object_provider import ObjectProvider
-from ...core.result_provider import ResultProvider
+from ...core.result_provider import BoundingBox, ResultProvider
 from ...core.utils import log_exceptions
 
 torch.multiprocessing.set_sharing_strategy("file_system")
@@ -192,14 +192,16 @@ class FSLModel(ModelBase):
             predictions = self.get_predictions(tensors)
             del tensors
             for i in range(len(batch)):
+                label = "positive"
                 score = predictions[i]
                 if self._mode == "oracle":
                     if "/0/" in batch[i][0].id:
+                        label = "negative"
                         score = 0.0
                     else:
                         score = 1.0
-                batch[i][0].attributes.add({"score": str.encode(str(score))})
-                yield ResultProvider(batch[i][0], score, self.version)
+                bboxes: list[BoundingBox] = [{"class_name": label, "confidence": score}]
+                yield ResultProvider(batch[i][0], score, bboxes, self.version)
 
     def evaluate_model(self, test_path: Path) -> TestResults:
         raise Exception("ERROR: fsl.model.evaluate_model not implemented")

@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import io
-import json
 import multiprocessing as mp
 import queue
 import time
@@ -26,7 +25,7 @@ from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.object_provider import ObjectProvider
-from ...core.result_provider import ResultProvider
+from ...core.result_provider import BoundingBox, ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
 
 torch.multiprocessing.set_sharing_strategy("file_system")
@@ -325,33 +324,46 @@ class DNNClassifierModelRadar(ModelBase):
 
             for i in range(len(batch)):
                 score = predictions[i]
-                # box = [list(coord) for coord in boxes[i]]
                 result_object = batch[i][0]
                 if self._mode == "oracle":
                     num_classes = len(self.context.class_manager.classes)
                     cls = int(result_object.id.split("/", 2)[1])
                     score = [0.0] * num_classes
                     score[cls] = 1.0
-                score_dict = {
-                    label: float(score)
-                    for label, score in zip(self.context.class_manager.classes, score)
-                }
 
-                detection_list = [{"cls_scores": score_dict}]
-                result_object.attributes.add(
-                    {"detections": json.dumps(detection_list).encode()}
-                )
+                # if pick_patches is true we should include x y w h
+                # this doesn't work because boxes is a list[list[tuple[..]]]?
+                # if self.pick_patches:
+                #    l, r, t, b = boxes[i]
+                #    x = (r + l) / (2 * 63)
+                #    y = (b + t) / (2 * 255)
+                #    w = (r - l) / 63
+                #    h = (b - t) / 255
+                # else:
+                x, y, w, h = 0.5, 0.5, 1.0, 1.0
 
-                # result_object.attributes.add(
-                ##    {"boxes": json.dumps(box).encode()}
-                # )
-                # add another attribute containing the estimated bounding boxes
-                # should be a list of cls, x,y,w,h ground truth bounding boxes
-                # will be added at home
+                bboxes: list[BoundingBox] = [
+                    {
+                        "x": x,
+                        "y": y,
+                        "w": w,
+                        "h": h,
+                        "class_name": class_name,
+                        "confidence": float(score),
+                    }
+                    for class_name, score in zip(
+                        self.context.class_manager.classes, score
+                    )
+                ]
+                # score for priority queue is sum of all positive classes
                 results.append(
                     ResultProvider(
-                        result_object, sum(score[1:]), self.version, None  # , box)
-                    )  ## score for priority queue is sum of all positive classes
+                        result_object,
+                        sum(score[1:]),
+                        bboxes,
+                        self.version,
+                        None,
+                    )
                 )
         return results
 

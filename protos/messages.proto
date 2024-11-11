@@ -217,12 +217,12 @@ message HawkObject {
   map<string, bytes> attributes = 3;
 }
 
-message SendTiles {
+message SendTile {
   string objectId = 1;
   int32 scoutIndex = 2;
-  double score = 3;
-  int32 version = 4;
-  map<string, bytes> attributes = 5;
+  int32 version = 3;
+  map<string, bytes> attributes = 4;
+  repeated BoundingBox boundingBoxes = 5;
   bytes feature_vector = 6;
 }
 

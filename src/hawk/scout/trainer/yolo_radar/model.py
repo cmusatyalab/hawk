@@ -4,7 +4,6 @@
 
 import gc
 import io
-import json
 import multiprocessing as mp
 import os
 import queue
@@ -24,7 +23,7 @@ from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.object_provider import ObjectProvider
-from ...core.result_provider import ResultProvider
+from ...core.result_provider import BoundingBox, ResultProvider
 from ...core.utils import log_exceptions
 
 torch.multiprocessing.set_sharing_strategy("file_system")
@@ -226,12 +225,12 @@ class YOLOModelRadar(ModelBase):
                         score = 0
                     else:
                         score = 1
-                score_dict = {
-                    label: float(score)
-                    for label, score in zip(self.context.class_manager.classes, score)
-                }
-                batch[i][0].attributes.add({"scores": json.dumps(score_dict).encode()})
-                results.append(ResultProvider(batch[i][0], score, self.version))
+                scores = [1.0 - score, score]
+                bboxes: list[BoundingBox] = [
+                    {"class_name": label, "confidence": score}
+                    for label, score in zip(self.context.class_manager.classes, scores)
+                ]
+                results.append(ResultProvider(batch[i][0], score, bboxes, self.version))
         return results
 
     def stop(self) -> None:

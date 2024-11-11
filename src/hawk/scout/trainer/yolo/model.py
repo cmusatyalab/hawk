@@ -4,7 +4,6 @@
 
 import gc
 import io
-import json
 import multiprocessing as mp
 import os
 import queue
@@ -25,7 +24,7 @@ from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.object_provider import ObjectProvider
-from ...core.result_provider import ResultProvider
+from ...core.result_provider import BoundingBox, ResultProvider
 from ...core.utils import log_exceptions
 
 torch.multiprocessing.set_sharing_strategy("file_system")
@@ -230,36 +229,20 @@ class YOLOModel(ModelBase):
                     else:
                         score = 1
 
-                ## create the detections list
-                if len(detections_per_sample):
-                    detection_list = [
-                        {
-                            key: float(val)
-                            for key, val in zip(
-                                ["x", "y", "w", "h"],
-                                (detections_per_sample[j, :4] / 640)
-                                .astype(float)
-                                .tolist(),
-                            )
-                        }  ## divide by 640 as yolo resizes coordinates to 640 x 640
-                        for j in range(len(detections_per_sample))
-                    ]
-                    for k, det in enumerate(detection_list):
-                        # the "+ 1" here is to translate output class 0 to 1,
-                        # or 1 to 2, etc. because with yolo class 0 is the
-                        # first positive class.
-                        det["scores"] = {
-                            self.context.class_manager.label_name_dict[
-                                int(detections_per_sample[k, 5]) + 1
-                            ]: float(detections_per_sample[k, 4]),
-                        }
-                else:
-                    detection_list = []
-
-                batch[i][0].attributes.add(
-                    {"detections": json.dumps(detection_list).encode()}
-                )
-                results.append(ResultProvider(batch[i][0], score, self.version))
+                bboxes: list[BoundingBox] = [
+                    {
+                        "x": float(detections_per_sample[j, 0] / 640),
+                        "y": float(detections_per_sample[j, 1] / 640),
+                        "w": float(detections_per_sample[j, 2] / 640),
+                        "h": float(detections_per_sample[j, 3] / 640),
+                        "confidence": float(detections_per_sample[j, 4]),
+                        "class_name": self.context.class_manager.label_name_dict[
+                            int(detections_per_sample[j, 5]) + 1
+                        ],
+                    }
+                    for j in range(len(detections_per_sample))
+                ]
+                results.append(ResultProvider(batch[i][0], score, bboxes, self.version))
         return results
 
     def stop(self) -> None:

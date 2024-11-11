@@ -54,7 +54,6 @@ def main() -> int:
             mission_id=mission_id,
             strategy=args.label_queue_strategy,
             scouts=config.scouts,
-            class_map=class_map,
             h2c_port=config.deploy.h2c_port,
             coordinator=args.coordinator,
         )
