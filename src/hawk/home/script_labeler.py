@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
+from hawk.classes import class_name_to_str
 from hawk.home.label_utils import ClassMap, Detection, LabelSample, MissionResults
 
 if TYPE_CHECKING:
@@ -81,7 +82,7 @@ class ScriptLabeler:
         )
         if labels:
             self.positives += 1
-            self.class_counter.update(labels)
+            self.class_counter.update([class_name_to_str(label) for label in labels])
         else:
             self.negatives += 1
             self.class_counter["negative"] += 1

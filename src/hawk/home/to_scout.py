@@ -17,6 +17,7 @@ import zmq
 from logzero import logger
 from prometheus_client import Gauge, Histogram, Summary
 
+from ..classes import class_name_to_str
 from ..ports import H2C_PORT, S2H_PORT
 from ..proto.messages_pb2 import BoundingBox, SendLabel, SendTile
 from .label_utils import Detection, LabelSample, ObjectId
@@ -120,7 +121,7 @@ class HomeToScoutWorker:
                 y=bbox.y,
                 w=bbox.w,
                 h=bbox.h,
-                class_name=class_name,
+                class_name=class_name_to_str(class_name),
                 confidence=1.0,
             )
             for bbox in result.detections

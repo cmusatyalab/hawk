@@ -12,8 +12,9 @@ import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 from streamlit_label_kit import detection as st_detection
 
+from hawk.classes import ClassName
 from hawk.gui.elements import ABOUT_TEXT, Mission, page_header, paginate
-from hawk.home.label_utils import ClassName, Detection, LabelSample
+from hawk.home.label_utils import Detection, LabelSample
 
 if TYPE_CHECKING:
     from streamlit.delta_generator import DeltaGenerator

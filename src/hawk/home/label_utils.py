@@ -26,13 +26,13 @@ from typing import (
 
 from logzero import logger
 
+from ..classes import ClassName
 from .utils import tailf
 
 if TYPE_CHECKING:
     from collections.abc import Container
     from os import PathLike
 
-ClassName = NewType("ClassName", str)
 ObjectId = NewType("ObjectId", str)
 
 
