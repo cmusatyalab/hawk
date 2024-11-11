@@ -18,9 +18,6 @@ class ContextBase(metaclass=ABCMeta):
     # Time when the mission was started
     start_time: float
 
-    def __init__(self) -> None:
-        self.class_manager = MLClassManager()
-
     @property
     @abstractmethod
     def scout_index(self) -> int:

@@ -39,6 +39,7 @@ from ..selection.token_selector import TokenSelector
 from ..stats import HAWK_MODEL_VERSION
 from ..trainer.novel_class_discover import clustering_function
 from .data_manager import DataManager
+from .class_manager import MLClassManager
 from .hawk_stub import HawkStub
 from .model import Model
 from .model_trainer import ModelTrainer
@@ -131,6 +132,7 @@ class Mission(DataManagerContext, ModelContext):
         self._abort_event = threading.Event()
         logger.info(f"Class list in mission: {self.class_list}")
         logger.info("Initializing Class manager and class objects:")
+        self.class_manager = MLClassManager()
         for label_counter, cls in enumerate(self.class_list):
             self.class_manager.add_class(cls, label_counter)
 
