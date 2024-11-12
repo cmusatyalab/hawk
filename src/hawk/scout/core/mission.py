@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
-from ...classes import ClassLabel, ClassName, class_name_to_str
+from ...classes import ClassCounter, ClassLabel, ClassName, class_name_to_str
 from ...proto.messages_pb2 import (
     BoundingBox,
     DatasetSplit,
@@ -319,17 +319,18 @@ class Mission(DataManagerContext, ModelContext):
 
     def new_labels_callback(
         self,
-        new_positives: int,
-        new_negatives: int,
-        new_samples: list[int],
+        sample_counts: ClassCounter,
         retrain: bool = True,
     ) -> None:
         if self._abort_event.is_set():
             return
+
+        new_positives = sample_counts.positives
+        new_negatives = sample_counts.negatives
+
         logger.info(
             "New labels call back has been called... "
-            f"positives: {new_positives}, negatives: {new_negatives}, "
-            f"samples by class: {new_samples}"
+            f"{new_positives=}, {new_negatives=}, by class={sample_counts!r}"
         )
         end_t = time.time()
 
@@ -340,7 +341,7 @@ class Mission(DataManagerContext, ModelContext):
 
         # add line here to only call the function below if the retrain policy
         # is not the sample interval policy or simply use an if statement and
-        # feed the total number of retreived samples
+        # feed the total number of retrieved samples
         if not isinstance(self._retrain_policy, SampleIntervalPolicy):
             # add new pos and neg to current tally
             self._retrain_policy.update(new_positives, new_negatives)

@@ -7,8 +7,11 @@
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, NewType
+
+from logzero import logger
 
 if TYPE_CHECKING:
     # Wrapping every class name and label in a dataclass uses more memory and
@@ -43,3 +46,30 @@ else:
 # We test against this all the time
 NEGATIVE_CLASS = ClassName(sys.intern("negative"))
 POSITIVE_CLASS = ClassName(sys.intern("positive"))
+
+
+@dataclass
+class ClassCounter:
+    class_list: list[ClassName]
+    counter: Counter[ClassName] = field(default_factory=Counter)
+
+    def count(self, label: ClassLabel, count: int = 1) -> None:
+        try:
+            class_name = self.class_list[class_label_to_int(label)]
+            self.counter[class_name] += count
+        except IndexError:
+            logger.error("Unknown class {label} encountered")
+
+    def update(self, counts: dict[ClassName, int]) -> None:
+        self.counter.update(counts)
+
+    @property
+    def negatives(self) -> int:
+        return self.counter[NEGATIVE_CLASS]
+
+    @property
+    def positives(self) -> int:
+        return sum(self.counter.values()) - self.negatives
+
+    def __repr__(self) -> str:
+        return str(dict(self.counter))

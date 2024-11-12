@@ -10,6 +10,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from pathlib import Path
 
+from ...classes import ClassCounter
 from ...proto.messages_pb2 import MissionId
 from .context_base import ContextBase
 
@@ -45,9 +46,7 @@ class DataManagerContext(ContextBase):
     @abstractmethod
     def new_labels_callback(
         self,
-        new_positives: int,
-        new_negatives: int,
-        new_samples: list[int],
+        sample_counts: ClassCounter,
         retrain: bool = True,
     ) -> None:
         """Adds new labels to the data directory"""
