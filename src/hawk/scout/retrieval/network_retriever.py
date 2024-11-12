@@ -5,6 +5,7 @@
 import io
 import math
 import queue
+import sys
 import threading
 import time
 from collections import defaultdict
@@ -15,7 +16,7 @@ import zmq
 from logzero import logger
 from PIL import Image
 
-from ...classes import ClassLabel
+from ...classes import NEGATIVE_CLASS, ClassLabel, ClassName
 from ...proto.messages_pb2 import NetworkDataset
 from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
@@ -94,7 +95,7 @@ class NetworkRetriever(Retriever):
         ## next will need to manage some flags for when network sample
         ## retrieval stop and starts, otherwise the net retriever should
         ## continuously send requests to the server.
-        scout_index = str(self._context.scout_index).encode("utf-8")
+        scout_index = str(self._context.scout_index).encode()
         time_start = time.time()
         mission_time_start = time.time()
         logger.info(f"SCML options from mission: {self._context.scml_deploy_options}")
@@ -146,14 +147,22 @@ class NetworkRetriever(Retriever):
             self.total_tiles = self.sample_count
             ## next step will need the server to send the number of remaining
             ## samples on server, which should decrease over time.
-            msg = [scout_index, str(self.sample_count).encode("utf-8")]
+            msg = [scout_index, str(self.sample_count).encode()]
             client_socket.send_multipart(msg)
 
             ### receive and process
             content, label_, path_ = client_socket.recv_multipart()
             label, path = label_.decode(), path_.decode()
-            class_label = ClassLabel(int(label))
-            class_name = self._class_id_to_name(class_label)
+
+            # normalize labels from int/str to ClassName
+            try:
+                class_label = ClassLabel(int(label))
+                class_name = self._class_id_to_name(class_label)
+            except ValueError:
+                class_name = ClassName(sys.intern(label))
+            except IndexError:
+                class_name = NEGATIVE_CLASS
+
             object_id = f"/{class_name}/collection/id/" + path
             attributes = self.set_tile_attributes(object_id, class_name)
 
@@ -209,15 +218,14 @@ class NetworkRetriever(Retriever):
             while True:
                 ## nothing particularly interesting about the request as of right now.
                 msg_parts = socket.recv_multipart()
-                scout_index, request_number = (
-                    int(part.decode("utf-8")) for part in msg_parts
-                )
+                scout_index, request_number = (int(part.decode()) for part in msg_parts)
                 ## update request counter by scout index
                 ## synchronizes counters with each client scout
                 self.request_counter_by_scout[scout_index] = request_number
 
                 ### response
                 sample_path, sample_label = sample_queue.get()
+
                 if sample_path.suffix == ".npy":
                     content = np.load(sample_path)
                 else:
@@ -225,11 +233,12 @@ class NetworkRetriever(Retriever):
                     image = Image.open(sample_path).convert("RGB")
                     image.save(tmpfile, format="JPEG", quality=85)
                     content = tmpfile.getvalue()
+
                 socket.send_multipart(
                     [
                         content,
-                        sample_label.encode("utf-8"),
-                        str(sample_path).encode("utf-8"),
+                        sample_label.encode(),
+                        str(sample_path).encode(),
                     ]
                 )
                 served_samples += 1
