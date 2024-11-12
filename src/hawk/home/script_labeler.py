@@ -6,15 +6,14 @@ from __future__ import annotations
 
 import sys
 import time
-from collections import Counter
 from contextlib import suppress
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from logzero import logger
 
-from hawk.classes import ClassList, ClassName, class_name_to_str
+from hawk.classes import NEGATIVE_CLASS, ClassCounter, ClassList, ClassName
 from hawk.home.label_utils import Detection, LabelSample, MissionResults
 
 if TYPE_CHECKING:
@@ -30,13 +29,13 @@ class ScriptLabeler:
     gt_path: Path | None = None
     positives = 0
     negatives = 0
-    class_counter: Counter[str] = field(default_factory=Counter)
 
     def __post_init__(self) -> None:
         if self.detect:
             assert self.gt_path is not None, "Ground Truth directory not specified"
             assert self.gt_path.exists(), "Ground Truth directory does not exist"
 
+        self.class_counter = ClassCounter(self.class_list)
         self.labeling_func = self.classify_func if not self.detect else self.detect_func
 
     def classify_func(self, objectId: str) -> list[Detection]:
@@ -79,16 +78,17 @@ class ScriptLabeler:
         )
         if labels:
             self.positives += 1
-            self.class_counter.update([class_name_to_str(label) for label in labels])
+            self.class_counter.update(labels)
         else:
             self.negatives += 1
-            self.class_counter["negative"] += 1
+            self.class_counter.update([NEGATIVE_CLASS])
 
         logger.info(
             f"Labeling {result.index:06} {labels} {result.objectId}, "
-            f"(Pos, Neg): ({self.positives}, {self.negatives})"
+            f"(Pos, Neg): ({self.class_counter.positives},"
+            f" {self.class_counter.negatives})"
         )
-        logger.info(f"By class: {list(self.class_counter.items())}")
+        logger.info(f"By class: {self.class_counter!r}")
 
         self.mission_data.save_labeled([result])
 

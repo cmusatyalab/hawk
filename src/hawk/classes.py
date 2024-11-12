@@ -56,7 +56,7 @@ class ClassList:
 
     def __post_init__(self, classes: Iterable[str]) -> None:
         # Ensure we always have 'negative' as class 0
-        self._classes = [ClassName("negative")]
+        self._classes = [NEGATIVE_CLASS]
         self.extend(ClassName(sys.intern(name)) for name in classes)
 
     def __repr__(self) -> str:
@@ -113,7 +113,9 @@ class ClassCounter:
         except IndexError:
             logger.error("Unknown class {label} encountered")
 
-    def update(self, counts: dict[ClassName, int] | ClassCounter) -> None:
+    def update(
+        self, counts: Iterable[ClassName] | dict[ClassName, int] | ClassCounter
+    ) -> None:
         if isinstance(counts, ClassCounter):
             counts = counts.counter
         self.counter.update(counts)

@@ -65,7 +65,7 @@ class Mission(DataManagerContext, ModelContext):
         bootstrap_zip: bytes,
         initial_model: ModelArchive,
         train_strategy: TrainConfig,
-        class_list: list[ClassName],
+        class_list: list[str],
         scml_deploy_options: dict[str, int],
         validate: bool = False,
         novel_class_discovery: bool = False,
@@ -134,7 +134,7 @@ class Mission(DataManagerContext, ModelContext):
         self._abort_event = threading.Event()
 
         logger.info("Initializing Class manager and class objects:")
-        self.class_list.extend(class_list)
+        self.class_list.extend(ClassName(name) for name in class_list)
         logger.info(f"Class list in mission: {self.class_list}")
 
         self.novel_class_discovery = novel_class_discovery
