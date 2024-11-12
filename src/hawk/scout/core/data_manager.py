@@ -426,6 +426,10 @@ class DataManager:
                                 self._promote_staging_examples_dir(
                                     file, set_dirs, new_samples
                                 )
+
+                logger.info(
+                    f"Promoted staging examples, totals by class={self.class_counts!r}"
+                )
                 if not self._context._abort_event.is_set():
                     self._context.new_labels_callback(new_samples)
 

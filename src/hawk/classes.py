@@ -113,7 +113,9 @@ class ClassCounter:
         except IndexError:
             logger.error("Unknown class {label} encountered")
 
-    def update(self, counts: dict[ClassName, int]) -> None:
+    def update(self, counts: dict[ClassName, int] | ClassCounter) -> None:
+        if isinstance(counts, ClassCounter):
+            counts = counts.counter
         self.counter.update(counts)
 
     @property
