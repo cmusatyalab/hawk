@@ -67,8 +67,10 @@ class TileRetriever(Retriever):
                 image.save(tmpfile, format="JPEG", quality=85)
                 content = tmpfile.getvalue()
 
-                object_id = f"/{label}/collection/id/{image_path}"
-                attributes = self.set_tile_attributes(object_id, label)
+                class_label = ClassLabel(int(label))
+                class_name = self._class_id_to_name(class_label)
+                object_id = f"/{class_name}/collection/id/{image_path}"
+                attributes = self.set_tile_attributes(object_id, class_name)
 
                 self.put_objects(
                     ObjectProvider(
@@ -77,7 +79,7 @@ class TileRetriever(Retriever):
                         HawkAttributeProvider(
                             attributes, Path(image_path), self._resize
                         ),
-                        ClassLabel(int(label)),
+                        class_name,
                     )
                 )
 

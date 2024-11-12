@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
-from ...classes import NEGATIVE_CLASS, ClassLabel, ClassName
+from ...classes import NEGATIVE_CLASS
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
 from ..stats import (
@@ -153,15 +153,6 @@ class SelectorBase(Selector):
     def add_context(self, context: Mission) -> None:
         self._mission = context
 
-    def _class_id_to_name(self, gt: ClassLabel) -> ClassName:
-        # making sure the negative class is always called "negative" to make
-        # graphing easier
-        if gt == ClassLabel(0):
-            return NEGATIVE_CLASS
-        if self._mission is None:
-            return ClassName(str(gt))
-        return self._mission.class_list[gt]
-
     def add_result(self, result: ResultProvider | None) -> int:
         """Add processed results from model to selection strategy"""
         if result is None:
@@ -170,11 +161,10 @@ class SelectorBase(Selector):
         self.items_processed += 1
 
         # collect inference stats
-        class_name = self._class_id_to_name(result.gt)
         model_version = str(result.model_version)
         self.inferenced_objects.labels(
             mission=self.mission_id,
-            gt=class_name,
+            gt=result.gt,
             model_version=model_version,
         ).observe(result.score)
 
@@ -192,7 +182,7 @@ class SelectorBase(Selector):
             # logger.info(f"Countermeasure threshold: {self.countermeasure_threshold}")
             # logger.info(f"Total countermeasures: {self.num_countermeasures}")
             perceived_truth = result.score >= self.countermeasure_threshold
-            if result.gt:
+            if result.gt != NEGATIVE_CLASS:
                 if perceived_truth:
                     self.surv_TPs.inc()
                     countermeasures_used = collect_metrics_total(
@@ -244,11 +234,10 @@ class SelectorBase(Selector):
 
                 # collect stats about objects sent to home
                 if result is not None:
-                    class_name = self._class_id_to_name(result.gt)
                     model_version = str(result.model_version)
                     self.selector_dequeued_objects.labels(
                         mission=self.mission_id,
-                        gt=class_name,
+                        gt=result.gt,
                         model_version=model_version,
                     ).observe(result.score)
 

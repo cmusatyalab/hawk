@@ -15,7 +15,7 @@ import numpy.typing as npt
 from logzero import logger
 from PIL import Image
 
-from ...classes import ClassLabel
+from ...classes import NEGATIVE_CLASS
 from ...proto.messages_pb2 import FileDataset
 from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
@@ -111,20 +111,20 @@ class FrameRetriever(Retriever):
 
             for image_path in tiles:
                 tmpfile = io.BytesIO()
-                label = 0
+                class_name = NEGATIVE_CLASS
                 image = Image.open(image_path).convert("RGB")
                 image.save(tmpfile, format="JPEG", quality=85)
                 content = tmpfile.getvalue()
 
-                object_id = f"/{label}/collection/id/{image_path}"
-                attributes = self.set_tile_attributes(object_id, str(label))
+                object_id = f"/{class_name}/collection/id/{image_path}"
+                attributes = self.set_tile_attributes(object_id, class_name)
 
                 self.put_objects(
                     ObjectProvider(
                         object_id,
                         content,
                         HawkAttributeProvider(attributes, image_path, self._resize),
-                        ClassLabel(int(label)),
+                        class_name,
                     )
                 )
 

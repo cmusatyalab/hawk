@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
+from ...classes import NEGATIVE_CLASS
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
 from ..stats import (
@@ -48,7 +49,7 @@ class ThresholdSelector(SelectorBase):
         self.false_negatives = HAWK_SELECTOR_FALSE_NEGATIVES.labels(mission=mission_id)
 
     def _add_result(self, result: ResultProvider) -> None:
-        if result.gt:
+        if result.gt != NEGATIVE_CLASS:
             logger.info(f"{result.id} Score {result.score}")
 
         if result.score > self._threshold:
@@ -62,7 +63,7 @@ class ThresholdSelector(SelectorBase):
                 self._discard_queue.put((-result.score, time_result, result))
         else:
             self.items_dropped.inc()
-            if result.gt:
+            if result.gt != NEGATIVE_CLASS:
                 self.false_negatives.inc()
 
     def _new_model(self, model: Model | None) -> None:

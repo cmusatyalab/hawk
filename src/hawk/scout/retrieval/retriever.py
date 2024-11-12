@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import queue
+import sys
 import threading
 import time
 from abc import ABCMeta, abstractmethod
@@ -10,6 +11,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
 
+from ...classes import (
+    NEGATIVE_CLASS,
+    ClassLabel,
+    ClassName,
+    class_label_to_int,
+    class_name_to_str,
+)
 from ...proto.messages_pb2 import HawkObject
 from ..context.data_manager_context import DataManagerContext
 from ..core.object_provider import ObjectProvider
@@ -139,11 +147,13 @@ class Retriever(RetrieverBase):
         ## placeholder for server in network retriever
         pass
 
-    def set_tile_attributes(self, object_id: str, label: str) -> Dict[str, bytes]:
+    def set_tile_attributes(
+        self, object_id: str, class_name: ClassName
+    ) -> Dict[str, bytes]:
         attributes = {
             "Device-Name": str.encode(self.server_id),
             "_ObjectID": str.encode(object_id),
-            "_gt_label": str.encode(label),
+            "_gt_label": str.encode(class_name_to_str(class_name)),
         }
         return attributes
 
@@ -187,3 +197,13 @@ class Retriever(RetrieverBase):
             retrieved_tiles=collect_metrics_total(self.retrieved_objects),
         )
         return stats
+
+    def _class_id_to_name(self, class_label: ClassLabel) -> ClassName:
+        # making sure the negative class is always called "negative" to make
+        # graphing easier
+        if class_label == ClassLabel(0):
+            return NEGATIVE_CLASS
+        if self._context is None:
+            class_index = class_label_to_int(class_label)
+            return ClassName(sys.intern(f"class-{class_index}"))
+        return self._context.class_list[class_label]

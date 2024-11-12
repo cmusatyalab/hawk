@@ -152,15 +152,17 @@ class NetworkRetriever(Retriever):
             ### receive and process
             content, label_, path_ = client_socket.recv_multipart()
             label, path = label_.decode(), path_.decode()
-            object_id = f"/{label}/collection/id/" + path
-            attributes = self.set_tile_attributes(object_id, label)
+            class_label = ClassLabel(int(label))
+            class_name = self._class_id_to_name(class_label)
+            object_id = f"/{class_name}/collection/id/" + path
+            attributes = self.set_tile_attributes(object_id, class_name)
 
             self.put_objects(
                 ObjectProvider(
                     object_id,
                     content,
                     HawkAttributeProvider(attributes, Path(path), self._resize),
-                    ClassLabel(int(label)),
+                    class_name,
                 )
             )
 

@@ -11,7 +11,7 @@ import numpy as np
 import numpy.typing as npt
 from PIL import Image
 
-from ...classes import ClassLabel
+from ...classes import NEGATIVE_CLASS, ClassName
 
 if TYPE_CHECKING:
     from ..retrieval.retriever import Retriever
@@ -25,12 +25,12 @@ class ObjectProvider:
         obj_id: str,
         content: bytes | npt.NDArray[Any],
         attributes: AttributeProvider,
-        gt: ClassLabel | None = None,
+        gt: ClassName | None = None,
     ):
         self.id = obj_id
         self.content = content
         self.attributes = attributes
-        self.gt = gt if gt is not None else ClassLabel(0)
+        self.gt = gt if gt is not None else NEGATIVE_CLASS
 
     @classmethod
     def from_result_provider(

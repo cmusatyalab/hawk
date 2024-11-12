@@ -4,6 +4,7 @@
 
 import io
 import math
+import sys
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -12,7 +13,7 @@ import numpy as np
 from logzero import logger
 from PIL import Image
 
-from ...classes import ClassLabel
+from ...classes import NEGATIVE_CLASS, ClassLabel, ClassName
 from ...proto.messages_pb2 import FileDataset
 from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
@@ -71,12 +72,15 @@ class RandomRetriever(Retriever):
             for tile in tiles:
                 parts = tile.split()
                 image_path = Path(parts[0])
-                if len(parts) == 1:
-                    label = "0"
-                else:
-                    label = parts[1]
+                try:
+                    class_label = ClassLabel(int(parts[1]))
+                    class_name = self._class_id_to_name(class_label)
+                except ValueError:
+                    class_name = ClassName(sys.intern(parts[1]))
+                except IndexError:
+                    class_name = NEGATIVE_CLASS
 
-                object_id = f"/{label}/collection/id/" + str(image_path)
+                object_id = f"/{class_name}/collection/id/" + str(image_path)
 
                 image_path = self._data_root / image_path
 
@@ -88,14 +92,14 @@ class RandomRetriever(Retriever):
                     image.save(tmpfile, format="JPEG", quality=85)
                     content = tmpfile.getvalue()
 
-                attributes = self.set_tile_attributes(object_id, label)
+                attributes = self.set_tile_attributes(object_id, class_name)
 
                 self.put_objects(
                     ObjectProvider(
                         object_id,
                         content,
                         HawkAttributeProvider(attributes, image_path, self._resize),
-                        ClassLabel(int(label)),
+                        class_name,
                     )
                 )
 

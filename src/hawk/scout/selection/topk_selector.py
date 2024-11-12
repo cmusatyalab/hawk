@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
+from ...classes import NEGATIVE_CLASS
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
 from ..core.utils import get_example_key, log_exceptions
@@ -86,7 +87,7 @@ class TopKSelector(SelectorBase):
             )
 
             # Incrementing positives in stream
-            if result.gt:
+            if result.gt != NEGATIVE_CLASS:
                 logger.info(f"Queueing {result.id} Score {result.score}")
 
             if self._mode == "oracle" and int(result.score) == 1:
@@ -134,7 +135,9 @@ class TopKSelector(SelectorBase):
         # auto_negative_list = result_list[:num_auto_negative]
         auto_negative_list = random.sample(result_list, num_auto_negative)
 
-        labels = [0 if item.id.startswith("/0/") else 1 for item in auto_negative_list]
+        labels = [
+            0 if item.id.startswith("/negative/") else 1 for item in auto_negative_list
+        ]
         logger.info(
             f"[EASY NEG] Length of result list {length_results}"
             f" negatives added: {num_auto_negative}"

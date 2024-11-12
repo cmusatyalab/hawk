@@ -4,6 +4,7 @@
 
 from logzero import logger
 
+from ...classes import NEGATIVE_CLASS
 from ...proto.messages_pb2 import SendLabel
 from ..core.result_provider import ResultProvider
 from ..core.utils import log_exceptions
@@ -66,7 +67,7 @@ class TokenSelector(TopKSelector):
             )
 
             # Queueing positives in stream
-            if result.gt:
+            if result.gt != NEGATIVE_CLASS:
                 logger.info(f"Queueing {result.id} Score {result.score}")
 
             self.priority_queue_length.inc()

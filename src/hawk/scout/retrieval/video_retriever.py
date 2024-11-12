@@ -15,7 +15,7 @@ import numpy.typing as npt
 from logzero import logger
 from PIL import Image
 
-from ...classes import ClassLabel
+from ...classes import NEGATIVE_CLASS
 from ...proto.messages_pb2 import Streaming_Video
 from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
@@ -152,7 +152,7 @@ class VideoRetriever(Retriever):
             )
             for tile_path in tiles:
                 tmpfile = io.BytesIO()
-                label = str(0)
+                label = NEGATIVE_CLASS
                 image = Image.open(tile_path).convert("RGB")
                 image.save(tmpfile, format="JPEG", quality=85)
                 content = tmpfile.getvalue()
@@ -170,7 +170,7 @@ class VideoRetriever(Retriever):
                         object_id,
                         content,
                         HawkAttributeProvider(attributes, tile_path, resize=False),
-                        ClassLabel(int(label)),
+                        label,
                     )
                 )
             time.sleep(8)

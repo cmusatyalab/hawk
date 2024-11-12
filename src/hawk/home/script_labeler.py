@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
-from hawk.classes import ClassLabel, ClassList, ClassName, class_name_to_str
+from hawk.classes import ClassList, ClassName, class_name_to_str
 from hawk.home.label_utils import Detection, LabelSample, MissionResults
 
 if TYPE_CHECKING:
@@ -40,15 +40,11 @@ class ScriptLabeler:
         self.labeling_func = self.classify_func if not self.detect else self.detect_func
 
     def classify_func(self, objectId: str) -> list[Detection]:
-        if objectId.startswith("/0/"):
+        if objectId.startswith("/negative/"):
             return []
         class_value = objectId.split("/", 2)[1]
-        try:
-            class_label = ClassLabel(int(class_value))
-            class_name = self.class_list[class_label]
-        except ValueError:
-            class_name = ClassName(class_value)
-            self.class_list.add(class_name)
+        class_name = ClassName(sys.intern(class_value))
+        self.class_list.add(class_name)
         return [Detection(scores={class_name: 1.0})]
 
     def detect_func(self, objectId: str) -> list[Detection]:

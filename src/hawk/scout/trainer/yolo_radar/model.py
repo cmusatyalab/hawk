@@ -221,10 +221,7 @@ class YOLOModelRadar(ModelBase):
             for i in range(len(batch)):
                 score = predictions[i]
                 if self._mode == "oracle":
-                    if "/0/" in batch[i][0].id:
-                        score = 0
-                    else:
-                        score = 1
+                    score = 0.0 if batch[i][0].id.startswith("/negative/") else 1.0
                 scores = [1.0 - score, score]
                 bboxes: list[BoundingBox] = [
                     {"class_name": label, "confidence": score}

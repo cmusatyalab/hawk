@@ -452,7 +452,6 @@ class DataManager:
 
             example_files = list(label.iterdir())
 
-            # map negative numbers (easy negatives) to "negative" class 0
             class_label = ClassLabel(int(label.name))
             new_samples.count(class_label, len(example_files))
 
