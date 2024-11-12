@@ -4,9 +4,11 @@
 
 from __future__ import annotations
 
+from ...classes import ClassLabel, ClassName
+
 
 class MLClass:
-    def __init__(self, name: str, label: int):
+    def __init__(self, name: ClassName, label: ClassLabel):
         self.name = name
         self.label = label
         self.total_samples = 0
@@ -25,11 +27,11 @@ class MLClass:
 
 class MLClassManager:
     def __init__(self) -> None:
-        self.classes: dict[str, MLClass] = {}
+        self.classes: dict[ClassName, MLClass] = {}
         self.class_list: list[MLClass] = []
-        self.label_name_dict: dict[int, str] = {}
+        self.label_name_dict: dict[ClassLabel, ClassName] = {}
 
-    def add_class(self, name: str, label: int) -> None:
+    def add_class(self, name: ClassName, label: ClassLabel) -> None:
         if name in self.classes:
             msg = f"Class {name} already exists."
             raise ValueError(msg)
@@ -41,13 +43,13 @@ class MLClassManager:
         self.class_list.append(new_class)
         self.label_name_dict[label] = name
 
-    def get_class(self, name: str) -> MLClass | None:
+    def get_class(self, name: ClassName) -> MLClass | None:
         return self.classes.get(name)
 
     def get_labels(self) -> list[str]:
         return [str(cls.label) for cls in self.class_list]
 
-    def add_samples(self, name: str, count: int) -> None:
+    def add_samples(self, name: ClassName, count: int) -> None:
         ml_class = self.get_class(name)
         if ml_class is None:
             msg = f"Class {name} does not exist."
@@ -61,7 +63,7 @@ class MLClassManager:
         return sum(
             ml_class.total_samples
             for ml_class in self.classes.values()
-            if ml_class.label > 0
+            if ml_class.label != ClassLabel(0)
         )
 
     def __repr__(self) -> str:

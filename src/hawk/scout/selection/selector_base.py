@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
+from ...classes import NEGATIVE_CLASS, ClassLabel, ClassName
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
 from ..stats import (
@@ -153,13 +154,13 @@ class SelectorBase(Selector):
     def add_context(self, context: Mission) -> None:
         self._mission = context
 
-    def _class_id_to_name(self, gt: int) -> str:
+    def _class_id_to_name(self, gt: ClassLabel) -> ClassName:
         # making sure the negative class is always called "negative" to make
         # graphing easier
-        if gt == 0:
-            return "negative"
+        if gt == ClassLabel(0):
+            return NEGATIVE_CLASS
         if self._mission is None:
-            return str(gt)
+            return ClassName(str(gt))
         return self._mission.class_manager.label_name_dict[gt]
 
     def add_result(self, result: ResultProvider | None) -> int:

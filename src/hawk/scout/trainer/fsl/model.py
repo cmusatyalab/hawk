@@ -16,6 +16,7 @@ from PIL import Image, ImageFile
 from sklearn.metrics.pairwise import cosine_similarity
 from torchvision import models
 
+from ....classes import NEGATIVE_CLASS, POSITIVE_CLASS
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
@@ -192,11 +193,11 @@ class FSLModel(ModelBase):
             predictions = self.get_predictions(tensors)
             del tensors
             for i in range(len(batch)):
-                label = "positive"
+                label = POSITIVE_CLASS
                 score = predictions[i]
                 if self._mode == "oracle":
                     if "/0/" in batch[i][0].id:
-                        label = "negative"
+                        label = NEGATIVE_CLASS
                         score = 0.0
                     else:
                         score = 1.0

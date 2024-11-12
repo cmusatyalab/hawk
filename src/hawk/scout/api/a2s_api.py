@@ -12,6 +12,7 @@ import io
 import json
 import os
 import subprocess
+import sys
 import time
 import zipfile
 from pathlib import Path
@@ -21,6 +22,7 @@ from google.protobuf import json_format
 from logzero import logger
 from PIL import Image
 
+from ...classes import ClassName
 from ...proto import Empty
 from ...proto.messages_pb2 import (
     ChangeDeploymentStatus,
@@ -275,6 +277,7 @@ class A2SAPI:
             f"Novel class discovery: {request.novel_class_discovery}, "
             f"Sub class discovery: {request.sub_class_discovery}"
         )
+        class_list = [ClassName(sys.intern(name)) for name in request.class_list]
         mission = Mission(
             mission_id,
             request.scoutIndex,
@@ -288,7 +291,7 @@ class A2SAPI:
             request.bootstrapZip,
             request.initialModel,
             request.trainStrategy,
-            list(request.class_list),
+            class_list,
             dict(request.scml_deploy_opts.scout_dict),
             request.validate,
             request.novel_class_discovery,

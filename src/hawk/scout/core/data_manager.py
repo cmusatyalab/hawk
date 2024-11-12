@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Callable, Iterable, Iterator
 import numpy as np
 from logzero import logger
 
+from ...classes import ClassLabel, ClassName, class_label_to_int
 from ...proto.messages_pb2 import DatasetSplit, HawkObject, LabeledTile, SendLabel
 from .utils import get_example_key
 
@@ -191,10 +192,10 @@ class DataManager:
                 parent_name = Path(filename).parent.name
 
                 if basename.endswith(image_extensions) and name_is_integer(parent_name):
-                    label = str(parent_name)
-                    new_samples[
-                        int(label)
-                    ] += 1  ## new method to track samples by class
+                    label = parent_name
+                    class_label = ClassLabel(int(label))
+                    new_samples[class_label_to_int(class_label)] += 1
+
                     content = zf.read(filename)
                     # logger.info(f"FILE NAME: {filename}")
                     if filename.split(".")[-1] == "npy":
@@ -246,9 +247,9 @@ class DataManager:
                         with open(label_path, "wb") as f:
                             f.write(label_content)
 
-                    labels.append(int(label))
+                    labels.append(class_label_to_int(class_label))
                     self._context.class_manager.add_samples(
-                        self._context.class_manager.label_name_dict[int(label)], 1
+                        self._context.class_manager.label_name_dict[class_label], 1
                     )  ## add single sample to respective class
 
         # new_positives = sum(labels) ## need to adjust this here
@@ -293,13 +294,13 @@ class DataManager:
             else:
                 child.unlink()
 
-    def _class_to_label(self, class_name: str) -> int:
+    def _class_to_label(self, class_name: ClassName) -> ClassLabel | None:
         try:
             # XXX here is where I expect to fail on new classes.
             return self._context.class_manager.classes[class_name].label
         except KeyError:
             logger.error(f"unknown class {class_name} encountered, skipping")
-            return -1
+            return None
 
     def _store_labeled_examples(
         self,
@@ -329,17 +330,17 @@ class DataManager:
 
                 if not example.boundingBoxes:
                     # negative sample
-                    label = 0
+                    label: ClassLabel | None = ClassLabel(0)
                 elif (
                     example.boundingBoxes[0].w == 1.0
                     and example.boundingBoxes[0].h == 1.0
                 ):
                     # classification
-                    class_name = example.boundingBoxes[0].class_name
+                    class_name = ClassName(example.boundingBoxes[0].class_name)
                     label = self._class_to_label(class_name)
                 else:
                     # detection
-                    label = 1
+                    label = ClassLabel(1)
 
                 if self._validate:
                     example_subdir = self._staging_dir / "unspecified"
@@ -348,7 +349,7 @@ class DataManager:
                         DatasetSplit.TRAIN
                     )
 
-                if label != -1:
+                if label is not None:
                     # 0 or 1 or ...
                     example_path = example_subdir / str(label) / example_file
                     example_path.parent.mkdir(parents=True, exist_ok=True)
@@ -366,9 +367,15 @@ class DataManager:
                     label_path.parent.mkdir(parents=True, exist_ok=True)
                     with label_path.open("w") as f:
                         for bbox in example.boundingBoxes:
-                            # -1 because yolo counts positive classes from 0
-                            label = self._class_to_label(bbox.class_name) - 1
-                            f.write(f"{label} {bbox.x} {bbox.y} {bbox.w} {bbox.h}\n")
+                            class_name = ClassName(bbox.class_name)
+                            class_label = self._class_to_label(class_name)
+                            assert (
+                                class_label is not None
+                            ), "here is where I expect to fail on new classes"
+
+                            # -1 because yolo counts positive classes starting from 0
+                            index = class_label_to_int(class_label) - 1
+                            f.write(f"{index} {bbox.x} {bbox.y} {bbox.w} {bbox.h}\n")
                 else:
                     ignore_file = self._staging_dir / IGNORE_FILE[0]
                     with ignore_file.open("a+") as f:

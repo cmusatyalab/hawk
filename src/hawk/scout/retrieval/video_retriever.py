@@ -15,6 +15,7 @@ import numpy.typing as npt
 from logzero import logger
 from PIL import Image
 
+from ...classes import ClassLabel
 from ...proto.messages_pb2 import Streaming_Video
 from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
@@ -169,7 +170,7 @@ class VideoRetriever(Retriever):
                         object_id,
                         content,
                         HawkAttributeProvider(attributes, tile_path, resize=False),
-                        int(label),
+                        ClassLabel(int(label)),
                     )
                 )
             time.sleep(8)

@@ -12,6 +12,7 @@ import numpy as np
 from logzero import logger
 from PIL import Image
 
+from ...classes import ClassLabel
 from ...proto.messages_pb2 import FileDataset
 from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
@@ -94,7 +95,7 @@ class RandomRetriever(Retriever):
                         object_id,
                         content,
                         HawkAttributeProvider(attributes, image_path, self._resize),
-                        int(label),
+                        ClassLabel(int(label)),
                     )
                 )
 

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, TypedDict
 import torch
 
 if TYPE_CHECKING:
+    from ...classes import ClassName
     from ..retrieval.retriever import Retriever
     from .object_provider import ObjectProvider
 
@@ -18,7 +19,7 @@ class BoundingBox(TypedDict, total=False):
     y: float
     w: float
     h: float
-    class_name: str
+    class_name: ClassName
     confidence: float
 
 

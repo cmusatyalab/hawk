@@ -178,7 +178,7 @@ def reset_new_class() -> None:
 
 
 new_class = st.sidebar.text_input("New Class", on_change=reset_new_class)
-if new_class and new_class not in CLASSES:
+if new_class and ClassName(new_class) not in CLASSES:
     CLASSES.append(ClassName(new_class))
 
 

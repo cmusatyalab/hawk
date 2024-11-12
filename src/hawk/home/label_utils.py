@@ -134,9 +134,9 @@ class Detection:
     def from_dict(cls, obj: dict[str, Any]) -> Detection:
         # filter out negatives (and 0 scores)
         scores = {
-            ClassName(sys.intern(cls)): score
-            for cls, score in obj.pop("scores", obj.pop("cls_scores", {})).items()
-            if score and cls not in ["", "neg", "negative"]
+            ClassName(sys.intern(name)): score
+            for name, score in obj.pop("scores", obj.pop("cls_scores", {})).items()
+            if score and name not in ["", "neg", "negative"]
         }
         return cls(scores=scores, **obj)
 

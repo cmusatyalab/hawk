@@ -11,6 +11,8 @@ import numpy as np
 import numpy.typing as npt
 from PIL import Image
 
+from ...classes import ClassLabel
+
 if TYPE_CHECKING:
     from ..retrieval.retriever import Retriever
     from .attribute_provider import AttributeProvider
@@ -23,12 +25,12 @@ class ObjectProvider:
         obj_id: str,
         content: bytes | npt.NDArray[Any],
         attributes: AttributeProvider,
-        gt: int = 0,
+        gt: ClassLabel | None = None,
     ):
         self.id = obj_id
         self.content = content
         self.attributes = attributes
-        self.gt = gt
+        self.gt = gt if gt is not None else ClassLabel(0)
 
     @classmethod
     def from_result_provider(

@@ -11,6 +11,7 @@ from typing import Dict, List
 from logzero import logger
 from PIL import Image
 
+from ...classes import ClassLabel
 from ...proto.messages_pb2 import FileDataset
 from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
@@ -76,7 +77,7 @@ class TileRetriever(Retriever):
                         HawkAttributeProvider(
                             attributes, Path(image_path), self._resize
                         ),
-                        int(label),
+                        ClassLabel(int(label)),
                     )
                 )
 

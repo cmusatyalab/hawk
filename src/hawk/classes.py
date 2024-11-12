@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, NewType
 
@@ -40,4 +41,5 @@ else:
 
 
 # We test against this all the time
-NEGATIVE_CLASS = ClassName("negative")
+NEGATIVE_CLASS = ClassName(sys.intern("negative"))
+POSITIVE_CLASS = ClassName(sys.intern("positive"))

@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
+from ...classes import ClassLabel, ClassName, class_name_to_str
 from ...proto.messages_pb2 import (
     BoundingBox,
     DatasetSplit,
@@ -39,8 +40,8 @@ from ..selection.selector_base import Selector
 from ..selection.token_selector import TokenSelector
 from ..stats import HAWK_MODEL_VERSION
 from ..trainer.novel_class_discover import clustering_function
-from .data_manager import DataManager
 from .class_manager import MLClassManager
+from .data_manager import DataManager
 from .hawk_stub import HawkStub
 from .model import Model
 from .model_trainer import ModelTrainer
@@ -65,7 +66,7 @@ class Mission(DataManagerContext, ModelContext):
         bootstrap_zip: bytes,
         initial_model: ModelArchive,
         train_strategy: TrainConfig,
-        class_list: list[str],
+        class_list: list[ClassName],
         scml_deploy_options: dict[str, int],
         validate: bool = False,
         novel_class_discovery: bool = False,
@@ -137,7 +138,7 @@ class Mission(DataManagerContext, ModelContext):
         logger.info("Initializing Class manager and class objects:")
         self.class_manager = MLClassManager()
         for label_counter, cls in enumerate(self.class_list):
-            self.class_manager.add_class(cls, label_counter)
+            self.class_manager.add_class(cls, ClassLabel(label_counter))
         self.novel_class_discovery = novel_class_discovery
         self.sub_class_discovery = sub_class_discovery
         logger.info(f"Novel Class discovery: {self.novel_class_discovery}")
@@ -505,7 +506,7 @@ class Mission(DataManagerContext, ModelContext):
                         y=bbox.get("y", 0.5),
                         w=bbox.get("w", 1.0),
                         h=bbox.get("h", 1.0),
-                        class_name=bbox["class_name"],
+                        class_name=class_name_to_str(bbox["class_name"]),
                         confidence=bbox["confidence"],
                     )
                     for bbox in result.bboxes

@@ -15,6 +15,7 @@ import zmq
 from logzero import logger
 from PIL import Image
 
+from ...classes import ClassLabel
 from ...proto.messages_pb2 import NetworkDataset
 from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
@@ -159,7 +160,7 @@ class NetworkRetriever(Retriever):
                     object_id,
                     content,
                     HawkAttributeProvider(attributes, Path(path), self._resize),
-                    int(label),
+                    ClassLabel(int(label)),
                 )
             )
 
