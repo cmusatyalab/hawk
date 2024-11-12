@@ -228,7 +228,7 @@ class YOLOModelRadar(ModelBase):
                 scores = [1.0 - score, score]
                 bboxes: list[BoundingBox] = [
                     {"class_name": label, "confidence": score}
-                    for label, score in zip(self.context.class_manager.classes, scores)
+                    for label, score in zip(self.context.class_list, scores)
                 ]
                 results.append(ResultProvider(batch[i][0], score, bboxes, self.version))
         return results

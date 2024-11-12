@@ -10,12 +10,16 @@ from __future__ import annotations
 import time
 from abc import ABCMeta, abstractmethod
 
+from ...classes import ClassList
 from ..core.hawk_stub import HawkStub
 
 
 class ContextBase(metaclass=ABCMeta):
     # Time when the mission was started
     start_time: float
+
+    def __init__(self) -> None:
+        self.class_list = ClassList()
 
     @property
     @abstractmethod

@@ -18,7 +18,8 @@ import torch
 from logzero import logger
 from prometheus_client import Counter, Gauge, Histogram
 
-from .label_utils import ClassMap, index_jsonl, read_jsonl
+from ..classes import ClassList
+from .label_utils import index_jsonl, read_jsonl
 from .stats import (
     HAWK_LABELED_CLASSES,
     HAWK_LABELED_OBJECTS,
@@ -37,7 +38,7 @@ class LabelerDiskQueue:
     mission_id: str
     scout_queue: ScoutQueue
     mission_dir: Path
-    class_map: ClassMap
+    class_list: ClassList
     label_queue_size: int = 0
 
     token_semaphore: threading.BoundedSemaphore = field(init=False, repr=False)
@@ -61,7 +62,7 @@ class LabelerDiskQueue:
 
         self.labeled_classes = HAWK_LABELED_CLASSES
         # Hint to prometheus_client which class names we may use later
-        for class_name in self.class_map.classes:
+        for class_name in self.class_list:
             HAWK_LABELED_CLASSES.labels(
                 mission=self.mission_id, labeler="disk", class_name=class_name
             )
@@ -117,7 +118,7 @@ class LabelerDiskQueue:
 
             # append metadata to unlabeled.jsonl file
             with unlabeled_jsonl.open("a") as fp:
-                result.to_jsonl(fp, self.class_map)
+                result.to_jsonl(fp, self.class_list)
 
             self.scout_queue.task_done()
 

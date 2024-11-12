@@ -13,20 +13,11 @@ import sys
 import time
 from dataclasses import InitVar, dataclass, field
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Iterable,
-    Iterator,
-    NewType,
-    Sequence,
-    TextIO,
-    TypedDict,
-)
+from typing import TYPE_CHECKING, Any, Iterator, NewType, TextIO, TypedDict
 
 from logzero import logger
 
-from ..classes import ClassName
+from ..classes import ClassLabel, ClassList, ClassName, class_label_to_int
 from .utils import tailf
 
 if TYPE_CHECKING:
@@ -44,53 +35,6 @@ class LabelKitArgs(TypedDict):
 class LabelKitOut(TypedDict):
     bboxes: tuple[float, float, float, float]
     labels: int
-
-
-@dataclass
-class ClassMap:
-    """ClassMap contains a list of class names, it tracks positive classes only."""
-
-    classes: list[ClassName]
-
-    @classmethod
-    def from_list(cls, classes: list[str]) -> ClassMap:
-        """Create a list of all positive class names"""
-        return cls(
-            classes=[
-                ClassName(sys.intern(name))
-                for name in classes
-                if name not in ["", "neg", "negative"]
-            ]
-        )
-
-    def __getitem__(self, item: int | str) -> ClassName:
-        """Tries to accept either numeric labels or names and maps them to class names
-        Will create new class labels for unknown class names.
-        Raises IndexError when we see a class label that we have no name for.
-        """
-        if isinstance(item, int):
-            class_label = item
-        elif (class_name := ClassName(item)) in self.classes:
-            class_label = self.classes.index(class_name)
-        else:
-            try:
-                class_label = int(item)
-            except ValueError:
-                class_label = self.name_to_label(str(item))
-        return self.classes[class_label]
-
-    def name_to_label(self, name: str) -> int:
-        """Returns label for the given class.
-        Creates a new label for the class if it did not previously exist.
-        """
-        class_name = ClassName(name)
-        try:
-            return self.classes.index(class_name)
-        except ValueError:
-            new_label = len(self.classes)
-            logger.warning(f"Adding unknown class {class_name} with label {new_label}")
-            self.classes.append(class_name)
-            return new_label
 
 
 @dataclass(order=True)
@@ -141,10 +85,21 @@ class Detection:
         return cls(scores=scores, **obj)
 
     @classmethod
-    def from_yolo(cls, line: str, class_map: ClassMap) -> Detection:
+    def from_yolo(cls, line: str, class_list: ClassList) -> Detection:
         label, centerX, centerY, width, height, *_score = line.split()
 
-        class_name = class_map[label]
+        try:
+            class_label = ClassLabel(int(label))
+            class_name = class_list[class_label]
+        except ValueError:
+            class_name = ClassName(label)
+            class_list.add(class_name)
+        except IndexError:
+            # Label was numeric, but we couldn't find it in the class list.
+            # All classes should be known and named at this point.
+            logger.error("Unexpected class label {label} encountered")
+            raise
+
         score = float(_score[0]) if _score else 1.0
 
         return cls(
@@ -156,35 +111,37 @@ class Detection:
         )
 
     @classmethod
-    def from_labelkit(cls, obj: LabelKitOut, classes: Sequence[ClassName]) -> Detection:
-        class_name = classes[obj["labels"]]
+    def from_labelkit(cls, obj: LabelKitOut, class_list: ClassList) -> Detection:
+        # we have to shift the class label by one because labelkit only shows
+        # positive classes as options in the pulldown.
+        class_label = ClassLabel(obj["labels"] + 1)
+        class_name = class_list[class_label]
         return cls(*obj["bboxes"], scores={class_name: 1.0})
 
-    def to_labelkit(self, classes: Sequence[ClassName]) -> LabelKitOut:
+    def to_labelkit(self, class_list: ClassList) -> LabelKitOut:
+        class_label = class_list.index(self.top_class())
         return dict(
             bboxes=(self.x, self.y, self.w, self.h),
-            labels=classes.index(self.top_class()),
+            labels=class_label_to_int(class_label) - 1,
         )
 
-    def to_dict(self, class_map: ClassMap | None = None) -> dict[str, Any]:
-        """asdict but if class_map is given we add missing classes to scores."""
+    def to_dict(self, class_list: ClassList | None = None) -> dict[str, Any]:
+        """asdict but if list of classes is given we add all classes to scores."""
         # don't include negative class from class_map
-        classes: Iterable[ClassName] = (
-            class_map.classes if class_map is not None else self.classes()
-        )
+        positives = class_list.positive if class_list is not None else list(self.scores)
         return dict(
             x=self.x,
             y=self.y,
             w=self.w,
             h=self.h,
-            scores={cls: self.scores.get(cls, 0.0) for cls in classes},
+            scores={cls: self.scores.get(cls, 0.0) for cls in positives},
         )
 
     def by_score(self) -> list[tuple[ClassName, float]]:
         return sorted(self.scores.items(), key=lambda x: x[1], reverse=True)
 
-    def classes(self) -> set[ClassName]:
-        return {cls for cls in self.scores}
+    def class_list(self) -> ClassList:
+        return ClassList().extend(self.scores)
 
     @property
     def has_scores(self) -> bool:
@@ -251,7 +208,10 @@ class LabelSample:
         return dataclasses.replace(self, detections=detections, line=self.index)
 
     def to_jsonl(
-        self, fp: TextIO, class_map: ClassMap | None = None, **kwargs: int | str | float
+        self,
+        fp: TextIO,
+        class_list: ClassList | None = None,
+        **kwargs: int | str | float,
     ) -> None:
         jsonl = json.dumps(
             dict(
@@ -259,15 +219,15 @@ class LabelSample:
                 scoutIndex=self.scoutIndex,
                 queued=self.queued,
                 detections=[
-                    detection.to_dict(class_map) for detection in self.detections
+                    detection.to_dict(class_list) for detection in self.detections
                 ],
                 **kwargs,
             )
         )
         fp.write(f"{jsonl}\n")
 
-    def to_labelkit_args(self, classes: Sequence[ClassName]) -> LabelKitArgs:
-        bboxes = [bbox.to_labelkit(classes) for bbox in self.detections]
+    def to_labelkit_args(self, class_list: ClassList) -> LabelKitArgs:
+        bboxes = [bbox.to_labelkit(class_list) for bbox in self.detections]
         return dict(
             bboxes=[out["bboxes"] for out in bboxes],
             labels=[out["labels"] for out in bboxes],
@@ -275,7 +235,9 @@ class LabelSample:
 
     @property
     def classes(self) -> set[ClassName]:
-        return set.union(set(), *[detection.classes() for detection in self.detections])
+        return set.union(
+            set(), *[detection.class_list() for detection in self.detections]
+        )
 
     @property
     def is_classification(self) -> bool:

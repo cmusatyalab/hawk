@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
-from ...classes import ClassCounter, ClassLabel, ClassName, class_name_to_str
+from ...classes import ClassCounter, ClassName, class_name_to_str
 from ...proto.messages_pb2 import (
     BoundingBox,
     DatasetSplit,
@@ -40,7 +40,6 @@ from ..selection.selector_base import Selector
 from ..selection.token_selector import TokenSelector
 from ..stats import HAWK_MODEL_VERSION
 from ..trainer.novel_class_discover import clustering_function
-from .class_manager import MLClassManager
 from .data_manager import DataManager
 from .hawk_stub import HawkStub
 from .model import Model
@@ -111,7 +110,6 @@ class Mission(DataManagerContext, ModelContext):
 
         self.initial_model = initial_model
         self._validate = validate
-        self.class_list = class_list
         self.scml_deploy_options = scml_deploy_options
 
         # Indicates that the mission will seed the strategy with an initial set
@@ -134,11 +132,11 @@ class Mission(DataManagerContext, ModelContext):
         self._results_condition = mp.Condition()
 
         self._abort_event = threading.Event()
-        logger.info(f"Class list in mission: {self.class_list}")
+
         logger.info("Initializing Class manager and class objects:")
-        self.class_manager = MLClassManager()
-        for label_counter, cls in enumerate(self.class_list):
-            self.class_manager.add_class(cls, ClassLabel(label_counter))
+        self.class_list.extend(class_list)
+        logger.info(f"Class list in mission: {self.class_list}")
+
         self.novel_class_discovery = novel_class_discovery
         self.sub_class_discovery = sub_class_discovery
         logger.info(f"Novel Class discovery: {self.novel_class_discovery}")

@@ -20,6 +20,7 @@ from sklearn.metrics import average_precision_score
 from torch.utils.data import DataLoader
 from torchvision import datasets
 
+from ....classes import ClassLabel
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
@@ -236,8 +237,8 @@ class YOLOModel(ModelBase):
                         "w": float(detections_per_sample[j, 2] / 640),
                         "h": float(detections_per_sample[j, 3] / 640),
                         "confidence": float(detections_per_sample[j, 4]),
-                        "class_name": self.context.class_manager.label_name_dict[
-                            int(detections_per_sample[j, 5]) + 1
+                        "class_name": self.context.class_list[
+                            ClassLabel(int(detections_per_sample[j, 5]) + 1)
                         ],
                     }
                     for j in range(len(detections_per_sample))

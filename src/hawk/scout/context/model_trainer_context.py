@@ -11,14 +11,12 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Any, Tuple
 
-from ..core.class_manager import MLClassManager
 from ..core.object_provider import ObjectProvider
 from ..core.result_provider import ResultProvider
 from .context_base import ContextBase
 
 
 class ModelContext(ContextBase):
-    class_manager: MLClassManager
     novel_class_discovery: bool
     sub_class_discovery: bool
 

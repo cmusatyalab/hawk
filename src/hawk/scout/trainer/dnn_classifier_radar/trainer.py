@@ -83,9 +83,9 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
         trainpath = self.context.model_path(new_version, template="train-{}.txt")
 
         # labels = [subdir.name for subdir in self._train_dir.iterdir()]
-        labels = self.context.class_manager.get_labels()
+        num_classes = len(self.context.class_list)
+        labels = [str(label) for label in range(num_classes)]
         logger.info(f"List of labels in trainer: {labels}")
-        num_classes = len(labels)
         # labels = ["0", "1"]
         train_samples = {
             label: list(train_dir.joinpath(label).glob("*")) for label in labels

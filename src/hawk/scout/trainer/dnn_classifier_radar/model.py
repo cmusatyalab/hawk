@@ -326,7 +326,7 @@ class DNNClassifierModelRadar(ModelBase):
                 score = predictions[i]
                 result_object = batch[i][0]
                 if self._mode == "oracle":
-                    num_classes = len(self.context.class_manager.classes)
+                    num_classes = len(self.context.class_list)
                     cls = int(result_object.id.split("/", 2)[1])
                     score = [0.0] * num_classes
                     score[cls] = 1.0
@@ -351,9 +351,7 @@ class DNNClassifierModelRadar(ModelBase):
                         "class_name": class_name,
                         "confidence": float(score),
                     }
-                    for class_name, score in zip(
-                        self.context.class_manager.classes, score
-                    )
+                    for class_name, score in zip(self.context.class_list, score)
                 ]
                 # score for priority queue is sum of all positive classes
                 results.append(

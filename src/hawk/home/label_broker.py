@@ -10,8 +10,8 @@ from pathlib import Path
 
 from prometheus_client import start_http_server as start_metrics_server
 
+from ..classes import ClassList
 from ..mission_config import MissionConfig
-from .label_utils import ClassMap
 from .to_labeler import LabelerDiskQueue
 from .to_scout import ScoutQueue, Strategy
 
@@ -41,8 +41,8 @@ def main() -> int:
     if args.label_queue_strategy is None:
         args.label_queue_strategy = config.get("label-queue-strategy", Strategy.FIFO)
 
-    class_list = config.get("dataset", {}).get("class_list", ["negative", "positive"])
-    class_map = ClassMap.from_list(class_list)
+    class_names = config.get("dataset", {}).get("class_list", ["positive"])
+    class_list = ClassList(class_names)
 
     mission_id = args.mission_directory.name
 
@@ -62,7 +62,7 @@ def main() -> int:
             mission_id=mission_id,
             scout_queue=scout_queue,
             mission_dir=args.mission_directory,
-            class_map=class_map,
+            class_list=class_list,
             label_queue_size=args.label_queue_size,
         ).start()
 

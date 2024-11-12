@@ -103,8 +103,7 @@ class SelectorBase(Selector):
         # classes to the SelectorBase initializer
         if self._mission is not None:
             # Hint to prometheus_client which labels we might use
-            class_list = list(self._mission.class_manager.classes)
-            for class_name in ["negative"] + class_list[1:]:
+            for class_name in self._mission.class_list:
                 HAWK_INFERENCED_OBJECTS.labels(
                     mission=mission_id, gt=class_name, model_version="0"
                 )
@@ -161,7 +160,7 @@ class SelectorBase(Selector):
             return NEGATIVE_CLASS
         if self._mission is None:
             return ClassName(str(gt))
-        return self._mission.class_manager.label_name_dict[gt]
+        return self._mission.class_list[gt]
 
     def add_result(self, result: ResultProvider | None) -> int:
         """Add processed results from model to selection strategy"""

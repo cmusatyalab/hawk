@@ -18,6 +18,7 @@ from logzero import logger
 
 from ...classes import (
     NEGATIVE_CLASS,
+    POSITIVE_CLASS,
     ClassCounter,
     ClassLabel,
     ClassName,
@@ -54,7 +55,6 @@ class DataManager:
         self._is_npy = False
 
         logger.info(f"Class list: {self._context.class_list}")
-        logger.info(f"Class manager: {self._context.class_manager}")
         self.class_counts = ClassCounter(self._context.class_list)
 
         bootstrap_zip = self._context.bootstrap_zip
@@ -201,7 +201,6 @@ class DataManager:
 
                 if basename.endswith(image_extensions) and name_is_integer(parent_name):
                     label = parent_name
-                    class_label = ClassLabel(int(label))
 
                     content = zf.read(filename)
                     # logger.info(f"FILE NAME: {filename}")
@@ -255,6 +254,7 @@ class DataManager:
                             f.write(label_content)
 
                     # add single sample to respective class
+                    class_label = ClassLabel(int(label))
                     self.class_counts.count(class_label)
 
         logger.info(
@@ -295,9 +295,8 @@ class DataManager:
 
     def _class_to_label(self, class_name: ClassName) -> ClassLabel | None:
         try:
-            # XXX here is where I expect to fail on new classes.
-            return self._context.class_manager.classes[class_name].label
-        except KeyError:
+            return self._context.class_list.index(class_name)
+        except ValueError:
             logger.error(f"unknown class {class_name} encountered, skipping")
             return None
 
@@ -342,7 +341,7 @@ class DataManager:
                 else:
                     # detection
                     label = ClassLabel(1)
-                    counts = {ClassName("positive"): 1}
+                    counts = {POSITIVE_CLASS: 1}
                     # Alternatively if we want to count individual detections...
                     # counts = Counter(
                     #     ClassName(bbox.class_name) for bbox in example.boundingBoxes
@@ -454,8 +453,8 @@ class DataManager:
             example_files = list(label.iterdir())
 
             # map negative numbers (easy negatives) to "negative" class 0
-            int_label = max(int(label.name), 0)
-            new_samples.count(ClassLabel(int_label), len(example_files))
+            class_label = ClassLabel(int(label.name))
+            new_samples.count(class_label, len(example_files))
 
             for example_file in example_files:
                 for example_set in set_dirs:

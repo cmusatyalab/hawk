@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
-from hawk.classes import class_name_to_str
-from hawk.home.label_utils import ClassMap, Detection, LabelSample, MissionResults
+from hawk.classes import ClassLabel, ClassList, ClassName, class_name_to_str
+from hawk.home.label_utils import Detection, LabelSample, MissionResults
 
 if TYPE_CHECKING:
     from hawk.mission_config import MissionConfig
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 @dataclass
 class ScriptLabeler:
     mission_dir: Path
-    class_map: ClassMap
+    class_list: ClassList
     label_time: float = 0.0
     detect: bool = False
     gt_path: Path | None = None
@@ -44,10 +44,11 @@ class ScriptLabeler:
             return []
         class_value = objectId.split("/", 2)[1]
         try:
-            class_index = int(class_value) - 1
-            class_name = self.class_map[class_index]
+            class_label = ClassLabel(int(class_value))
+            class_name = self.class_list[class_label]
         except ValueError:
-            class_name = self.class_map[class_value]
+            class_name = ClassName(class_value)
+            self.class_list.add(class_name)
         return [Detection(scores={class_name: 1.0})]
 
     def detect_func(self, objectId: str) -> list[Detection]:
@@ -59,7 +60,7 @@ class ScriptLabeler:
 
         return list(
             Detection.merge_detections(
-                Detection.from_yolo(line, self.class_map)
+                Detection.from_yolo(line, self.class_list)
                 for line in gt_file.read_text().splitlines()
             )
         )
@@ -120,10 +121,10 @@ class ScriptLabeler:
         gt_dir = Path(config["home-params"].get("label_dir", ""))
         # logger.info(f"GT DIR: {gt_dir}, {type(gt_dir)}")
 
-        class_list = config.get("dataset", {}).get("class_list", ["positive"])
-        class_map = ClassMap.from_list(class_list)
+        class_names = config.get("dataset", {}).get("class_list", ["positive"])
+        class_list = ClassList(class_names)
 
-        return cls(mission_dir, class_map, label_time, label_mode == "detect", gt_dir)
+        return cls(mission_dir, class_list, label_time, label_mode == "detect", gt_dir)
 
 
 def main() -> int:
@@ -137,11 +138,11 @@ def main() -> int:
     parser.add_argument("mission_directory", type=Path, nargs="?", default=".")
     args = parser.parse_args()
 
-    class_list = args.label_class or ["positive"]
-    class_map = ClassMap.from_list(class_list)
+    class_names = args.label_class or ["positive"]
+    class_list = ClassList(class_names)
 
     ScriptLabeler(
-        args.mission_directory, class_map, args.label_time, args.detect, args.gt_path
+        args.mission_directory, class_list, args.label_time, args.detect, args.gt_path
     ).run()
     return 0
 

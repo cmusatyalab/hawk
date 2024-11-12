@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import sys
 from collections import Counter
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, NewType
+from dataclasses import InitVar, dataclass, field
+from typing import TYPE_CHECKING, Iterable, Iterator, NewType, Sequence
 
 from logzero import logger
 
@@ -49,13 +49,66 @@ POSITIVE_CLASS = ClassName(sys.intern("positive"))
 
 
 @dataclass
+class ClassList:
+    """List of (known unique) class names, "negative" is always class 0"""
+
+    classes: InitVar[Iterable[str]] = []
+
+    def __post_init__(self, classes: Iterable[str]) -> None:
+        # Ensure we always have 'negative' as class 0
+        self._classes = [ClassName("negative")]
+        self.extend(ClassName(sys.intern(name)) for name in classes)
+
+    def __repr__(self) -> str:
+        return repr(self._classes)
+
+    def __getitem__(self, class_label: ClassLabel) -> ClassName:
+        """class-label to class-name lookup.
+        Raises IndexError when class_label is not found.
+        """
+        return self._classes[class_label_to_int(class_label)]
+
+    def index(self, class_name: ClassName) -> ClassLabel:
+        """class-name to class-label lookup.
+        Raises ValueError if class_name is not found.
+        """
+        return ClassLabel(self._classes.index(class_name))
+
+    @property
+    def positive(self) -> Sequence[ClassName]:
+        """Returns a list of only positive class names."""
+        return self._classes[1:]
+
+    def __contains__(self, class_name: ClassName) -> bool:
+        return class_name in self._classes
+
+    def __iter__(self) -> Iterator[ClassName]:
+        yield from self._classes
+
+    def __len__(self) -> int:
+        return len(self._classes)
+
+    def add(self, class_name: ClassName) -> None:
+        """Add a single new class if it doesn't exist already."""
+        if class_name not in self._classes:
+            self._classes.append(class_name)
+
+    def extend(self, classes: Iterable[ClassName]) -> ClassList:
+        """Extend with new class names."""
+        # append one at a time in case there are duplicates
+        for class_name in classes:
+            self.add(class_name)
+        return self
+
+
+@dataclass
 class ClassCounter:
-    class_list: list[ClassName]
+    class_list: ClassList
     counter: Counter[ClassName] = field(default_factory=Counter)
 
     def count(self, label: ClassLabel, count: int = 1) -> None:
         try:
-            class_name = self.class_list[class_label_to_int(label)]
+            class_name = self.class_list[label]
             self.counter[class_name] += count
         except IndexError:
             logger.error("Unknown class {label} encountered")

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import sys
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterator
@@ -12,7 +13,7 @@ import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 from streamlit_label_kit import detection as st_detection
 
-from hawk.classes import ClassName
+from hawk.classes import ClassList, ClassName, class_label_to_int
 from hawk.gui.elements import ABOUT_TEXT, Mission, page_header, paginate
 from hawk.home.label_utils import Detection, LabelSample
 
@@ -50,15 +51,15 @@ if "saves" not in st.session_state:
 mission.resync()
 
 # list of positive classes in the mission
-CLASSES = list(mission.classes)
+class_list = ClassList()
+class_list.extend(mission.classes)
 inprogress_classes = {
     cls
     for bboxes in st.session_state.saves.values()
     for det in bboxes
     for cls in det.scores
-    if cls not in CLASSES
 }
-CLASSES.extend(inprogress_classes)
+class_list.extend(inprogress_classes)
 
 # banner.write(data)
 
@@ -178,8 +179,8 @@ def reset_new_class() -> None:
 
 
 new_class = st.sidebar.text_input("New Class", on_change=reset_new_class)
-if new_class and ClassName(new_class) not in CLASSES:
-    CLASSES.append(ClassName(new_class))
+if new_class:
+    class_list.add(ClassName(sys.intern(new_class)))
 
 
 def columns(ncols: int) -> Iterator[DeltaGenerator]:
@@ -195,7 +196,9 @@ def classification_pulldown(
     mission: Mission, result: LabelSample, key: str | None = None
 ) -> None:
     scores = result.detections[0].scores if result.detections else {}
-    options = ["negative"] + [f"{cls} ({scores.get(cls, 0):.02f})" for cls in CLASSES]
+    options = ["negative"] + [
+        f"{cls} ({scores.get(cls, 0):.02f})" for cls in class_list.positive
+    ]
 
     default_key = f"{result.index}_cls"
     key = key or default_key
@@ -211,11 +214,16 @@ def classification_pulldown(
 
         # if we found detections, pre-select the given option
         if detections is not None:
+            class_index = 0
             if detections:
                 class_name = detections[0].top_class()
-                class_index = CLASSES.index(class_name) + 1
-            else:
-                class_index = 0
+                try:
+                    class_label = class_list.index(class_name)
+                    class_index = class_label_to_int(class_label)
+                except ValueError:
+                    # we should have recognized the class name.
+                    # fall back to 'negative' class 0.
+                    pass
 
             st.session_state[key] = options[class_index]
 
@@ -231,7 +239,8 @@ def classification_pulldown(
 
     if classification is not None:
         if classification != "negative":
-            class_name = ClassName(classification.rsplit(" ", 1)[0])
+            name = classification.rsplit(" ", 1)[0]
+            class_name = ClassName(sys.intern(name))
             st.session_state.saves[result.index] = [Detection(scores={class_name: 1.0})]
         else:
             st.session_state.saves[result.index] = []
@@ -270,7 +279,7 @@ def annotation_editor_popup(mission: Mission, sample: LabelSample) -> None:
     image = mission.image_path(sample)
     out = st_detection(
         image_path=str(image),
-        label_list=CLASSES,
+        label_list=class_list.positive,
         bbox_format="REL_CXYWH",
         image_height=512,
         image_width=512,
@@ -288,7 +297,7 @@ def annotation_editor_popup(mission: Mission, sample: LabelSample) -> None:
     if st.button("Ok"):
         if out is not None and out["key"] != 0:
             st.session_state.saves[sample.index] = [
-                Detection.from_labelkit(bbox, CLASSES) for bbox in out["bbox"]
+                Detection.from_labelkit(bbox, class_list) for bbox in out["bbox"]
             ]
         st.rerun()
 
@@ -303,13 +312,13 @@ def detection_ui(mission: Mission, sample: LabelSample) -> None:
     elif inprogress_bboxes is not None:
         sample = sample.replace(inprogress_bboxes)
 
-    labelkit_args = sample.to_labelkit_args(CLASSES)
+    labelkit_args = sample.to_labelkit_args(class_list)
 
     # draw image with bounding boxes
     image = mission.image_path(sample)
     st_detection(
         image_path=str(image),
-        label_list=CLASSES,
+        label_list=class_list.positive,
         bbox_format="REL_CXYWH",
         ui_size="small",
         class_select_position="none",

@@ -104,7 +104,7 @@ class DNNClassifierModel(ModelBase):
     def load_model(self, model_path: Path) -> torch.nn.Module:
         assert self.context is not None
         model = self.initialize_model(
-            self._arch, num_classes=len(self.context.class_manager.classes)
+            self._arch, num_classes=len(self.context.class_list)
         )
         checkpoint = torch.load(model_path)
         model.load_state_dict(checkpoint["state_dict"])
@@ -339,7 +339,7 @@ class DNNClassifierModel(ModelBase):
                 torch.save(feature_vector, fv_bytes)
                 final_fv = fv_bytes.getvalue() if feature_vector is not None else None
                 if self._mode == "oracle":
-                    num_classes = len(self.context.class_manager.classes)
+                    num_classes = len(self.context.class_list)
                     cls = int(result_object.id.split("/", 2)[1])
                     score = [0.0] * num_classes
                     score[cls] = 1.0
@@ -348,9 +348,7 @@ class DNNClassifierModel(ModelBase):
                         "class_name": class_name,
                         "confidence": float(score),
                     }
-                    for class_name, score in zip(
-                        self.context.class_manager.classes, score
-                    )
+                    for class_name, score in zip(self.context.class_list, score)
                 ]
                 results.append(
                     ResultProvider(
