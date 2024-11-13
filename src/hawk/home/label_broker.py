@@ -52,6 +52,7 @@ def main() -> int:
 
         scout_queue = ScoutQueue(
             mission_id=mission_id,
+            mission_dir=args.mission_directory,
             strategy=args.label_queue_strategy,
             scouts=config.scouts,
             h2c_port=config.deploy.h2c_port,

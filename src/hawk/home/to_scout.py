@@ -11,7 +11,11 @@ import time
 from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import zmq
 from logzero import logger
@@ -29,6 +33,8 @@ from .stats import (
     HAWK_UNLABELED_RECEIVED_SCORE,
 )
 
+matplotlib.use("agg")
+
 
 class Strategy(Enum):
     FIFO_HOME = "fifo-home"
@@ -45,11 +51,9 @@ class Strategy(Enum):
 @dataclass
 class UnlabeledResult(LabelSample):
     score: float = 1.0
-    data: bytes = b""
-    feature_vector: torch.Tensor | None = None
 
     @classmethod
-    def from_msg(cls, msg: bytes) -> UnlabeledResult:
+    def from_msg(cls, msg: bytes, mission_dir: Path) -> UnlabeledResult:
         request = SendTile()
         request.ParseFromString(msg)
 
@@ -69,18 +73,47 @@ class UnlabeledResult(LabelSample):
         # logger.debug(f"Received sample, inferenced scores {detections}")
         score = max(detection.max_score for detection in detections)
 
-        feature_vector = request.feature_vector
-        if feature_vector:
-            feature_vector = torch.load(io.BytesIO(request.feature_vector))
-
-        return cls(
+        result = cls(
             objectId=ObjectId(request.objectId),
             scoutIndex=request.scoutIndex,
             score=score,
             detections=detections,
-            feature_vector=feature_vector,
-            data=request.attributes["thumbnail.jpeg"],
         )
+
+        data = request.attributes["thumbnail.jpeg"]
+
+        tile_jpeg = result.unique_name(mission_dir / "images", ".jpeg")
+        tile_jpeg.parent.mkdir(exist_ok=True)
+
+        if result.objectId.endswith(".npy"):  # for radar missions with .npy files
+            result.gen_heatmap(tile_jpeg, data)
+        else:
+            tile_jpeg.write_bytes(data)
+        logger.info(f"SAVED TILE {tile_jpeg} for {result.objectId}")
+
+        if request.feature_vector:
+            feature_vector = torch.load(io.BytesIO(request.feature_vector))
+
+            fv_path = result.unique_name(mission_dir / "feature_vectors", ".pt")
+            fv_path.parent.mkdir(exist_ok=True)
+            torch.save(feature_vector, fv_path)
+
+        return result
+
+    @staticmethod
+    def gen_heatmap(tile_path: Path, data_: bytes) -> None:
+        with io.BytesIO(data_) as bytes_file:
+            data = np.load(bytes_file, allow_pickle=True)
+        plt.imshow(
+            data.sum(axis=2).transpose(), cmap="viridis", interpolation="nearest"
+        )
+        plt.xticks([0, 16, 32, 48, 63], [-13, -6.5, 0, 6.5, 13], fontsize=8)
+        plt.yticks([0, 64, 128, 192, 255], [50, 37.5, 25, 12.5, 0])
+        plt.xlabel("velocity (m/s)")
+        plt.ylabel("range (m)")
+        # plt.title("RD Map")
+        plt.savefig(tile_path, bbox_inches="tight")
+        plt.close("all")
 
 
 @dataclass
@@ -142,6 +175,7 @@ class HomeToScoutWorker:
 @dataclass
 class ScoutQueue:
     mission_id: str
+    mission_dir: Path
     strategy: Strategy
     scouts: list[str]
     h2c_port: int = H2C_PORT
@@ -201,7 +235,7 @@ class ScoutQueue:
 
         while True:
             msg = socket.recv()
-            result = UnlabeledResult.from_msg(msg)
+            result = UnlabeledResult.from_msg(msg, self.mission_dir)
 
             self.unlabeled_received[result.scoutIndex].observe(len(msg))
             self.unlabeled_received_score[result.scoutIndex].observe(result.score)

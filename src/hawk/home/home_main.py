@@ -136,6 +136,7 @@ def main() -> None:
             strategy = config.get("label-queue-strategy", Strategy.FIFO)
             scout_queue = ScoutQueue(
                 mission_id=mission_id,
+                mission_dir=mission_dir,
                 strategy=strategy,
                 scouts=config.scouts,
                 h2c_port=config.deploy.h2c_port,
