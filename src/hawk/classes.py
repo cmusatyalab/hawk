@@ -120,13 +120,22 @@ class ClassCounter:
             counts = counts.counter
         self.counter.update(counts)
 
+    def total_sum(self) -> int:
+        return sum(self.counter.values())
+
     @property
     def negatives(self) -> int:
         return self.counter[NEGATIVE_CLASS]
 
     @property
     def positives(self) -> int:
-        return sum(self.counter.values()) - self.negatives
+        return self.total_sum() - self.negatives
 
     def __repr__(self) -> str:
         return str(dict(self.counter))
+
+    def __bool__(self) -> bool:
+        return bool(self.counter)
+
+    def copy(self) -> ClassCounter:
+        return ClassCounter(class_list=self.class_list, counter=self.counter.copy())

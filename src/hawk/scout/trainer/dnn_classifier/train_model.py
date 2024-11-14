@@ -148,6 +148,12 @@ parser.add_argument(
     "--seed", default=None, type=int, help="seed for initializing training. "
 )
 parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
+parser.add_argument(
+    "--ema",
+    type=float,
+    default=0.5,
+    help="average with last checkpoint (0 is no averaging, default 0.5)",
+)
 
 best_acc1 = 0.0
 
@@ -464,6 +470,9 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
     end_time = time.time()
     print(end_time - start_time)
 
+    if not args.ema:
+        return
+
     # EMA: Averaging models
     if args.validate:
         best_checkpoint = torch.load(args.savepath)
@@ -476,8 +485,9 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
         checkpoint = torch.load(args.resume)
         old_model = checkpoint["state_dict"]
 
+        neg_alpha, alpha = 1.0 - args.ema, args.ema
         for key in old_model:
-            curr_model[key] = (curr_model[key] + old_model[key]) / 2.0
+            curr_model[key] = neg_alpha * curr_model[key] + alpha * old_model[key]
 
     model.load_state_dict(curr_model)
 

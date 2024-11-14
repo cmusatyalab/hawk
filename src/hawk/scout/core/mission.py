@@ -93,7 +93,6 @@ class Mission(DataManagerContext, ModelContext):
         self.host_name = (get_server_ids()[0]).split(".")[0]
         self.home_ip = home_ip
         self.log_file = open(self._log_dir / f"log-{self.host_name}.txt", "a")
-        self.result_path = str(self._log_dir / f"sent-{self.host_name}.txt")
         self.enable_logfile = True
         self.trainer: ModelTrainer | None = None
         self.trainer_type = None

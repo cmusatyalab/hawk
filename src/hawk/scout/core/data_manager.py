@@ -253,9 +253,13 @@ class DataManager:
                         with open(label_path, "wb") as f:
                             f.write(label_content)
 
-                    # add single sample to respective class
-                    class_label = ClassLabel(int(label))
-                    self.class_counts.count(class_label)
+                        # Do we want to parse label_content and properly count all
+                        # bounding boxes?
+                        self.class_counts.update({POSITIVE_CLASS: 1})
+                    else:
+                        # add single sample to respective class
+                        class_label = ClassLabel(int(label))
+                        self.class_counts.count(class_label)
 
         logger.info(
             f"New positives {self.class_counts.positives}, "
@@ -263,9 +267,8 @@ class DataManager:
             f"by class: {self.class_counts!r}"
         )
 
-        retrain = True
-        if self._context.check_initial_model():
-            retrain = False
+        # Skip training if we already have a bootstrap model
+        retrain = not self._context.check_initial_model()
         logger.info(
             f"Initial model {self._context.check_initial_model()} retrain {retrain}"
         )
@@ -293,12 +296,9 @@ class DataManager:
             else:
                 child.unlink()
 
-    def _class_to_label(self, class_name: ClassName) -> ClassLabel | None:
-        try:
-            return self._context.class_list.index(class_name)
-        except ValueError:
-            logger.error(f"unknown class {class_name} encountered, skipping")
-            return None
+    def _class_to_label(self, class_name: ClassName) -> ClassLabel:
+        self._context.class_list.add(class_name)
+        return self._context.class_list.index(class_name)
 
     def _store_labeled_examples(
         self,
@@ -376,9 +376,6 @@ class DataManager:
                         for bbox in example.boundingBoxes:
                             class_name = ClassName(bbox.class_name)
                             class_label = self._class_to_label(class_name)
-                            assert (
-                                class_label is not None
-                            ), "here is where I expect to fail on new classes"
 
                             # -1 because yolo counts positive classes starting from 0
                             index = class_label_to_int(class_label) - 1
@@ -430,7 +427,7 @@ class DataManager:
                 logger.info(
                     f"Promoted staging examples, totals by class={self.class_counts!r}"
                 )
-                if not self._context._abort_event.is_set():
+                if not self._context._abort_event.is_set() and new_samples:
                     self._context.new_labels_callback(new_samples)
 
             except Exception as e:
