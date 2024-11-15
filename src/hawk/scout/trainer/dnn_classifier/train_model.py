@@ -12,7 +12,7 @@ import time
 import warnings
 from enum import Enum
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Sequence
 
 import numpy as np
 import torch
@@ -29,10 +29,16 @@ from sklearn.metrics import (  # auc, precision_recall_curve, roc_auc_score,
     average_precision_score,
 )
 from sklearn.preprocessing import label_binarize
-from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
 
 from ...core.utils import ImageFromList
+from .model_io import (
+    load_checkpoint_state,
+    load_model_for_inference,
+    load_model_for_training,
+    model_input_size,
+    save_checkpoint_state,
+)
 
 model_names = sorted(
     name
@@ -140,7 +146,7 @@ parser.add_argument(
 parser.add_argument(
     "--resume",
     default=None,
-    type=str,
+    type=Path,
     metavar="PATH",
     help="path to latest checkpoint (default: none)",
 )
@@ -202,29 +208,21 @@ def eval_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None
     if args.gpu is not None:
         print(f"Use GPU: {args.gpu} for training")
 
-    print(f"=> using pre-trained model '{args.arch}'")
-    model = models.__dict__[args.arch](pretrained=True)
-    model, input_size = initialize_model(args.arch, args.num_classes, args.num_unfreeze)
-
-    if not torch.cuda.is_available():
-        print("using CPU, this will be slow")
-    else:
-        print("using GPU")
-        model = model.cuda()
-
-    criterion = nn.CrossEntropyLoss().cuda(args.gpu)
+    print(f"=> loading checkpoint state '{args.savepath}'")
+    checkpoint = load_checkpoint_state(args.resume, args.arch, args.num_classes)
 
     # load model from checkpoint
-    if args.resume:
-        if os.path.isfile(args.resume):
-            print(f"=> loading checkpoint '{args.resume}'")
-            checkpoint = torch.load(args.resume)
+    print(f"=> using pre-trained model '{args.arch}'")
+    model = load_model_for_inference(checkpoint)
+    input_size = model_input_size(args.arch)
 
-            args.start_epoch = checkpoint["epoch"]
-            model.load_state_dict(checkpoint["state_dict"])
-            print(f"=> loaded checkpoint {args.resume}")
-        else:
-            print(f"=> no checkpoint found at '{args.resume}'")
+    if checkpoint["epoch"]:
+        print(f"=> loaded checkpoint '{args.resume}'")
+        args.start_epoch = checkpoint["epoch"]
+    elif args.resume:
+        print(f"=> no checkpoint found at '{args.resume}'")
+
+    criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
     normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
@@ -276,15 +274,29 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
     if args.gpu is not None:
         print(f"Use GPU: {args.gpu} for training")
 
-    print(f"=> using pre-trained model '{args.arch}'")
-    model = models.__dict__[args.arch](weights="ResNet50_Weights.DEFAULT")
-    model, input_size = initialize_model(args.arch, args.num_classes, args.num_unfreeze)
+    if args.savepath is None:
+        args.savepath = Path("checkpoint.pth")
 
-    if not torch.cuda.is_available():
-        print("using CPU, this will be slow")
-    else:
-        print("using GPU")
-        model = model.cuda()
+    print(f"=> loading checkpoint state '{args.resume}'")
+    checkpoint = load_checkpoint_state(args.resume, args.arch, args.num_classes)
+
+    print(f"=> using pre-trained model '{args.arch}'")
+    model, optimizer, scheduler = load_model_for_training(
+        checkpoint=checkpoint,
+        num_classes=args.num_classes,
+        num_unfreeze=args.num_unfreeze,
+        learning_rate=args.lr,
+        momentum=args.momentum,
+        weight_decay=args.weight_decay,
+        warmup_epochs=args.warmup_epochs,
+    )
+    input_size = model_input_size(args.arch)
+
+    if checkpoint["epoch"]:
+        print(f"=> loaded checkpoint '{args.resume}' (epoch {checkpoint['epoch']})")
+        args.start_epoch = checkpoint["epoch"]
+    elif args.resume:
+        print(f"=> no checkpoint found at '{args.resume}'")
 
     cudnn.benchmark = True
 
@@ -382,43 +394,6 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
         weight=torch.Tensor(class_weights), label_smoothing=0.1
     ).cuda()
 
-    # define loss function (criterion), optimizer, and learning rate scheduler
-    optimizer = torch.optim.SGD(
-        model.parameters(),
-        args.lr,
-        momentum=args.momentum,
-        weight_decay=args.weight_decay,
-    )
-
-    lr_scheduler = StepLR(optimizer, step_size=100, gamma=0.9)
-    lr_warmup_epochs = args.warmup_epochs
-    warmup_lr_scheduler = torch.optim.lr_scheduler.LinearLR(
-        optimizer, start_factor=0.5, total_iters=lr_warmup_epochs
-    )
-    scheduler = torch.optim.lr_scheduler.SequentialLR(
-        optimizer,
-        schedulers=[warmup_lr_scheduler, lr_scheduler],
-        milestones=[lr_warmup_epochs],
-    )
-
-    # optionally resume from a checkpoint
-    if args.resume:
-        if os.path.isfile(args.resume):
-            print(f"=> loading checkpoint '{args.resume}'")
-            checkpoint = torch.load(args.resume)
-
-            args.start_epoch = checkpoint["epoch"]
-            model.load_state_dict(checkpoint["state_dict"])
-            optimizer.load_state_dict(checkpoint["optimizer"])
-            scheduler.load_state_dict(checkpoint["scheduler"])
-            print(
-                "=> loaded checkpoint '{}' (epoch {})".format(
-                    args.resume, checkpoint["epoch"]
-                )
-            )
-        else:
-            print(f"=> no checkpoint found at '{args.resume}'")
-
     epoch_count = 0
     args.break_epoch = args.epochs if args.break_epoch == -1 else args.break_epoch
 
@@ -438,15 +413,14 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
             best_acc1 = max(acc1, best_acc1)
             if is_best:
                 logger.info(f"Saving model AUC: {best_acc1}")
-                save_checkpoint(
-                    {
-                        "epoch": epoch + 1,
-                        "arch": args.arch,
-                        "state_dict": model.state_dict(),
-                        "optimizer": optimizer.state_dict(),
-                        "scheduler": scheduler.state_dict(),
-                    },
+                save_checkpoint_state(
                     args.savepath,
+                    arch=args.arch,
+                    epoch=epoch + 1,
+                    num_classes=args.num_classes,
+                    model=model,
+                    optimizer=optimizer,
+                    scheduler=scheduler,
                 )
 
         adjust_learning_rate(optimizer, scheduler, epoch, args)
@@ -454,17 +428,15 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
         if epoch_count >= args.break_epoch:
             if not args.validate:
                 logger.info("Saving last model")
-                save_checkpoint(
-                    {
-                        "epoch": epoch + 1,
-                        "arch": args.arch,
-                        "state_dict": model.state_dict(),
-                        "optimizer": optimizer.state_dict(),
-                        "scheduler": scheduler.state_dict(),
-                    },
+                save_checkpoint_state(
                     args.savepath,
+                    arch=args.arch,
+                    epoch=epoch + 1,
+                    num_classes=args.num_classes,
+                    model=model,
+                    optimizer=optimizer,
+                    scheduler=scheduler,
                 )
-
             break
 
     end_time = time.time()
@@ -483,11 +455,12 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
     if args.resume:
         # curr_model = curr_model.detach().cpu()
         checkpoint = torch.load(args.resume)
-        old_model = checkpoint["state_dict"]
+        if checkpoint["num_classes"] == args.num_classes:
+            old_model = checkpoint["state_dict"]
 
-        neg_alpha, alpha = 1.0 - args.ema, args.ema
-        for key in old_model:
-            curr_model[key] = neg_alpha * curr_model[key] + alpha * old_model[key]
+            neg_alpha, alpha = 1.0 - args.ema, args.ema
+            for key in old_model:
+                curr_model[key] = neg_alpha * curr_model[key] + alpha * old_model[key]
 
     model.load_state_dict(curr_model)
 
@@ -495,105 +468,15 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
         best_auc = validate_model(val_loader, model, criterion, args)
         logger.info(f"Best TEST AUC {best_auc}")
 
-    save_checkpoint(
-        {
-            "epoch": epoch + 1,
-            "arch": args.arch,
-            "state_dict": model.state_dict(),
-            "optimizer": optimizer.state_dict(),
-            "scheduler": scheduler.state_dict(),
-        },
+    save_checkpoint_state(
         args.savepath,
+        arch=args.arch,
+        epoch=epoch + 1,
+        num_classes=args.num_classes,
+        model=model,
+        optimizer=optimizer,
+        scheduler=scheduler,
     )
-
-
-def set_parameter_requires_grad(model: nn.Module, unfreeze: int = 0) -> None:
-    len_layers = len(list(model.children()))
-    num_freeze = len_layers - unfreeze
-    if unfreeze == -1:
-        num_freeze = 0
-
-    count = 0
-    for child in model.children():
-        count += 1
-        if count < num_freeze:
-            for param in child.parameters():
-                param.requires_grad = False
-        else:
-            pass
-            # print("COunt:", count)
-            # print("The following layer will be retrained:\n", child)
-
-
-def initialize_model(
-    arch: str, num_classes: int, unfreeze: int = 0
-) -> tuple[nn.Module, int]:
-    model_ft = None
-    input_size = 0
-    model_ft = models.__dict__[arch](pretrained=True)
-
-    if "resnet" in arch:
-        """Resnet"""
-        set_parameter_requires_grad(model_ft, unfreeze)
-        num_ftrs = model_ft.fc.in_features
-        model_ft.fc = nn.Linear(num_ftrs, num_classes)
-        input_size = 224
-
-    elif "alexnet" in arch:
-        """Alexnet"""
-        set_parameter_requires_grad(model_ft, unfreeze)
-        num_ftrs = model_ft.classifier[6].in_features
-        model_ft.classifier[6] = nn.Linear(num_ftrs, num_classes)
-        input_size = 224
-
-    elif "vgg" in arch:
-        """VGG11_bn"""
-        set_parameter_requires_grad(model_ft, unfreeze)
-        num_ftrs = model_ft.classifier[6].in_features
-        model_ft.classifier[6] = nn.Linear(num_ftrs, num_classes)
-        input_size = 224
-
-    elif "squeezenet" in arch:
-        """Squeezenet"""
-        set_parameter_requires_grad(model_ft, unfreeze)
-        model_ft.classifier[1] = nn.Conv2d(
-            512, num_classes, kernel_size=(1, 1), stride=(1, 1)
-        )
-        model_ft.num_classes = num_classes
-        input_size = 224
-
-    elif "densenet" in arch:
-        """Densenet"""
-        set_parameter_requires_grad(model_ft, unfreeze)
-        num_ftrs = model_ft.classifier.in_features
-        model_ft.classifier = nn.Linear(num_ftrs, num_classes)
-        input_size = 224
-
-    elif "inception" in arch:
-        """Inception v3
-        Be careful, expects (299,299) sized images and has auxiliary output
-        """
-        set_parameter_requires_grad(model_ft, unfreeze)
-        # Handle the auxilary net
-        num_ftrs = model_ft.AuxLogits.fc.in_features
-        model_ft.AuxLogits.fc = nn.Linear(num_ftrs, num_classes)
-        # Handle the primary net
-        num_ftrs = model_ft.fc.in_features
-        model_ft.fc = nn.Linear(num_ftrs, num_classes)
-        input_size = 299
-
-    elif "efficientnet" in arch:
-        set_parameter_requires_grad(model_ft, unfreeze)
-        num_ftrs = model_ft.classifier[1].in_features
-        model_ft.classifier[1] = nn.Linear(num_ftrs, num_classes)
-        input_size = 224
-
-    else:
-        print("Invalid model name, exiting...")
-        exit()
-    logger.info(f"Number of classes: {num_classes}")
-
-    return model_ft, input_size
 
 
 def train(
@@ -739,11 +622,6 @@ def validate_model(
     auc = calculate_performance(y_true, y_pred)
 
     return auc
-
-
-def save_checkpoint(state: dict[str, Any], path: Path | None = None) -> None:
-    filename = "checkpoint.pth" if path is None else str(path)
-    torch.save(state, filename)
 
 
 class Summary(Enum):

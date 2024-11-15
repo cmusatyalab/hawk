@@ -14,14 +14,16 @@ import torchvision.transforms as transforms
 from logzero import logger
 from PIL import Image, ImageFile
 from torch.utils.data import DataLoader
-from torchvision import datasets, models
+from torchvision import datasets
 
+from ....classes import ClassName, class_label_to_int
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.object_provider import ObjectProvider
 from ...core.result_provider import BoundingBox, ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
+from .model_io import load_checkpoint_state, load_model_for_inference
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -103,63 +105,11 @@ class DNNClassifierModel(ModelBase):
 
     def load_model(self, model_path: Path) -> torch.nn.Module:
         assert self.context is not None
-        model = self.initialize_model(
-            self._arch, num_classes=len(self.context.class_list)
+        checkpoint = load_checkpoint_state(
+            model_path, arch=self._arch, num_classes=len(self.context.class_list)
         )
-        checkpoint = torch.load(model_path)
-        model.load_state_dict(checkpoint["state_dict"])
+        model = load_model_for_inference(checkpoint)
         return model
-
-    def initialize_model(self, arch: str, num_classes: int = 2) -> torch.nn.Module:
-        model_ft = models.__dict__[arch](pretrained=True)
-
-        if "resnet" in arch:
-            """Resnet"""
-            num_ftrs = model_ft.fc.in_features
-            model_ft.fc = torch.nn.Linear(num_ftrs, num_classes)
-
-        elif "alexnet" in arch:
-            """Alexnet"""
-            num_ftrs = model_ft.classifier[6].in_features
-            model_ft.classifier[6] = torch.nn.Linear(num_ftrs, num_classes)
-
-        elif "vgg" in arch:
-            """VGG11_bn"""
-            num_ftrs = model_ft.classifier[6].in_features
-            model_ft.classifier[6] = torch.nn.Linear(num_ftrs, num_classes)
-
-        elif "squeezenet" in arch:
-            """Squeezenet"""
-            model_ft.classifier[1] = torch.nn.Conv2d(
-                512, num_classes, kernel_size=(1, 1), stride=(1, 1)
-            )
-            model_ft.num_classes = num_classes
-
-        elif "densenet" in arch:
-            """Densenet"""
-            num_ftrs = model_ft.classifier.in_features
-            model_ft.classifier = torch.nn.Linear(num_ftrs, num_classes)
-
-        elif "inception" in arch:
-            """Inception v3
-            Be careful, expects (299,299) sized images and has auxiliary output
-            """
-            # Handle the auxilary net
-            num_ftrs = model_ft.AuxLogits.fc.in_features
-            model_ft.AuxLogits.fc = torch.nn.Linear(num_ftrs, num_classes)
-            # Handle the primary net
-            num_ftrs = model_ft.fc.in_features
-            model_ft.fc = torch.nn.Linear(num_ftrs, num_classes)
-
-        elif "efficientnet" in arch:
-            num_ftrs = model_ft.classifier[1].in_features
-            model_ft.classifier[1] = torch.nn.Linear(num_ftrs, num_classes)
-
-        else:
-            logger.error("Invalid model name, exiting...")
-            exit()
-
-        return model_ft
 
     def get_predictions(self, inputs: torch.Tensor) -> Sequence[Sequence[float]]:
         with torch.no_grad():
@@ -330,19 +280,24 @@ class DNNClassifierModel(ModelBase):
             for i in range(len(batch)):
                 score = predictions[i]
                 result_object = batch[i][0]
-                feature_vector = (
-                    self.batch_feature_vectors[i]
-                    if self.extract_feature_vector
-                    else None
-                )
-                fv_bytes = io.BytesIO()
-                torch.save(feature_vector, fv_bytes)
-                final_fv = fv_bytes.getvalue() if feature_vector is not None else None
+
+                if self.extract_feature_vector:
+                    feature_vector = self.batch_feature_vectors[i]
+                    with io.BytesIO() as fv_bytes:
+                        torch.save(feature_vector, fv_bytes)
+                        final_fv = fv_bytes.getvalue()
+                else:
+                    final_fv = None
+
                 if self._mode == "oracle":
                     num_classes = len(self.context.class_list)
-                    cls = int(result_object.id.split("/", 2)[1])
+
+                    class_name = ClassName(result_object.id.split("/", 2)[1])
+                    class_label = self.context.class_list.index(class_name)
+
                     score = [0.0] * num_classes
-                    score[cls] = 1.0
+                    score[class_label_to_int(class_label)] = 1.0
+
                 bboxes: list[BoundingBox] = [
                     {
                         "class_name": class_name,
