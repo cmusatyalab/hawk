@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Sequence, Tuple
 
 import torch
-import torchvision.transforms as transforms
 from logzero import logger
 from PIL import Image, ImageFile
 from torch.utils.data import DataLoader
@@ -23,7 +22,7 @@ from ...core.model import ModelBase
 from ...core.object_provider import ObjectProvider
 from ...core.result_provider import BoundingBox, ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
-from .model_io import load_checkpoint_state, load_model_for_inference
+from .training_state import TrainingState
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -41,16 +40,6 @@ class DNNClassifierModel(ModelBase):
         logger.info(f"Loading DNN Model from {model_path}")
         assert model_path.is_file()
         args["input_size"] = int(args.get("input_size", 224))
-        test_transforms = transforms.Compose(
-            [
-                transforms.Resize(args["input_size"] + 32),
-                transforms.CenterCrop(args["input_size"]),
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                ),
-            ]
-        )
         args["test_batch_size"] = args.get("test_batch_size", 64)
         args["version"] = version
         args["arch"] = args.get("arch", "resnet50")
@@ -63,10 +52,9 @@ class DNNClassifierModel(ModelBase):
 
         self._arch = args["arch"]
         self._train_examples = args["train_examples"]
-        self._test_transforms = test_transforms
         self._batch_size = args["test_batch_size"]
 
-        self._model: torch.nn.Module = self.load_model(model_path)
+        self._model, self._preprocess = self.load_model(model_path)
         self._device = torch.device("cpu")
         self._model.to(self._device)
         self._model.eval()
@@ -88,7 +76,7 @@ class DNNClassifierModel(ModelBase):
         if image.mode != "RGB":
             image = image.convert("RGB")
 
-        return request, self._test_transforms(image)
+        return request, self._preprocess(image)
 
     def serialize(self) -> bytes:
         if self._model is None:
@@ -105,11 +93,8 @@ class DNNClassifierModel(ModelBase):
 
     def load_model(self, model_path: Path) -> torch.nn.Module:
         assert self.context is not None
-        checkpoint = load_checkpoint_state(
-            model_path, arch=self._arch, num_classes=len(self.context.class_list)
-        )
-        model = load_model_for_inference(checkpoint)
-        return model
+        model, preprocess, _ = TrainingState.load_for_inference(model_path)
+        return model, preprocess
 
     def get_predictions(self, inputs: torch.Tensor) -> Sequence[Sequence[float]]:
         with torch.no_grad():
@@ -189,7 +174,7 @@ class DNNClassifierModel(ModelBase):
         directory: Path,
         callback_fn: Callable[[int, List[int], List[Sequence[float]]], TestResults],
     ) -> TestResults:
-        dataset = datasets.ImageFolder(str(directory), transform=self._test_transforms)
+        dataset = datasets.ImageFolder(str(directory), transform=self._preprocess)
         data_loader = DataLoader(
             dataset,
             batch_size=self._batch_size,
@@ -225,7 +210,7 @@ class DNNClassifierModel(ModelBase):
                 label_list.append(int(label))
 
         dataset = ImageFromList(
-            image_list, transform=self._test_transforms, label_list=label_list
+            image_list, transform=self._preprocess, label_list=label_list
         )
         data_loader = DataLoader(
             dataset,

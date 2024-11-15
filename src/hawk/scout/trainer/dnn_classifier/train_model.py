@@ -23,7 +23,7 @@ import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.models as models
-import torchvision.transforms as transforms
+import torchvision.transforms.v2 as transforms
 from logzero import logger
 from sklearn.metrics import (  # auc, precision_recall_curve, roc_auc_score,
     average_precision_score,
@@ -32,19 +32,16 @@ from sklearn.preprocessing import label_binarize
 from tqdm import tqdm
 
 from ...core.utils import ImageFromList
-from .model_io import (
-    load_checkpoint_state,
-    load_model_for_inference,
-    load_model_for_training,
-    model_input_size,
-    save_checkpoint_state,
-)
+from .training_state import TrainingState
 
-model_names = sorted(
-    name
-    for name in models.__dict__
-    if name.islower() and not name.startswith("__") and callable(models.__dict__[name])
-)
+model_names = models.list_models()
+
+#
+# Shilpa's original experiment had the following arguments as defaults
+# --arch resnet50
+# --bootstrap-weights IMAGENET1K_V1
+# --ema 0.5
+#
 
 parser = argparse.ArgumentParser(description="PyTorch ImageNet Training")
 parser.add_argument("--trainpath", type=str, default="", help="path to tain file")
@@ -61,7 +58,14 @@ parser.add_argument(
     metavar="ARCH",
     default="resnet50",
     choices=model_names,
-    help="model architecture: " + " | ".join(model_names) + " (default: resnet18)",
+    help="model architecture: " + " | ".join(model_names) + " (default: resnet50)",
+)
+parser.add_argument(
+    "--bootstrap-weights",
+    metavar="WEIGHTS",
+    # default="IMAGENET1K_V1",
+    default="DEFAULT",
+    help="model specific weights (DEFAULT|IMAGENET1K_V1|IMAGENET1K_V2)",
 )
 parser.add_argument(
     "-e",
@@ -157,8 +161,8 @@ parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
 parser.add_argument(
     "--ema",
     type=float,
-    default=0.5,
-    help="average with last checkpoint (0 is no averaging, default 0.5)",
+    default=0.3,
+    help="average with last checkpoint (0 is no averaging, default 0.3)",
 )
 
 best_acc1 = 0.0
@@ -208,25 +212,20 @@ def eval_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None
     if args.gpu is not None:
         print(f"Use GPU: {args.gpu} for training")
 
-    print(f"=> loading checkpoint state '{args.savepath}'")
-    checkpoint = load_checkpoint_state(args.resume, args.arch, args.num_classes)
-
     # load model from checkpoint
-    print(f"=> using pre-trained model '{args.arch}'")
-    model = load_model_for_inference(checkpoint)
-    input_size = model_input_size(args.arch)
-
-    if checkpoint["epoch"]:
+    print(f"=> loading checkpoint state '{args.resume}'")
+    torch_model, preprocess, args.start_epoch = TrainingState.load_for_inference(
+        args.resume
+    )
+    if args.start_epoch:
         print(f"=> loaded checkpoint '{args.resume}'")
-        args.start_epoch = checkpoint["epoch"]
     elif args.resume:
         print(f"=> no checkpoint found at '{args.resume}'")
 
-    criterion = nn.CrossEntropyLoss().cuda(args.gpu)
+    if args.gpu:
+        torch_model = torch_model.cuda()
 
-    normalize = transforms.Normalize(
-        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-    )
+    criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
     val_path = args.valpath
     logger.info(f"Test path {val_path}")
@@ -242,14 +241,7 @@ def eval_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None
 
     val_dataset = ImageFromList(
         val_list,
-        transforms.Compose(
-            [
-                transforms.Resize(input_size + 32),
-                transforms.CenterCrop(input_size),
-                transforms.ToTensor(),
-                normalize,
-            ]
-        ),
+        preprocess,
         label_list=val_labels,
     )
 
@@ -261,7 +253,7 @@ def eval_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None
         pin_memory=True,
     )
 
-    auc = validate_model(val_loader, model, criterion, args)
+    auc = validate_model(torch_model, val_loader, criterion, args)
 
     logger.info(f"Model AUC {auc}")
 
@@ -278,11 +270,10 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
         args.savepath = Path("checkpoint.pth")
 
     print(f"=> loading checkpoint state '{args.resume}'")
-    checkpoint = load_checkpoint_state(args.resume, args.arch, args.num_classes)
-
-    print(f"=> using pre-trained model '{args.arch}'")
-    model, optimizer, scheduler = load_model_for_training(
-        checkpoint=checkpoint,
+    model_state = TrainingState.load_for_training(
+        args.resume,
+        bootstrap_arch=args.arch,
+        bootstrap_weights=args.bootstrap_weights,
         num_classes=args.num_classes,
         num_unfreeze=args.num_unfreeze,
         learning_rate=args.lr,
@@ -290,11 +281,10 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
         weight_decay=args.weight_decay,
         warmup_epochs=args.warmup_epochs,
     )
-    input_size = model_input_size(args.arch)
 
-    if checkpoint["epoch"]:
-        print(f"=> loaded checkpoint '{args.resume}' (epoch {checkpoint['epoch']})")
-        args.start_epoch = checkpoint["epoch"]
+    if model_state.is_resumed:
+        print(f"=> loaded checkpoint '{args.resume}' (epoch {model_state.epoch})")
+        args.start_epoch = model_state.epoch
     elif args.resume:
         print(f"=> no checkpoint found at '{args.resume}'")
 
@@ -311,20 +301,20 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
             train_list.append(Path(path))
             train_labels.append(int(label))
 
-    normalize = transforms.Normalize(
-        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+    preprocess = transforms.Compose(
+        [
+            transforms.ToImage(),
+            transforms.ToDtype(torch.uint8, scale=True),
+            # transforms.RandomResizedCrop(model_state.input_size),
+            transforms.RandomRotation(15),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToDtype(torch.float32, scale=True),
+            model_state.preprocess,
+        ]
     )
-
     train_dataset = ImageFromList(
         train_list,
-        transforms.Compose(
-            [
-                transforms.RandomResizedCrop(input_size),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                normalize,
-            ]
-        ),
+        preprocess,
         label_list=train_labels,
         limit=500 * sum(train_labels),
     )
@@ -357,14 +347,7 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
 
         val_dataset = ImageFromList(
             val_list,
-            transforms.Compose(
-                [
-                    transforms.Resize(input_size + 32),
-                    transforms.CenterCrop(input_size),
-                    transforms.ToTensor(),
-                    normalize,
-                ]
-            ),
+            model_state.preprocess,
             label_list=val_labels,
             limit=500 * sum(val_labels),
         )
@@ -402,97 +385,59 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
             train_sampler.set_seed()
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args)
+        train(model_state, train_loader, criterion)
+        model_state.epoch = epoch + 1
 
         logger.info(f"Epoch {epoch}")
         if args.validate:
             # evaluate on validation set
-            acc1 = validate_model(val_loader, model, criterion, args)
+            acc1 = validate_model(model_state.torch_model, val_loader, criterion, args)
             # remember best acc@1 and save checkpoint
             is_best = acc1 >= best_acc1
             best_acc1 = max(acc1, best_acc1)
             if is_best:
                 logger.info(f"Saving model AUC: {best_acc1}")
-                save_checkpoint_state(
-                    args.savepath,
-                    arch=args.arch,
-                    epoch=epoch + 1,
-                    num_classes=args.num_classes,
-                    model=model,
-                    optimizer=optimizer,
-                    scheduler=scheduler,
-                )
+                model_state.save_checkpoint(args.savepath)
 
-        adjust_learning_rate(optimizer, scheduler, epoch, args)
+        adjust_learning_rate(model_state, epoch, args)
+
         epoch_count += 1
         if epoch_count >= args.break_epoch:
             if not args.validate:
                 logger.info("Saving last model")
-                save_checkpoint_state(
-                    args.savepath,
-                    arch=args.arch,
-                    epoch=epoch + 1,
-                    num_classes=args.num_classes,
-                    model=model,
-                    optimizer=optimizer,
-                    scheduler=scheduler,
-                )
+                model_state.save_checkpoint(args.savepath)
             break
 
     end_time = time.time()
     print(end_time - start_time)
 
-    if not args.ema:
-        return
-
-    # EMA: Averaging models
     if args.validate:
-        best_checkpoint = torch.load(args.savepath)
-        curr_model = best_checkpoint["state_dict"]
-    else:
-        curr_model = model.state_dict()
+        # if we were not using validate, we saved the last epoch which happens
+        # to be the current model, so rollback is not necessary
+        model_state.rollback(args.savepath)
 
-    if args.resume:
-        # curr_model = curr_model.detach().cpu()
-        checkpoint = torch.load(args.resume)
-        if checkpoint["num_classes"] == args.num_classes:
-            old_model = checkpoint["state_dict"]
-
-            neg_alpha, alpha = 1.0 - args.ema, args.ema
-            for key in old_model:
-                curr_model[key] = neg_alpha * curr_model[key] + alpha * old_model[key]
-
-    model.load_state_dict(curr_model)
+    # EMA: Averaging models, merge with previous model to provide stability and
+    # reduce the effect of human labeling errors
+    model_state.merge(args.resume, alpha=args.ema)
 
     if args.validate:
-        best_auc = validate_model(val_loader, model, criterion, args)
+        best_auc = validate_model(model_state.torch_model, val_loader, criterion, args)
         logger.info(f"Best TEST AUC {best_auc}")
 
-    save_checkpoint_state(
-        args.savepath,
-        arch=args.arch,
-        epoch=epoch + 1,
-        num_classes=args.num_classes,
-        model=model,
-        optimizer=optimizer,
-        scheduler=scheduler,
-    )
+    model_state.save_checkpoint(args.savepath)
 
 
 def train(
+    model_state: TrainingState,
     train_loader: torch.utils.data.DataLoader,
-    model: nn.Module,
     criterion: nn._Loss,
-    optimizer: torch.optim.Optimizer,
-    epoch: int,
-    args: argparse.Namespace,
 ) -> None:
     batch_time = AverageMeter("Time", ":6.3f")
     data_time = AverageMeter("Data", ":6.3f")
     losses = AverageMeter("Loss", ":.4e")
 
     # switch to train mode
-    model.train()
+    model_state.torch_model.train()
 
     end = time.time()
     for images, target in train_loader:
@@ -504,16 +449,17 @@ def train(
             target = target.cuda(non_blocking=True)
 
         # compute output
-        output = model(images)
+        output = model_state.torch_model(images)
         loss = criterion(output, target)
 
         # measure accuracy and record loss
         losses.update(loss.item(), images.size(0))
 
         # compute gradient and do SGD step
-        optimizer.zero_grad()
+        assert model_state.optimizer is not None
+        model_state.optimizer.zero_grad()
         loss.backward()
-        optimizer.step()
+        model_state.optimizer.step()
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -521,8 +467,7 @@ def train(
 
 
 def adjust_learning_rate(
-    optimizer: torch.optim.Optimizer,
-    scheduler: torch.optim.lr_scheduler.LRScheduler,
+    model_state: TrainingState,
     epoch: int,
     args: argparse.Namespace,
 ) -> None:
@@ -530,12 +475,12 @@ def adjust_learning_rate(
     # for param_group in optimizer.param_groups:
     # param_group['lr'] = lr
     try:
-        last_lr = scheduler.get_last_lr()[0]
+        last_lr = model_state.scheduler.get_last_lr()[0]
     except Exception:
-        last_lr = optimizer.param_groups[0]["lr"]
+        last_lr = model_state.optimizer.param_groups[0]["lr"]
     if epoch > args.warmup_epochs and last_lr <= args.min_lr:
         return
-    scheduler.step()
+    model_state.scheduler.step()
 
 
 def calculate_performance(
@@ -561,8 +506,8 @@ def calculate_performance(
 
 
 def validate_model(
+    torch_model: torch.nn.Module,
     val_loader: torch.utils.data.DataLoader,
-    model: nn.Module,
     criterion: nn._Loss,
     args: argparse.Namespace,
 ) -> float:
@@ -570,7 +515,7 @@ def validate_model(
     losses = AverageMeter("Loss", ":.4e", Summary.NONE)
 
     # switch to evaluate mode
-    model.eval()
+    torch_model.eval()
 
     y_true = []
     y_pred = []
@@ -586,7 +531,7 @@ def validate_model(
                 target = target.cuda(non_blocking=True)
 
             # compute output
-            output = model(images)
+            output = torch_model(images)
 
             loss = criterion(output, target)
 
