@@ -128,7 +128,13 @@ class Detection:
     def to_dict(self, class_list: ClassList | None = None) -> dict[str, Any]:
         """asdict but if list of classes is given we add all classes to scores."""
         # don't include negative class from class_map
-        positives = class_list.positive if class_list is not None else list(self.scores)
+        # add any new classes to the class list
+        if class_list is not None:
+            class_list.extend(self.scores)
+            positives = class_list.positive
+        else:
+            positives = list(self.scores)
+
         return dict(
             x=self.x,
             y=self.y,
