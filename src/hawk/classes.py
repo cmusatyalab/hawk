@@ -9,6 +9,7 @@ from __future__ import annotations
 import sys
 from collections import Counter
 from dataclasses import InitVar, dataclass, field
+from threading import Lock
 from typing import TYPE_CHECKING, Iterable, Iterator, NewType, Sequence
 
 from logzero import logger
@@ -56,6 +57,7 @@ class ClassList:
 
     def __post_init__(self, classes: Iterable[str]) -> None:
         # Ensure we always have 'negative' as class 0
+        self.lock = Lock()
         self._classes = [NEGATIVE_CLASS]
         self.extend(ClassName(sys.intern(name)) for name in classes)
 
@@ -91,7 +93,9 @@ class ClassList:
     def add(self, class_name: ClassName) -> None:
         """Add a single new class if it doesn't exist already."""
         if class_name not in self._classes:
-            self._classes.append(class_name)
+            with self.lock:
+                if class_name not in self._classes:
+                    self._classes.append(class_name)
 
     def extend(self, classes: Iterable[ClassName]) -> ClassList:
         """Extend with new class names."""
