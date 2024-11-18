@@ -694,17 +694,17 @@ class Admin:
                 negatives = collect_histogram_bucket(HAWK_LABELED_OBJECTS, 0)
                 positives = collect_summary_count(HAWK_LABELED_OBJECTS) - negatives
 
-                counts: Counter[str] = Counter()
+                per_class_counts: Counter[str] = Counter()
                 for sample in collect_metric_samples(HAWK_LABELED_CLASSES):
-                    counts[sample.labels["class_name"]] += int(sample.value)
-                per_class_counts = {cls: counts[cls] for cls in self.class_list[1:]}
+                    if (class_name := sample.labels["class_name"]) != "negative":
+                        per_class_counts[class_name] += int(sample.value)
 
                 stats.update(
                     {
                         "positives": positives,
                         "negatives": negatives,
                         "bytes": collect_summary_total(HAWK_UNLABELED_RECEIVED),
-                        "count_by_class": per_class_counts,
+                        "count_by_class": dict(per_class_counts),
                     }
                 )
 
