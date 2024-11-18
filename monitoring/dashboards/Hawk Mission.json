@@ -18,7 +18,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
   "links": [],
   "panels": [
     {
@@ -490,7 +489,24 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Labeled %"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "percentunit"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -564,6 +580,19 @@
           "range": true,
           "refId": "C",
           "useBackend": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "sum(hawk_labeled_objects_count{mission=~\"$mission_id\"} - ignoring(le) hawk_labeled_objects_bucket{mission=~\"$mission_id\", le=\"0.0\"}) / sum(hawk_inferenced_objects_count{mission=~\"$mission_id\", gt!=\"negative\", instance=~\"$scouts\"})",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Labeled %",
+          "range": true,
+          "refId": "D"
         }
       ],
       "title": "True Positives",
@@ -1034,8 +1063,7 @@
             "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
-              "log": 2,
-              "type": "log"
+              "type": "linear"
             },
             "showPoints": "auto",
             "spanNulls": false,
@@ -1159,6 +1187,7 @@
       "type": "timeseries"
     }
   ],
+  "refresh": "auto",
   "schemaVersion": 39,
   "tags": [
     "hawk"
@@ -1290,6 +1319,6 @@
   "timezone": "browser",
   "title": "Hawk Mission",
   "uid": "cdnscdmouq9dsd",
-  "version": 16,
+  "version": 20,
   "weekStart": ""
 }
