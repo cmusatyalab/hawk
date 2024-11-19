@@ -7,6 +7,7 @@ from __future__ import annotations
 import queue
 import threading
 from abc import ABCMeta, abstractmethod
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -47,6 +48,7 @@ class SelectorStats:
     items_revisited: int
     positive_in_stream: int
     train_positives: int
+    classes_in_stream: dict[str, int]
 
 
 class Selector(metaclass=ABCMeta):
@@ -261,15 +263,18 @@ class SelectorBase(Selector):
             for sample in instance.samples
             if sample.name.endswith("_count")
         ]
+
         processed_objects = sum(sample.value for sample in inferenced)
-        positives_in_stream = sum(
-            sample.value for sample in inferenced if sample.labels["gt"] != "negative"
-        )
+
+        positives_in_stream: Counter[str] = Counter()
+        for sample in inferenced:
+            if (class_name := sample.labels["gt"]) != "negative":
+                positives_in_stream[class_name] += int(sample.value)
 
         return SelectorStats(
             processed_objects=int(processed_objects),
             items_revisited=collect_metrics_total(self.num_revisited),
-            positive_in_stream=int(positives_in_stream),
+            positive_in_stream=sum(positives_in_stream.values()),
             train_positives=self.model_examples,
             surv_TPs=surv_TPs,
             surv_TNs=surv_TNs,
@@ -277,4 +282,5 @@ class SelectorBase(Selector):
             surv_FNs=surv_FNs,
             surv_threat_not_neut=surv_threat_not_neut,
             num_countermeasures_remain=countermeasures_remain,
+            classes_in_stream=dict(positives_in_stream),
         )

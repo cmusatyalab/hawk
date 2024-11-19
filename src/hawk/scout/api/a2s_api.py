@@ -408,11 +408,20 @@ class A2SAPI:
 
         mission_stats = dataclasses.asdict(retriever_stats)
         mission_stats.update(dataclasses.asdict(selector_stats))
+
+        for class_name, count in mission_stats["classes_in_stream"].items():
+            key = f"positive_in_stream_{class_name}"
+            if key in mission_stats:
+                mission_stats[key] += count
+            else:
+                mission_stats[key] = count
+
         keys_to_remove = [
             "total_objects",
             "processed_objects",
             "dropped_objects",
             "false_negatives",
+            "classes_in_stream",
         ]
         for k in list(mission_stats):
             v = mission_stats[k]
