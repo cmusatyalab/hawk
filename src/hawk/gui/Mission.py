@@ -157,8 +157,8 @@ def update_statistics(mission: Mission) -> bool:
 ####
 # to minimize flickering when rerunning the script we update the sidebar
 # before we render results.
-if update_statistics(mission):
-    st_autorefresh(interval=2000, key="refresh")
+mission_active = update_statistics(mission)
+dialog_displayed = False
 
 
 ####
@@ -282,6 +282,8 @@ def classification_ui(mission: Mission, sample: LabelSample) -> None:
     col1, col2 = st.columns([1, 3])
     with col1:
         if st.button("View", key=f"{sample.index}_view"):
+            global dialog_displayed
+            dialog_displayed = True
             image_classifier_popup(mission, sample)
     with col2:
         classification_pulldown(mission, sample)
@@ -343,6 +345,8 @@ def detection_ui(mission: Mission, sample: LabelSample) -> None:
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Edit", key=f"{sample.index}_edit"):
+            global dialog_displayed
+            dialog_displayed = True
             st.session_state.editstate = labelkit_args
             annotation_editor_popup(mission, sample)
 
@@ -422,3 +426,6 @@ else:
 
 elapsed = time.time() - start
 st.write(f"Time to render page {elapsed:.3f}s")
+
+if mission_active and not dialog_displayed:
+    st_autorefresh(interval=2000, key="refresh")
