@@ -11,13 +11,20 @@ import hashlib
 import json
 import sys
 import time
+from collections import Counter
 from dataclasses import InitVar, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterator, NewType, TextIO, TypedDict
 
 from logzero import logger
 
-from ..classes import ClassLabel, ClassList, ClassName, class_label_to_int
+from ..classes import (
+    NEGATIVE_CLASS,
+    ClassLabel,
+    ClassList,
+    ClassName,
+    class_label_to_int,
+)
 from .utils import tailf
 
 if TYPE_CHECKING:
@@ -146,6 +153,9 @@ class Detection:
     def by_score(self) -> list[tuple[ClassName, float]]:
         return sorted(self.scores.items(), key=lambda x: x[1], reverse=True)
 
+    def class_counts(self) -> Counter[ClassName]:
+        return Counter(self.scores)
+
     def class_list(self) -> ClassList:
         return ClassList().extend(self.scores)
 
@@ -244,6 +254,14 @@ class LabelSample:
         return set.union(
             set(), *[detection.class_list() for detection in self.detections]
         )
+
+    def class_counts(self) -> Counter[ClassName]:
+        count: Counter[ClassName] = Counter()
+        for detection in self.detections:
+            count.update(detection.class_counts())
+        if not count:
+            count[NEGATIVE_CLASS] = 1
+        return count
 
     @property
     def is_classification(self) -> bool:

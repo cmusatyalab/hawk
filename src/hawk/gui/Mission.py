@@ -6,14 +6,16 @@ from __future__ import annotations
 
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterator
 
+import pandas as pd
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 from streamlit_label_kit import detection as st_detection
 
-from hawk.classes import ClassList, ClassName, class_label_to_int
+from hawk.classes import NEGATIVE_CLASS, ClassList, ClassName, class_label_to_int
 from hawk.gui.elements import ABOUT_TEXT, Mission, page_header, paginate
 from hawk.home.label_utils import Detection, LabelSample
 
@@ -169,6 +171,17 @@ if "rows" not in st.session_state:
 st.sidebar.slider("columns", min_value=1, max_value=8, key="columns")
 st.sidebar.slider("rows", min_value=1, max_value=8, key="rows")
 st.sidebar.toggle("Show Labeled", key="show_labeled")
+
+
+# Display a by-class breakdown of labeled samples
+counts: Counter[ClassName] = Counter()
+for label in mission.labeled.values():
+    counts.update(label.class_counts())
+labeled_by_class = pd.DataFrame([counts])
+if NEGATIVE_CLASS in labeled_by_class:
+    labeled_by_class[NEGATIVE_CLASS] *= -1
+if not labeled_by_class.empty:
+    st.bar_chart(labeled_by_class, horizontal=True)
 
 
 # To inject a new class into the classification/detection.
