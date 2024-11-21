@@ -254,7 +254,7 @@ def classification_pulldown(
 @st.dialog("Image Viewer", width="large")
 def image_classifier_popup(mission: Mission, sample: LabelSample) -> None:
     image = mission.image_path(sample)
-    st.image(str(image), use_column_width=True)
+    st.image(str(image), use_container_width=True)
 
     # with st.expander("See more"):
     #     st.image(str(image))
@@ -381,7 +381,7 @@ def display_radar_images(mission: Mission) -> None:
                         f"<div style='padding-top: {padding_top}px'></div>",
                         unsafe_allow_html=True,
                     )
-                    st.image(str(stereo_image), use_column_width=True)
+                    st.image(str(stereo_image), use_container_width=True)
                     st.markdown(
                         f"<div style='padding-bottom: {padding_bottom}px'></div>",
                         unsafe_allow_html=True,
@@ -414,26 +414,30 @@ else:
     display_images(mission)  # RGB default function call
 
 
-###
+####
 # Display a by-class breakdown of labeled samples
 counts: dict[int, Counter[ClassName]] = defaultdict(Counter)
 for label in mission.labeled.values():
     counts[label.model_version].update(label.class_counts())
 labeled_by_class = pd.DataFrame(counts)
 
-col1, col2, *_ = st.columns(10)
-detailed = col1.toggle("=")
-as_percentage = col2.toggle("%")
 if not labeled_by_class.empty:
-    if not detailed:
+    chart_options = [":material/view_timeline:", ":material/percent:"]
+    chart_config = st.segmented_control(
+        "Chart Options",
+        chart_options,
+        selection_mode="multi",
+        label_visibility="hidden",
+    )
+    if chart_options[0] not in chart_config:
+        # summarize by class
         labeled_by_class = pd.DataFrame(labeled_by_class.T.sum())
-    if as_percentage:
+    if chart_options[1] in chart_config:
+        # scale to percentage of total
         labeled_by_class /= labeled_by_class.sum()
     elif "negative" in labeled_by_class.index:
         labeled_by_class.loc["negative"] *= -1
     st.bar_chart(labeled_by_class.T, horizontal=True, y_label="model version")
-    # labeled_by_class = pd.DataFrame(labeled_by_class.T.sum())
-    # st.bar_chart(labeled_by_class.T, horizontal=True)
 
 
 elapsed = time.time() - start
