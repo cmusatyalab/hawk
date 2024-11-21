@@ -161,8 +161,8 @@ parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
 parser.add_argument(
     "--ema",
     type=float,
-    default=0.3,
-    help="average with last checkpoint (0 is no averaging, default 0.3)",
+    default=0.2,
+    help="average with last checkpoint (0 is no averaging, default 0.2)",
 )
 
 best_acc1 = 0.0
