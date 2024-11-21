@@ -76,6 +76,7 @@ class UnlabeledResult(LabelSample):
         result = cls(
             objectId=ObjectId(request.objectId),
             scoutIndex=request.scoutIndex,
+            model_version=request.version,
             score=score,
             detections=detections,
         )

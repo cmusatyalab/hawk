@@ -206,6 +206,7 @@ class LabelSample:
 
     objectId: ObjectId  # unique object id
     scoutIndex: int  # index of originating scout
+    model_version: int = -1  # version of the model used to generate the sample
     queued: float = field(default_factory=time.time)
     detections: list[Detection] = field(default_factory=list)
     line: InitVar[int] = -1  # used to track line number in jsonl file
@@ -233,6 +234,7 @@ class LabelSample:
             dict(
                 objectId=self.objectId,
                 scoutIndex=self.scoutIndex,
+                model_version=self.model_version,
                 queued=self.queued,
                 detections=[
                     detection.to_dict(class_list) for detection in self.detections
