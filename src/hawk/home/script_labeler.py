@@ -27,8 +27,9 @@ class ScriptLabeler:
     label_time: float = 0.0
     detect: bool = False
     gt_path: Path | None = None
-    positives = 0
-    negatives = 0
+    avoid_duplicates: bool = True
+    positives: int = 0
+    negatives: int = 0
 
     def __post_init__(self) -> None:
         if self.detect:
@@ -64,7 +65,9 @@ class ScriptLabeler:
         self.mission_data = MissionResults(self.mission_dir)
         with suppress(KeyboardInterrupt):
             logger.debug("Waiting for data to label")
-            for result in self.mission_data.read_unlabeled(tail=True):
+            for result in self.mission_data.read_unlabeled(
+                exclude_labeled=self.avoid_duplicates, tail=True
+            ):
                 logger.debug("Received new results to label")
                 self.label_data(result)
                 time.sleep(self.label_time)
@@ -120,7 +123,14 @@ class ScriptLabeler:
         class_names = config.get("dataset", {}).get("class_list", ["positive"])
         class_list = ClassList(class_names)
 
-        return cls(mission_dir, class_list, label_time, label_mode == "detect", gt_dir)
+        return cls(
+            mission_dir,
+            class_list,
+            label_time,
+            label_mode == "detect",
+            gt_dir,
+            avoid_duplicates=False,
+        )
 
 
 def main() -> int:
@@ -138,7 +148,12 @@ def main() -> int:
     class_list = ClassList(class_names)
 
     ScriptLabeler(
-        args.mission_directory, class_list, args.label_time, args.detect, args.gt_path
+        args.mission_directory,
+        class_list,
+        args.label_time,
+        args.detect,
+        args.gt_path,
+        avoid_duplicates=True,
     ).run()
     return 0
 
