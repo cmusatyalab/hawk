@@ -41,6 +41,7 @@ model_names = models.list_models()
 # --arch resnet50
 # --bootstrap-weights IMAGENET1K_V1
 # --ema 0.5
+# RandomResizedCrop instead of RandomRotation transform
 #
 
 parser = argparse.ArgumentParser(description="PyTorch ImageNet Training")
@@ -63,8 +64,8 @@ parser.add_argument(
 parser.add_argument(
     "--bootstrap-weights",
     metavar="WEIGHTS",
-    # default="IMAGENET1K_V1",
-    default="DEFAULT",
+    default="IMAGENET1K_V1",
+    # default="DEFAULT",
     help="model specific weights (DEFAULT|IMAGENET1K_V1|IMAGENET1K_V2)",
 )
 parser.add_argument(
@@ -161,6 +162,7 @@ parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
 parser.add_argument(
     "--ema",
     type=float,
+    # default=0.5,
     default=0.2,
     help="average with last checkpoint (0 is no averaging, default 0.2)",
 )
