@@ -17,10 +17,10 @@ from ..mission_config import load_config, write_config
 from ..ports import H2A_PORT, HOME_METRICS_PORT
 from . import sub_class_clustering
 from .admin import Admin
+from .home_labeler import LabelerDiskQueue
+from .home_scout import ScoutQueue, Strategy
 from .script_labeler import ScriptLabeler
 from .stats import HAWK_MISSION_STATUS
-from .to_labeler import LabelerDiskQueue
-from .to_scout import ScoutQueue, Strategy
 from .utils import define_scope, get_ip
 
 
