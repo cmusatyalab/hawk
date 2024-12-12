@@ -204,15 +204,24 @@ class LabelSample:
     """Representation of an unlabeled tile received from a scout on it's way
     to getting labeled, or a labeled result being passed back to the scout"""
 
-    objectId: ObjectId  # unique object id
+    objectId: ObjectId | None  # unique object id (None if this is a new example)
     scoutIndex: int  # index of originating scout
     model_version: int = -1  # version of the model used to generate the sample
     queued: float = field(default_factory=time.time)
     detections: list[Detection] = field(default_factory=list)
-    line: InitVar[int] = -1  # used to track line number in jsonl file
     novel_sample: bool = False
+    line: InitVar[int] = -1  # used to track line number in jsonl file
+    image_name: InitVar[Path | None] = None  # must be defined for new examples
 
-    def __post_init__(self, line: int) -> None:
+    def __post_init__(self, line: int, image_name: Path | None) -> None:
+        if self.objectId is not None:
+            suffix = Path(self.objectId).suffix
+            image_name = Path(
+                hashlib.md5(self.objectId.encode()).hexdigest()
+            ).with_suffix(suffix)
+        else:
+            assert image_name is not None
+        self._image_name = image_name
         self.index = line
 
     @classmethod
@@ -231,9 +240,13 @@ class LabelSample:
         class_list: ClassList | None = None,
         **kwargs: int | str | float,
     ) -> None:
+        if self.objectId is not None:
+            kwargs["objectId"] = self.objectId
+        else:
+            kwargs["image_name"] = str(self._image_name)
+
         jsonl = json.dumps(
             dict(
-                objectId=self.objectId,
                 scoutIndex=self.scoutIndex,
                 model_version=self.model_version,
                 queued=self.queued,
@@ -284,9 +297,9 @@ class LabelSample:
             else 0.0
         )
 
-    def unique_name(self, directory: Path, suffix: str) -> Path:
-        uuid = hashlib.md5(self.objectId.encode()).hexdigest()
-        return directory.joinpath(uuid).with_suffix(suffix)
+    def content(self, directory: Path, suffix: str | None = None) -> Path:
+        path = directory / self._image_name
+        return path.with_suffix(suffix) if suffix is not None else path
 
 
 def index_jsonl(
@@ -365,7 +378,11 @@ class MissionResults:
     def resync_labeled(self) -> None:
         new_labels = list(read_jsonl(self.labeled_jsonl, skip=self.labeled_offset))
         if new_labels:
-            self.labeled.update((label.objectId, label) for label in new_labels)
+            self.labeled.update(
+                (label.objectId, label)
+                for label in new_labels
+                if label.objectId is not None
+            )
             self.labeled_offset = new_labels[-1].index
 
     def resync(self) -> None:

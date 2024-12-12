@@ -56,7 +56,7 @@ class Mission(MissionResults):
         return self._config
 
     def image_path(self, sample: LabelSample) -> Path:
-        return sample.unique_name(Path(self.mission_dir) / "images", ".jpeg")
+        return sample.content(Path(self.mission_dir) / "images")
 
     @property
     def config_file(self) -> Path:

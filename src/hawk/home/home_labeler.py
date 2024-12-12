@@ -129,6 +129,10 @@ class LabelerDiskQueue:
             self.scout_queue.put(result)
 
             # The rest of this function is just updating stats
+            # only track stats for labeled samples that originated from scouts
+            if result.objectId is None:
+                continue
+
             detections = len(result.detections)
             self.labeled_objects.observe(detections)
 

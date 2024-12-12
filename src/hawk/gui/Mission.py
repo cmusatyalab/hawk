@@ -206,6 +206,7 @@ def classification_pulldown(
     key = key or default_key
 
     # if we are initializing a new selectbox with no previously saved state
+    assert result.objectId is not None
     labeled_result = mission.labeled.get(result.objectId)
     if key not in st.session_state:
         # find previously saved or in-progress detections
@@ -307,6 +308,7 @@ def annotation_editor_popup(mission: Mission, sample: LabelSample) -> None:
 
 
 def detection_ui(mission: Mission, sample: LabelSample) -> None:
+    assert sample.objectId is not None
     labeled_result = mission.labeled.get(sample.objectId)
     inprogress_bboxes = st.session_state.saves.get(sample.index)
 
@@ -361,6 +363,7 @@ def display_radar_images(mission: Mission) -> None:
 
     with paginate(results) as page:
         for result in page:
+            assert result.objectId is not None
             base = Path(result.objectId).stem
             stereo_base = base.split("_", 1)[0]
 
