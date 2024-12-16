@@ -21,6 +21,11 @@ class TokenSelector(TopKSelector):
         countermeasure_threshold: float,
         total_countermeasures: int,
         reexamination_strategy: ReexaminationStrategy,
+        sliding_window: bool,
+        upper_threshold_start: float,
+        upper_threshold_delta: float,
+        lower_threshold_start: float,
+        lower_threshold_delta: float,
     ):
         super().__init__(
             mission_id,
@@ -31,6 +36,12 @@ class TokenSelector(TopKSelector):
             reexamination_strategy,
         )
         self.sample_count = 0
+        self.sliding_window = sliding_window
+        self.upper_threshold_start = upper_threshold_start
+        self.upper_threshold_delta = upper_threshold_delta
+        self.lower_threshold_start = lower_threshold_start
+        self.lower_threshold_delta = lower_threshold_delta
+        logger.info(f"Token attrs: {self.upper_threshold_delta}, {self.upper_threshold_start}, {self.lower_threshold_delta}, {self.lower_threshold_start}")
 
     @log_exceptions
     def _initialize_queue(self) -> None:
@@ -48,6 +59,7 @@ class TokenSelector(TopKSelector):
         # the self._insert_lock is held during reexecution when the priority
         # queues may be replaced with new ones
         with self._insert_lock:
+            ## add logic here to adjust the pointer which dictates which samples is popped from the queue.
             result = self._priority_queues.get()[-1]
             self.priority_queue_length.dec()
 

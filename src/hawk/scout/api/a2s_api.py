@@ -577,6 +577,11 @@ class A2SAPI:
                 selector.token.countermeasure_threshold,
                 selector.token.total_countermeasures,
                 reexamination_strategy,
+                selector.token.sliding_window,
+                selector.token.upper_threshold_start,
+                selector.token.upper_threshold_delta,
+                selector.token.lower_threshold_start,
+                selector.token.lower_threshold_delta,
             )
         elif selector.HasField("threshold"):
             return ThresholdSelector(

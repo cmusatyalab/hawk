@@ -187,6 +187,11 @@ message TokenConfig {
   int32 batch_size = 2;
   double countermeasure_threshold = 3;
   int32 total_countermeasures = 4;
+  double upper_threshold_delta = 5;
+  double lower_threshold_delta = 6;
+  double upper_threshold_start = 7;
+  double lower_threshold_start = 8;
+  bool sliding_window = 9;
 }
 
 message DiversityConfig {

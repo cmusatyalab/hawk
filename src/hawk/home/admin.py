@@ -332,12 +332,23 @@ class Admin:
             batch_size = token_config.get("batch_size")
             countermeasure_threshold = token_config.get("countermeasure_threshold", 0.5)
             total_countermeasures = token_config.get("total_countermeasures", 700)
+            upper_thresh_start = token_config.get("upper_threshold_start", 1.0)
+            upper_thresh_delta = token_config.get("upper_threshold_delta", 1.0)
+            lower_thresh_start = token_config.get("lower_threshold_start", 1.0)
+            lower_thresh_delta = token_config.get("lower_threshold_delta", 1.0)
+            sliding_window =  token_config.get("sliding_window", False)
             selector = SelectiveConfig(
                 token=TokenConfig(
                     initial_samples=init_samples,
                     batch_size=batch_size,
                     countermeasure_threshold=countermeasure_threshold,
                     total_countermeasures=total_countermeasures,
+                    upper_threshold_start = upper_thresh_start,
+                    upper_threshold_delta = upper_thresh_delta,
+                    lower_threshold_start = lower_thresh_start,
+                    lower_threshold_delta = lower_thresh_delta,
+                    sliding_window=sliding_window,
+                    
                 )
             )
         else:
