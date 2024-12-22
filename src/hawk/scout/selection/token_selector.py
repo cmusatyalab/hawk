@@ -41,7 +41,8 @@ class TokenSelector(TopKSelector):
         self.upper_threshold_delta = upper_threshold_delta
         self.lower_threshold_start = lower_threshold_start
         self.lower_threshold_delta = lower_threshold_delta
-        logger.info(f"Token attrs: {self.upper_threshold_delta}, {self.upper_threshold_start}, {self.lower_threshold_delta}, {self.lower_threshold_start}")
+        self.upper_threshold = self.upper_threshold_start
+        logger.info(f"Token attrs: {self.sliding_window}, {self.upper_threshold_delta}, {self.upper_threshold_start}, {self.lower_threshold_delta}, {self.lower_threshold_start}")
 
     @log_exceptions
     def _initialize_queue(self) -> None:
@@ -59,8 +60,10 @@ class TokenSelector(TopKSelector):
         # the self._insert_lock is held during reexecution when the priority
         # queues may be replaced with new ones
         with self._insert_lock:
-            ## add logic here to adjust the pointer which dictates which samples is popped from the queue.
-            result = self._priority_queues.get()[-1]
+            if self.sliding_window: ## run function to find first sample below the current upper threshold for sliding window
+                result = self.find_result()[-1]
+            else:
+                result = self._priority_queues.get()[-1]
             self.priority_queue_length.dec()
 
         self.result_queue_length.inc()
@@ -93,3 +96,23 @@ class TokenSelector(TopKSelector):
 
             if self.sample_count == self._batch_size:
                 self._initialize_queue()
+
+    def find_result(self):
+        self.upper_threshold = self.upper_threshold_start*(self.upper_threshold_delta**self.version) ## set upper limit on scores
+        #logger.info(f"In find result, upper threshold = {self.upper_threshold}")
+        temp_item_list = []
+        while not self._priority_queues.empty():
+            item = self._priority_queues.get()
+            score = item[0]*-1
+            if score <= self.upper_threshold: ## put all temp items back in the queue and return the current item, and return current
+                for temp_item in temp_item_list:
+                    self._priority_queues.put(temp_item)
+                #logger.info(f"Returning item with score: {item[0]}")
+                return item
+            
+            temp_item_list.append(item) ## if score is greater than upper thresh, append to temp list and keep looping
+    
+        ## if all samples in pri queue above upper thresh.
+        for temp_item in temp_item_list:
+            self._priority_queues.put(temp_item)
+        return self._priority_queues.get()
