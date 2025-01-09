@@ -34,6 +34,21 @@ if TYPE_CHECKING:
 ObjectId = NewType("ObjectId", str)
 
 
+class DetectionDict(TypedDict):
+    time_queued: float  # Unix time in seconds
+    instance: int  # unique counter, combine w. object_id to spot relabel events
+    object_id: str  # unique object identifier
+    scout_index: int  # index of scout where sample originated
+    model_version: int  # model version used to inference
+    image_path: str  # path to image
+    class_name: str  # class label
+    confidence: float  # confidence of inference (1.0 for labeled results)
+    bbox_x: float  # center x-coordinate of bounding box area (0.5 for classification)
+    bbox_y: float  # center y-coordinate of bounding box area (0.5 for classification)
+    bbox_w: float  # width of bounding box area (1.0 for classification)
+    bbox_h: float  # height of bounding box area (1.0 for classification)
+
+
 class LabelKitArgs(TypedDict):
     bboxes: list[tuple[float, float, float, float]]
     labels: list[int]
@@ -264,6 +279,45 @@ class LabelSample:
             bboxes=[out["bboxes"] for out in bboxes],
             labels=[out["labels"] for out in bboxes],
         )
+
+    def to_flat_dict(
+        self, index: int = 0, image_dir: Path | None = None
+    ) -> Iterator[DetectionDict]:
+        """Yields a list of dicts where each dict contains a single
+        object/boundingbox/class/confidence detection event.
+        Mostly useful when building a Pandas dataframe.
+        """
+        if image_dir is None:
+            image_dir = Path(".")
+
+        result: DetectionDict = dict(
+            time_queued=self.queued,
+            instance=index,
+            object_id=str(self.objectId),
+            scout_index=self.scoutIndex,
+            model_version=self.model_version,
+            image_path=str(self.content(image_dir, ".jpeg")),
+            class_name=str(NEGATIVE_CLASS),
+            confidence=1.0,
+            bbox_x=0.5,
+            bbox_y=0.5,
+            bbox_w=1.0,
+            bbox_h=1.0,
+        )
+        if not self.detections:
+            yield result
+            return
+        for detection in self.detections:
+            result["bbox_x"] = detection.x
+            result["bbox_y"] = detection.y
+            result["bbox_w"] = detection.w
+            result["bbox_h"] = detection.h
+            for cls, confidence in detection.scores.items():
+                result["class_name"] = str(cls)
+                result["confidence"] = confidence
+                # because we're modifying result in-place as we iterate the
+                # bounding boxes and inference results we need to copy here
+                yield result.copy()
 
     @property
     def classes(self) -> set[ClassName]:

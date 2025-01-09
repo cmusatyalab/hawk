@@ -85,10 +85,10 @@ class UnlabeledResult(LabelSample):
         data = request.attributes["thumbnail.jpeg"]
 
         image_dir = "images" if not request.novel_sample else "novel"
-        image_file = result.content(mission_dir / image_dir)
+        image_file = result.content(mission_dir / image_dir, ".jpeg")
         image_file.parent.mkdir(exist_ok=True)
 
-        if image_file.suffix == ".npy":  # for radar missions with .npy files
+        if request.objectId.endswith(".npy"):  # for radar missions with .npy files
             result.gen_heatmap(image_file, data)
         else:
             image_file.write_bytes(data)

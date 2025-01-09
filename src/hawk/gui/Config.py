@@ -14,14 +14,12 @@ from hawk.gui import deployment
 from hawk.gui.elements import (
     HOME_MISSION_DIR,
     SCOUT_MISSION_DIR,
-    page_header,
+    load_mission,
     save_state,
 )
 from hawk.mission_config import MissionConfig
 
-page_header("Configure Hawk Mission")
-st.title("Configure Hawk Mission")
-
+st.title("Hawk Mission Config")
 
 TRAIN_STRATEGY_DEFAULTS: dict[str, dict[str, str]] = {
     "dnn_classifier": {
@@ -169,11 +167,11 @@ def load_template() -> None:
     set_state_from_mission_config(mission_config)
 
 
-if "mission_config" not in st.session_state:
-    mission_config = MissionConfig.from_dict({})
-    set_state_from_mission_config(mission_config)
+# if "mission_config" not in st.session_state:
+mission = load_mission()
+set_state_from_mission_config(mission.config)
 
-mission_name = st.session_state.mission_config["mission-name"]
+mission_name = mission.config["mission-name"]
 with st.expander(f":floppy_disk: {mission_name}", expanded=not mission_name):
     st.session_state["mission-name"] = mission_name
     st.text_input(
@@ -184,20 +182,14 @@ with st.expander(f":floppy_disk: {mission_name}", expanded=not mission_name):
             None,
             "mission-name",
         ),
+        disabled=not mission.config_writable,
     )
-    st.file_uploader(
-        "Upload a template Hawk mission config",
-        type=["yml"],
-        key="template_config",
-        on_change=load_template,
-    )
-    st.markdown("or configure a new mission below")
 
 all_scouts_deployed = (
     st.session_state.get("scouts") and False not in st.session_state.deployed
 )
 status = ":ballot_box_with_check:" if all_scouts_deployed else ":o:"
-with st.expander(f"{status} Scout Deployment", expanded=not all_scouts_deployed):
+with st.expander(f"{status} Scout Deployment"):  # , expanded=not all_scouts_deployed):
     ####
     # There has got to be an easier way to handle the st.data_editor...
     if "scouts" not in st.session_state:
@@ -238,6 +230,7 @@ with st.expander(f"{status} Scout Deployment", expanded=not all_scouts_deployed)
         hide_index=True,
         key="scout_edits",
         on_change=update_scouts,
+        disabled=not mission.config_writable,
     )
 
     st.session_state.scout_port = st.session_state.get("_scout_port", 6100)
@@ -263,6 +256,7 @@ with st.expander("Dataset"):
         ["cookie", "frame", "random", "tile", "video"],
         key="dataset_type",
         # on_change=change_dataset_type,
+        disabled=not mission.config_writable,
     )
 
     st.session_state.dataset_index_path = dataset_config.get("index_path")
@@ -271,6 +265,7 @@ with st.expander("Dataset"):
         key="dataset_index_path",
         on_change=update_config,
         args=("dataset", "index_path"),
+        disabled=not mission.config_writable,
     )
 
     st.session_state.dataset_tiles_per_frame = dataset_config.get(
@@ -282,6 +277,7 @@ with st.expander("Dataset"):
         min_value=1,
         on_change=update_config,
         args=("dataset", "tiles_per_frame"),
+        disabled=not mission.config_writable,
     )
 
     def save_dataset_stream() -> None:
@@ -295,9 +291,10 @@ with st.expander("Dataset"):
         type=["txt"],
         key="dataset_stream",
         on_change=save_dataset_stream,
+        disabled=not mission.config_writable,
     )
 
-with st.expander("Mission Parameters", expanded=True):
+with st.expander("Mission Parameters"):
     ###
     # Train Strategy
     with st.container(border=True):
@@ -316,12 +313,14 @@ with st.expander("Mission Parameters", expanded=True):
             list(TRAIN_STRATEGY_DEFAULTS.keys()),
             key="train_strategy_type",
             on_change=change_train_strategy,
+            disabled=not mission.config_writable,
         )
         if st.session_state.train_strategy_type == "custom":
             col2.text_input(
                 "Type",
                 key="train_strategy_custom_type",
                 on_change=change_train_strategy,
+                disabled=not mission.config_writable,
             )
 
         train_args = train_config["args"]
@@ -337,6 +336,7 @@ with st.expander("Mission Parameters", expanded=True):
             ["hawk", "oracle", "notional"],
             key="train_strategy_mode",
             on_change=change_train_strategy_mode,
+            disabled=not mission.config_writable,
         )
 
         def save_training_bootstrap() -> None:
@@ -351,6 +351,7 @@ with st.expander("Mission Parameters", expanded=True):
             type=["zip"],
             key="training_bootstrap",
             on_change=save_training_bootstrap,
+            disabled=not mission.config_writable,
         )
 
         def save_training_initial_model() -> None:
@@ -364,6 +365,7 @@ with st.expander("Mission Parameters", expanded=True):
             type=["pth"],
             key="training_initial_model",
             on_change=save_training_initial_model,
+            disabled=not mission.config_writable,
         )
 
         st.caption("Training hyperparameters")
@@ -378,6 +380,7 @@ with st.expander("Mission Parameters", expanded=True):
             num_rows="dynamic",
             hide_index=True,
             key="train_strategy_args_edits",
+            disabled=not mission.config_writable,
         )
 
         def change_train_strategy_support_data() -> None:
@@ -395,6 +398,7 @@ with st.expander("Mission Parameters", expanded=True):
                 type=["jpg", "jpeg", "png"],
                 key="train_strategy_support_data",
                 on_change=change_train_strategy_support_data,
+                disabled=not mission.config_writable,
             )
     ###
     # Retrain Policy
@@ -407,6 +411,7 @@ with st.expander("Mission Parameters", expanded=True):
             key="retrain_policy_type",
             on_change=update_config,
             args=("retrain_policy", "type"),
+            disabled=not mission.config_writable,
         )
 
         col1, col2, _, _ = st.columns(4)
@@ -421,6 +426,7 @@ with st.expander("Mission Parameters", expanded=True):
                 key="retrain_policy_threshold",
                 on_change=update_config,
                 args=("retrain_policy", "threshold"),
+                disabled=not mission.config_writable,
             )
 
         if "only_positives" in retrain_policy_config:
@@ -434,6 +440,7 @@ with st.expander("Mission Parameters", expanded=True):
                 on_change=update_config,
                 args=("retrain_policy", "only_positives"),
                 label_visibility="hidden",
+                disabled=not mission.config_writable,
             )
 
         if "num_intervals" in retrain_policy_config:
@@ -446,6 +453,7 @@ with st.expander("Mission Parameters", expanded=True):
                 key="retrain_policy_num_intervals",
                 on_change=update_config,
                 args=("retrain_policy", "num_intervals"),
+                disabled=not mission.config_writable,
             )
     ###
     # Reexamination
@@ -458,6 +466,7 @@ with st.expander("Mission Parameters", expanded=True):
             key="reexamination_type",
             on_change=update_config,
             args=("reexamination", "type"),
+            disabled=not mission.config_writable,
         )
 
         col1, _, _, _ = st.columns(4)
@@ -469,6 +478,7 @@ with st.expander("Mission Parameters", expanded=True):
                 key="reexamination_k",
                 on_change=update_config,
                 args=("reexamination", "k"),
+                disabled=not mission.config_writable,
             )
     ###
     # Selector
@@ -481,6 +491,7 @@ with st.expander("Mission Parameters", expanded=True):
             key="selector_type",
             on_change=update_selector_config,
             args=(None, "type"),
+            disabled=not mission.config_writable,
         )
 
         selector_config = st.session_state.mission_config["selector"].get(
@@ -497,6 +508,7 @@ with st.expander("Mission Parameters", expanded=True):
                 key="selector_threshold",
                 on_change=update_selector_config,
                 args=(selector_type, "threshold"),
+                disabled=not mission.config_writable,
             )
 
         if "initial_samples" in selector_config:
@@ -509,6 +521,7 @@ with st.expander("Mission Parameters", expanded=True):
                 key="selector_initial_samples",
                 on_change=update_selector_config,
                 args=(selector_type, "initial_samples"),
+                disabled=not mission.config_writable,
             )
 
         if "k" in selector_config:
@@ -519,6 +532,7 @@ with st.expander("Mission Parameters", expanded=True):
                 key="selector_k",
                 on_change=update_selector_config,
                 args=(selector_type, "k"),
+                disabled=not mission.config_writable,
             )
 
         if "batchSize" in selector_config:  # diversity and topk use batchSize
@@ -529,6 +543,7 @@ with st.expander("Mission Parameters", expanded=True):
                 key="selector_batchSize",
                 on_change=update_selector_config,
                 args=(selector_type, "batchSize"),
+                disabled=not mission.config_writable,
             )
 
         if "batch_size" in selector_config:  # token uses batch_size
@@ -539,6 +554,7 @@ with st.expander("Mission Parameters", expanded=True):
                 key="selector_batch_size",
                 on_change=update_selector_config,
                 args=(selector_type, "batch_size"),
+                disabled=not mission.config_writable,
             )
 
         if "countermeasure_threshold" in selector_config:
@@ -552,6 +568,7 @@ with st.expander("Mission Parameters", expanded=True):
                 key="selector_countermeasure_threshold",
                 on_change=update_selector_config,
                 args=(selector_type, "countermeasure_threshold"),
+                disabled=not mission.config_writable,
             )
 
             st.session_state.selector_total_countermeasures = selector_config[
@@ -563,6 +580,7 @@ with st.expander("Mission Parameters", expanded=True):
                 key="selector_total_countermeasures",
                 on_change=update_selector_config,
                 args=(selector_type, "total_countermeasures"),
+                disabled=not mission.config_writable,
             )
 
 with st.expander("Debug"):

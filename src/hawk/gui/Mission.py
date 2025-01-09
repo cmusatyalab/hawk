@@ -6,50 +6,37 @@ from __future__ import annotations
 
 import sys
 import time
-from collections import Counter, defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterator
 
-import pandas as pd
 import streamlit as st
+from blinker import Signal
 from streamlit_autorefresh import st_autorefresh
 from streamlit_label_kit import detection as st_detection
 
 from hawk.classes import ClassList, ClassName, class_label_to_int
-from hawk.gui.elements import ABOUT_TEXT, Mission, page_header, paginate
+from hawk.gui.elements import Mission, load_mission, mission_changed, paginate
 from hawk.home.label_utils import Detection, LabelSample
 
 if TYPE_CHECKING:
     from streamlit.delta_generator import DeltaGenerator
 
-start = time.time()
-mission = page_header("Hawk Browser")
+st.title("Hawk Mission Results")
+# st.write(st.session_state)
 
-####
-# If no mission has been selected direct the user to either select an existing
-# mission or configure/create a new one.
-banner = st.empty()
 
-if mission is None:
-    with banner.container():
-        st.title("Welcome to the Hawk Browser")
-        st.markdown(
-            f"""\
-{ABOUT_TEXT}
-### No Hawk mission selected
-Choose a mission from the "**Select Mission**" pulldown in the sidebar.
-"""
-        )
-        # if st.button("Configure a new mission"):
-        #     st.switch_page("pages/1_Config.py")
-        st.stop()
-else:
-    banner.title("Hawk Mission Results")
-    # banner.write(st.session_state)
-
-if "saves" not in st.session_state:
+def reset_state_cb(sender: Signal | None) -> None:
+    """Reset any mission specific session_state variables when we switched to a
+    different mission"""
     st.session_state.saves = {}
 
+
+mission_changed.connect(reset_state_cb)
+
+if "saves" not in st.session_state:
+    reset_state_cb(None)
+
+mission = load_mission()
 mission.resync()
 
 # list of positive classes in the mission
@@ -415,36 +402,6 @@ if train_strategy == "dnn_classifier_radar":
     display_radar_images(mission)  # only for radar missions
 else:
     display_images(mission)  # RGB default function call
-
-
-####
-# Display a by-class breakdown of labeled samples
-counts: dict[int, Counter[ClassName]] = defaultdict(Counter)
-for label in mission.labeled.values():
-    counts[label.model_version].update(label.class_counts())
-labeled_by_class = pd.DataFrame(counts)
-
-if not labeled_by_class.empty:
-    chart_options = [":material/view_timeline:", ":material/percent:"]
-    chart_config = st.segmented_control(
-        "Chart Options",
-        chart_options,
-        selection_mode="multi",
-        label_visibility="hidden",
-    )
-    if chart_options[0] not in chart_config:
-        # summarize by class
-        labeled_by_class = pd.DataFrame(labeled_by_class.T.sum())
-    if chart_options[1] in chart_config:
-        # scale to percentage of total
-        labeled_by_class /= labeled_by_class.sum()
-    elif "negative" in labeled_by_class.index:
-        labeled_by_class.loc["negative"] *= -1
-    st.bar_chart(labeled_by_class.T, horizontal=True, y_label="model version")
-
-
-elapsed = time.time() - start
-st.write(f"Time to render page {elapsed:.3f}s")
 
 if mission_active and not dialog_displayed:
     st_autorefresh(interval=2000, key="refresh")
