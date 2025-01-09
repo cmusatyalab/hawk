@@ -82,9 +82,9 @@ class DataManager:
     def store_labeled_tile(self, tile: LabeledTile) -> None:
         """Store the tile content along with labels in the scout"""
         if self._context.novel_class_discovery:
-            self.store_feature_vector(
-                tile
-            )  ## handles saving renaming feature vectors when receiving labels and puts labels in the labels queue for future clustering.
+            ## handles saving renaming feature vectors when receiving labels and
+            ## puts labels in the labels queue for future clustering.
+            self.store_feature_vector(tile)
         if tile.boundingBoxes:
             self._total_positives += 1
         # logger.info(f"Original tile name: {tile.obj.objectId}")
@@ -163,10 +163,10 @@ class DataManager:
         else:
             # Local scout contains image of respective label received.
             obj = self._context.retriever.read_object(label.objectId)
-            if self._context.novel_class_discovery:
-                obj = self.read_feature_vector(
-                    obj
-                )  ## modify hawk obj - add fv and scout index for storage and transmission.
+            if self._context.novel_class_discovery and obj is not None:
+                ## modify hawk obj - add fv and scout index for storage and
+                ## transmission.
+                obj = self.read_feature_vector(obj)
 
         if obj is None:
             return
@@ -177,20 +177,19 @@ class DataManager:
         # save copy of original image and label to examples dir for future training
         self._context.store_labeled_tile(labeled_tile)
 
-        if (
-            not label.boundingBoxes
-        ):  # for scml, only send positives to other scouts, dont execute this if using SCML staggered deployment...also need the s2s to ignore negatives received if scout is currently active.  thus only idle scouts receive the negative from other scouts for retraining.
+        # for scml, only send positives to other scouts, dont execute this if
+        # using SCML staggered deployment...also need the s2s to ignore
+        # negatives received if scout is currently active.  thus only idle
+        # scouts receive the negative from other scouts for retraining.
+        if not label.boundingBoxes:
             return
 
         # Transmit
+        msg = [b"s2s_add_tile_and_label", labeled_tile.SerializeToString()]
         for i, stub in enumerate(self._context.scouts):  # send positives to all scouts
             if i in [self._context.scout_index, scout_index]:
                 continue
             assert stub.internal is not None
-            msg = [
-                b"s2s_add_tile_and_label",
-                labeled_tile.SerializeToString(),
-            ]
             stub.internal.send_multipart(msg)
             stub.internal.recv()
         return
@@ -334,9 +333,7 @@ class DataManager:
                     example_file = get_example_key(obj.content, extension=".npy")
                 else:
                     example_file = get_example_key(obj.content)
-                self._remove_old_paths(
-                    example_file, old_dirs
-                )  ## what is the purpose of this function?
+                self._remove_old_paths(example_file, old_dirs)
 
                 if not example.boundingBoxes:
                     # negative sample
@@ -542,26 +539,27 @@ class DataManager:
         ):  ## receiving a label from this scout
             temp_file_path = self._context._feature_vector_dir / "temp" / base
             assert os.path.exists(temp_file_path)
-            os.rename(
-                temp_file_path, label_file_path
-            )  ## move fv from temp to label dir once label received.
+            ## move fv from temp to label dir once label received.
+            os.rename(temp_file_path, label_file_path)
         else:
             if obj.attributes["feature_vector"] is not None:
                 vector: torch.Tensor = torch.load(
                     io.BytesIO(obj.attributes["feature_vector"])
                 )
                 torch.save(vector, label_file_path)
-                ## saves the feature vector of any labeled sample received by another scout.
+                ## saves the feature vector of any labeled sample received by
+                ## another scout.
 
+        ## send only relevant info to novel class labels queue for future
+        ## clustering.
         label_tuple = (label_dir, label_file_path)
-        self._context.labels_queue.put(
-            label_tuple
-        )  ## send only relevant info to novel class labels queue for future clustering.
+        self._context.labels_queue.put(label_tuple)
 
     def read_feature_vector(self, obj: HawkObject) -> HawkObject:
-        ## read the feature vector from its temp location and add to HawkObject for transmission to other scouts.
-        base_name = f"{Path(obj.objectId).stem}.pt"
-        feature_vector_path = self._context._feature_vector_dir / "temp" / base_name
+        ## read the feature vector from its temp location and add to HawkObject
+        ## for transmission to other scouts.
+        temp_dir = self._context._feature_vector_dir / "temp"
+        feature_vector_path = (temp_dir / Path(obj.objectId).stem).with_suffix(".pt")
         feature_vector = torch.load(feature_vector_path)
         with io.BytesIO() as fv_bytes:
             torch.save(feature_vector, fv_bytes)
