@@ -31,7 +31,7 @@ class Novel_Class_Clustering:
         self.outbound_pipe = outbound_pipe
         self.batch_sample_count = 0
         self.labeled_samples_dict = defaultdict(list)
-        self.unlabeled_result_queue = queue.PriorityQueue()
+        self.unlabeled_result_list = []
         self.threshold_samples_for_clustering = 500 # cluster every N samples received from model
         self.num_selected_samples_per_iter = 5 ## number of sample to send to home after each clustering
 
@@ -51,7 +51,7 @@ class Novel_Class_Clustering:
             ## need a dict sorted on score           
 
             result = self.inbound_result_queue.get() ## grab each result provider object
-            self.unlabeled_result_queue.put((-result.score, result))
+            self.unlabeled_result_list.append((-result.score, result))
             self.batch_sample_count += 1
             
             ## if condition is met, set the clustering event.            
@@ -70,6 +70,9 @@ class Novel_Class_Clustering:
             tiles_to_send = []
             self.cluster_iteration.wait()
             ## need some concurrency control here.
+            
+            ## select unlabeled samples
+            ## either sort the unlabeled list or pick randomly, configurable choice.  choosing the top 300 for example should find samples similar to the target class while random should find a wide variety.
             
             ## combine the labeled samples with the unlabeled samples
 
