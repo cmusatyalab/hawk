@@ -79,11 +79,15 @@ class UnlabeledResult(LabelSample):
             model_version=request.version,
             score=score,
             detections=detections,
+            novel_sample=request.novel_sample,
         )
 
         data = request.attributes["thumbnail.jpeg"]
 
-        tile_jpeg = result.unique_name(mission_dir / "images", ".jpeg")
+        image_dir = "images"
+        if request.novel_sample:
+            image_dir = "novel"
+        tile_jpeg = result.unique_name(mission_dir / image_dir, ".jpeg")
         tile_jpeg.parent.mkdir(exist_ok=True)
 
         if result.objectId.endswith(".npy"):  # for radar missions with .npy files

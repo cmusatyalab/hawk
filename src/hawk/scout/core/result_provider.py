@@ -30,7 +30,7 @@ class ResultProvider:
         score: float,
         bboxes: list[BoundingBox],
         model_version: int | None = None,
-        feature_vector: torch.Tensor | None = None,
+        feature_vector: bytes | None = None,
     ):
         self.id = obj.id
         self.attributes = obj.attributes

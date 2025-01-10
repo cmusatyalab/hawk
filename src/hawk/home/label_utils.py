@@ -210,6 +210,7 @@ class LabelSample:
     queued: float = field(default_factory=time.time)
     detections: list[Detection] = field(default_factory=list)
     line: InitVar[int] = -1  # used to track line number in jsonl file
+    novel_sample: bool = False
 
     def __post_init__(self, line: int) -> None:
         self.index = line

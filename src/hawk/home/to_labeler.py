@@ -75,6 +75,7 @@ class LabelerDiskQueue:
 
     def home_to_labeler(self) -> None:
         unlabeled_jsonl = self.mission_dir / "unlabeled.jsonl"
+        novel_jsonl = self.mission_dir / "novel.jsonl"
 
         while True:
             # block until the labeler is ready to accept more.
@@ -93,9 +94,13 @@ class LabelerDiskQueue:
             # update label_queue_length metric
             self.queue_length.inc()
 
-            # append metadata to unlabeled.jsonl file
-            with unlabeled_jsonl.open("a") as fp:
-                result.to_jsonl(fp, self.class_list)
+            # append metadata to novel.jsonl or unlabeled.jsonl file
+            if result.novel_sample:
+                with novel_jsonl.open("a") as fp:
+                    result.to_jsonl(fp, self.class_list)
+            else:
+                with unlabeled_jsonl.open("a") as fp:
+                    result.to_jsonl(fp, self.class_list)
 
             self.scout_queue.task_done()
 

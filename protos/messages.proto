@@ -229,6 +229,7 @@ message SendTile {
   map<string, bytes> attributes = 4;
   repeated BoundingBox boundingBoxes = 5;
   bytes feature_vector = 6;
+  bool novel_sample = 7;
 }
 
 // send labels for an object back from home to scout

@@ -39,11 +39,12 @@ from ..retrieval.retriever import Retriever
 from ..selection.selector_base import Selector
 from ..selection.token_selector import TokenSelector
 from ..stats import HAWK_MODEL_VERSION
-from ..trainer.novel_class_discover import clustering_function
+from ..trainer import novel_class_discover
 from .data_manager import DataManager
 from .hawk_stub import HawkStub
 from .model import Model
 from .model_trainer import ModelTrainer
+from .result_provider import ResultProvider
 from .utils import get_server_ids, log_exceptions
 
 if TYPE_CHECKING:
@@ -86,10 +87,12 @@ class Mission(DataManagerContext, ModelContext):
 
         self._retrain_policy = retrain_policy
         self._data_dir = root_dir / "data"
+        self._feature_vector_dir = self._data_dir / "feature_vectors"
         self._log_dir = root_dir / "tb"
         self._model_dir = root_dir / "model"
         os.makedirs(self._log_dir, exist_ok=True)
         os.makedirs(self._model_dir, exist_ok=True)
+        os.makedirs(self._feature_vector_dir, exist_ok=True)
         self.host_name = (get_server_ids()[0]).split(".")[0]
         self.home_ip = home_ip
         self.log_file = open(self._log_dir / f"log-{self.host_name}.txt", "a")
@@ -199,16 +202,15 @@ class Mission(DataManagerContext, ModelContext):
         }
 
         ## setup clustering process, if needed
-        if self.novel_class_discovery or self.sub_class_discovery:
-            # clustering_input: mp.Queue[ResultProvider] = mp.Queue()
-            p = mp.Process(
-                target=clustering_function,
-                args=(
-                    self.novel_class_discovery,
-                    self.sub_class_discovery,
-                ),
+        if self.novel_class_discovery:
+            self.clustering_dir = root_dir / "clustering"
+            self.clustering_input_queue: mp.Queue[ResultProvider] = mp.Queue()
+            self.labels_queue: mp.Queue[LabeledTile] = mp.Queue()
+            novel_cluster_process = mp.Process(
+                target=novel_class_discover.main,
+                args=(self.clustering_input_queue, self.labels_queue, s2h_input, self.clustering_dir, self._scout_index),
             )
-            p.start()
+            novel_cluster_process.start()
 
     def setup_trainer(self, trainer: ModelTrainer) -> None:
         logger.info("Setting up trainer")
@@ -472,6 +474,10 @@ class Mission(DataManagerContext, ModelContext):
 
             while not self._abort_event.is_set():
                 result = self._model.get_results()
+                if self.novel_class_discovery:
+                    self.clustering_input_queue.put(
+                        result
+                    )  ## put fv in queue for novel class clustering.
                 # items_processed = \
                 self.selector.add_result(result)
                 ## line here to send result object to clustering process
@@ -517,6 +523,7 @@ class Mission(DataManagerContext, ModelContext):
                     feature_vector=result.feature_vector,
                     attributes=result.attributes.get(),
                     boundingBoxes=bboxes,
+                    novel_sample=False,
                 )
                 pipe.send(tile.SerializeToString())
         except Exception as e:
