@@ -208,7 +208,7 @@ class Mission(DataManagerContext, ModelContext):
             self.labels_queue: mp.Queue[LabeledTile] = mp.Queue()
             novel_cluster_process = mp.Process(
                 target=novel_class_discover.main,
-                args=(self.clustering_input_queue, self.labels_queue, s2h_input, self.clustering_dir, self._scout_index),
+                args=(self.clustering_input_queue, self.labels_queue, s2h_input, self._feature_vector_dir, self._scout_index),
             )
             novel_cluster_process.start()
 
