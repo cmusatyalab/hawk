@@ -4,15 +4,17 @@
 
 from __future__ import annotations
 
+import io
+import os
 import queue
-import threading, io, torch, os
-from pathlib import Path
+import threading
 from abc import ABCMeta, abstractmethod
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import torch
 from logzero import logger
 
 from ...classes import NEGATIVE_CLASS
@@ -236,13 +238,17 @@ class SelectorBase(Selector):
                 self.result_queue_length.dec()
                 if self._mission.novel_class_discovery:
                     temp_dir = self._mission._feature_vector_dir / "temp"
-                    os.makedirs(temp_dir, exist_ok=True) ## create temp dir for feature vectors of samples en route to home for labeling
+                    os.makedirs(
+                        temp_dir, exist_ok=True
+                    )  ## create temp dir for feature vectors of samples en route to home for labeling
                     if result.feature_vector is not None:
-                        vector: torch.Tensor = torch.load(io.BytesIO(result.feature_vector))
+                        vector: torch.Tensor = torch.load(
+                            io.BytesIO(result.feature_vector)
+                        )
                         base_name = f"{Path(result.id).stem}.pt"
                         torch.save(vector, temp_dir / base_name)
                         ## save the feature vector of any sample sent to home to temp/ until receiving the label.
-                        #logger.info(f"Wrote feature vector temp: {temp_dir / base_name}")
+                        # logger.info(f"Wrote feature vector temp: {temp_dir / base_name}")
 
                 # collect stats about objects sent to home
                 if result is not None:
