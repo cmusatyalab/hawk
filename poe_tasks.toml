@@ -12,6 +12,7 @@ sequence = [
     "mypy",
 ]
 default_item_type = "cmd"
+ignore_fail = "return_non_zero"
 
 [tool.poe.tasks.protoc]
 help = "Regenerate protocol buffer files"

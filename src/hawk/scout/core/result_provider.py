@@ -6,8 +6,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, TypedDict
 
-import torch
-
 if TYPE_CHECKING:
     from ...classes import ClassName
     from ..retrieval.retriever import Retriever

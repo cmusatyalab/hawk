@@ -4,16 +4,18 @@
 
 from __future__ import annotations
 
-import argparse
 import json
+import os
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Iterable, Iterator
 
+import pandas as pd
 import streamlit as st
+from blinker import Signal, signal
 
-from hawk.home.label_utils import LabelSample, MissionResults
+from hawk.home.label_utils import DetectionDict, LabelSample, MissionResults, read_jsonl
 from hawk.mission_config import MissionConfig, load_config
 
 ABOUT_TEXT = """\
@@ -23,11 +25,7 @@ objects and gather valuable training samples under austere and degraded
 conditions.
 """
 
-parser = argparse.ArgumentParser()
-parser.add_argument("logdir", type=Path)
-args = parser.parse_args()
-
-HOME_MISSION_DIR = args.logdir.resolve()
+HOME_MISSION_DIR = Path(os.environ.get("HAWK_MISSION_DIR", Path.cwd()))
 SCOUT_MISSION_DIR = Path("hawk-missions")
 
 
@@ -52,15 +50,22 @@ class Mission(MissionResults):
     @property
     def config(self) -> MissionConfig:
         if not hasattr(self, "_config"):
-            self._config = load_config(self.config_file)
+            try:
+                self._config_file = Path(self.mission_dir) / "logs" / "hawk.yml"
+                self._config = load_config(self._config_file)
+                self.config_writable = False
+            except FileNotFoundError:
+                self._config_file = Path(self.mission_dir) / "mission_config.yml"
+                self._config = (
+                    load_config(self._config_file)
+                    if self._config_file.exists()
+                    else MissionConfig.from_dict({})
+                )
+                self.config_writable = True
         return self._config
 
     def image_path(self, sample: LabelSample) -> Path:
-        return sample.unique_name(Path(self.mission_dir) / "images", ".jpeg")
-
-    @property
-    def config_file(self) -> Path:
-        return Path(self.mission_dir, "logs", "hawk.yml")
+        return sample.content(Path(self.mission_dir) / "images", ".jpeg")
 
     @property
     def stats_file(self) -> Path:
@@ -75,23 +80,92 @@ class Mission(MissionResults):
         data["last_update"] = filepath.stat().st_mtime
         return data
 
+    def to_dataframe(self, labels: Iterable[LabelSample]) -> pd.DataFrame:
+        image_dir = Path(self.mission_dir) / "images"
+
+        # get a list of all class/confidence scores for a bounding box in a sample.
+        detections: list[DetectionDict] = []
+        for idx, label in enumerate(labels):
+            if label.objectId is not None:
+                detections.extend(label.to_flat_dict(idx, image_dir))
+
+        # convert the list to a pandas dataframe
+        df = pd.DataFrame.from_records(
+            detections,
+            columns=DetectionDict.__annotations__.keys(),
+        ).astype({"class_name": "category"})
+
+        df["time_queued"] = pd.to_datetime(df["time_queued"], unit="s", utc=True)
+
+        # reorder class labels so that the negative class always comes first (index 0)
+        if "negative" not in df.class_name.cat.categories:
+            df.class_name = df.class_name.cat.add_categories(["negative"])
+        positives = [c for c in df.class_name.cat.categories if c != "negative"]
+        df.class_name = df.class_name.cat.reorder_categories(["negative", *positives])
+        return df
+
+    @property
+    def unlabeled_df(self) -> pd.DataFrame:
+        return self.to_dataframe(self.unlabeled or read_jsonl(self.unlabeled_jsonl))
+
+    @property
+    def labeled_df(self) -> pd.DataFrame:
+        return self.to_dataframe(
+            self.labeled.values() or read_jsonl(self.labeled_jsonl)
+        )
+
+    @property
+    def df(self) -> pd.DataFrame:
+        df = self.unlabeled_df.set_index(["object_id"])
+        labeled = self.labeled_df.set_index(["object_id"])
+        df["labeled"] = labeled["confidence"].any()
+
+        df = df.set_index(["bbox_x", "bbox_y", "bbox_w", "bbox_h"], append=True)
+        labeled = labeled.set_index(
+            ["bbox_x", "bbox_y", "bbox_w", "bbox_h"], append=True
+        )
+        df["groundtruth"] = labeled["class_name"]
+
+        return df.reset_index()
+
+
+def about_hawk() -> None:
+    st.title("Welcome to the Hawk Browser")
+    st.markdown(
+        f"""\
+{ABOUT_TEXT}
+### No Hawk mission selected
+Choose a mission from the "**Select Mission**" pulldown in the sidebar.
+"""
+    )
+
+
+welcome_page = st.Page(about_hawk)
+
 
 # cacheable resource?
-def load_mission(mission_name: str | None) -> Mission | None:
-    try:
-        assert mission_name is not None
-        return Mission.load(mission_name)
-    except (AssertionError, ValueError):
-        return None
+def load_mission() -> Mission:
+    mission_name = st.session_state.get("mission_name")
+    if mission_name is not None:
+        try:
+            mission = Mission.load(mission_name)
+            return mission
+        except ValueError:
+            del st.session_state["mission_name"]
+    st.switch_page(welcome_page)
 
 
-def reset_mission_state() -> None:
+def reset_mission_state(sender: Signal | None) -> None:
     """Reset any mission specific session_state variables when we switched to a
     different mission"""
     selected_labels = [key for key in st.session_state if isinstance(key, int)]
     for key in selected_labels:
         # del st.session_state[key]
         st.session_state[key] = "?"
+
+
+mission_changed = signal("mission-changed")
+mission_changed.connect(reset_mission_state)
 
 
 def save_state(state: str) -> None:
@@ -101,35 +175,6 @@ def save_state(state: str) -> None:
         st.widget(..., key="foo", on_change=save_state, args=("foo",))
     """
     st.session_state[f"_{state}"] = st.session_state[state]
-
-
-def page_header(title: str) -> Mission | None:
-    """Create common page header/sidebar elements for a page"""
-    st.set_page_config(
-        page_title=title,
-        menu_items={
-            "Report a bug": "https://github.com/cmusatyalab/hawk/issues",
-            "About": ABOUT_TEXT,
-        },
-        layout="wide",
-    )
-
-    # create "Select Mission" pulldown
-    mission_name: str | None = st.session_state.get("mission", "")
-    missions = [None, *Mission.list()]
-    try:
-        selected_mission = missions.index(mission_name)
-    except ValueError:
-        selected_mission = None
-
-    mission = st.sidebar.selectbox(
-        "Select Mission",
-        missions,
-        index=selected_mission,
-        key="mission",
-        on_change=reset_mission_state,
-    )
-    return load_mission(mission)
 
 
 @contextmanager

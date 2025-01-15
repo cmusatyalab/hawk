@@ -23,7 +23,7 @@ from .stats import (
 )
 
 if TYPE_CHECKING:
-    from .to_scout import ScoutQueue
+    from .home_scout import ScoutQueue
 
 
 @dataclass
@@ -125,10 +125,14 @@ class LabelerDiskQueue:
 
             # This unassuming line is the main workhorse where we queue the new
             # label to be sent back to the scout where the sample originated.
-            # The story continues in to_scout.HomeToScout...
+            # The story continues in home_scout.HomeToScout...
             self.scout_queue.put(result)
 
             # The rest of this function is just updating stats
+            # only track stats for labeled samples that originated from scouts
+            if result.objectId is None:
+                continue
+
             detections = len(result.detections)
             self.labeled_objects.observe(detections)
 

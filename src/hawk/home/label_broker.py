@@ -12,8 +12,8 @@ from prometheus_client import start_http_server as start_metrics_server
 
 from ..classes import ClassList
 from ..mission_config import MissionConfig
-from .to_labeler import LabelerDiskQueue
-from .to_scout import ScoutQueue, Strategy
+from .home_labeler import LabelerDiskQueue
+from .home_scout import ScoutQueue, Strategy
 
 
 def main() -> int:

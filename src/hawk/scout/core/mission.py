@@ -203,9 +203,8 @@ class Mission(DataManagerContext, ModelContext):
 
         ## setup clustering process, if needed
         if self.novel_class_discovery:
-            self.clustering_dir = root_dir / "clustering"
             self.clustering_input_queue: mp.Queue[ResultProvider] = mp.Queue()
-            self.labels_queue: mp.Queue[LabeledTile] = mp.Queue()
+            self.labels_queue: mp.Queue[tuple[str, Path]] = mp.Queue()
             novel_cluster_process = mp.Process(
                 target=novel_class_discover.main,
                 args=(
@@ -480,10 +479,9 @@ class Mission(DataManagerContext, ModelContext):
 
             while not self._abort_event.is_set():
                 result = self._model.get_results()
-                if self.novel_class_discovery:
-                    self.clustering_input_queue.put(
-                        result
-                    )  ## put fv in queue for novel class clustering.
+                if self.novel_class_discovery and result is not None:
+                    ## put fv in queue for novel class clustering.
+                    self.clustering_input_queue.put(result)
                 # items_processed = \
                 self.selector.add_result(result)
                 ## line here to send result object to clustering process

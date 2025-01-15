@@ -84,22 +84,20 @@ class UnlabeledResult(LabelSample):
 
         data = request.attributes["thumbnail.jpeg"]
 
-        image_dir = "images"
-        if request.novel_sample:
-            image_dir = "novel"
-        tile_jpeg = result.unique_name(mission_dir / image_dir, ".jpeg")
-        tile_jpeg.parent.mkdir(exist_ok=True)
+        image_dir = "images" if not request.novel_sample else "novel"
+        image_file = result.content(mission_dir / image_dir, ".jpeg")
+        image_file.parent.mkdir(exist_ok=True)
 
-        if result.objectId.endswith(".npy"):  # for radar missions with .npy files
-            result.gen_heatmap(tile_jpeg, data)
+        if request.objectId.endswith(".npy"):  # for radar missions with .npy files
+            result.gen_heatmap(image_file, data)
         else:
-            tile_jpeg.write_bytes(data)
-        logger.info(f"SAVED TILE {tile_jpeg} for {result.objectId}")
+            image_file.write_bytes(data)
+        logger.info(f"SAVED TILE {image_file} for {result.objectId}")
 
         if request.feature_vector:
             feature_vector = torch.load(io.BytesIO(request.feature_vector))
 
-            fv_path = result.unique_name(mission_dir / "feature_vectors", ".pt")
+            fv_path = result.content(mission_dir / "feature_vectors", ".pt")
             fv_path.parent.mkdir(exist_ok=True)
             torch.save(feature_vector, fv_path)
 
@@ -124,6 +122,7 @@ class UnlabeledResult(LabelSample):
 @dataclass
 class HomeToScoutWorker:
     mission_id: str
+    mission_dir: Path
     scout: str
     h2c_port: int
     zmq_context: zmq.Context = field(  # type: ignore[type-arg]
@@ -165,6 +164,8 @@ class HomeToScoutWorker:
             for bbox in result.detections
             for class_name in bbox.scores
         ]
+
+        assert result.objectId is not None
         msg = SendLabel(
             objectId=result.objectId,
             scoutIndex=result.scoutIndex,
@@ -202,6 +203,7 @@ class ScoutQueue:
         self.to_scout = [
             HomeToScoutWorker(
                 mission_id=self.mission_id,
+                mission_dir=self.mission_dir,
                 scout=scout,
                 h2c_port=self.h2c_port,
                 zmq_context=self.zmq_context,

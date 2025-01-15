@@ -111,7 +111,8 @@ def shuffle_and_generate_index_files(
 
         div_files.append(paths)
 
-    ## Insert hidden samples here according to the number and desired start position (25%, 50%, etc.)
+    # Insert hidden samples here according to the number and desired start
+    # position (25%, 50%, etc.)
     if hidden_class:
         ## load the samples from the file with containing hidden samples
         hidden_samples = []
@@ -131,14 +132,14 @@ def shuffle_and_generate_index_files(
 
     print("** Distributing index files")
 
-    for i, scout in enumerate(config.deploy.scouts):
+    for i, host in enumerate(config.deploy.scouts):
         with NamedTemporaryFile(mode="w", delete=True) as fp:
             fp.write("\n".join(div_files[i]))
             fp.write("\n")
 
-            print(f"- {len(div_files[i])} entries for {scout}:{index_file}")
+            print(f"- {len(div_files[i])} entries for {host}:{index_file}")
             if not dry_run:
-                Connection(str(scout)).put(fp.name, remote=index_file)
+                Connection(str(host)).put(fp.name, remote=index_file)
     return 0
 
 

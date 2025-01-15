@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import argparse
+import os
 from pathlib import Path
 
 import streamlit.web.bootstrap as bootstrap
@@ -22,13 +23,15 @@ parser.add_argument(
 def main() -> None:
     args = parser.parse_args()
 
-    entrypoint = Path(__file__).parent.joinpath("Mission.py")
+    os.environ["HAWK_MISSION_DIR"] = str(args.logdir.resolve())
+
+    entrypoint = Path(__file__).parent.joinpath("app.py")
     config = {
         "browser_gatherUsageStats": False,
         "client_toolbarMode": "viewer",
         "server_address": args.listen,
         "server_port": args.port,
-        # server_headless=True,
+        "server_headless": True,
     }
     bootstrap.load_config_options(flag_options=config)
     bootstrap.run(str(entrypoint), False, [str(args.logdir)], config)

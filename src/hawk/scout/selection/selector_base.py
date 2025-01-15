@@ -236,19 +236,22 @@ class SelectorBase(Selector):
             try:
                 result = self.result_queue.get(timeout=10)
                 self.result_queue_length.dec()
-                if self._mission.novel_class_discovery:
+
+                assert self._mission is not None
+                if self._mission.novel_class_discovery and result is not None:
                     temp_dir = self._mission._feature_vector_dir / "temp"
-                    os.makedirs(
-                        temp_dir, exist_ok=True
-                    )  ## create temp dir for feature vectors of samples en route to home for labeling
+                    ## create temp dir for feature vectors of samples en route
+                    ## to home for labeling
+                    os.makedirs(temp_dir, exist_ok=True)
                     if result.feature_vector is not None:
+                        ## save the feature vector of any sample sent to home
+                        ## to temp/ until receiving the label.
                         vector: torch.Tensor = torch.load(
                             io.BytesIO(result.feature_vector)
                         )
-                        base_name = f"{Path(result.id).stem}.pt"
-                        torch.save(vector, temp_dir / base_name)
-                        ## save the feature vector of any sample sent to home to temp/ until receiving the label.
-                        # logger.info(f"Wrote feature vector temp: {temp_dir / base_name}")
+                        fv_path = temp_dir / Path(result.id).with_suffix(".pt").name
+                        torch.save(vector, fv_path)
+                        # logger.info(f"Wrote feature vector temp: {fv_path}")
 
                 # collect stats about objects sent to home
                 if result is not None:
