@@ -113,10 +113,11 @@ class NetworkRetriever(Retriever):
                 # Otherwise we assume we begin from an active state that may
                 # get disabled by any not_before_ or end_ conditions.
                 start_conditions = {"start_time", "start_on_model"}
-                active = bool(start_conditions.intersection(scml_deploy_options))
+                active = not bool(start_conditions.intersection(scml_deploy_options))
 
                 if "start_time" in scml_deploy_options:
                     active |= mission_time >= scml_deploy_options["start_time"]
+
                 if "start_on_model" in scml_deploy_options:
                     active |= model_version >= scml_deploy_options["start_on_model"]
 
