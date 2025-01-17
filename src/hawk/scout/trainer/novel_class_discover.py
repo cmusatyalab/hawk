@@ -44,7 +44,7 @@ class Novel_Class_Clustering:
         self.cluster_iteration = threading.Event()
         self.outbound_pipe = outbound_pipe
         self.batch_sample_count = 0
-        self.labeled_samples_dict: dict[str, list[Path]] = defaultdict(list[Path])
+        self.labeled_samples_dict: dict[str, list[Path]] = defaultdict(list)
         self.unlabeled_result_list: list[tuple[float, ResultProvider]] = []
         self.threshold_samples_for_clustering: int = (
             500  # cluster every N samples received from model
