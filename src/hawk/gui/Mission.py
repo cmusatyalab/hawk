@@ -348,7 +348,8 @@ def display_radar_images(mission: Mission) -> None:
     exclude = mission.labeled if not st.session_state.show_labeled else set()
     results = [result for result in mission.unlabeled if result.objectId not in exclude]
 
-    with paginate(results) as page:
+    results_per_page = st.session_state.rows * st.session_state.columns
+    with paginate(results, results_per_page=results_per_page) as page:
         for result in page:
             assert result.objectId is not None
             base = Path(result.objectId).stem
@@ -388,7 +389,8 @@ def display_images(mission: Mission) -> None:
     exclude = mission.labeled if not st.session_state.show_labeled else set()
     results = [result for result in mission.unlabeled if result.objectId not in exclude]
 
-    with paginate(results) as page:
+    results_per_page = st.session_state.rows * st.session_state.columns
+    with paginate(results, results_per_page=results_per_page) as page:
         for result in page:
             with next(column):
                 if result.is_classification:

@@ -9,7 +9,7 @@ import os
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Iterator
+from typing import TYPE_CHECKING, Any, Iterable, Iterator
 
 import pandas as pd
 import streamlit as st
@@ -17,6 +17,9 @@ from blinker import Signal, signal
 
 from hawk.home.label_utils import DetectionDict, LabelSample, MissionResults, read_jsonl
 from hawk.mission_config import MissionConfig, load_config
+
+if TYPE_CHECKING:
+    from streamlit.delta_generator import DeltaGenerator
 
 ABOUT_TEXT = """\
 Hawk is a live learning system that leverages distributed machine learning,
@@ -177,12 +180,19 @@ def save_state(state: str) -> None:
     st.session_state[f"_{state}"] = st.session_state[state]
 
 
+def columns(ncols: int) -> Iterator[DeltaGenerator]:
+    """Generator function to create infinite list of columns"""
+    while 1:
+        yield from st.columns(ncols)
+
+
 @contextmanager
-def paginate(result_list: list[LabelSample]) -> Iterator[list[LabelSample]]:
+def paginate(
+    result_list: list[LabelSample], results_per_page: int
+) -> Iterator[list[LabelSample]]:
     """Paginate a list of results"""
     nresults = len(result_list)
     current_page = int(st.query_params.get("page", 1))
-    results_per_page = st.session_state.rows * st.session_state.columns
     pages = int((nresults + results_per_page - 1) / results_per_page)
 
     page = max(1, min(pages, current_page))

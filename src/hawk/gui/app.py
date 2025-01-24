@@ -42,7 +42,7 @@ else:
     pages = [
         st.Page("Config.py", title="Configuration"),
         st.Page("Mission.py", title="Labeling"),
-        # st.Page("Clustering.py", title="Clustering"),
+        st.Page("Clustering.py", title="Clustering"),
         st.Page("Stats.py", title="Mission Stats"),
         # st.Page("Upload.py", title="Augment Training Data"),
     ]
