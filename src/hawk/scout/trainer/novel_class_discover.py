@@ -417,6 +417,6 @@ def main(
         home_pipe,
         clustering_dir,
         scout_index,
-        semi_supervised=True,
+        # semi_supervised=True,
     )
     novel_clustering.novel_clustering_process()
