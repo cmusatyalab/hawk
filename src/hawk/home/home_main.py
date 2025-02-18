@@ -3,7 +3,10 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import argparse
+import atexit
 import multiprocessing as mp
+import os
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -24,9 +27,44 @@ from .stats import HAWK_MISSION_STATUS
 from .utils import define_scope, get_ip
 
 
+def daemonize(mission_dir: Path) -> None:
+    # fork-detach-fork
+    try:
+        pid = os.fork()
+        if pid > 0:
+            sys.exit(0)
+        os.setsid()
+        pid = os.fork()
+        if pid > 0:
+            sys.exit(0)
+    except OSError as e:
+        sys.stderr.write(f"Failed to daemonize process {e.strerror}")
+        sys.exit(1)
+
+    # redirect stdio
+    sys.stdout.flush()
+    sys.stderr.flush()
+    devnull = os.open(os.devnull, os.O_RDONLY)
+    logfile = os.open(
+        mission_dir / "hawk_home.log", os.O_WRONLY | os.O_CREAT | os.O_APPEND
+    )
+    os.dup2(devnull, sys.stdin.fileno())
+    os.dup2(logfile, sys.stdout.fileno())
+    os.dup2(logfile, sys.stderr.fileno())
+
+    # write pidfile
+    pidfile = mission_dir / "hawk_home.pid"
+    atexit.register(os.remove, str(pidfile))
+    my_pid = str(os.getpid())
+    pidfile.write_text(f"{my_pid}\n")
+
+
 # Usage: python -m hawk.home.home_main config/config.yml
 def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-d", "--detach", action="store_true", help="Run in the detached mode"
+    )
     parser.add_argument(
         "config", type=Path, default=Path.cwd().joinpath("configs", "config.yml")
     )
@@ -71,6 +109,10 @@ def main() -> None:
     if mission_dir is None:
         mission_dir = Path(config["home-params"]["mission_dir"])
         mission_dir = mission_dir / mission_id
+
+    if args.detach:
+        daemonize(mission_dir)
+
     logger.info(mission_dir)
 
     # create local directories
