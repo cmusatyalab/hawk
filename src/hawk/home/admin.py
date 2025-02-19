@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022-2023 Carnegie Mellon University
+# SPDX-FileCopyrightText: 2022-2025 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -7,7 +7,6 @@ from __future__ import annotations
 import base64
 import io
 import json
-import os
 import random
 import socket
 import threading
@@ -355,11 +354,8 @@ class Admin:
             raise NotImplementedError(errmsg)
 
         # initialModel
-        model_path = train_config.get("initial_model_path", "")
-        model_content = b""
-        if os.path.isfile(model_path):
-            with open(model_path, "rb") as f:
-                model_content = f.read()
+        model_path = Path(train_config.get("initial_model_path", ""))
+        model_content = model_path.read_bytes() if model_path.is_file() else b""
 
         initial_model = None
         if len(model_content):
@@ -470,11 +466,12 @@ class Admin:
         self.sub_class_discovery = config.get("sub_class_discovery", False)
 
         # bootstrapZip
-        bootstrap_path = train_config.get("bootstrap_path", "")
-        bootstrap_zip = b""
-        if os.path.exists(bootstrap_path):
-            with open(bootstrap_path, "rb") as f:
-                bootstrap_zip = f.read()
+        bootstrap_path = Path(train_config.get("bootstrap_path", ""))
+        if bootstrap_path.is_file():
+            bootstrap_zip = bootstrap_path.read_bytes()
+        else:
+            logger.info(f"{bootstrap_path} does not exist")
+            bootstrap_zip = b""
 
         # bandwidthFunc
         bandwidth_config = config["bandwidth"]

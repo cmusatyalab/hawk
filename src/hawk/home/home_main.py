@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022-2023 Carnegie Mellon University
+# SPDX-FileCopyrightText: 2022-2025 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -8,6 +8,7 @@ import multiprocessing as mp
 import os
 import sys
 import time
+from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 
@@ -57,6 +58,14 @@ def daemonize(mission_dir: Path) -> None:
     atexit.register(os.remove, str(pidfile))
     my_pid = str(os.getpid())
     pidfile.write_text(f"{my_pid}\n")
+
+
+def resolve_path(config: dict[str, str], key: str, mission_dir: Path) -> None:
+    with suppress(KeyError):
+        local_path = Path(config[key])
+        if not local_path.is_absolute():
+            local_path = mission_dir.joinpath(local_path).resolve()
+            config[key] = str(local_path)
 
 
 # Usage: python -m hawk.home.home_main config/config.yml
@@ -123,6 +132,10 @@ def main() -> None:
 
     log_dir.mkdir(parents=True)
     trace_dir.mkdir()
+
+    # resolve local paths relative to mission_dir
+    resolve_path(config["train_strategy"], "bootstrap_path", mission_dir)
+    resolve_path(config["train_strategy"], "initial_model_path", mission_dir)
 
     # Save final config file to log_dir
     # this includes scope derived parameters, normalized bandwidth, and
