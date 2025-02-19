@@ -65,7 +65,7 @@ def archive_mission_state(mission: Mission) -> None:
             ["mission_config.yml"]
             + mission.extra_config_files
             + [
-                "logs",
+                "hawk_home.log" "logs",
                 "traces",
                 "unlabeled.jsonl",
                 "labeled.jsonl",
@@ -134,6 +134,7 @@ def reset_mission(mission: Mission) -> bool:
         shutil.rmtree(mission_dir / "feature_vectors", ignore_errors=True)
         st.write("Removing logs...")
         time.sleep(0.5)
+        mission_dir.joinpath("hawk_home.log").unlink(missing_ok=True)
         shutil.rmtree(mission_dir / "traces", ignore_errors=True)
         shutil.rmtree(mission_dir / "logs", ignore_errors=True)
         status.update(label="Mission reset", state="complete", expanded=True)

@@ -107,16 +107,17 @@ class Mission(MissionResults):
         """Try to derive mission state by looking at a log/stats directory."""
         mission_dir = Path(self.mission_dir)
 
+        started = mission_dir.joinpath("logs").exists()
+        running = self.stats_file.exists()
         active = deployment.check_home(mission_dir)
-        output = self.stats_file.exists()
 
-        if not output and not active:
+        if not started and not active:
             return "Not Started"
-        elif not output and active:
+        elif not running and active:
             return "Starting"
-        elif output and active:
+        elif running and active:
             return "Running"
-        else:  # output and not active:
+        else:  # started/running and not active:
             return "Finished"
 
     def to_dataframe(self, labels: Iterable[LabelSample]) -> pd.DataFrame:

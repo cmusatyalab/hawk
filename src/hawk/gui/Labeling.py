@@ -131,7 +131,7 @@ def update_statistics(mission: Mission) -> bool:
         st.session_state.show_labeled = True
 
     # return True if mission is still active
-    return mission_state != "Finished"
+    return mission_state in ["Starting", "Running"]
 
 
 ####

@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -91,7 +93,7 @@ def mission_stats(mission: Mission, df: pd.DataFrame | None) -> bool:
 
     st.progress(float(samples_inferenced / samples_total))
 
-    return mission_state != "Finished"
+    return mission_state in ["Starting", "Running"]
 
 
 with st.expander("Overall mission statistics", expanded=True):
@@ -138,6 +140,10 @@ with st.expander("Confidence for received samples over time"):
         df, x="time_queued", y=["confidence_incorrect", "confidence_correct"]
     )
 
+mission_log = Path(mission.mission_dir) / "hawk_home.log"
+if mission_log.exists():
+    with st.expander("Mission Logs"):
+        st.text_area("Mission Logs", mission_log.read_text())
 
 if mission_active:
     st_autorefresh(interval=2000, key="refresh")
