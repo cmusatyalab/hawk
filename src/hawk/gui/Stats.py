@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 Carnegie Mellon University
+# SPDX-FileCopyrightText: 2024-2025 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -9,25 +9,31 @@ import pandas as pd
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 
-from hawk.gui.elements import load_mission
+from hawk.gui.elements import Mission, load_mission
+
+
+def max_confidence(df: pd.DataFrame) -> pd.DataFrame:
+    # filter down to just the maximum confidence inferences
+    max_conf_idx = df.groupby(["instance", "bbox_x", "bbox_y", "bbox_w", "bbox_h"])[
+        "confidence"
+    ].idxmax()
+    return df.iloc[max_conf_idx]
+
 
 st.title("Hawk Mission Statistics")
 
 mission = load_mission()
-df = mission.df
-
-# filter down to just the maximum confidence inferences
-max_infer = df.groupby(["instance", "bbox_x", "bbox_y", "bbox_w", "bbox_h"])[
-    "confidence"
-].idxmax()
-df = df.iloc[max_infer]
+df = max_confidence(mission.df)
 
 # with st.expander("Dataframe"):
 #     st.dataframe(df)
 
 
-def mission_stats(df: pd.DataFrame) -> bool:
-    """Output various stats showing mission process."""
+def mission_stats(mission: Mission, df: pd.DataFrame | None) -> bool:
+    """Output various stats showing mission progress."""
+    if df is None:
+        df = max_confidence(mission.df)
+
     start_time = df.time_queued.min()
     last_update = df.time_queued.max()
     time_elapsed = (last_update - start_time).total_seconds()
@@ -41,12 +47,7 @@ def mission_stats(df: pd.DataFrame) -> bool:
     # so we're counting the number of unique instance values.
     samples_received = df.instance.nunique()
 
-    if start_time == pd.NaT:
-        mission_state = "Starting"
-    elif pd.Timestamp.now("UTC") > (last_update + pd.Timedelta(60, "s")):
-        mission_state = "Finished"
-    else:
-        mission_state = "Running"
+    mission_state = mission.state()
 
     # read scout stats from logs/mission-stats.json
     stats = mission.get_stats()
@@ -94,7 +95,7 @@ def mission_stats(df: pd.DataFrame) -> bool:
 
 
 with st.expander("Overall mission statistics", expanded=True):
-    mission_active = mission_stats(df)
+    mission_active = mission_stats(mission, df)
 
 
 ####

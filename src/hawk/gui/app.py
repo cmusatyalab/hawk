@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 Carnegie Mellon University
+# SPDX-FileCopyrightText: 2024-2025 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -30,7 +30,7 @@ def select_mission_cb() -> None:
 # create "Select Mission" pulldown
 st.sidebar.selectbox(
     "Select Mission",
-    [None, *Mission.list()],
+    [None, *Mission.missions()],
     key="mission_name",
     on_change=select_mission_cb,
 )
@@ -41,11 +41,12 @@ if st.session_state.get("mission_name") is None:
 else:
     pages = [
         st.Page("Config.py", title="Configuration"),
-        st.Page("Mission.py", title="Labeling"),
+        st.Page("Labeling.py", title="Labeling"),
         st.Page("Clustering.py", title="Clustering"),
         st.Page("Stats.py", title="Mission Stats"),
         # st.Page("Upload.py", title="Augment Training Data"),
     ]
+
 
 app = st.navigation(pages)
 app.run()

@@ -1,22 +1,21 @@
-# SPDX-FileCopyrightText: 2024 Carnegie Mellon University
+# SPDX-FileCopyrightText: 2024-2025 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
 from __future__ import annotations
 
 import base64
-import time
 
 import pandas as pd
 import streamlit as st
 
-from hawk.gui import deployment
 from hawk.gui.elements import (
     HOME_MISSION_DIR,
     SCOUT_MISSION_DIR,
     load_mission,
     save_state,
 )
+from hawk.gui.mission_control import mission_advanced_controls, mission_controls
 from hawk.mission_config import MissionConfig
 
 st.title("Hawk Mission Config")
@@ -125,8 +124,11 @@ def set_state_from_mission_config(mission_config: MissionConfig) -> None:
     """Called whenever we reset/reload mission state to update st.session_state"""
     st.session_state.mission_config = mission_config
 
+    deployed_state = st.session_state.get("deployed_state", [])
     st.session_state.scouts = [str(scout) for scout in mission_config.deploy.scouts]
-    st.session_state.deployed = [False] * len(st.session_state.scouts)
+    st.session_state.deployed = [
+        scout in deployed_state for scout in st.session_state.scouts
+    ]
     st.session_state._scout_port = mission_config.deploy.a2s_port
 
     # fix default values
@@ -170,6 +172,9 @@ def load_template() -> None:
 # if "mission_config" not in st.session_state:
 mission = load_mission()
 set_state_from_mission_config(mission.config)
+
+mission_controls(mission)
+
 
 mission_name = mission.config["mission-name"]
 with st.expander(f":floppy_disk: {mission_name}", expanded=not mission_name):
@@ -242,11 +247,6 @@ with st.expander(f"{status} Scout Deployment"):  # , expanded=not all_scouts_dep
         on_change=save_state,
         args=("scout_port",),
     )
-
-    col1, col2, col3 = st.columns(3)
-    col1.button("Deploy scouts", on_click=deployment.start)
-    col2.button("Stop scouts", on_click=deployment.stop)
-    col3.button("Check deployment", on_click=deployment.check)
 
 with st.expander("Dataset"):
     dataset_config = st.session_state.mission_config.get("dataset", {})
@@ -586,14 +586,5 @@ with st.expander("Mission Parameters"):
 with st.expander("Debug"):
     st.write(st.session_state)
 
-
-def start_mission(mission_config: MissionConfig) -> None:
-    now = int(time.time())
-    mission_config["start-time"] = now
-
-    # mission_start = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(now))
-    # result_dir = HOME_MISSION_DIR.joinpath(
-    #     f"{mission_config['mission-name']}-{mission_start}"
-    # )
-    # result_dir.mkdir()
-    # result_dir.write_text(mission_config.to_yaml())
+with st.expander("Advanced mission control"):
+    mission_advanced_controls(mission)

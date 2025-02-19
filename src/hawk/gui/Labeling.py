@@ -1,11 +1,10 @@
-# SPDX-FileCopyrightText: 2024 Carnegie Mellon University
+# SPDX-FileCopyrightText: 2024-2025 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
 from __future__ import annotations
 
 import sys
-import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterator
 
@@ -94,14 +93,8 @@ def update_statistics(mission: Mission) -> bool:
     samples_inferenced = int(stats.get("processedObjects", 0))
     samples_total = int(stats.get("totalObjects", samples_inferenced or 1))
     model_version = int(stats.get("version", 0))
-    last_update = stats.get("last_update", 0)
 
-    if time_elapsed == 0:
-        mission_state = "Starting"
-    elif (time.time() - last_update) > 60:
-        mission_state = "Finished"
-    else:
-        mission_state = "Running"
+    mission_state = mission.state()
 
     # compute home stats from received and labeled samples
     total_labeled = len(mission.labeled)

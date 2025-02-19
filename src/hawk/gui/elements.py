@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 Carnegie Mellon University
+# SPDX-FileCopyrightText: 2024-2025 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -9,12 +9,13 @@ import os
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Iterator
+from typing import TYPE_CHECKING, Any, Iterable, Iterator, Literal
 
 import pandas as pd
 import streamlit as st
 from blinker import Signal, signal
 
+from hawk.gui import deployment
 from hawk.home.label_utils import DetectionDict, LabelSample, MissionResults, read_jsonl
 from hawk.mission_config import MissionConfig, load_config
 
@@ -31,11 +32,13 @@ conditions.
 HOME_MISSION_DIR = Path(os.environ.get("HAWK_MISSION_DIR", Path.cwd()))
 SCOUT_MISSION_DIR = Path("hawk-missions")
 
+MissionState = Literal["Not Started", "Starting", "Running", "Finished"]
+
 
 @dataclass
 class Mission(MissionResults):
     @classmethod
-    def list(cls) -> list[str]:
+    def missions(cls) -> list[str]:
         return [mission.name for mission in sorted(HOME_MISSION_DIR.iterdir())]
 
     @classmethod
@@ -49,6 +52,23 @@ class Mission(MissionResults):
     @property
     def name(self) -> str:
         return Path(self.mission_dir).name
+
+    @property
+    def is_template(self) -> bool:
+        return self.name.startswith("_")
+
+    @property
+    def extra_config_files(self) -> list[str]:
+        mission_dir = Path(self.mission_dir)
+        return [
+            file
+            for file in [
+                self.config.get("dataset", {}).get("stream_path"),
+                self.config.get("train_strategy", {}).get("bootstrap_path"),
+                self.config.get("train_strategy", {}).get("initial_model_path"),
+            ]
+            if file is not None and mission_dir.joinpath(file).exists()
+        ]
 
     @property
     def config(self) -> MissionConfig:
@@ -82,6 +102,22 @@ class Mission(MissionResults):
         data: dict[str, Any] = json.loads(filepath.read_text())
         data["last_update"] = filepath.stat().st_mtime
         return data
+
+    def state(self) -> MissionState:
+        """Try to derive mission state by looking at a log/stats directory."""
+        mission_dir = Path(self.mission_dir)
+
+        active = deployment.check_home(mission_dir)
+        output = self.stats_file.exists()
+
+        if not output and not active:
+            return "Not Started"
+        elif not output and active:
+            return "Starting"
+        elif output and active:
+            return "Running"
+        else:  # output and not active:
+            return "Finished"
 
     def to_dataframe(self, labels: Iterable[LabelSample]) -> pd.DataFrame:
         image_dir = Path(self.mission_dir) / "images"
