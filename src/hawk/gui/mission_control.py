@@ -65,6 +65,7 @@ def archive_mission_state(mission: Mission) -> None:
             ["mission_config.yml"]
             + mission.extra_config_files
             + [
+                "bootstrap",
                 "hawk_home.log" "logs",
                 "traces",
                 "unlabeled.jsonl",
@@ -100,6 +101,8 @@ def clone_mission(mission: Mission) -> bool:
         time.sleep(1)
         new_mission_dir.mkdir()
         st.write("Copying mission configuration...")
+
+        # copy config files
         for file in ["mission_config.yml"] + mission.extra_config_files:
             path = mission_dir / file
             if path.exists():
@@ -107,6 +110,7 @@ def clone_mission(mission: Mission) -> bool:
                 new_path = new_mission_dir / file
                 shutil.copy(path, new_path)
                 time.sleep(1)
+
         status.update(
             label=f"Mission {new_mission_name} created", state="complete", expanded=True
         )
@@ -258,8 +262,6 @@ def mission_controls(mission: Mission) -> None:
             mission_dir = Path(mission.mission_dir)
             if deployment.check_home(mission_dir):
                 actions.append(_CMD_STOP_MISSION)
-            else:
-                actions.append(_CMD_RESET)
 
     if st.session_state.get("controls") is None:
         st.session_state.controls = None
@@ -275,6 +277,7 @@ def mission_controls(mission: Mission) -> None:
 
 
 def mission_advanced_controls(mission: Mission) -> None:
+    mission_dir = Path(mission.mission_dir)
     mission_active = mission.state() in ["Starting", "Running"]
 
     actions = []
@@ -284,7 +287,10 @@ def mission_advanced_controls(mission: Mission) -> None:
         actions.append(_CMD_STOP_SCOUTS)
         actions.append(_CMD_STOP_MISSION)
 
-        if not mission_active:
+        # when the mission has finished and Hawk home is not running we can
+        # reset and/or delete the mission state
+        if not mission_active and not deployment.check_home(mission_dir):
+            actions.append(_CMD_RESET)
             actions.append(_CMD_DELETE)
 
     if not actions:

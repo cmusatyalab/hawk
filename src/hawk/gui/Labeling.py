@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterator
 
 import streamlit as st
 from blinker import Signal
@@ -14,11 +13,8 @@ from streamlit_autorefresh import st_autorefresh
 from streamlit_label_kit import detection as st_detection
 
 from hawk.classes import ClassList, ClassName, class_label_to_int
-from hawk.gui.elements import Mission, load_mission, mission_changed, paginate
+from hawk.gui.elements import Mission, columns, load_mission, mission_changed, paginate
 from hawk.home.label_utils import Detection, LabelSample
-
-if TYPE_CHECKING:
-    from streamlit.delta_generator import DeltaGenerator
 
 st.title("Hawk Mission Results")
 # st.write(st.session_state)
@@ -163,12 +159,6 @@ def reset_new_class() -> None:
 new_class = st.sidebar.text_input("New Class", on_change=reset_new_class)
 if new_class:
     class_list.add(ClassName(sys.intern(new_class)))
-
-
-def columns(ncols: int) -> Iterator[DeltaGenerator]:
-    """Generator function to create infinite list of columns"""
-    while 1:
-        yield from st.columns(ncols)
 
 
 column = columns(st.session_state.columns)

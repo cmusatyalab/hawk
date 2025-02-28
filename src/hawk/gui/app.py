@@ -41,6 +41,7 @@ if st.session_state.get("mission_name") is None:
 else:
     pages = [
         st.Page("Config.py", title="Configuration"),
+        st.Page("Bootstrap.py", title="Explore Bootstrap"),
         st.Page("Labeling.py", title="Labeling"),
         st.Page("Clustering.py", title="Clustering"),
         st.Page("Stats.py", title="Mission Stats"),

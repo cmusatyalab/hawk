@@ -176,6 +176,13 @@ set_state_from_mission_config(mission.config)
 mission_controls(mission)
 
 
+def toggle_labeler() -> None:
+    if st.session_state.labeler:
+        st.session_state.label_mode = "script"
+    else:
+        st.session_state.label_mode = "ui"
+
+
 mission_name = mission.config["mission-name"]
 with st.expander(f":floppy_disk: {mission_name}", expanded=not mission_name):
     st.session_state["mission-name"] = mission_name
@@ -189,6 +196,9 @@ with st.expander(f":floppy_disk: {mission_name}", expanded=not mission_name):
         ),
         disabled=not mission.config_writable,
     )
+    st.session_state["labeler"] = mission.config.get("label-mode", "ui") == "script"
+    st.toggle("Use script labeler", key="labeler", on_change=toggle_labeler)
+
 
 all_scouts_deployed = (
     st.session_state.get("scouts") and False not in st.session_state.deployed
