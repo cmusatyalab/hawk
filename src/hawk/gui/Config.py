@@ -173,7 +173,11 @@ def load_template() -> None:
 mission = load_mission()
 set_state_from_mission_config(mission.config)
 
+
 mission_controls(mission)
+
+with st.expander("Advanced mission control"):
+    mission_advanced_controls(mission)
 
 
 def toggle_labeler() -> None:
@@ -595,6 +599,3 @@ with st.expander("Mission Parameters"):
 
 with st.expander("Debug"):
     st.write(st.session_state)
-
-with st.expander("Advanced mission control"):
-    mission_advanced_controls(mission)
