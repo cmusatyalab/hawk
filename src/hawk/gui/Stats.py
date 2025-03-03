@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -140,7 +138,7 @@ with st.expander("Confidence for received samples over time"):
         df, x="time_queued", y=["confidence_incorrect", "confidence_correct"]
     )
 
-mission_log = Path(mission.mission_dir) / "hawk_home.log"
+mission_log = mission.mission_dir / "hawk_home.log"
 if mission_log.exists():
     with st.expander("Mission Logs"):
         st.text_area("Mission Logs", mission_log.read_text())

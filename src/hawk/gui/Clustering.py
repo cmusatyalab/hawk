@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import streamlit as st
 
 from hawk.gui.elements import Mission, columns, load_mission, paginate
@@ -15,7 +13,7 @@ st.title("Novel Cluster Explorer")
 # st.write(st.session_state)
 
 mission = load_mission()
-clusters = list(read_jsonl(Path(mission.mission_dir, "novel.jsonl")))
+clusters = list(read_jsonl(mission.mission_dir / "novel.jsonl"))
 # st.write(clusters)
 
 dialog_displayed = False
@@ -37,14 +35,14 @@ column = columns(display_columns)
 
 @st.dialog("Image Viewer", width="large")
 def image_zoom_popup(mission: Mission, sample: LabelSample) -> None:
-    image = sample.content(Path(mission.mission_dir) / "novel", ".jpeg")
+    image = sample.content(mission.mission_dir / "novel", ".jpeg")
     st.image(str(image), use_container_width=True)
     if st.button("Ok"):
         st.rerun()
 
 
 def display_cluster(mission: Mission, sample: LabelSample) -> None:
-    image = sample.content(Path(mission.mission_dir) / "novel", ".jpeg")
+    image = sample.content(mission.mission_dir / "novel", ".jpeg")
     st.image(str(image))
 
     if st.button("View", key=f"{sample.index}_view"):

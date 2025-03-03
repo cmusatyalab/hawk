@@ -16,7 +16,7 @@ import streamlit as st
 from blinker import Signal, signal
 
 from hawk.gui import deployment
-from hawk.home.label_utils import DetectionDict, LabelSample, MissionResults, read_jsonl
+from hawk.home.label_utils import DetectionDict, LabelSample, MissionData, read_jsonl
 from hawk.mission_config import MissionConfig, load_config
 
 if TYPE_CHECKING:
@@ -36,7 +36,7 @@ MissionState = Literal["Not Started", "Starting", "Running", "Finished"]
 
 
 @dataclass
-class Mission(MissionResults):
+class Mission(MissionData):
     @classmethod
     def missions(cls) -> list[str]:
         return [mission.name for mission in sorted(HOME_MISSION_DIR.iterdir())]
@@ -51,7 +51,7 @@ class Mission(MissionResults):
 
     @property
     def name(self) -> str:
-        return Path(self.mission_dir).name
+        return self.mission_dir.name
 
     @property
     def is_template(self) -> bool:
@@ -59,7 +59,6 @@ class Mission(MissionResults):
 
     @property
     def extra_config_files(self) -> list[str]:
-        mission_dir = Path(self.mission_dir)
         return [
             file
             for file in [
@@ -67,18 +66,18 @@ class Mission(MissionResults):
                 self.config.get("train_strategy", {}).get("bootstrap_path"),
                 self.config.get("train_strategy", {}).get("initial_model_path"),
             ]
-            if file is not None and mission_dir.joinpath(file).exists()
+            if file is not None and self.mission_dir.joinpath(file).exists()
         ]
 
     @property
     def config(self) -> MissionConfig:
         if not hasattr(self, "_config"):
             try:
-                self._config_file = Path(self.mission_dir) / "logs" / "hawk.yml"
+                self._config_file = self.mission_dir / "logs" / "hawk.yml"
                 self._config = load_config(self._config_file)
                 self.config_writable = False
             except FileNotFoundError:
-                self._config_file = Path(self.mission_dir) / "mission_config.yml"
+                self._config_file = self.mission_dir / "mission_config.yml"
                 self._config = (
                     load_config(self._config_file)
                     if self._config_file.exists()
@@ -88,11 +87,11 @@ class Mission(MissionResults):
         return self._config
 
     def image_path(self, sample: LabelSample) -> Path:
-        return sample.content(Path(self.mission_dir) / "images", ".jpeg")
+        return sample.content(self.mission_dir / "images", ".jpeg")
 
     @property
     def stats_file(self) -> Path:
-        return Path(self.mission_dir, "logs", "mission-stats.json")
+        return self.mission_dir / "logs" / "mission-stats.json"
 
     def get_stats(self) -> dict[str, Any]:
         filepath = self.stats_file
@@ -105,11 +104,9 @@ class Mission(MissionResults):
 
     def state(self) -> MissionState:
         """Try to derive mission state by looking at a log/stats directory."""
-        mission_dir = Path(self.mission_dir)
-
-        started = mission_dir.joinpath("logs").exists()
+        started = self.mission_dir.joinpath("logs").exists()
         running = self.stats_file.exists()
-        active = deployment.check_home(mission_dir)
+        active = deployment.check_home(self.mission_dir)
 
         if not started and not active:
             return "Not Started"
@@ -121,7 +118,7 @@ class Mission(MissionResults):
             return "Finished"
 
     def to_dataframe(self, labels: Iterable[LabelSample]) -> pd.DataFrame:
-        image_dir = Path(self.mission_dir) / "images"
+        image_dir = self.mission_dir / "images"
 
         # get a list of all class/confidence scores for a bounding box in a sample.
         detections: list[DetectionDict] = []

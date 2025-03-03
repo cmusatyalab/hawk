@@ -413,8 +413,8 @@ def read_jsonl(
 
 
 @dataclass
-class MissionResults:
-    mission_dir: PathLike[str] | str = field(default_factory=Path.cwd)
+class MissionData:
+    mission_dir: Path = field(default_factory=Path.cwd)
 
     labeled_jsonl: Path = field(init=False, repr=False)
     unlabeled_jsonl: Path = field(init=False, repr=False)
@@ -426,8 +426,8 @@ class MissionResults:
     unlabeled_offset: int = 0
 
     def __post_init__(self) -> None:
-        self.labeled_jsonl = Path(self.mission_dir, "labeled.jsonl")
-        self.unlabeled_jsonl = Path(self.mission_dir, "unlabeled.jsonl")
+        self.labeled_jsonl = self.mission_dir / "labeled.jsonl"
+        self.unlabeled_jsonl = self.mission_dir / "unlabeled.jsonl"
 
     def resync_labeled(self) -> None:
         new_labels = list(read_jsonl(self.labeled_jsonl, skip=self.labeled_offset))

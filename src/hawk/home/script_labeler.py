@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from logzero import logger
 
 from hawk.classes import NEGATIVE_CLASS, ClassCounter, ClassList, ClassName
-from hawk.home.label_utils import Detection, LabelSample, MissionResults, ObjectId
+from hawk.home.label_utils import Detection, LabelSample, MissionData, ObjectId
 
 if TYPE_CHECKING:
     from hawk.mission_config import MissionConfig
@@ -62,7 +62,7 @@ class ScriptLabeler:
         )
 
     def run(self) -> None:
-        self.mission_data = MissionResults(self.mission_dir)
+        self.mission_data = MissionData(self.mission_dir)
         with suppress(KeyboardInterrupt):
             logger.debug("Waiting for data to label")
             for result in self.mission_data.read_unlabeled(

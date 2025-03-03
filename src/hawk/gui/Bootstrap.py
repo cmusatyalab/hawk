@@ -27,9 +27,8 @@ if classes[0] != "negative":
     classes.insert(0, "negative")
 
 # extract various paths
-mission_dir = Path(mission.mission_dir)
-bootstrap_dir = mission_dir / "bootstrap"
-bootstrap_zip = mission_dir / mission.config.get("train_strategy", {}).get(
+bootstrap_dir = mission.mission_dir / "bootstrap"
+bootstrap_zip = mission.mission_dir / mission.config.get("train_strategy", {}).get(
     "bootstrap_path", "bootstrap.zip"
 )
 

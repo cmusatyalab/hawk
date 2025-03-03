@@ -7,7 +7,6 @@ from __future__ import annotations
 import shutil
 import time
 import zipfile
-from pathlib import Path
 from typing import Callable
 
 import streamlit as st
@@ -54,9 +53,8 @@ def _progress(callback: Callable[[DeployConfig], bool], mission: Mission) -> Non
 def archive_mission_state(mission: Mission) -> None:
     """Archive mission state."""
 
-    mission_dir = Path(mission.mission_dir)
     timestamp = time.strftime("%Y%m%d-%H%M%S")
-    archive_path = mission_dir.joinpath(timestamp).with_suffix(".zip")
+    archive_path = mission.mission_dir.joinpath(timestamp).with_suffix(".zip")
 
     with zipfile.ZipFile(
         archive_path, mode="w", compression=zipfile.ZIP_DEFLATED
@@ -77,12 +75,12 @@ def archive_mission_state(mission: Mission) -> None:
             ]
         )
         for file in archive_paths:
-            path = mission_dir / file
+            path = mission.mission_dir / file
             if path.is_dir():
                 # archive.mkdir(path)
                 for sub_path in path.iterdir():
                     if sub_path.is_file():
-                        arcname = sub_path.relative_to(mission_dir)
+                        arcname = sub_path.relative_to(mission.mission_dir)
                         archive.write(sub_path, str(arcname))
             elif path.is_file():
                 archive.write(path, file)
@@ -91,11 +89,10 @@ def archive_mission_state(mission: Mission) -> None:
 def clone_mission(mission: Mission) -> bool:
     """Create a new mission from an existing one."""
 
-    mission_dir = Path(mission.mission_dir)
     mission_name = mission.config.get("mission-name", mission.name.lstrip("_"))
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     new_mission_name = f"{mission_name}-{timestamp}"
-    new_mission_dir = mission_dir.parent.joinpath(new_mission_name)
+    new_mission_dir = mission.mission_dir.parent.joinpath(new_mission_name)
     with st.status(f"Creating Mission {new_mission_name}...", expanded=True) as status:
         st.write("Creating mission directory...")
         time.sleep(1)
@@ -104,7 +101,7 @@ def clone_mission(mission: Mission) -> bool:
 
         # copy config files
         for file in ["mission_config.yml"] + mission.extra_config_files:
-            path = mission_dir / file
+            path = mission.mission_dir / file
             if path.exists():
                 st.write(f"Copying {file}...")
                 new_path = new_mission_dir / file
@@ -121,26 +118,25 @@ def clone_mission(mission: Mission) -> bool:
 def reset_mission(mission: Mission) -> bool:
     """Archive and reset mission state (labels/images/logs)."""
 
-    mission_dir = Path(mission.mission_dir)
     with st.status("Resetting Mission state...", expanded=True) as status:
         st.write("Archiving mission state...")
         archive_mission_state(mission)
 
         st.write("Removing labeled/unlabeled data...")
         time.sleep(0.5)
-        mission_dir.joinpath("unlabeled.jsonl").unlink(missing_ok=True)
-        mission_dir.joinpath("labeled.jsonl").unlink(missing_ok=True)
-        shutil.rmtree(mission_dir / "images", ignore_errors=True)
+        mission.mission_dir.joinpath("unlabeled.jsonl").unlink(missing_ok=True)
+        mission.mission_dir.joinpath("labeled.jsonl").unlink(missing_ok=True)
+        shutil.rmtree(mission.mission_dir / "images", ignore_errors=True)
         st.write("Removing novel class examples...")
         time.sleep(0.5)
-        mission_dir.joinpath("novel.jsonl").unlink(missing_ok=True)
-        shutil.rmtree(mission_dir / "novel", ignore_errors=True)
-        shutil.rmtree(mission_dir / "feature_vectors", ignore_errors=True)
+        mission.mission_dir.joinpath("novel.jsonl").unlink(missing_ok=True)
+        shutil.rmtree(mission.mission_dir / "novel", ignore_errors=True)
+        shutil.rmtree(mission.mission_dir / "feature_vectors", ignore_errors=True)
         st.write("Removing logs...")
         time.sleep(0.5)
-        mission_dir.joinpath("hawk_home.log").unlink(missing_ok=True)
-        shutil.rmtree(mission_dir / "traces", ignore_errors=True)
-        shutil.rmtree(mission_dir / "logs", ignore_errors=True)
+        mission.mission_dir.joinpath("hawk_home.log").unlink(missing_ok=True)
+        shutil.rmtree(mission.mission_dir / "traces", ignore_errors=True)
+        shutil.rmtree(mission.mission_dir / "logs", ignore_errors=True)
         status.update(label="Mission reset", state="complete", expanded=True)
     return True
 
@@ -148,7 +144,6 @@ def reset_mission(mission: Mission) -> bool:
 def delete_mission(mission: Mission) -> bool:
     """Completely destroy all state and configuration."""
 
-    mission_dir = Path(mission.mission_dir)
     with st.status("Deleting Mission...", expanded=True) as status:
         st.write("Removing labeled/unlabeled data...")
         time.sleep(1)
@@ -164,7 +159,7 @@ def delete_mission(mission: Mission) -> bool:
         time.sleep(1)
         st.write("Removing mission directory...")
         time.sleep(1)
-        shutil.rmtree(mission_dir, ignore_errors=True)
+        shutil.rmtree(mission.mission_dir, ignore_errors=True)
         status.update(label="Mission deleted", state="complete", expanded=True)
     st.session_state["mission_name"] = None
     return True
@@ -179,10 +174,9 @@ def start_home(mission: Mission) -> None:
     if n_deployed != n_scouts:
         st.error("Not all scouts are deployed")
 
-    mission_dir = Path(mission.mission_dir)
     with st.status("Starting Mission...", expanded=True) as status:
         st.write("Starting Hawk process...")
-        deployment.start_home(mission_dir)
+        deployment.start_home(mission.mission_dir)
         time.sleep(1)
         status.update(label="Mission started", state="complete", expanded=True)
     time.sleep(2)
@@ -195,10 +189,9 @@ def stop_home(mission: Mission) -> None:
 
     deployment.stop_scouts(mission.config.deploy)
 
-    mission_dir = Path(mission.mission_dir)
     with st.status("Stopping Mission...", expanded=True) as status:
         st.write("Stopping Hawk process...")
-        deployment.stop_home(mission_dir)
+        deployment.stop_home(mission.mission_dir)
         time.sleep(1)
         status.update(label="Mission terminated", state="complete", expanded=True)
     time.sleep(2)
@@ -259,8 +252,7 @@ def mission_controls(mission: Mission) -> None:
             if n_deployed == n_scouts:
                 actions.append(_CMD_START_MISSION)
         else:
-            mission_dir = Path(mission.mission_dir)
-            if deployment.check_home(mission_dir):
+            if deployment.check_home(mission.mission_dir):
                 actions.append(_CMD_STOP_MISSION)
 
     if st.session_state.get("controls") is None:
@@ -277,7 +269,6 @@ def mission_controls(mission: Mission) -> None:
 
 
 def mission_advanced_controls(mission: Mission) -> None:
-    mission_dir = Path(mission.mission_dir)
     mission_active = mission.state() in ["Starting", "Running"]
 
     actions = []
@@ -289,7 +280,7 @@ def mission_advanced_controls(mission: Mission) -> None:
 
         # when the mission has finished and Hawk home is not running we can
         # reset and/or delete the mission state
-        if not mission_active and not deployment.check_home(mission_dir):
+        if not mission_active and not deployment.check_home(mission.mission_dir):
             actions.append(_CMD_RESET)
             actions.append(_CMD_DELETE)
 
