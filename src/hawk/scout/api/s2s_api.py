@@ -2,8 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Scout to Scout internal api calls
-"""
+"""Scout to Scout internal api calls"""
 
 from __future__ import annotations
 

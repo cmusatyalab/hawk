@@ -2,8 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Abstract class for retrain policies
-"""
+"""Abstract class for retrain policies"""
 
 from abc import ABCMeta, abstractmethod
 

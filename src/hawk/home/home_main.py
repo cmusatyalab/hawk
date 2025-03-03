@@ -12,6 +12,7 @@ from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 
+import logzero
 import zmq
 from logzero import logger
 from prometheus_client import start_http_server as start_metrics_server
@@ -41,6 +42,8 @@ def daemonize(mission_dir: Path) -> None:
     except OSError as e:
         sys.stderr.write(f"Failed to daemonize process {e.strerror}")
         sys.exit(1)
+
+    logzero.json()
 
     # redirect stdio
     sys.stdout.flush()
@@ -116,8 +119,7 @@ def main() -> None:
 
     # create new mission directory if we've been started with a config.yml
     if mission_dir is None:
-        mission_dir = Path(config["home-params"]["mission_dir"])
-        mission_dir = mission_dir / mission_id
+        mission_dir = Path(config["home-params"]["mission_dir"], mission_id)
 
     if args.detach:
         daemonize(mission_dir)

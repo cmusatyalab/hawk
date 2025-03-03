@@ -94,9 +94,11 @@ class DeployConfig:
 # to handle parsing bandwidth presets and yaml dict
 cattrs.register_structure_hook(
     Bandwidth,
-    lambda o, _: Bandwidth(**BANDWIDTH_PRESETS[o])
-    if isinstance(o, str) and o in BANDWIDTH_PRESETS
-    else Bandwidth(**o),
+    lambda o, _: (
+        Bandwidth(**BANDWIDTH_PRESETS[o])
+        if isinstance(o, str) and o in BANDWIDTH_PRESETS
+        else Bandwidth(**o)
+    ),
 )
 # to handle parsing both "[user@]host[:port]" and yaml dict variants.
 cattrs.register_structure_hook(

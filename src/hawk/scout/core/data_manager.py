@@ -44,7 +44,8 @@ class DataManager:
         self._staging_dir.mkdir(parents=True, exist_ok=True)
         self._staging_lock = threading.Lock()
         self._examples_dir = self._context.data_dir / "examples"
-        for example_set in DatasetSplit.keys():
+        # Ignore false lint warning, DatasetSplit is EnumWrapperType instead of dict
+        for example_set in list(DatasetSplit.keys()):
             example_dir = self._examples_dir / example_set.lower()
             example_dir.mkdir(parents=True, exist_ok=True)
         self._examples_lock = threading.Lock()

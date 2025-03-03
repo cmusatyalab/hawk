@@ -382,11 +382,9 @@ class Admin:
             if default_deploy_scout:
                 for scout in self.scouts:
                     for deploy_option in default_deploy_scout:
-                        scml_deploy_options[scout].scout_dict[
-                            deploy_option
-                        ] = default_deploy_scout[
-                            deploy_option
-                        ]  ## populate default values for present fields
+                        scml_deploy_options[scout].scout_dict[deploy_option] = (
+                            default_deploy_scout[deploy_option]
+                        )  ## populate default values for present fields
 
             ## home conditions to trigger new scout activation
             default_deploy_home = deployment_options["default_deploy_home"]
@@ -409,9 +407,9 @@ class Admin:
                         for option in scout_options:
                             # if set, updates any scout unique configurations
                             # from the default values
-                            scml_deploy_options[scout].scout_dict[
-                                option
-                            ] = scout_options[option]
+                            scml_deploy_options[scout].scout_dict[option] = (
+                                scout_options[option]
+                            )
 
             for scout in self.scouts:
                 if (
@@ -627,9 +625,9 @@ class Admin:
                 stub.send_multipart(msg)
             for stub in self.scout_stubs.values():
                 response = stub.recv()
-                self.scout_deployment_status[
-                    self.socket_stub[stub]
-                ] = response.decode()  ## set the current scout status
+                self.scout_deployment_status[self.socket_stub[stub]] = (
+                    response.decode()
+                )  ## set the current scout status
                 ## check if scout went from active to idle (died or some other reason)
                 if (
                     self.scout_deployment_status[self.socket_stub[stub]] == "Dead"
@@ -801,7 +799,7 @@ class Admin:
                     logger.error(f"ERROR during Testing from Scout {index}\n {errmsg}")
 
     def accumulate_mission_stats(self) -> dict[str, Any]:
-        stats = defaultdict(lambda: 0)
+        stats = defaultdict(int)
         str_ignore = [
             "server_time",
             "ctime",

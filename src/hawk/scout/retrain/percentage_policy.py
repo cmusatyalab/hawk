@@ -2,8 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Retrain policy based on percentage of #labels increment
-"""
+"""Retrain policy based on percentage of #labels increment"""
 
 from .retrain_policy_base import RetrainPolicyBase
 

@@ -2,8 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Admin to Scouts internal api calls
-"""
+"""Admin to Scouts internal api calls"""
 
 import base64
 import dataclasses

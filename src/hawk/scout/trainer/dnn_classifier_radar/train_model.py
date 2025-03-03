@@ -402,8 +402,9 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
         else:
             logger.info(f"=> no checkpoint found at '{args.resume}'")
 
-    epoch_count = 0
-    args.break_epoch = args.epochs if args.break_epoch == -1 else args.break_epoch
+    break_epoch = (
+        args.epochs if args.break_epoch == -1 else args.start_epoch + args.break_epoch
+    )
 
     for epoch in range(args.start_epoch, args.epochs):
         if train_sampler:
@@ -434,8 +435,7 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
                 )
 
         adjust_learning_rate(optimizer, scheduler, epoch, args)
-        epoch_count += 1
-        if epoch_count >= args.break_epoch:
+        if epoch >= break_epoch:
             if not args.validate:
                 logger.info("Saving last model")
                 save_checkpoint(
@@ -488,21 +488,21 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
 
 
 def set_parameter_requires_grad(model: nn.Module, unfreeze: int = 0) -> None:
+    if unfreeze == -1:
+        return
+
+    # the avg pool layer before the final layer isn't trainable which is
+    # why we add 1 to the requested number of unfrozen layers here
+    unfreeze += 1
+
     len_layers = len(list(model.children()))
     num_freeze = len_layers - unfreeze
-    if unfreeze == -1:
-        num_freeze = 0
 
-    count = 0
-    for child in model.children():
-        count += 1
-        if count < num_freeze:
-            for param in child.parameters():
-                param.requires_grad = False
-        else:
-            pass
-            # print("COunt:", count)
-            # print("The following layer will be retrained:\n", child)
+    for count, child in enumerate(model.children()):
+        if count >= num_freeze:
+            break
+        for param in child.parameters():
+            param.requires_grad = False
 
 
 def initialize_model(

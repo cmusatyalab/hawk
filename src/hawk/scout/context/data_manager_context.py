@@ -3,8 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 
-"""Abstract class for data manager context
-"""
+"""Abstract class for data manager context"""
 from __future__ import annotations
 
 from abc import abstractmethod

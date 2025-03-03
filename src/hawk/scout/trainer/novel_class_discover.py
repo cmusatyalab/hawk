@@ -370,9 +370,10 @@ class Novel_Class_Clustering:
             for i in range(n_samples):
                 possible_labels = list(range(n_clusters))
                 for j in range(n_samples):
-                    if (i, j) in cannot_link or (j, i) in cannot_link:
-                        if labels[j] in possible_labels:
-                            possible_labels.remove(labels[j])
+                    if labels[j] in possible_labels and (
+                        (i, j) in cannot_link or (j, i) in cannot_link
+                    ):
+                        possible_labels.remove(labels[j])
                 if len(possible_labels) == 0:
                     continue
 

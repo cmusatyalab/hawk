@@ -36,7 +36,7 @@ def shuffle_and_generate_index_files(
     hidden_class = data_config.get("hidden_class", False)
     hidden_class_path = data_config.get("hidden_class_path", "")
     hidden_class_start = data_config.get("hidden_class_start", 0)
-    hidden_class_name = data_config.get("hidden_class_name", 2)
+    # hidden_class_name = data_config.get("hidden_class_name", 2)
     hosts = config.scouts
     assert stream_file.exists(), "Stream file does not exist"
 
@@ -121,7 +121,6 @@ def shuffle_and_generate_index_files(
                 hidden_samples.append(sample)
 
         for hidden_sample in hidden_samples:
-            
             ## pick random scout and random index
             scout = random.randint(0, len(hosts) - 1)
             index = random.randint(

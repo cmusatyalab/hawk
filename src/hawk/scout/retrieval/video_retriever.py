@@ -36,9 +36,9 @@ class VideoRetriever(Retriever):
         self.overlap = 100 if 0.5 * self.tilesize > 100 else 0
         self.slide = 250
         self.video_file_path = dataset.video_path
-        self.frame_producer_queue: mp.Queue[
-            Tuple[str, npt.NDArray[np.uint8]]
-        ] = mp.Queue(20)
+        self.frame_producer_queue: mp.Queue[Tuple[str, npt.NDArray[np.uint8]]] = (
+            mp.Queue(20)
+        )
         # self.video_frame_producer = VideoFrameProducer(self.video_file_path)
         p = mp.Process(
             target=produce_video_frames,

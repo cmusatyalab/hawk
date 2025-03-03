@@ -2,8 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Augments the single input image provided by user to a set of five
-"""
+"""Augments the single input image provided by user to a set of five"""
 
 import os
 import shutil

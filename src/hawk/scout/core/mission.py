@@ -95,7 +95,7 @@ class Mission(DataManagerContext, ModelContext):
         os.makedirs(self._feature_vector_dir, exist_ok=True)
         self.host_name = (get_server_ids()[0]).split(".")[0]
         self.home_ip = home_ip
-        self.log_file = open(self._log_dir / f"log-{self.host_name}.txt", "a")
+        self.log_file = self._log_dir.joinpath(f"log-{self.host_name}.txt").open("a")
         self.enable_logfile = True
         self.trainer: ModelTrainer | None = None
         self.trainer_type = None

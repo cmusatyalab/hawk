@@ -24,9 +24,7 @@ def GetFileFromThisRootDir(dir, ext=None):
         for filespath in files:
             filepath = os.path.join(root, filespath)
             extension = os.path.splitext(filepath)[1][1:]
-            if needExtFilter and extension in ext:
-                allfiles.append(filepath)
-            elif not needExtFilter:
+            if not needExtFilter or extension in ext:
                 allfiles.append(filepath)
     return allfiles
 

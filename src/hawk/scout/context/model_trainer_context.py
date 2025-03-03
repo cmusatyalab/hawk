@@ -3,8 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 
-"""Abstract class for model context
-"""
+"""Abstract class for model context"""
 
 import multiprocessing as mp
 from abc import abstractmethod

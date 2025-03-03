@@ -2,8 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Home to Scouts internal api calls
-"""
+"""Home to Scouts internal api calls"""
 
 from multiprocessing.connection import _ConnectionBase
 

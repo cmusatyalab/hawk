@@ -73,7 +73,7 @@ def visualize(RAD, RD_path):
     )
 
     tile_num = RD_path.split("/")[-1].split(".")[0]
-    drawer.saveFigure(os.path.join(DESTINATION_CANVAS_DIR, "%.20s.png" % (tile_num)))
+    drawer.saveFigure(os.path.join(DESTINATION_CANVAS_DIR, f"{tile_num:.20s}.png"))
 
 
 def slice_rad_file(
@@ -184,7 +184,10 @@ def get_label_data(label):
     obj_list = []
     az_center_list, range_center_list, dopp_center_list = [], [], []
     az_width_list, range_width_list, dopp_width_list = [], [], []
-    data = pickle.load(open(label, "rb"))
+
+    with open(label, "rb") as f:
+        data = pickle.load(f)
+
     for obj_num, obj in enumerate(data["classes"]):
         obj_list.append(obj)
         az_center_list.append(data["boxes"][obj_num][1])

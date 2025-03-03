@@ -106,9 +106,7 @@ class DNNClassifierModel(ModelBase):
             inputs = inputs.to(self._device)
             output = self._model(inputs)
             probability: torch.Tensor = torch.softmax(output, dim=1)
-            predictions: Sequence[
-                Sequence[float]
-            ] = (
+            predictions: Sequence[Sequence[float]] = (
                 probability.cpu().numpy()
             )  # [:, 1]  ## changed this to output multi-class vector
             return predictions

@@ -379,8 +379,9 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
         weight=torch.Tensor(class_weights), label_smoothing=0.1
     ).cuda()
 
-    epoch_count = 0
-    args.break_epoch = args.epochs if args.break_epoch == -1 else args.break_epoch
+    break_epoch = (
+        args.epochs if args.break_epoch == -1 else args.start_epoch + args.break_epoch
+    )
 
     for epoch in range(args.start_epoch, args.epochs):
         if train_sampler:
@@ -403,8 +404,7 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
 
         adjust_learning_rate(model_state, epoch, args)
 
-        epoch_count += 1
-        if epoch_count >= args.break_epoch:
+        if epoch >= break_epoch:
             if not args.validate:
                 logger.info("Saving last model")
                 model_state.save_checkpoint(args.savepath)

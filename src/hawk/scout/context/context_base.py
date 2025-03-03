@@ -2,8 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Abstract class for mission context
-"""
+"""Abstract class for mission context"""
 
 from __future__ import annotations
 

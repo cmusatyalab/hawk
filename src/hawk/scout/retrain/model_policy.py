@@ -2,11 +2,10 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Retrain policy based on availability of new model
-"""
+"""Retrain policy based on availability of new model"""
 
-import os
 import shutil
+from pathlib import Path
 
 from .retrain_policy_base import RetrainPolicyBase
 
@@ -17,17 +16,17 @@ class ModelPolicy(RetrainPolicyBase):
     def __init__(self, directory: str):
         super().__init__()
         self.new_examples = 0
-        self._new_model_present = os.path.join(directory, FILENAME)
-        self.model_path = os.path.join(directory, "model.pth")
+        self._new_model_present = Path(directory, FILENAME)
+        self.model_path = Path(directory, "model.pth")
 
     def update(self, new_positives: int, new_negatives: int) -> None:
         super().update(new_positives, new_negatives)
 
     def should_retrain(self) -> bool:
-        return os.path.exists(self._new_model_present)
+        return self._new_model_present.exists()
 
     def reset(self) -> None:
-        if os.path.exists(self._new_model_present):
-            src_path = open(self._new_model_present).read().strip()
+        if self.should_retrain():
+            src_path = self._new_model_present.read_text().strip()
             shutil.copy(src_path, self.model_path)
-            os.remove(self._new_model_present)
+            self._new_model_present.unlink()
