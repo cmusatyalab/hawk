@@ -251,7 +251,9 @@ class Novel_Class_Clustering:
                 feature_vector=selected_sample.feature_vector,
                 attributes=selected_sample.attributes.get(),
                 boundingBoxes=bboxes,
-                novel_sample=True,
+                novel_sample=True, ## the cluster label integer : if 1 is first cluster, 2 is second cluster
+                ## cluster assignment
+                ## cluster iteration source
             )
 
             self.outbound_pipe.send(
