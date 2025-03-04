@@ -131,13 +131,17 @@ class BaseImageFromList(Dataset[T]):  # type: ignore[misc]
             if path.suffix == ".npy":
                 # may need to use original Path object here.
                 array: npt.NDArray[Any] = np.load(path, allow_pickle=True)
-                array = (array - np.min(array)) / (np.max(array) - np.min(array))
+                if np.min(array) == np.max(array):
+                    array /= np.max(array)
+                else:
+                    array = (array - np.min(array)) / (np.max(array) - np.min(array))
                 image = Image.fromarray((array * 255).astype(np.uint8))
             else:
                 image = Image.open(path).convert("RGB")
         except Exception as e:
             logger.error(e)
             logger.error(path)
+            logger.info(f"In exception block in utils...")
             image = Image.fromarray(np.random.randint(0, 255, (256, 256, 3)), "RGB")
         return image
 
