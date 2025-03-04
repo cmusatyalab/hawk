@@ -61,7 +61,7 @@ class DNNClassifierModelRadar(ModelBase):
         args["arch"] = args.get("arch", "resnet50")
         args["train_examples"] = args.get("train_examples", {"1": 0, "0": 0})
         args["mode"] = mode
-        args["pick_patches"] = args.get("pick_patches", False)
+        args["pick_patches"] = bool(int(args.get("pick_patches", "0")))
         self.args = args
 
         super().__init__(self.args, model_path, context)
