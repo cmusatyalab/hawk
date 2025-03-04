@@ -26,13 +26,14 @@ message ScoutConfiguration {
   SelectiveConfig selector = 10;
   ReexaminationStrategyConfig reexamination = 11;
   ModelArchive initialModel = 12;
-  bytes bootstrapZip = 13;
-  map<int32, string> bandwidthFunc = 14;
-  bool validate = 15;
-  repeated string class_list = 16;
-  PerScoutSCMLOptions scml_deploy_opts = 17;
-  bool novel_class_discovery = 18;
-  bool sub_class_discovery = 19;
+  ModelArchive baseModel = 13;
+  bytes bootstrapZip = 14;
+  map<int32, string> bandwidthFunc = 15;
+  bool validate = 16;
+  repeated string class_list = 17;
+  PerScoutSCMLOptions scml_deploy_opts = 18;
+  bool novel_class_discovery = 19;
+  bool sub_class_discovery = 20;
 }
 
 message MissionStats {

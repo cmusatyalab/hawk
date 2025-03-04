@@ -286,6 +286,7 @@ class A2SAPI:
             selector,
             request.bootstrapZip,
             request.initialModel,
+            request.baseModel,
             request.trainStrategy,
             list(request.class_list),
             dict(request.scml_deploy_opts.scout_dict),

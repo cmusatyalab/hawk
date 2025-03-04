@@ -362,8 +362,19 @@ class Admin:
             initial_model = ModelArchive(
                 content=model_content,
             )
+            
+        # base model (primarily used for radar as a "foundation model" for transfer learning)
+        base_model_path = train_config.get("base_model_path", "")
+        base_model_content = b""
+        if os.path.isfile(base_model_path):
+            with open(base_model_path, "rb") as f:
+                base_model_content = f.read()
 
-        # base model (primarily for radar)
+        base_model = None
+        if len(base_model_content):
+            base_model = ModelArchive(
+                content=base_model_content,
+            )
         # base_model_path = train_config.get("base_model_path", "")
 
         # SCML deployment options
@@ -521,6 +532,7 @@ class Admin:
                 selector=selector,
                 reexamination=reexamination,
                 initialModel=initial_model,
+                baseModel=base_model,
                 bootstrapZip=bootstrap_zip,
                 bandwidthFunc=bandwidth_func,
                 validate=train_validate,

@@ -33,6 +33,8 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
         )
         self.train_initial_model = False
         self.testpath = self.args["test_dir"]
+        self.base_model_path = self.context.model_dir / "base_model.pth"
+        logger.info(f" base model path: {self.base_model_path}\n")
 
         logger.info(f"Model_dir {self.context.model_dir}")
 
@@ -158,6 +160,8 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
 
         if self.train_initial_model:
             self.train_initial_model = False
+            cmd.extend(["--base_model_path", str(self.base_model_path)])
+            logger.info("EXTENDED base model path...")
         else:
             cmd.extend(["--resume", str(self.prev_path)])
             # capture_files.append(self.prev_path)

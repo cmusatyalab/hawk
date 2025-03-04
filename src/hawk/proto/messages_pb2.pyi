@@ -112,6 +112,9 @@ class ScoutConfiguration(google___protobuf___message___Message):
     def initialModel(self) -> type___ModelArchive: ...
 
     @property
+    def baseModel(self) -> type___ModelArchive: ...
+
+    @property
     def bandwidthFunc(self) -> google___protobuf___internal___containers___ScalarMap[builtin___int, typing___Text]: ...
 
     @property
@@ -131,6 +134,7 @@ class ScoutConfiguration(google___protobuf___message___Message):
         selector : typing___Optional[type___SelectiveConfig] = None,
         reexamination : typing___Optional[type___ReexaminationStrategyConfig] = None,
         initialModel : typing___Optional[type___ModelArchive] = None,
+        baseModel : typing___Optional[type___ModelArchive] = None,
         bootstrapZip : typing___Optional[builtin___bytes] = None,
         bandwidthFunc : typing___Optional[typing___Mapping[builtin___int, typing___Text]] = None,
         validate : typing___Optional[builtin___bool] = None,
@@ -139,8 +143,8 @@ class ScoutConfiguration(google___protobuf___message___Message):
         novel_class_discovery : typing___Optional[builtin___bool] = None,
         sub_class_discovery : typing___Optional[builtin___bool] = None,
         ) -> None: ...
-    def HasField(self, field_name: typing_extensions___Literal[u"dataset",b"dataset",u"initialModel",b"initialModel",u"reexamination",b"reexamination",u"retrainPolicy",b"retrainPolicy",u"scml_deploy_opts",b"scml_deploy_opts",u"selector",b"selector",u"trainStrategy",b"trainStrategy"]) -> builtin___bool: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"bandwidthFunc",b"bandwidthFunc",u"bootstrapZip",b"bootstrapZip",u"class_list",b"class_list",u"dataset",b"dataset",u"homeIP",b"homeIP",u"initialModel",b"initialModel",u"missionDirectory",b"missionDirectory",u"missionId",b"missionId",u"novel_class_discovery",b"novel_class_discovery",u"reexamination",b"reexamination",u"retrainPolicy",b"retrainPolicy",u"scml_deploy_opts",b"scml_deploy_opts",u"scoutIndex",b"scoutIndex",u"scouts",b"scouts",u"selector",b"selector",u"sub_class_discovery",b"sub_class_discovery",u"trainLocation",b"trainLocation",u"trainStrategy",b"trainStrategy",u"validate",b"validate"]) -> None: ...
+    def HasField(self, field_name: typing_extensions___Literal[u"baseModel",b"baseModel",u"dataset",b"dataset",u"initialModel",b"initialModel",u"reexamination",b"reexamination",u"retrainPolicy",b"retrainPolicy",u"scml_deploy_opts",b"scml_deploy_opts",u"selector",b"selector",u"trainStrategy",b"trainStrategy"]) -> builtin___bool: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"bandwidthFunc",b"bandwidthFunc",u"baseModel",b"baseModel",u"bootstrapZip",b"bootstrapZip",u"class_list",b"class_list",u"dataset",b"dataset",u"homeIP",b"homeIP",u"initialModel",b"initialModel",u"missionDirectory",b"missionDirectory",u"missionId",b"missionId",u"novel_class_discovery",b"novel_class_discovery",u"reexamination",b"reexamination",u"retrainPolicy",b"retrainPolicy",u"scml_deploy_opts",b"scml_deploy_opts",u"scoutIndex",b"scoutIndex",u"scouts",b"scouts",u"selector",b"selector",u"sub_class_discovery",b"sub_class_discovery",u"trainLocation",b"trainLocation",u"trainStrategy",b"trainStrategy",u"validate",b"validate"]) -> None: ...
 type___ScoutConfiguration = ScoutConfiguration
 
 class MissionStats(google___protobuf___message___Message):

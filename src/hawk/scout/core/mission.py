@@ -65,6 +65,7 @@ class Mission(DataManagerContext, ModelContext):
         selector: Selector,
         bootstrap_zip: bytes,
         initial_model: ModelArchive,
+        base_model: ModelArchive,
         train_strategy: TrainConfig,
         class_list: list[str],
         scml_deploy_options: dict[str, int],
@@ -111,6 +112,12 @@ class Mission(DataManagerContext, ModelContext):
             self._retrain_policy.total_tiles = self.retriever.total_tiles
 
         self.initial_model = initial_model
+        self.base_model = base_model
+        if self.base_model is not None:
+            base_model_path = self._model_dir / "base_model.pth"
+            with open(base_model_path, 'wb') as f:
+                f.write(self.base_model.content)
+            logger.info(f" base model path: {base_model_path}")
         self._validate = validate
         self.scml_deploy_options = scml_deploy_options
 
@@ -504,6 +511,7 @@ class Mission(DataManagerContext, ModelContext):
     def _get_results(self, pipe: _ConnectionBase) -> None:
         try:
             while True:  # not self._abort_event.is_set():
+                ## if  in scml idle mode, time.sleep(10), and continue
                 result = self.selector.get_result()
                 if result is None:
                     break
