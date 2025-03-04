@@ -210,6 +210,7 @@ def eval_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None
     global best_acc1
     args.gpu = gpu
     # start_time = time.time()
+    print("GPU:", args.gpu)
 
     if args.gpu is not None:
         print(f"Use GPU: {args.gpu} for training")
@@ -226,7 +227,9 @@ def eval_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None
 
     if args.gpu:
         torch_model = torch_model.cuda()
-
+    else:
+        torch_model = torch_model.cuda()
+        print("Not triggering GPU load for model")
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
     val_path = args.valpath
@@ -527,7 +530,6 @@ def validate_model(
         for images, target in tqdm(val_loader):
             if len(images) == 1:
                 continue
-
             if torch.cuda.is_available():
                 images = images.cuda(non_blocking=True)
                 target = target.cuda(non_blocking=True)
