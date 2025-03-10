@@ -137,6 +137,11 @@ if bootstrap_dir.is_dir():
             class_dir.mkdir(exist_ok=True)
             for example in new_examples or []:
                 img = Image.open(example)
-                img.thumbnail((256, 256))
+                # crop to centered square and resize to 256 by 256
+                size = min(img.size)
+                left = (img.size[0] - size) // 2
+                top = (img.size[1] - size) // 2
+                img = img.crop((left, top, left + size, top + size))
+                img = img.resize((256, 256))
                 img.save(class_dir / example.name)
             st.rerun()
