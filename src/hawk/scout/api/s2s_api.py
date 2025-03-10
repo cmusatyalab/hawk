@@ -101,7 +101,7 @@ class S2SServicer:
             request.ParseFromString(msg)
 
             # if mode is active dont call this for scml
-            self._mission.store_labeled_tile(request)
+            self._mission.store_labeled_tile(request, net=True)
         except Exception as e:
             logger.exception(e)
         return Empty

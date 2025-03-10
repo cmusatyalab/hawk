@@ -66,7 +66,11 @@ class NetworkRetriever(Retriever):
         self.images = keys
 
         self.total_images.set(len(self.images))
-        self.total_objects.set(self.total_tiles)
+        if self._network_server_host == self.this_host_name:
+            self.total_objects.set(self.total_tiles)
+        else:
+            self.total_objects.set(0)
+        ## allow only serve to report how many samples have been processed.
 
         self.request_counter_by_scout: dict[int, int] = {}
         self.sample_count = 0

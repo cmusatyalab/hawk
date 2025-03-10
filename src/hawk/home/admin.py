@@ -11,6 +11,7 @@ import random
 import socket
 import threading
 import time
+import os
 from collections import Counter, defaultdict
 from contextlib import suppress
 from pathlib import Path
@@ -251,6 +252,7 @@ class Admin:
 
             elif dataset_type == "network":
                 network_config = dataset_config["network"]
+                balance_mode = dataset_config.get("data_rate_balance", "locally_constant")
                 dataset = Dataset(
                     network=NetworkDataset(
                         dataPath=dataset_config["index_path"],
@@ -258,7 +260,7 @@ class Admin:
                         timeout=timeout,
                         dataServerAddr=network_config["server_address"],
                         dataServerPort=int(network_config["server_port"]),
-                        dataBalanceMode=dataset_config["data_rate_balance"],
+                        dataBalanceMode=balance_mode,
                     )
                 )
 
@@ -765,6 +767,8 @@ class Admin:
                 if finish_time < time.time():
                     break
         except (Exception, KeyboardInterrupt) as e:
+            logger.info('\n\n', e, '\n\n')
+            self.stop_event.set()
             raise e
         self.stop_event.set()
 
