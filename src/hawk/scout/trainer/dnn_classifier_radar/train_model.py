@@ -267,7 +267,9 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
     print(f"=> using pre-trained model '{args.arch}'")
     model = models.__dict__[args.arch](weights="ResNet18_Weights.DEFAULT")
     logger.info(f" base model path: {args.base_model_path}")
-    model, input_size = initialize_model(args.arch, args.num_classes, args.num_unfreeze, args.base_model_path)
+    model, input_size = initialize_model(
+        args.arch, args.num_classes, args.num_unfreeze, args.base_model_path
+    )
 
     if not torch.cuda.is_available():
         print("using CPU, this will be slow")
@@ -514,14 +516,14 @@ def set_parameter_requires_grad(model: nn.Module, unfreeze: int = 0) -> None:
 
 
 def initialize_model(
-    arch: str, num_classes: int, unfreeze: int = 0, base_path: Path = None
+    arch: str, num_classes: int, unfreeze: int = 0, base_path: Path | None = None
 ) -> tuple[nn.Module, int]:
     model_ft = None
     input_size = 0
     model_ft = models.__dict__[arch](pretrained=True)
     # Radar code
     logger.info("Loading initial radar checkpoint!!!")
-    #radar_checkpoint = torch.load(base_model_path)
+    # radar_checkpoint = torch.load(base_model_path)
     logger.info(f"Base path: {base_path}")
     num_ftrs = model_ft.fc.in_features
     model_ft.fc = nn.Linear(

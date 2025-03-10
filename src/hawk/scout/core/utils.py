@@ -141,7 +141,7 @@ class BaseImageFromList(Dataset[T]):  # type: ignore[misc]
         except Exception as e:
             logger.error(e)
             logger.error(path)
-            logger.info(f"In exception block in utils...")
+            logger.info("In exception block in utils...")
             image = Image.fromarray(np.random.randint(0, 255, (256, 256, 3)), "RGB")
         return image
 
