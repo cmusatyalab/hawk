@@ -36,7 +36,11 @@ bootstrap_zip = mission.mission_dir / mission.config.get("train_strategy", {}).g
 actions = []
 if bootstrap_zip.exists() and not bootstrap_dir.is_dir():
     actions.append(EXTRACT_CMD)
-if bootstrap_dir.is_dir() and mission_state == "Not Started":
+if (
+    bootstrap_dir.is_dir()
+    and mission_state == "Not Started"
+    and not mission.is_template
+):
     actions.append(REPACK_CMD)
 if bootstrap_zip.exists() and bootstrap_dir.is_dir():
     actions.append(DELETE_CMD)
@@ -107,7 +111,7 @@ if bootstrap_dir.is_dir():
     column = columns(4)
     delete = False
 
-    if mission_state == "Not Started":
+    if mission_state == "Not Started" and not mission.is_template:
         delete = st.toggle("Delete bootstrap examples")
 
     class_dirs = sorted(cls for cls in bootstrap_dir.iterdir() if cls.is_dir())
@@ -127,21 +131,22 @@ if bootstrap_dir.is_dir():
             else:
                 st.image([str(img) for img in class_dir.iterdir()])
 
-    with st.expander("Add new bootstrap examples"):
-        new_class = st.selectbox("Class", classes, index=1)
-        new_examples = st.file_uploader(
-            "Examples", type=["gif", "png", "jpg"], accept_multiple_files=True
-        )
-        if st.button("Upload"):
-            class_dir = bootstrap_dir / str(classes.index(new_class))
-            class_dir.mkdir(exist_ok=True)
-            for example in new_examples or []:
-                img = Image.open(example)
-                # crop to centered square and resize to 256 by 256
-                size = min(img.size)
-                left = (img.size[0] - size) // 2
-                top = (img.size[1] - size) // 2
-                img = img.crop((left, top, left + size, top + size))
-                img = img.resize((256, 256))
-                img.save(class_dir / example.name)
-            st.rerun()
+    if mission_state == "Not Started" and not mission.is_template:
+        with st.expander("Add new bootstrap examples"):
+            new_class = st.selectbox("Class", classes, index=1)
+            new_examples = st.file_uploader(
+                "Examples", type=["gif", "png", "jpg"], accept_multiple_files=True
+            )
+            if st.button("Upload"):
+                class_dir = bootstrap_dir / str(classes.index(new_class))
+                class_dir.mkdir(exist_ok=True)
+                for example in new_examples or []:
+                    img = Image.open(example)
+                    # crop to centered square and resize to 256 by 256
+                    size = min(img.size)
+                    left = (img.size[0] - size) // 2
+                    top = (img.size[1] - size) // 2
+                    img = img.crop((left, top, left + size, top + size))
+                    img = img.resize((256, 256))
+                    img.save(class_dir / example.name)
+                st.rerun()
