@@ -362,13 +362,12 @@ class Admin:
             initial_model = ModelArchive(
                 content=model_content,
             )
-            
-        # base model (primarily used for radar as a "foundation model" for transfer learning)
-        base_model_path = train_config.get("base_model_path", "")
+
+        # base model (e.g. used for radar as a "foundation model" for transfer learning)
+        base_model_path = Path(train_config.get("base_model_path", ""))
         base_model_content = b""
-        if os.path.isfile(base_model_path):
-            with open(base_model_path, "rb") as f:
-                base_model_content = f.read()
+        if base_model_path.is_file():
+            base_model_content = base_model_path.read_bytes()
 
         base_model = None
         if len(base_model_content):
