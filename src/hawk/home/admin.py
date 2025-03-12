@@ -11,7 +11,6 @@ import random
 import socket
 import threading
 import time
-import os
 from collections import Counter, defaultdict
 from contextlib import suppress
 from pathlib import Path
@@ -252,7 +251,9 @@ class Admin:
 
             elif dataset_type == "network":
                 network_config = dataset_config["network"]
-                balance_mode = dataset_config.get("data_rate_balance", "locally_constant")
+                balance_mode = dataset_config.get(
+                    "data_rate_balance", "locally_constant"
+                )
                 dataset = Dataset(
                     network=NetworkDataset(
                         dataPath=dataset_config["index_path"],
@@ -766,10 +767,10 @@ class Admin:
                 if finish_time < time.time():
                     break
         except (Exception, KeyboardInterrupt) as e:
-            logger.info('\n\n', e, '\n\n')
-            self.stop_event.set()
+            logger.exception("Exception in get_mission_stats")
             raise e
-        self.stop_event.set()
+        finally:
+            self.stop_event.set()
 
     def get_post_mission_archive(self) -> None:
         for index, stub in self.scout_stubs.items():

@@ -240,7 +240,7 @@ class Mission(DataManagerContext, ModelContext):
             return False
         return len(self.initial_model.content) != 0
 
-    def store_labeled_tile(self, tile: LabeledTile, net:bool=False) -> None:
+    def store_labeled_tile(self, tile: LabeledTile, net: bool = False) -> None:
         self._data_manager.store_labeled_tile(tile, net)
 
     def distribute_label(self, label: SendLabel) -> None:
@@ -554,11 +554,13 @@ class Mission(DataManagerContext, ModelContext):
                 request = SendLabel()
                 request.ParseFromString(msg)
                 self.distribute_label(request)
-                if isinstance(self.selector, TokenSelector): ## and scout is active
+                if isinstance(self.selector, TokenSelector):  ## and scout is active
                     self.selector.receive_token_message(request)
-                    ## need a spin loop here when scout is idle.  this will will prevent further samples from being sent to home when idle.
-                    ## but need to be able to break out of loop is scout mode set back to Active.
-                    ## not yet implemented.  May not need this feature.
+                    # need a spin loop here when scout is idle.  this will will
+                    # prevent further samples from being sent to home when
+                    # idle. But need to be able to break out of loop is scout
+                    # mode set back to Active.
+                    # not yet implemented.  May not need this feature.
 
         except Exception as e:
             logger.error(e)

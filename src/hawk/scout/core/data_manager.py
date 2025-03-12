@@ -26,8 +26,8 @@ from ...classes import (
     class_label_to_int,
 )
 from ...proto.messages_pb2 import DatasetSplit, HawkObject, LabeledTile, SendLabel
-from .utils import get_example_key
 from ..retrieval.network_retriever import NetworkRetriever
+from .utils import get_example_key
 
 if TYPE_CHECKING:
     from ...proto.messages_pb2 import DatasetSplitValue
@@ -81,17 +81,25 @@ class DataManager:
     def get_example_directory(self, example_set: DatasetSplitValue) -> Path:
         return self._examples_dir / self._to_dir(example_set)
 
-    def store_labeled_tile(self, tile: LabeledTile, net:bool=False) -> None:
+    def store_labeled_tile(self, tile: LabeledTile, net: bool = False) -> None:
         """Store the tile content along with labels in the scout"""
-        ## if network retriever, tile is from other scout, and a negative:  just return (ignore)
-        if isinstance(self._context.retriever, NetworkRetriever) and not tile.boundingBoxes and net:
-            if self._context.retriever.current_deployment_mode == "Active": ## active scouts ignore negative from other scouts. 
+        # if network retriever, tile is from other scout, and a negative:
+        # just return (ignore)
+        if (
+            isinstance(self._context.retriever, NetworkRetriever)
+            and not tile.boundingBoxes
+            and net
+        ):
+            if (
+                self._context.retriever.current_deployment_mode == "Active"
+            ):  ## active scouts ignore negative from other scouts.
                 return
             else:
-                if np.random.rand() > 1/7:
+                if np.random.rand() > 1 / 7:
                     return
-                ## idle scout should only accept 1 out of every 7 negative samples to mimic active scouts (1 scouts worth of neg samples).
-        
+                # idle scout should only accept 1 out of every 7 negative
+                # samples to mimic active scouts (1 scouts worth of neg samples).
+
         if self._context.novel_class_discovery:
             ## handles saving renaming feature vectors when receiving labels and
             ## puts labels in the labels queue for future clustering.
@@ -192,10 +200,14 @@ class DataManager:
         # using SCML staggered deployment...also need the s2s to ignore
         # negatives received if scout is currently active.  thus only idle
         # scouts receive the negative from other scouts for retraining.
-        
-        ## if sample is a negative and not using network retriever, don't send to other scouts.
-        ## All active and idle scouts should recieve pos and neg samples.  Active should ignore neg. samples.
-        if not label.boundingBoxes and not isinstance(self._context.retriever, NetworkRetriever):
+
+        # if sample is a negative and not using network retriever, don't send
+        # to other scouts.
+        # All active and idle scouts should recieve pos and neg samples.
+        # Active should ignore neg. samples.
+        if not label.boundingBoxes and not isinstance(
+            self._context.retriever, NetworkRetriever
+        ):
             return
 
         # Transmit
