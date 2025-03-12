@@ -26,9 +26,14 @@ HAWK_RETRIEVER_RETRIEVED_OBJECTS = Counter(
     "Number of samples retrieved",
     labelnames=["mission"],
 )
+HAWK_RETRIEVER_FAILED_OBJECTS = Counter(
+    "hawk_retriever_failed_objects",
+    "Number of samples we failed to read",
+    labelnames=["mission"],
+)
 HAWK_RETRIEVER_DROPPED_OBJECTS = Counter(
     "hawk_retriever_dropped_objects",
-    "Number of samples retrieved",
+    "Number of samples dropped (retriever queue full)",
     labelnames=["mission"],
 )
 HAWK_RETRIEVER_QUEUE_LENGTH = Gauge(

@@ -84,13 +84,18 @@ class RandomRetriever(Retriever):
 
                 image_path = self._data_root / image_path
 
-                if image_path.suffix == ".npy":
-                    content = np.load(image_path)
-                else:
-                    tmpfile = io.BytesIO()
-                    image = Image.open(image_path).convert("RGB")
-                    image.save(tmpfile, format="JPEG", quality=85)
-                    content = tmpfile.getvalue()
+                try:
+                    if image_path.suffix == ".npy":
+                        content = np.load(image_path)
+                    else:
+                        tmpfile = io.BytesIO()
+                        image = Image.open(image_path).convert("RGB")
+                        image.save(tmpfile, format="JPEG", quality=85)
+                        content = tmpfile.getvalue()
+                except (OSError, ValueError):
+                    logger.error(f"Failed to read {object_id}")
+                    self.failed_objects.inc()
+                    continue
 
                 attributes = self.set_tile_attributes(object_id, class_name)
 

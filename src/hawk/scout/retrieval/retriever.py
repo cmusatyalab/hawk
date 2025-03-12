@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
 
+from logzero import logger
+
 from ...classes import (
     NEGATIVE_CLASS,
     ClassLabel,
@@ -24,6 +26,7 @@ from ..core.object_provider import ObjectProvider
 from ..core.utils import get_server_ids
 from ..stats import (
     HAWK_RETRIEVER_DROPPED_OBJECTS,
+    HAWK_RETRIEVER_FAILED_OBJECTS,
     HAWK_RETRIEVER_QUEUE_LENGTH,
     HAWK_RETRIEVER_RETRIEVED_IMAGES,
     HAWK_RETRIEVER_RETRIEVED_OBJECTS,
@@ -89,6 +92,11 @@ class Retriever(RetrieverBase):
         self.server_id = get_server_ids()[0]
         self.total_tiles = 0
 
+        # TODO: we probably should be more restrictive about where images
+        # are allowed to be retrieved from.
+        # Random retriever sets this to the parent of the INDEXES directory.
+        self._data_root = Path("/")
+
         # These parameters control the rate at which tiles are retrieved and
         # inferenced at the scout. If we want to achieve a globally constant
         # rate during a SCML scenario, we periodically update the active scout
@@ -111,6 +119,7 @@ class Retriever(RetrieverBase):
         self.retrieved_objects = HAWK_RETRIEVER_RETRIEVED_OBJECTS.labels(
             mission=mission_id
         )
+        self.failed_objects = HAWK_RETRIEVER_FAILED_OBJECTS.labels(mission=mission_id)
         self.dropped_objects = HAWK_RETRIEVER_DROPPED_OBJECTS.labels(mission=mission_id)
         self.queue_length = HAWK_RETRIEVER_QUEUE_LENGTH.labels(mission=mission_id)
 
@@ -172,12 +181,20 @@ class Retriever(RetrieverBase):
             self.queue_length.dec()
             self.dropped_objects.inc()
 
+    def in_data_root(self, path: Path) -> bool:
+        try:
+            path.resolve().relative_to(self._data_root)
+            return True
+        except ValueError:
+            return False
+
     def read_object(self, object_id: str) -> Optional[HawkObject]:
-        image_path = Path(object_id.split("collection/id/")[-1])
-        if not image_path.exists():
+        object_path = self._data_root / object_id.split("collection/id/")[-1]
+        if not self.in_data_root(object_path) or not object_path.exists():
+            logger.error(f"Unable to read object for {object_id}")
             return None
 
-        content = image_path.read_bytes()
+        content = object_path.read_bytes()
 
         # Return object attributes
         dct = {
@@ -190,7 +207,8 @@ class Retriever(RetrieverBase):
         self._start_event.wait()
 
         stats = RetrieverStats(
-            total_objects=collect_metrics_total(self.total_objects),
+            total_objects=collect_metrics_total(self.total_objects)
+            - collect_metrics_total(self.failed_objects),
             total_images=collect_metrics_total(self.total_images),
             dropped_objects=collect_metrics_total(self.dropped_objects),
             retrieved_images=collect_metrics_total(self.retrieved_images),
