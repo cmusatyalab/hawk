@@ -35,11 +35,11 @@ The standard Hawk mission requires a minimal set of artifacts.
 
 ### Step 2. Modify mission configuration
 
-Provide relevant data and model parameters in the [config file.](/configs/dota_sample_config.yml)  This config file is required to run a Hawk mission of any kind.  Currently, the mission configuration takes the form of a yaml file (.yml) but in the future a mission will be launched via the Flutter web gui.  The config file contains both administrative information (where data is located on a server) as well as more mission-focused parameters, such as the retraining policy, mode architecture to use, etc.  While most fields and subfields in the config file can be modified simply by changing a value, the specification of others require some small, additional administrative up front.
+Provide relevant data and model parameters in the [config file.](/configs/dota_sample_config.yml)  This config file is required to run a Hawk mission of any kind.  The mission configuration takes the form of a yaml file (.yml).  The config file contains both administrative information (where data is located on a server) as well as more mission-focused parameters, such as the retraining policy, mode architecture to use, etc.  While most fields and subfields in the config file can be modified simply by changing a value, the specification of others require some small, additional administrative up front.
 
 - mission-name: mission identifier
 - train-location: scout or home (scout default)
-- label-mode: script (ui is the other option when using the Flutter GUI).  Use script for functional testing and pure automation (no human interaction required).
+- label-mode: script (filesystem is another option when doing manually labeling with the Streamlit GUI).  Use script for functional testing and pure automation (no human interaction required).
 - scouts: This field simply represents the list of server domain or IP addresses, e.g. scout1.mission.com, scout2.mission.com, etc.
 - scout-params: This field contains a mission directory path on each scout which tell sthe scouts where to store log files and mission artifacts.
 - home-params: the mission directory on home specifices where on the home station (from where the missino is launched) to aggregate and store mission logs from all scouts.
@@ -97,34 +97,51 @@ The configuration file will need to be modified to include the actual host name 
 
 
 ## Running Hawk UI
-Hawk UI is developed using [Flutter SDK](https://docs.flutter.dev/get-started/install) and has been tested using Chrome browser.
-The backend uses Flask REST API (Port:8000) to start and stop missions. The results are streamed to the front-end using websockets (Port:5000).
+
+Hawk UI is developed using [Streamlit](https://streamlit.io) and has been tested using the Firefox and Chrome browsers.
 
 ### Step 1. Setting up Environment
+
 ```bash
 poetry install --extras home
 ```
-### Step 2. ScopeCookie and Config
 
-Assumes scope cookie (NEWSCOPE) and config file (config.yml) are present in ~/.hawk
+### Step 2. Create a directory to hold Mission templates and Mission logs
 
 ```bash
-mkdir -p ~/.hawk
-cp ~/hawk/configs/flutter.yml ~/.hawk/config.yml
-```
-### Step 3. Start Home process
-```bash
-poetry run hawk_flutter
+mkdir ~/hawk-missions
+# get a mission config + bootstrap and extract them to a subdirectory
+unzip -C ~/hawk-missions/_template-mission template-mission.zip
 ```
 
-### Step 4. Start Flutter app
+### Step 3. Start Hawk GUI server process
+
+Make sure you have valid ssh keys setup for the scouts, in a new terminal
+session run,
+
 ```bash
-cd ~/hawk/hawk_ui
-flutter run -d chrome
-# if port forwarding use cmd below
-# flutter run -d web-server --web-port=35415
+eval `ssh-agent`
+ssh-add
 ```
-Configure the filter using the UI and then click 'Start' to begin mission. The results can be viewed on 'Results' panel.
+
+Then you can start the GUI in the same terminal session so it will be able to
+access the scouts over ssh.
+
+```bash
+poetry run hawk_gui ~/hawk-missions
+```
+
+### Step 4. Connect with a browser
+
+Navigate your browser to [http://localhost:8501](http://localhost:8501).
+
+### Step 5. Create, configure, and manage missions.
+
+- Select the mission template and click 'Create Mission'.
+- If needed, update mission configuration parameters or use 'Bootstrap Explorer' to extract/update/repack the bootstrap dataset.
+- From the 'Configuration' tab you can then start scouts, when all scouts are running you will be able to 'Start Mission'.
+- Go to the 'Labeling' tab, the mission state should be 'Starting' while the scouts are configured, the bootstrap dataset is uploaded, and the first bootstrap model is trained. Once all scouts have loaded the first model the state should switch to 'Running'. At this point the scouts will start inferencing, and once the first N entries have been inferenced on each scout they will start to send their results to home.
+- When results start to appear, you can manually label the results and then use 'Send Labels' to send the labels back to the scouts.
 
 # Licensing
 
