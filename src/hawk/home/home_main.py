@@ -56,12 +56,6 @@ def daemonize(mission_dir: Path) -> None:
     os.dup2(logfile, sys.stdout.fileno())
     os.dup2(logfile, sys.stderr.fileno())
 
-    # write pidfile
-    pidfile = mission_dir / "hawk_home.pid"
-    atexit.register(os.remove, str(pidfile))
-    my_pid = str(os.getpid())
-    pidfile.write_text(f"{my_pid}\n")
-
 
 def resolve_path(config: dict[str, str], key: str, mission_dir: Path) -> None:
     with suppress(KeyError):
@@ -123,6 +117,12 @@ def main() -> None:
 
     if args.detach:
         daemonize(mission_dir)
+
+    # write pidfile
+    pidfile = mission_dir / "hawk_home.pid"
+    atexit.register(os.remove, str(pidfile))
+    my_pid = str(os.getpid())
+    pidfile.write_text(f"{my_pid}\n")
 
     logger.info(mission_dir)
 
