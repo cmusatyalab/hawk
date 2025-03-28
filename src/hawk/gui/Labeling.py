@@ -160,6 +160,7 @@ new_class = st.sidebar.text_input("New Class", on_change=reset_new_class)
 if new_class:
     class_list.add(ClassName(sys.intern(new_class)))
 
+mark_negative = st.button("Default to Negative")
 
 column = columns(st.session_state.columns)
 
@@ -199,6 +200,9 @@ def classification_pulldown(
                     pass
 
             st.session_state[key] = options[class_index]
+
+    if mark_negative and st.session_state.get(key) is None:
+        st.session_state[key] = "negative"
 
     classification = st.selectbox(
         "classification",
