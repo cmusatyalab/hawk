@@ -270,6 +270,7 @@ class Admin:
                     random=FileDataset(
                         dataPath=dataset_config["index_path"],
                         numTiles=int(dataset_config.get("tiles_per_frame", 200)),
+                        resizeTile=bool(dataset_config.get("resize_tile", False)),
                         timeout=timeout,
                     )
                 )

@@ -53,8 +53,17 @@ class HawkAttributeProvider(AttributeProvider):
             image = Image.open(self._image_provider).convert("RGB")
             image = image.copy()
 
-            if self.resize:
-                image.resize(self.thumbnail_size)
+            if self.resize and image.size != self.thumbnail_size:
+                # crop to centered square and resize to thumbnail_size
+                short_edge = min(image.size)
+                left = (image.size[0] - short_edge) // 2
+                top = (image.size[1] - short_edge) // 2
+                right = left + short_edge
+                bottom = top + short_edge
+
+                image = image.crop((left, top, right, bottom))
+                image = image.resize(self.thumbnail_size)
+
             image.save(self.thumbnail, "JPEG")
 
     def get_image(self) -> Image.Image:
