@@ -173,7 +173,7 @@ class YOLOTrainerRadar(ModelTrainerBase):
 
         if self.args["test_dir"]:
             cmd.extend(["--noval", "False"])
-            capture_files.append(valpath)
+            capture_files.extend([valpath, self.args["test_dir"]])
 
         cmd_str = shlex.join(cmd)
         self.capture_trainingset(cmd_str, capture_files)
