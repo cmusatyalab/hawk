@@ -116,9 +116,10 @@ if bootstrap_dir.is_dir():
 
     class_dirs = sorted(cls for cls in bootstrap_dir.iterdir() if cls.is_dir())
     for class_dir in class_dirs:
-        with st.expander(f"Bootstrap class {_class_name(class_dir)}"):
+        imgs = list(class_dir.iterdir())
+        with st.expander(f"Bootstrap class {_class_name(class_dir)} ({len(imgs)})"):
             if delete:
-                for image_file in class_dir.iterdir():
+                for image_file in imgs:
                     with next(column), st.container(border=True):
                         st.image(str(image_file))
                         st.button(
@@ -129,7 +130,7 @@ if bootstrap_dir.is_dir():
                             args=(class_dir.name, image_file.name),
                         )
             else:
-                st.image([str(img) for img in class_dir.iterdir()])
+                st.image([str(img) for img in imgs])
 
     if mission_state == "Not Started" and not mission.is_template:
         with st.expander("Add new bootstrap examples"):
