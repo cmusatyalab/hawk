@@ -22,13 +22,6 @@ from hawk.mission_config import MissionConfig, load_config
 if TYPE_CHECKING:
     from streamlit.delta_generator import DeltaGenerator
 
-ABOUT_TEXT = """\
-Hawk is a live learning system that leverages distributed machine learning,
-human domain expertise, and edge computing to detect the presence of rare
-objects and gather valuable training samples under austere and degraded
-conditions.
-"""
-
 HOME_MISSION_DIR = Path(os.environ.get("HAWK_MISSION_DIR", Path.cwd()))
 SCOUT_MISSION_DIR = Path("hawk-missions")
 
@@ -85,6 +78,10 @@ class Mission(MissionData):
                 )
                 self.config_writable = True
         return self._config
+
+    @property
+    def description(self) -> str:
+        return str(self.config.get("description", ""))
 
     def image_path(self, sample: LabelSample) -> Path:
         return sample.content(self.mission_dir / "images", ".jpeg")
@@ -166,20 +163,6 @@ class Mission(MissionData):
         return df.reset_index()
 
 
-def about_hawk() -> None:
-    st.title("Welcome to the Hawk Browser")
-    st.markdown(
-        f"""\
-{ABOUT_TEXT}
-### No Hawk mission selected
-Choose a mission from the "**Select Mission**" pulldown in the sidebar.
-"""
-    )
-
-
-welcome_page = st.Page(about_hawk)
-
-
 # cacheable resource?
 def load_mission() -> Mission:
     mission_name = st.session_state.get("mission_name")
@@ -189,6 +172,9 @@ def load_mission() -> Mission:
             return mission
         except ValueError:
             del st.session_state["mission_name"]
+
+    from hawk.gui.Welcome import welcome_page
+
     st.switch_page(welcome_page)
 
 

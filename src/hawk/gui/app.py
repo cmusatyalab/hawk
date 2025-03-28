@@ -8,7 +8,8 @@ import time
 
 import streamlit as st
 
-from hawk.gui.elements import ABOUT_TEXT, Mission, mission_changed, welcome_page
+from hawk.gui.elements import Mission, mission_changed
+from hawk.gui.Welcome import ABOUT_TEXT, welcome_page
 
 start = time.time()
 
@@ -23,6 +24,9 @@ st.set_page_config(
 )
 
 
+missions = [mission for mission in Mission.missions() if not mission.startswith("_")]
+
+
 def select_mission_cb() -> None:
     mission_changed.send()
 
@@ -30,7 +34,7 @@ def select_mission_cb() -> None:
 # create "Select Mission" pulldown
 st.sidebar.selectbox(
     "Select Mission",
-    [None, *Mission.missions()],
+    [None, *missions],
     key="mission_name",
     on_change=select_mission_cb,
 )
@@ -40,12 +44,11 @@ if st.session_state.get("mission_name") is None:
     pages = [welcome_page]
 else:
     pages = [
-        st.Page("Config.py", title="Configuration"),
         st.Page("Bootstrap.py", title="Explore Bootstrap"),
+        st.Page("Config.py", title="Configuration"),
         st.Page("Labeling.py", title="Labeling"),
         st.Page("Clustering.py", title="Clustering"),
         st.Page("Stats.py", title="Mission Stats"),
-        # st.Page("Upload.py", title="Augment Training Data"),
     ]
 
 
