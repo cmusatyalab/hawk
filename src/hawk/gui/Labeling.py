@@ -123,8 +123,12 @@ def update_statistics(mission: Mission) -> bool:
             st.metric("Elapsed Mission Time", f"{time_elapsed}s")
         st.progress(float(samples_inferenced / samples_total))
 
-    if mission_state == "Finished" and total_labeled == samples_received:
-        st.session_state.show_labeled = True
+    if (
+        mission_state == "Finished"
+        and total_labeled == samples_received
+        and st.session_state.display_filter == "Unlabeled"
+    ):
+        st.session_state.display_filter = "Positives"
 
     # return True if mission is still active
     return mission_state in ["Starting", "Running"]
@@ -146,7 +150,13 @@ if "rows" not in st.session_state:
 
 st.sidebar.slider("columns", min_value=1, max_value=8, key="columns")
 st.sidebar.slider("rows", min_value=1, max_value=8, key="rows")
-st.sidebar.toggle("Show Labeled", key="show_labeled")
+
+st.sidebar.segmented_control(
+    "Filter",
+    ["Unlabeled", "Positives", "All"],
+    default="Unlabeled",
+    key="display_filter",
+)
 
 
 # To inject a new class into the classification/detection.
@@ -332,8 +342,13 @@ def detection_ui(mission: Mission, sample: LabelSample) -> None:
 
 
 def display_radar_images(mission: Mission) -> None:
-    exclude = mission.labeled if not st.session_state.show_labeled else set()
-    results = [result for result in mission.unlabeled if result.objectId not in exclude]
+    exclude = mission.labeled
+    display_filter = st.session_state.display_filter
+    results = [
+        result
+        for result in mission.unlabeled
+        if display_filter == "All" or result.objectId not in exclude
+    ]
 
     results_per_page = st.session_state.rows * st.session_state.columns
     with paginate(results, results_per_page=results_per_page) as page:
@@ -373,8 +388,21 @@ def display_radar_images(mission: Mission) -> None:
 
 
 def display_images(mission: Mission) -> None:
-    exclude = mission.labeled if not st.session_state.show_labeled else set()
-    results = [result for result in mission.unlabeled if result.objectId not in exclude]
+    if st.session_state.display_filter == "All":
+        results = mission.unlabeled
+    elif st.session_state.display_filter == "Positives":
+        results = [
+            result
+            for result in mission.unlabeled
+            if result.objectId in mission.labeled
+            and mission.labeled[result.objectId].detections
+        ]
+    elif st.session_state.display_filter == "Unlabeled":
+        results = [
+            result
+            for result in mission.unlabeled
+            if result.objectId not in mission.labeled
+        ]
 
     results_per_page = st.session_state.rows * st.session_state.columns
     with paginate(results, results_per_page=results_per_page) as page:
