@@ -34,7 +34,6 @@ pandas = {version = "^2.0", optional = true}
 pillow = { version = "^9.5.0", optional = true }
 python-dateutil = { version = "^2.8.1", optional = true }
 streamlit = {version = "^1.40.1", optional = true, python = "!=3.9.7"}
-streamlit-autorefresh = {version = "^1.0.1", optional = true, python = "!=3.9.7"}
 streamlit-label-kit = {version = "^0.1.2", optional = true, python = "!=3.9.7"}
 
 # scout
@@ -70,7 +69,6 @@ home = [
     "pillow",
     "python-dateutil",
     "streamlit",
-    "streamlit-autorefresh",
     "streamlit-label-kit",
 ]
 scout = [
@@ -145,7 +143,6 @@ module = [
     "multiprocessing_logging.*",
     "skimage.*",
     "sklearn.*",
-    "streamlit_autorefresh",
     "streamlit_label_kit",
     "websockets.*",
 ]

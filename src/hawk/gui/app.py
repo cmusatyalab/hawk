@@ -4,14 +4,10 @@
 
 from __future__ import annotations
 
-import time
-
 import streamlit as st
 
 from hawk.gui.elements import Mission, mission_changed
 from hawk.gui.Welcome import ABOUT_TEXT, welcome_page
-
-start = time.time()
 
 st.set_page_config(
     page_title="Hawk Browser",
@@ -54,6 +50,3 @@ else:
 
 app = st.navigation(pages)
 app.run()
-
-elapsed = time.time() - start
-st.caption(f"---\nTime to render page {elapsed:.3f}s")

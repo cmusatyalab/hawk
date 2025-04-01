@@ -5,16 +5,27 @@
 from __future__ import annotations
 
 import sys
+import time
 from pathlib import Path
+from typing import TYPE_CHECKING, Iterator
 
 import streamlit as st
 from blinker import Signal
-from streamlit_autorefresh import st_autorefresh
 from streamlit_label_kit import detection as st_detection
 
 from hawk.classes import ClassList, ClassName, class_label_to_int
-from hawk.gui.elements import Mission, columns, load_mission, mission_changed, paginate
+from hawk.gui.elements import (
+    Mission,
+    columns,
+    load_mission,
+    mission_changed,
+    mission_stats,
+    paginate,
+)
 from hawk.home.label_utils import Detection, LabelSample
+
+if TYPE_CHECKING:
+    from streamlit.delta_generator import DeltaGenerator
 
 st.title("Hawk Mission Results")
 # st.write(st.session_state)
@@ -79,65 +90,29 @@ with col1:
 with col2:
     st.button("Clear Labels", on_click=clear_labels)
 
-statistics = st.sidebar.empty()
-
-
-def update_statistics(mission: Mission) -> bool:
-    # read scout stats from logs/mission-stats.json
-    stats = mission.get_stats()
-    time_elapsed = int(stats.get("home_time", 0))
-    samples_inferenced = int(stats.get("processedObjects", 0))
-    samples_total = int(stats.get("totalObjects", samples_inferenced or 1))
-    model_version = int(stats.get("version", 0))
-
+with st.sidebar:
     mission_state = mission.state()
+    mission_active = mission_state in ["Starting", "Running"]
 
-    # compute home stats from received and labeled samples
-    total_labeled = len(mission.labeled)
-    negative_labeled = sum(
-        1 for label in mission.labeled.values() if not label.detections
-    )
-    positive_labeled = total_labeled - negative_labeled
-    positive_label_ratio = (
-        int(100 * positive_labeled / total_labeled) if total_labeled else 0
-    )
+    @st.fragment(run_every="2s" if mission_active else None)
+    def update_stats() -> None:
+        mission.resync()
+        mission_stats(mission, None)
+        if mission_active and mission.state() == "Finished":
+            st.rerun()
 
-    samples_received = len(mission.unlabeled)
-    received_ratio = (
-        int(100 * samples_received / samples_inferenced) if samples_inferenced else 0
-    )
-
-    with statistics.container():
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("Current Model Version", model_version)
-            st.metric("Samples Inferenced", samples_inferenced)
-            st.metric("Samples Received", samples_received)
-            st.metric("Received Sample Ratio", f"{received_ratio}%")
-            st.metric("Mission Status", mission_state)
-        with col2:
-            st.metric("Positives Labeled", positive_labeled)
-            st.metric("Negatives Labeled", negative_labeled)
-            st.metric("Samples Labeled", total_labeled)
-            st.metric("Positive Sample Ratio", f"{positive_label_ratio}%")
-            st.metric("Elapsed Mission Time", f"{time_elapsed}s")
-        st.progress(float(samples_inferenced / samples_total))
+    update_stats()
 
     if (
         mission_state == "Finished"
-        and total_labeled == samples_received
-        and st.session_state.display_filter == "Unlabeled"
+        and st.session_state.get("display_filter") == "Unlabeled"
     ):
-        st.session_state.display_filter = "Positives"
-
-    # return True if mission is still active
-    return mission_state in ["Starting", "Running"]
+        st.session_state["display_filter"] = "Positives"
 
 
 ####
 # to minimize flickering when rerunning the script we update the sidebar
 # before we render results.
-mission_active = update_statistics(mission)
 dialog_displayed = False
 
 
@@ -169,10 +144,6 @@ def reset_new_class() -> None:
 new_class = st.sidebar.text_input("New Class", on_change=reset_new_class)
 if new_class:
     class_list.add(ClassName(sys.intern(new_class)))
-
-mark_negative = st.button("Default to Negative")
-
-column = columns(st.session_state.columns)
 
 
 def classification_pulldown(
@@ -211,9 +182,6 @@ def classification_pulldown(
 
             st.session_state[key] = options[class_index]
 
-    if mark_negative and st.session_state.get(key) is None:
-        st.session_state[key] = "negative"
-
     classification = st.selectbox(
         "classification",
         options=options,
@@ -231,9 +199,11 @@ def classification_pulldown(
             st.session_state.saves[result.index] = [Detection(scores={class_name: 1.0})]
         else:
             st.session_state.saves[result.index] = []
+    elif key in st.session_state.saves:
+        del st.session_state.saves[result.index]
 
-        if key != default_key:
-            st.session_state[default_key] = classification
+    if key != default_key:
+        st.session_state[default_key] = classification
 
 
 @st.dialog("Image Viewer", width="large")
@@ -341,7 +311,7 @@ def detection_ui(mission: Mission, sample: LabelSample) -> None:
                 st.session_state.saves[sample.index] = sample.detections
 
 
-def display_radar_images(mission: Mission) -> None:
+def display_radar_images(mission: Mission, column: Iterator[DeltaGenerator]) -> None:
     exclude = mission.labeled
     display_filter = st.session_state.display_filter
     results = [
@@ -387,7 +357,9 @@ def display_radar_images(mission: Mission) -> None:
                 classification_pulldown(mission, result)
 
 
-def display_images(mission: Mission) -> None:
+def display_images(
+    mission: Mission, column: Iterator[DeltaGenerator], mark_negative: bool
+) -> None:
     if st.session_state.display_filter == "All":
         results = mission.unlabeled
     elif st.session_state.display_filter == "Positives":
@@ -409,16 +381,35 @@ def display_images(mission: Mission) -> None:
         for result in page:
             with next(column):
                 if result.is_classification:
+                    key = f"{result.index}_cls"
+                    if mark_negative and st.session_state.get(key) is None:
+                        st.session_state[key] = "negative"
+
                     classification_ui(mission, result)
                 else:
+                    if (
+                        mark_negative
+                        and st.session_state.saves.get(result.index) is None
+                    ):
+                        st.session_state.saves[result.index] = []
                     detection_ui(mission, result)
 
 
-train_strategy = mission.config["train_strategy"]["type"]
-if train_strategy == "dnn_classifier_radar":
-    display_radar_images(mission)  # only for radar missions
-else:
-    display_images(mission)  # RGB default function call
+@st.fragment(run_every="2s" if mission_active and not dialog_displayed else None)
+def display_results() -> None:
+    start = time.time()
 
-if mission_active and not dialog_displayed:
-    st_autorefresh(interval=2000, key="refresh")
+    mark_negative = st.button("Default to Negative") if mission_active else False
+    column = columns(st.session_state.columns)
+
+    train_strategy = mission.config["train_strategy"]["type"]
+    if train_strategy == "dnn_classifier_radar":
+        display_radar_images(mission, column)  # only for radar missions
+    else:
+        display_images(mission, column, mark_negative)  # RGB default function call
+
+    elapsed = time.time() - start
+    st.caption(f"---\nTime to render fragment {elapsed:.3f}s")
+
+
+display_results()

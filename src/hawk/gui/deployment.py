@@ -130,13 +130,8 @@ def _get_home_pid(mission_dir: Path) -> int:
 
     pid = int(pidfile.read_text())
     try:
-        subprocess.run(
-            ["ps", "-p", str(pid)],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=True,
-        )
-    except subprocess.CalledProcessError as err:
+        os.kill(pid, 0)
+    except OSError as err:
         raise ValueError from err
     return pid
 
