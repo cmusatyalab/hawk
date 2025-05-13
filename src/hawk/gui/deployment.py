@@ -8,6 +8,7 @@ import contextlib
 import os
 import signal
 import subprocess
+import sys
 from pathlib import Path
 
 import streamlit as st
@@ -148,7 +149,7 @@ def start_home(mission_dir: Path) -> None:
     if check_home(mission_dir):
         stop_home(mission_dir)
     subprocess.run(
-        ["python", "-m", "hawk.home.home_main", "-d", mission_dir], check=True
+        [sys.executable, "-m", "hawk.home.home_main", "-d", mission_dir], check=True
     )
 
 
