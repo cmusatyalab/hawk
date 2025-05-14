@@ -16,7 +16,6 @@ from pathlib import Path
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
 import zmq
 from logzero import logger
 from prometheus_client import Gauge, Histogram, Summary
@@ -95,11 +94,9 @@ class UnlabeledResult(LabelSample):
         logger.info(f"SAVED TILE {image_file} for {result.objectId}")
 
         if request.feature_vector:
-            feature_vector = torch.load(io.BytesIO(request.feature_vector))
-
             fv_path = result.content(mission_dir / "feature_vectors", ".pt")
             fv_path.parent.mkdir(exist_ok=True)
-            torch.save(feature_vector, fv_path)
+            fv_path.write_bytes(request.feature_vector)
 
         return result
 
