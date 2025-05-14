@@ -16,7 +16,7 @@ from hawk.gui import deployment
 from hawk.gui.elements import Mission
 
 # Mission control commands that show up in multiple places
-_CMD_CREATE = "Create new mission"
+_CMD_CLONE = "Clone mission"
 _CMD_START_MISSION = "Start mission"
 _CMD_STOP_MISSION = "Stop mission"
 _CMD_RESET = "Reset mission state"
@@ -208,7 +208,7 @@ def _action() -> None:
 def _do_mission_control(mission: Mission) -> None:
     manage = st.session_state.action
     st.session_state.action = None
-    if _CMD_CREATE in manage:
+    if _CMD_CLONE in manage:
         _confirm(clone_mission, mission, "create a new mission from selected")
     elif _CMD_CHECK_SCOUTS in manage:
         _progress(deployment.check_scouts, mission)
@@ -234,8 +234,9 @@ def mission_controls(mission: Mission) -> None:
 
     mission_state = mission.state()
 
-    actions = [_CMD_CREATE]
-    if not mission.name.startswith("_"):
+    actions = []
+    template_mission = mission.name.startswith("_")
+    if not template_mission:
         n_deployed = len(st.session_state.get("deployed_state", []))
         n_scouts = len(mission.config.deploy.scouts)
         if mission_state == "Not Started":
@@ -271,7 +272,7 @@ def mission_controls(mission: Mission) -> None:
 def mission_advanced_controls(mission: Mission) -> None:
     mission_active = mission.state() in ["Starting", "Running"]
 
-    actions = []
+    actions = [_CMD_CLONE]
     if not mission.is_template:
         actions.append(_CMD_CHECK_SCOUTS)
         actions.append(_CMD_START_SCOUTS)
