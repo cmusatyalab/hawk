@@ -268,6 +268,15 @@ def mission_controls(mission: Mission) -> None:
         # args=(mission,),
     )
 
+    # If we are not a template, and scouts were configured but we don't know
+    # the current deployment state, force a recheck.
+    if (
+        not template_mission
+        and mission.config.deploy.scouts
+        and "deployed_state" not in st.session_state
+    ):
+        _progress(deployment.check_scouts, mission)
+
 
 def mission_advanced_controls(mission: Mission) -> None:
     mission_active = mission.state() in ["Starting", "Running"]
