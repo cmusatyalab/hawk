@@ -115,8 +115,13 @@ if bootstrap_dir.is_dir():
         delete = st.toggle("Delete bootstrap examples")
 
     class_dirs = sorted(cls for cls in bootstrap_dir.iterdir() if cls.is_dir())
+    positives = 0
     for class_dir in class_dirs:
         imgs = list(class_dir.iterdir())
+
+        if class_dir != class_dirs[0]:
+            positives += len(imgs)
+
         with st.expander(f"Bootstrap class {_class_name(class_dir)} ({len(imgs)})"):
             if delete:
                 for image_file in imgs:
@@ -133,7 +138,7 @@ if bootstrap_dir.is_dir():
                 st.image([str(img) for img in imgs])
 
     if mission_state == "Not Started" and not mission.is_template:
-        with st.expander("Add new bootstrap examples"):
+        with st.expander("Add new bootstrap examples", expanded=positives == 0):
             new_class = st.selectbox("Class", classes, index=1)
             new_examples = st.file_uploader(
                 "Examples", type=["gif", "png", "jpg"], accept_multiple_files=True
