@@ -19,12 +19,14 @@ python = "^3.8"
 cattrs = ">=23.1.0"
 logzero = "^1.5.0"
 matplotlib = "^3.6"
-numpy = "^1.18.1"
+#numpy = "^1.18.1"
+numpy = "1.24.4"  # dependency breaker
 prometheus-client = "^0.20.0"
 protobuf = "^3.11.4"
 pyyaml = "^6.0"
 pyzmq = "^23.2.1"
 tqdm = "^4.66.1"
+
 
 # home
 # decorator seems to be a missing fabric dependency...
