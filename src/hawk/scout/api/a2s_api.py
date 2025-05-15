@@ -439,6 +439,7 @@ class A2SAPI:
                 "ctime": str(time.ctime()),
                 "server_positives": str(mission.positives),
                 "server_negatives": str(mission.negatives),
+                "training": "1" if mission._model_event.is_set() else "0",
             }
         )
 

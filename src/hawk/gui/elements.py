@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 HOME_MISSION_DIR = Path(os.environ.get("HAWK_MISSION_DIR", Path.cwd()))
 SCOUT_MISSION_DIR = Path("hawk-missions")
 
-MissionState = Literal["Not Started", "Starting", "Running", "Finished"]
+MissionState = Literal["Not Started", "Starting", "Training", "Running", "Finished"]
 
 
 @dataclass
@@ -110,6 +110,8 @@ class Mission(MissionData):
             return "Not Started"
         elif not running and active:
             return "Starting"
+        elif running and self.get_stats().get("training", 0):
+            return "Training"
         elif running and active:
             return "Running"
         else:  # started/running and not active:
