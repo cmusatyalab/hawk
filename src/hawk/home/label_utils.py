@@ -7,14 +7,13 @@
 from __future__ import annotations
 
 import dataclasses
-import hashlib
 import json
 import sys
 import time
 from collections import Counter
 from dataclasses import InitVar, dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterator, NewType, TextIO, TypedDict
+from typing import TYPE_CHECKING, Any, Iterator, TextIO, TypedDict
 
 from logzero import logger
 
@@ -24,20 +23,21 @@ from ..classes import (
     ClassList,
     ClassName,
     class_label_to_int,
+    class_name_to_str,
 )
+from ..objectid import ObjectId
+from ..rusty import map_
 from .utils import tailf
 
 if TYPE_CHECKING:
     from collections.abc import Container
     from os import PathLike
 
-ObjectId = NewType("ObjectId", str)
-
 
 class DetectionDict(TypedDict):
     time_queued: float  # Unix time in seconds
     instance: int  # unique counter, combine w. object_id to spot relabel events
-    object_id: str  # unique object identifier
+    object_id: str | None  # unique object identifier
     scout_index: int  # index of scout where sample originated
     model_version: int  # model version used to inference
     image_path: str  # path to image
@@ -230,10 +230,7 @@ class LabelSample:
 
     def __post_init__(self, line: int, image_name: Path | None) -> None:
         if self.objectId is not None:
-            suffix = Path(self.objectId).suffix
-            image_name = Path(
-                hashlib.md5(self.objectId.encode()).hexdigest()
-            ).with_suffix(suffix)
+            image_name = self.objectId.file_name()
         else:
             assert image_name is not None
         self._image_name = image_name
@@ -241,6 +238,10 @@ class LabelSample:
 
     @classmethod
     def from_dict(cls, obj: dict[str, Any], line: int = -1) -> LabelSample:
+        if "objectId" in obj:
+            object_id = obj["objectId"]
+            if isinstance(object_id, str):
+                obj["objectId"] = ObjectId(object_id)
         detections = [
             Detection.from_dict(detection) for detection in obj.pop("detections", [])
         ]
@@ -256,7 +257,7 @@ class LabelSample:
         **kwargs: int | str | float,
     ) -> None:
         if self.objectId is not None:
-            kwargs["objectId"] = self.objectId
+            kwargs["objectId"] = self.objectId.serialize_oid()
         else:
             kwargs["image_name"] = str(self._image_name)
 
@@ -293,11 +294,11 @@ class LabelSample:
         result: DetectionDict = dict(
             time_queued=self.queued,
             instance=index,
-            object_id=str(self.objectId),
+            object_id=map_(self.objectId, lambda o: o.serialize_oid()),
             scout_index=self.scoutIndex,
             model_version=self.model_version,
             image_path=str(self.content(image_dir, ".jpeg")),
-            class_name=str(NEGATIVE_CLASS),
+            class_name=class_name_to_str(NEGATIVE_CLASS),
             confidence=1.0,
             bbox_x=0.5,
             bbox_y=0.5,

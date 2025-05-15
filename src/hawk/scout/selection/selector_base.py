@@ -245,11 +245,11 @@ class SelectorBase(Selector):
                     os.makedirs(temp_dir, exist_ok=True)
                     if result.feature_vector is not None:
                         ## save the feature vector of any sample sent to home
-                        ## to temp/ until receiving the label.
+                        ## to temp/ until we receive the label.
                         vector: torch.Tensor = torch.load(
                             io.BytesIO(result.feature_vector)
                         )
-                        fv_path = temp_dir / Path(result.id).with_suffix(".pt").name
+                        fv_path = result.id.file_name(temp_dir, ".pt")
                         torch.save(vector, fv_path)
                         # logger.info(f"Wrote feature vector temp: {fv_path}")
 

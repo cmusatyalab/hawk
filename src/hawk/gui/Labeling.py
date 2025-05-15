@@ -23,6 +23,7 @@ from hawk.gui.elements import (
     paginate,
 )
 from hawk.home.label_utils import Detection, LabelSample
+from hawk.rusty import unwrap
 
 if TYPE_CHECKING:
     from streamlit.delta_generator import DeltaGenerator
@@ -324,7 +325,7 @@ def display_radar_images(mission: Mission, column: Iterator[DeltaGenerator]) -> 
     with paginate(results, results_per_page=results_per_page) as page:
         for result in page:
             assert result.objectId is not None
-            base = Path(result.objectId).stem
+            base = unwrap(result.objectId._file_path()).stem
             stereo_base = base.split("_", 1)[0]
 
             image = mission.image_path(result)

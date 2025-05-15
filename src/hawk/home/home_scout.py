@@ -21,9 +21,11 @@ from logzero import logger
 from prometheus_client import Gauge, Histogram, Summary
 
 from ..classes import class_name_to_str
+from ..objectid import ObjectId
 from ..ports import H2C_PORT, S2H_PORT
 from ..proto.messages_pb2 import BoundingBox, SendLabel, SendTile
-from .label_utils import Detection, LabelSample, ObjectId
+from ..rusty import unwrap
+from .label_utils import Detection, LabelSample
 from .stats import (
     HAWK_LABELED_QUEUE_LENGTH,
     HAWK_UNLABELED_QUEUE_LENGTH,
@@ -56,6 +58,8 @@ class UnlabeledResult(LabelSample):
         request = SendTile()
         request.ParseFromString(msg)
 
+        objectId = ObjectId(request._objectId)
+
         # scout thinks it might have found some positives
         # filter out negatives (and 0 confidence scores)
         # cleanup and merge class scores for identical regions
@@ -73,7 +77,7 @@ class UnlabeledResult(LabelSample):
         score = max(detection.max_score for detection in detections)
 
         result = cls(
-            objectId=ObjectId(request.objectId),
+            objectId=objectId,
             scoutIndex=request.scoutIndex,
             model_version=request.version,
             score=score,
@@ -87,7 +91,8 @@ class UnlabeledResult(LabelSample):
         image_file = result.content(mission_dir / image_dir, ".jpeg")
         image_file.parent.mkdir(exist_ok=True)
 
-        if request.objectId.endswith(".npy"):  # for radar missions with .npy files
+        if unwrap(objectId._file_path()).suffix == ".npy":
+            # for radar missions with .npy files
             result.gen_heatmap(image_file, data)
         else:
             image_file.write_bytes(data)
@@ -164,7 +169,7 @@ class HomeToScoutWorker:
 
         assert result.objectId is not None
         msg = SendLabel(
-            objectId=result.objectId,
+            _objectId=result.objectId.serialize_oid(),
             scoutIndex=result.scoutIndex,
             boundingBoxes=bboxes,
         ).SerializeToString()

@@ -1,6 +1,8 @@
-# SPDX-FileCopyrightText: 2022 Carnegie Mellon University
+# SPDX-FileCopyrightText: 2022-2025 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
+
+from __future__ import annotations
 
 import queue
 import sys
@@ -9,7 +11,6 @@ import time
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional
 
 from logzero import logger
 
@@ -20,6 +21,7 @@ from ...classes import (
     class_label_to_int,
     class_name_to_str,
 )
+from ...objectid import ObjectId
 from ...proto.messages_pb2 import HawkObject
 from ..context.data_manager_context import DataManagerContext
 from ..core.object_provider import ObjectProvider
@@ -63,7 +65,7 @@ class RetrieverBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def read_object(self, object_id: str) -> Optional[HawkObject]:
+    def read_object(self, object_id: ObjectId) -> HawkObject | None:
         pass
 
     @abstractmethod
@@ -82,7 +84,7 @@ class Retriever(RetrieverBase):
         tiles_per_interval: int = 200,
         globally_constant_rate: bool = False,
     ) -> None:
-        self._context: Optional[DataManagerContext] = None
+        self._context: DataManagerContext | None = None
         self._context_event = threading.Event()
         self._start_event = threading.Event()
         self._stop_event = threading.Event()
@@ -109,7 +111,7 @@ class Retriever(RetrieverBase):
         self.globally_constant_rate: bool = globally_constant_rate
 
         self.current_deployment_mode = "Idle"
-        self.scml_active_mode: Optional[bool] = None
+        self.scml_active_mode: bool | None = None
 
         self.total_images = HAWK_RETRIEVER_TOTAL_IMAGES.labels(mission=mission_id)
         self.total_objects = HAWK_RETRIEVER_TOTAL_OBJECTS.labels(mission=mission_id)
@@ -157,11 +159,11 @@ class Retriever(RetrieverBase):
         pass
 
     def set_tile_attributes(
-        self, object_id: str, class_name: ClassName
-    ) -> Dict[str, bytes]:
+        self, object_id: ObjectId, class_name: ClassName
+    ) -> dict[str, bytes]:
         attributes = {
             "Device-Name": str.encode(self.server_id),
-            "_ObjectID": str.encode(object_id),
+            "_ObjectID": object_id.serialize_oid().encode(),
             "_gt_label": str.encode(class_name_to_str(class_name)),
         }
         return attributes
@@ -181,27 +183,15 @@ class Retriever(RetrieverBase):
             self.queue_length.dec()
             self.dropped_objects.inc()
 
-    def in_data_root(self, path: Path) -> bool:
-        try:
-            path.resolve().relative_to(self._data_root)
-            return True
-        except ValueError:
-            return False
-
-    def read_object(self, object_id: str) -> Optional[HawkObject]:
-        object_path = self._data_root / object_id.split("collection/id/")[-1]
-        if not self.in_data_root(object_path) or not object_path.exists():
+    def read_object(self, object_id: ObjectId) -> HawkObject | None:
+        object_path = object_id._file_path(self._data_root)
+        if object_path is None or not object_path.exists():
             logger.error(f"Unable to read object for {object_id}")
             return None
 
         content = object_path.read_bytes()
 
-        # Return object attributes
-        dct = {
-            "Device-Name": str.encode(self.server_id),
-            "_ObjectID": str.encode(object_id),
-        }
-        return HawkObject(objectId=object_id, content=content, attributes=dct)
+        return HawkObject(_objectId=object_id.serialize_oid(), content=content)
 
     def get_stats(self) -> RetrieverStats:
         self._start_event.wait()

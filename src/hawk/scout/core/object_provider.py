@@ -12,8 +12,10 @@ import numpy.typing as npt
 from PIL import Image
 
 from ...classes import NEGATIVE_CLASS, ClassName
+from ...rusty import unwrap
 
 if TYPE_CHECKING:
+    from ...objectid import ObjectId
     from ..retrieval.retriever import Retriever
     from .attribute_provider import AttributeProvider
     from .result_provider import ResultProvider
@@ -22,7 +24,7 @@ if TYPE_CHECKING:
 class ObjectProvider:
     def __init__(
         self,
-        obj_id: str,
+        obj_id: ObjectId,
         content: bytes | npt.NDArray[Any],
         attributes: AttributeProvider,
         gt: ClassName | None = None,
@@ -40,7 +42,7 @@ class ObjectProvider:
         if obj is None:
             return None
 
-        is_numpy = result.id.endswith(".npy")
+        is_numpy = unwrap(result.id._file_path()).suffix == ".npy"
         content = cls.load_content(obj, is_numpy)
 
         return cls(

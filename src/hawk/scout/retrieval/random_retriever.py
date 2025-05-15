@@ -14,6 +14,7 @@ from logzero import logger
 from PIL import Image
 
 from ...classes import NEGATIVE_CLASS, ClassLabel, ClassName
+from ...objectid import ObjectId
 from ...proto.messages_pb2 import FileDataset
 from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
@@ -80,7 +81,7 @@ class RandomRetriever(Retriever):
                 except IndexError:
                     class_name = NEGATIVE_CLASS
 
-                object_id = f"/{class_name}/collection/id/" + str(image_path)
+                object_id = ObjectId(f"/{class_name}/collection/id/{image_path}")
 
                 image_path = self._data_root / image_path
 

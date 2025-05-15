@@ -218,13 +218,13 @@ message FullReexaminationStrategyConfig {
 }
 
 message HawkObject {
-  string objectId = 1;
+  string _objectId = 1;
   bytes content = 2;
   map<string, bytes> attributes = 3;
 }
 
 message SendTile {
-  string objectId = 1;
+  string _objectId = 1;
   int32 scoutIndex = 2;
   int32 version = 3;
   map<string, bytes> attributes = 4;
@@ -235,7 +235,7 @@ message SendTile {
 
 // send labels for an object back from home to scout
 message SendLabel {
-  string objectId = 1;
+  string _objectId = 1;
   int32 scoutIndex = 2;
   repeated BoundingBox boundingBoxes = 3;
 }

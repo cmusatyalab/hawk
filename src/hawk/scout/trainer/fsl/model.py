@@ -196,7 +196,7 @@ class FSLModel(ModelBase):
                 label = POSITIVE_CLASS
                 score = predictions[i]
                 if self._mode == "oracle":
-                    if batch[i][0].id.startswith("/negative/"):
+                    if batch[i][0].id._groundtruth() == NEGATIVE_CLASS:
                         label = NEGATIVE_CLASS
                         score = 0.0
                     else:

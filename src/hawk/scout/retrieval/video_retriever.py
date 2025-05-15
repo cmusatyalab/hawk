@@ -16,6 +16,7 @@ from logzero import logger
 from PIL import Image
 
 from ...classes import NEGATIVE_CLASS
+from ...objectid import ObjectId
 from ...proto.messages_pb2 import Streaming_Video
 from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
@@ -157,7 +158,7 @@ class VideoRetriever(Retriever):
                 image.save(tmpfile, format="JPEG", quality=85)
                 content = tmpfile.getvalue()
 
-                object_id = str(tile_path)
+                object_id = ObjectId(f"/negative/collection/id/{tile_path}")
                 """attributes = {
                     'Device-Name': str.encode(get_server_ids()[0]),
                     '_ObjectID': str.encode(object_id),

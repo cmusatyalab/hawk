@@ -565,7 +565,7 @@ class Mission(DataManagerContext, ModelContext):
                 ]
 
                 tile = SendTile(
-                    objectId=result.id,
+                    _objectId=result.id.serialize_oid(),
                     scoutIndex=self._scout_index,
                     version=result.model_version,
                     feature_vector=result.feature_vector,

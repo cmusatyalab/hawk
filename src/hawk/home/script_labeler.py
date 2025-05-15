@@ -13,8 +13,10 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
-from hawk.classes import NEGATIVE_CLASS, ClassCounter, ClassList, ClassName
-from hawk.home.label_utils import Detection, LabelSample, MissionData, ObjectId
+from hawk.classes import NEGATIVE_CLASS, ClassCounter, ClassList
+from hawk.home.label_utils import Detection, LabelSample, MissionData
+from hawk.objectid import ObjectId
+from hawk.rusty import unwrap
 
 if TYPE_CHECKING:
     from hawk.mission_config import MissionConfig
@@ -40,16 +42,15 @@ class ScriptLabeler:
         self.labeling_func = self.classify_func if not self.detect else self.detect_func
 
     def classify_func(self, objectId: ObjectId) -> list[Detection]:
-        if objectId.startswith("/negative/"):
+        class_name = objectId._groundtruth()
+        if class_name == NEGATIVE_CLASS:
             return []
-        class_value = objectId.split("/", 2)[1]
-        class_name = ClassName(sys.intern(class_value))
         self.class_list.add(class_name)
         return [Detection(scores={class_name: 1.0})]
 
     def detect_func(self, objectId: ObjectId) -> list[Detection]:
         assert self.gt_path is not None
-        gt_name = Path(objectId).with_suffix(".txt").name
+        gt_name = unwrap(objectId._file_path()).with_suffix(".txt").name
         gt_file = self.gt_path / gt_name
         if not gt_file.exists():
             return []

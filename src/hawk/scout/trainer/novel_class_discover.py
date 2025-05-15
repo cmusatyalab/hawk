@@ -245,7 +245,7 @@ class Novel_Class_Clustering:
             ]
 
             tile = SendTile(
-                objectId=selected_sample.id,
+                _objectId=selected_sample.id.serialize_oid(),
                 scoutIndex=self.scout_index,
                 version=selected_sample.model_version,
                 feature_vector=selected_sample.feature_vector,

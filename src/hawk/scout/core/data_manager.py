@@ -25,6 +25,7 @@ from ...classes import (
     ClassName,
     class_label_to_int,
 )
+from ...objectid import ObjectId
 from ...proto.messages_pb2 import DatasetSplit, HawkObject, LabeledTile, SendLabel
 from ..retrieval.network_retriever import NetworkRetriever
 from .utils import get_example_key
@@ -147,7 +148,7 @@ class DataManager:
                     crop_arr_bytes = tmp.getvalue()
 
                 crop_tile = LabeledTile(
-                    obj=HawkObject(objectId="", content=crop_arr_bytes, attributes={}),
+                    obj=HawkObject(_objectId="", content=crop_arr_bytes, attributes={}),
                     boundingBoxes=[box],
                 )
                 crop_list.append(crop_tile)
@@ -162,10 +163,11 @@ class DataManager:
         else:
             self._negatives += 1
 
+        object_id = ObjectId(label._objectId)
         if scout_index != self._context.scout_index:
             # This code should not run as not using coordinator, all labels
             # initially return to generating scout.
-            logger.info(f"Fetch {label.objectId} from {scout_index}")
+            logger.info(f"Fetch {object_id} from {scout_index}")
             stub = self._context.scouts[scout_index]
             assert stub.internal is not None
             msg = [
@@ -181,7 +183,7 @@ class DataManager:
                 obj.ParseFromString(reply)
         else:
             # Local scout contains image of respective label received.
-            obj = self._context.retriever.read_object(label.objectId)
+            obj = self._context.retriever.read_object(object_id)
             if self._context.novel_class_discovery and obj is not None:
                 ## modify hawk obj - add fv and scout index for storage and
                 ## transmission.
@@ -549,21 +551,27 @@ class DataManager:
 
     def store_feature_vector(self, tile: LabeledTile) -> None:
         obj = tile.obj
+        objectId = ObjectId(obj._objectId)
+
         label = tile.boundingBoxes
-        base = f"{Path(obj.objectId).stem}.pt"
         if not label:
             label_dir = "0"
         else:
             class_name = ClassName(label[0].class_name)
             label_dir = str(self._class_to_label(class_name))  ## get the label
-        label_file_path = self._context._feature_vector_dir / label_dir / base
+
+        label_file_path = objectId.file_name(
+            self._context._feature_vector_dir / label_dir, ".pt"
+        )
         label_file_path.parent.mkdir(parents=True, exist_ok=True)
 
         if (
             int(obj.attributes["source_scout_index"].decode())
             == self._context.scout_index
         ):  ## receiving a label from this scout
-            temp_file_path = self._context._feature_vector_dir / "temp" / base
+            temp_file_path = objectId.file_name(
+                self._context._feature_vector_dir / "temp", ".pt"
+            )
             assert os.path.exists(temp_file_path)
             ## move fv from temp to label dir once label received.
             os.rename(temp_file_path, label_file_path)
@@ -584,8 +592,9 @@ class DataManager:
     def read_feature_vector(self, obj: HawkObject) -> HawkObject:
         ## read the feature vector from its temp location and add to HawkObject
         ## for transmission to other scouts.
+        objectId = ObjectId(obj._objectId)
         temp_dir = self._context._feature_vector_dir / "temp"
-        feature_vector_path = (temp_dir / Path(obj.objectId).stem).with_suffix(".pt")
+        feature_vector_path = objectId.file_name(temp_dir, ".pt")
         feature_vector = torch.load(feature_vector_path)
         with io.BytesIO() as fv_bytes:
             torch.save(feature_vector, fv_bytes)

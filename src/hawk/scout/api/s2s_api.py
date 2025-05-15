@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 import zmq
 from logzero import logger
 
+from ...objectid import ObjectId
 from ...proto import Empty
 from ...proto.messages_pb2 import LabeledTile, SendLabel
 
@@ -67,14 +68,15 @@ class S2SServicer:
             label = SendLabel()
             label.ParseFromString(msg)
             # Fetch data from dataretriever
-            obj = self._mission.retriever.read_object(label.objectId)
+            objectId = ObjectId(label._objectId)
+            obj = self._mission.retriever.read_object(objectId)
             assert obj is not None
             # Assuming data requirement in Distribute positives
             if label.boundingBoxes:
                 # Transmit data to coordinator
                 response = obj.SerializeToString()
                 logger.info(
-                    f"Fetch Tile for id {label.objectId} parent {label.scoutIndex}"
+                    f"Fetch Tile for {objectId} parent {label.scoutIndex}"
                     f" Reply {len(response)}"
                 )
             else:
