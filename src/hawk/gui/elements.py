@@ -28,6 +28,25 @@ SCOUT_MISSION_DIR = Path("hawk-missions")
 
 MissionState = Literal["Not Started", "Starting", "Training", "Running", "Finished"]
 
+BLINKENLIGHTS_STATES = {
+    "configuring": "grey",
+    "bootstrapping": "violet",
+    "configured": "blue",
+    "inferencing": "green",
+    "training": "orange",
+    "reexamining": "red",
+    "finished": "gray",
+}
+BLINKENLIGHTS_HELP = """\
+- :grey-badge[:material/mystery:] Configuring Scout
+- :violet-badge[:material/mystery:] Training Bootstrap model
+- :blue-badge[:material/mystery:] Waiting to start mission
+- :green-badge[:material/mystery:] Inferencing
+- :orange-badge[:material/mystery:] Training new model
+- :red-badge[:material/mystery:] Re-scoring top results with new model
+- :grey-badge[:material/mystery:] Mission finished
+"""
+
 
 @dataclass
 class Mission(MissionData):
@@ -99,6 +118,17 @@ class Mission(MissionData):
         data: dict[str, Any] = json.loads(filepath.read_text())
         data["last_update"] = filepath.stat().st_mtime
         return data
+
+    def blinkenlights(self) -> None:
+        stats = self.get_stats()
+        colors = [
+            BLINKENLIGHTS_STATES.get(state, "primary")
+            for state in stats.get("mission_state", [])
+        ]
+        st.markdown(
+            "".join([f":{color}-badge[:material/mystery:]" for color in colors]),
+            help=BLINKENLIGHTS_HELP,
+        )
 
     def state(self) -> MissionState:
         """Try to derive mission state by looking at a log/stats directory."""

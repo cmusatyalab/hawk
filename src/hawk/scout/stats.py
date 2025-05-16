@@ -42,9 +42,40 @@ HAWK_RETRIEVER_QUEUE_LENGTH = Gauge(
     labelnames=["mission"],
 )
 
+HAWK_MISSION_CONFIGURING = Gauge(
+    "hawk_mission_state_configuring",
+    "The scout is configuring a mission",
+    labelnames=["mission"],
+)
+HAWK_MISSION_TRAINING_BOOTSTRAP = Gauge(
+    "hawk_mission_state_training_bootstrap",
+    "The scout is waiting for the bootstrap model to get trained/loaded",
+    labelnames=["mission"],
+)
+HAWK_MISSION_WAITING = Gauge(
+    "hawk_mission_state_waiting",
+    "Scout completed configuration and is waiting for start",
+    labelnames=["mission"],
+)
+HAWK_MISSION_RUNNING = Gauge(
+    "hawk_mission_state_running",
+    "The scout is running a mission",
+    labelnames=["mission"],
+)
+
 HAWK_MODEL_VERSION = Gauge(
     "hawk_model_version",
     "Gauge to track the trained model iteration used for inference",
+    labelnames=["mission"],
+)
+HAWK_MODEL_TRAINING = Gauge(
+    "hawk_model_training",
+    "Set when we are training a model",
+    labelnames=["mission"],
+)
+HAWK_MODEL_REEXAMINING = Gauge(
+    "hawk_model_reexamining",
+    "Set when we are reexamining the top queued entries with a new model",
     labelnames=["mission"],
 )
 
@@ -54,6 +85,10 @@ HAWK_INFERENCED_OBJECTS = Histogram(
     labelnames=["mission", "gt", "model_version"],
     buckets=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
 )
+
+# Theoretically there is also idle state, but since we won't have a mission
+# label we probably won't actually ever see it. Similarily configuring is
+# probably going to be so brief that it will never really show up.
 
 HAWK_SELECTOR_SKIPPED_OBJECTS = Counter(
     "hawk_selector_skipped_objects",

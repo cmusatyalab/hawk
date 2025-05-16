@@ -59,6 +59,15 @@ from ..selection.selector_base import Selector
 from ..selection.threshold_selector import ThresholdSelector
 from ..selection.token_selector import TokenSelector
 from ..selection.topk_selector import TopKSelector
+from ..stats import (
+    HAWK_MISSION_CONFIGURING,
+    HAWK_MISSION_RUNNING,
+    HAWK_MISSION_TRAINING_BOOTSTRAP,
+    HAWK_MISSION_WAITING,
+    HAWK_MODEL_REEXAMINING,
+    HAWK_MODEL_TRAINING,
+    collect_metrics_total,
+)
 from ..trainer.dnn_classifier.trainer import DNNClassifierTrainer
 from ..trainer.dnn_classifier_radar.trainer import DNNClassifierTrainerRadar
 from ..trainer.fsl.trainer import FSLTrainer
@@ -342,6 +351,10 @@ class A2SAPI:
         if mission.enable_logfile:
             mission.log("SEARCH CREATED")
 
+        # switch state from "configuring" to "waiting to start"
+        mission._mission_waiting.set(1)
+        mission._mission_configuring.set(0)
+
     def _setup_bandwidth(self, bandwidth_func: str) -> None:
         """Function for FireQos Bandwidth limiting"""
         bandwidth_map = {
@@ -430,6 +443,23 @@ class A2SAPI:
                 del mission_stats[k]
 
         model_version = mission._model.version if mission._model is not None else -1
+        model_training = collect_metrics_total(HAWK_MODEL_TRAINING)
+
+        # Figure out what 'state' the scout is in.
+        if collect_metrics_total(HAWK_MODEL_REEXAMINING):
+            mission_state = "reexamining"
+        elif model_training:
+            mission_state = "training"
+        elif collect_metrics_total(HAWK_MISSION_RUNNING):
+            mission_state = "inferencing"
+        elif collect_metrics_total(HAWK_MISSION_WAITING):
+            mission_state = "configured"
+        elif collect_metrics_total(HAWK_MISSION_TRAINING_BOOTSTRAP):
+            mission_state = "bootstrapping"
+        elif collect_metrics_total(HAWK_MISSION_CONFIGURING):
+            mission_state = "configuring"
+        else:
+            mission_state = "finished"
 
         mission_stats.update(
             {
@@ -439,7 +469,8 @@ class A2SAPI:
                 "ctime": str(time.ctime()),
                 "server_positives": str(mission.positives),
                 "server_negatives": str(mission.negatives),
-                "training": "1" if mission._model_event.is_set() else "0",
+                "training": str(model_training),
+                "mission_state": mission_state,
             }
         )
 

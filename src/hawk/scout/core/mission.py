@@ -38,7 +38,15 @@ from ..retrain.sampleInterval_policy import SampleIntervalPolicy
 from ..retrieval.retriever import Retriever
 from ..selection.selector_base import Selector
 from ..selection.token_selector import TokenSelector
-from ..stats import HAWK_MODEL_VERSION
+from ..stats import (
+    HAWK_MISSION_CONFIGURING,
+    HAWK_MISSION_RUNNING,
+    HAWK_MISSION_TRAINING_BOOTSTRAP,
+    HAWK_MISSION_WAITING,
+    HAWK_MODEL_REEXAMINING,
+    HAWK_MODEL_TRAINING,
+    HAWK_MODEL_VERSION,
+)
 from ..trainer import novel_class_discover
 from .data_manager import DataManager
 from .hawk_stub import HawkStub
@@ -76,6 +84,18 @@ class Mission(DataManagerContext, ModelContext):
         super().__init__()
 
         self.start_time = time.time()
+
+        self._mission_configuring = HAWK_MISSION_CONFIGURING.labels(
+            mission=mission_id.value
+        )
+        self._mission_training_bootstrap = HAWK_MISSION_TRAINING_BOOTSTRAP.labels(
+            mission=mission_id.value
+        )
+        self._mission_waiting = HAWK_MISSION_WAITING.labels(mission=mission_id.value)
+        self._mission_running = HAWK_MISSION_RUNNING.labels(mission=mission_id.value)
+
+        # switch state from "idle/stopped" to "configuring"
+        self._mission_configuring.set(1)
 
         logger.info("Initialization")
         self._id = mission_id
@@ -128,6 +148,10 @@ class Mission(DataManagerContext, ModelContext):
 
         self._model: Model | None = None
 
+        self._model_training = HAWK_MODEL_TRAINING.labels(mission=mission_id.value)
+        self._model_reexamining = HAWK_MODEL_REEXAMINING.labels(
+            mission=mission_id.value
+        )
         self._model_version = HAWK_MODEL_VERSION.labels(mission=mission_id.value)
         self._model_version.set(-1)
 
@@ -231,9 +255,14 @@ class Mission(DataManagerContext, ModelContext):
         self._retrain_policy.reset()
         self._model_event.set()
 
-        # Wait for intial model to be trained
+        # indicate we're blocked waiting for the initial model to be trained
+        self._mission_training_bootstrap.set(1)
+
+        # Wait for initial model to be trained
         while not self._model:
-            pass
+            time.sleep(0.5)
+
+        self._mission_training_bootstrap.set(0)
 
     def check_initial_model(self) -> bool:
         if self.initial_model is None:
@@ -389,6 +418,10 @@ class Mission(DataManagerContext, ModelContext):
             self._label_thread.start()
             self._s2s_thread.start()
 
+            # switch state from "waiting for start" to "running"
+            self._mission_running.set(1)
+            self._mission_waiting.set(0)
+
             self.start_time = time.time()
         except Exception:
             self.retriever.stop()
@@ -410,6 +443,9 @@ class Mission(DataManagerContext, ModelContext):
         self.selector.clear()
         logger.info("Selector clear called in mission.py...")
         self.log_file.close()
+
+        # switch state from "running" to "stopped"
+        self._mission_running.set(0)
 
     def log(self, msg: str, end_t: float | None = None) -> None:
         if not self.enable_logfile:
@@ -584,7 +620,11 @@ class Mission(DataManagerContext, ModelContext):
         while not self._abort_event.is_set():
             try:
                 self._model_event.wait()
+                self._model_training.set(1)
+
                 self._train_model()
+
+                self._model_training.set(0)
                 self._model_event.clear()
                 time.sleep(5)
             except Exception as e:
@@ -653,9 +693,12 @@ class Mission(DataManagerContext, ModelContext):
             self._model_stats = model_stats
         logger.info(f"Promoted New Model Version {model.version}")
         self.log(f"{time.ctime()} Promoted New Model Version {model.version}")
+
         # This ultimately calls the reexamination inference through the new
         # model after training completed
+        self._model_reexamining.set(1)
         self.selector.new_model(model)
+        self._model_reexamining.set(0)
 
         if should_notify:
             self._initial_model_event.set()

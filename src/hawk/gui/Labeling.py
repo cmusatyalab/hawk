@@ -92,7 +92,7 @@ with col2:
 
 with st.sidebar:
     mission_state = mission.state()
-    mission_active = mission_state in ["Starting", "Running"]
+    mission_active = mission_state in ["Starting", "Running", "Training"]
 
     @st.fragment(run_every="2s" if mission_active else None)
     def update_stats() -> None:
@@ -398,6 +398,8 @@ def display_images(
 @st.fragment(run_every="2s" if mission_active and not dialog_displayed else None)
 def display_results() -> None:
     start = time.time()
+
+    mission.blinkenlights()
 
     mark_negative = st.button("Default to Negative") if mission_active else False
     column = columns(st.session_state.columns)

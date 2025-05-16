@@ -816,13 +816,16 @@ class Admin:
                     logger.error(f"ERROR during Testing from Scout {index}\n {errmsg}")
 
     def accumulate_mission_stats(self) -> dict[str, Any]:
-        stats = defaultdict(int)
+        stats: dict[str, Any] = defaultdict(int)
         str_ignore = [
             "server_time",
             "ctime",
             "train_positives",
             "server_positives",
             "msg",
+        ]
+        str_foreach = [
+            "mission_state",
         ]
         single = ["server_time", "train_positives", "version"]
         for stub in self.scout_stubs.values():
@@ -845,7 +848,11 @@ class Admin:
                     for key, value in others.items():
                         if key in mission_stat:
                             continue
-                        if key in str_ignore:
+                        if key in str_foreach:
+                            if index == 0:
+                                stats[key] = []
+                            stats[key].append(value)
+                        elif key in str_ignore:
                             if index == 0:
                                 stats[key] = value
                         elif key in single:
