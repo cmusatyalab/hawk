@@ -275,7 +275,7 @@ def mission_controls(mission: Mission) -> None:
         and mission.config.deploy.scouts
         and "deployed_state" not in st.session_state
     ):
-        _progress(deployment.check_scouts, mission)
+        _progress(lambda m: deployment.check_scouts(m) or True, mission)
 
 
 def mission_advanced_controls(mission: Mission) -> None:
