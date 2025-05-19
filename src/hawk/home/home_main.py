@@ -20,7 +20,6 @@ from prometheus_client import start_http_server as start_metrics_server
 from ..classes import ClassList
 from ..mission_config import load_config, write_config
 from ..ports import H2A_PORT, HOME_METRICS_PORT
-from . import sub_class_clustering
 from .admin import Admin
 from .home_labeler import LabelerDiskQueue
 from .home_scout import ScoutQueue, Strategy
@@ -215,6 +214,8 @@ def main() -> None:
 
         # Start sub class clustering process if set in config file
         if config.get("sub_class_discovery", False):
+            from . import sub_class_clustering
+
             p = mp.Process(target=sub_class_clustering.main, args=(mission_dir,))
             processes.append(p)
             p.start()
