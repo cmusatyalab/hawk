@@ -90,6 +90,10 @@ with col1:
 with col2:
     st.button("Clear Labels", on_click=clear_labels)
 
+# need to set a default value for the selectbox
+if "display_filter" not in st.session_state:
+    st.session_state["display_filter"] = "Unlabeled"
+
 with st.sidebar:
     mission_state = mission.state()
     mission_active = mission_state in ["Starting", "Running", "Training"]
@@ -125,12 +129,8 @@ if "rows" not in st.session_state:
 
 st.sidebar.slider("columns", min_value=1, max_value=8, key="columns")
 st.sidebar.slider("rows", min_value=1, max_value=8, key="rows")
-
 st.sidebar.segmented_control(
-    "Filter",
-    ["Unlabeled", "Positives", "All"],
-    default="Unlabeled",
-    key="display_filter",
+    "Filter", ["Unlabeled", "Positives", "All"], key="display_filter"
 )
 
 
