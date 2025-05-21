@@ -113,6 +113,7 @@ def main() -> None:
     # create new mission directory if we've been started with a config.yml
     if mission_dir is None:
         mission_dir = Path(config["home-params"]["mission_dir"], mission_id)
+        mission_dir.mkdir(parents=True)
 
     if args.detach:
         daemonize(mission_dir)
