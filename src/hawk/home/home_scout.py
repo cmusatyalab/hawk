@@ -107,8 +107,8 @@ class UnlabeledResult(LabelSample):
         plt.imshow(
             data.sum(axis=2).transpose(), cmap="viridis", interpolation="nearest"
         )
-        plt.xticks([0, 16, 32, 48, 63], [-13, -6.5, 0, 6.5, 13], fontsize=8)
-        plt.yticks([0, 64, 128, 192, 255], [50, 37.5, 25, 12.5, 0])
+        plt.xticks([0, 16, 32, 48, 63], ["-13", "-6.5", "0", "6.5", "13"], fontsize=8)
+        plt.yticks([0, 64, 128, 192, 255], ["50", "37.5", "25", "12.5", "0"])
         plt.xlabel("velocity (m/s)")
         plt.ylabel("range (m)")
         # plt.title("RD Map")
