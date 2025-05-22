@@ -160,7 +160,7 @@ class Mission(MissionData):
         df = pd.DataFrame.from_records(
             detections,
             columns=DetectionDict.__annotations__.keys(),
-        ).astype({"class_name": "category"})
+        ).astype({"class_name": "category", "object_id": "string"})
 
         df["time_queued"] = pd.to_datetime(df["time_queued"], unit="s", utc=True)
 
@@ -326,14 +326,14 @@ def mission_stats(mission: Mission, df: pd.DataFrame | None) -> None:
     samples_total = int(stats.get("totalObjects", samples_inferenced or 1))
 
     # compute home stats from received and labeled samples
-    total_labeled = df[df["labeled"]].instance.nunique()
     total_by_class = df["groundtruth"].value_counts()
-
     # st.write(total_by_class)
+
     negative_labeled = total_by_class["negative"]
-    positive_labeled = total_by_class.sum() - negative_labeled
+    total_labeled = total_by_class.sum()
+    positive_labeled = total_labeled - negative_labeled
     positive_label_ratio = (
-        int(100 * positive_labeled / total_by_class.sum()) if total_labeled else 0
+        int(100 * positive_labeled / total_labeled) if total_labeled else 0
     )
 
     positive_class_counts = ", ".join(
