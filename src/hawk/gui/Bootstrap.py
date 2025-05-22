@@ -91,8 +91,8 @@ if DELETE_CMD in action:
 
 # delete image callback
 def _delete(class_name: str, image_name: str) -> None:
-    image_path = bootstrap_dir.joinpath(class_name, image_name)
-    if image_path.is_relative_to(bootstrap_dir):
+    image_path = bootstrap_dir.joinpath(class_name, image_name).resolve()
+    if bootstrap_dir in image_path.parents:
         image_path.unlink(missing_ok=True)
     else:
         st.error(f"Invalid image: {class_name}/{image_name}")
