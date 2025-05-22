@@ -207,7 +207,6 @@ def write_scores(file_path: Path, y_pred: list[int], y_true: list[int]) -> None:
 
 
 def eval_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None:
-    global best_acc1
     args.gpu = gpu
     # start_time = time.time()
     print("GPU:", args.gpu)
