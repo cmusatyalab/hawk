@@ -121,9 +121,13 @@ class Mission(MissionData):
 
     def blinkenlights(self) -> None:
         stats = self.get_stats()
+
+        n_scouts = len(self.config.deploy.scouts)
+        initializing = ["configuring"] * n_scouts
+
         colors = [
             BLINKENLIGHTS_STATES.get(state, "primary")
-            for state in stats.get("mission_state", [])
+            for state in stats.get("mission_state", initializing)
         ]
         st.markdown(
             "".join([f":{color}-badge[:material/mystery:]" for color in colors]),
