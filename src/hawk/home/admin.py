@@ -14,7 +14,7 @@ import time
 from collections import Counter, defaultdict
 from contextlib import suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, TextIO
+from typing import TYPE_CHECKING, Any, TextIO
 
 import zmq
 from google.protobuf.json_format import MessageToDict
@@ -74,7 +74,7 @@ class Admin:
         self._mission_id = mission_id
         self.stop_event = stop_event
         self.explicit_start = explicit_start
-        self.scout_stubs: dict[int, zmq.Socket[Literal[zmq.SocketType.REP]]] = {}
+        self.scout_stubs: dict[int, zmq.Socket[bytes]] = {}
         self.log_files: dict[int, TextIO] = {}
         self.test_path = ""
         self.scml = False

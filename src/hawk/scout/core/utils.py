@@ -185,7 +185,11 @@ def get_server_ids() -> list[str]:
     try:
         for info in socket.getaddrinfo(hostname, None):
             try:
-                name = socket.getnameinfo(info[4], socket.NI_NAMEREQD)[0]
+                sockaddr = info[4]
+                # skip addresses we can't resolve with getnameinfo
+                if isinstance(sockaddr[1], bytes):
+                    continue
+                name = socket.getnameinfo(sockaddr, socket.NI_NAMEREQD)[0]
                 names.add(name)
             except socket.gaierror:
                 pass
