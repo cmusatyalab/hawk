@@ -10,7 +10,7 @@ BuildError = Exception
 
 
 def project_root() -> Path:
-    for parent in Path.cwd().resolve().parents:
+    for parent in Path("here").resolve().parents:
         if parent.joinpath("pyproject.toml").exists():
             return parent
 

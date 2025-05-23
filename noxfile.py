@@ -3,20 +3,18 @@
 
 # Test against different python versions
 #
-#   pipx install nox
-#   pipx inject nox nox-poetry
+#   pipx install nox[uv]
 #   nox
 
 import nox
-from nox_poetry import session
+
+nox.options.default_venv_backend = "uv"
 
 
-@session(python=["3.8", "3.9", "3.10"])
+@nox.session(python=["3.8", "3.9", "3.10", "3.11", "3.12"])
 @nox.parametrize("component", ["home", "scout"])
 def tests(session, component):
     session.install(
-        "--extra-index-url",
-        "https://download.pytorch.org/whl/cu118",
         f".[{component}]",
         "pytest",
         "pytest-benchmark",

@@ -19,12 +19,14 @@ python = "^3.8"
 cattrs = ">=23.1.0"
 logzero = "^1.5.0"
 matplotlib = "^3.6"
-#numpy = "^1.18.1"
-numpy = "1.24.4"  # dependency breaker
+numpy = [
+    { version = "^1.24.4", python = "<3.9" },
+    { version = "^1.26.4", python = "^3.9" },
+]
 prometheus-client = "^0.20.0"
 protobuf = "^3.11.4"
 pyyaml = "^6.0"
-pyzmq = "^23.2.1"
+pyzmq = ">=23.2.1"
 tqdm = "^4.66.1"
 
 
@@ -33,7 +35,7 @@ tqdm = "^4.66.1"
 decorator = { version = "^5.1.1", optional = true }
 fabric = { version = "^3.0.1", optional = true }
 pandas = {version = "^2.0", optional = true}
-pillow = { version = "^9.5.0", optional = true }
+pillow = { version = "^10.4.0", optional = true }
 python-dateutil = { version = "^2.8.1", optional = true }
 streamlit = {version = "^1.40.1", optional = true, python = "!=3.9.7"}
 streamlit-label-kit = {version = "^0.1.2", optional = true, python = "!=3.9.7"}
@@ -43,6 +45,7 @@ albumentations = { version = "^1.3.1", optional = true }
 lovely-tensors = { version = "^0.1.15", optional = true }
 multiprocessing-logging = { version = "^0.2.6", optional = true }
 opencv-python-headless = { version = "^4.7.0.72", optional = true }
+scikit-image = { version = ">=0.21", optional = true }
 scikit-learn = { version = "^1.3.0", optional = true }
 tensorboard = { version = "^2.1.1", optional = true }
 
@@ -78,6 +81,7 @@ scout = [
     "lovely-tensors",
     "multiprocessing-logging",
     "opencv-python-headless",
+    "scikit-image",
     "scikit-learn",
     "tensorboard",
     "torch",
@@ -172,6 +176,15 @@ markers = [
     "home: components that run on home (deselect with '-m \"not home\"')",
     "scout: components that run on the scout (deselect with '-m \"not scout\"')",
 ]
+
+[tool.uv.sources]
+torch = { index = "torch-cu11" }
+torchvision = { index = "torch-cu11" }
+
+[[tool.uv.index]]
+name = "torch-cu11"
+url = "https://download.pytorch.org/whl/cu118"
+explicit = true
 
 [build-system]
 requires = ["poetry-core"]
