@@ -10,7 +10,7 @@ BuildError = Exception
 
 
 def project_root() -> Path:
-    for parent in Path("here").absolute().parents:
+    for parent in Path.cwd().resolve().parents:
         if parent.joinpath("pyproject.toml").exists():
             return parent
 
@@ -19,6 +19,8 @@ def project_root() -> Path:
 
 
 def poetry_build() -> Path:
+    root = project_root()
+
     subprocess.run(
         [
             "poetry",
@@ -32,7 +34,6 @@ def poetry_build() -> Path:
     result = subprocess.run(["poetry", "version"], capture_output=True, text=True)
     project, version = result.stdout.strip().split()
 
-    root = project_root()
     return root / "dist" / f"{project}-{version}-py3-none-any.whl"
 
 
