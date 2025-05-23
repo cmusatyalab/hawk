@@ -24,7 +24,7 @@ numpy = [
     { version = "^1.26.4", python = "^3.9" },
 ]
 prometheus-client = "^0.20.0"
-protobuf = "^3.11.4"
+protobuf = ">=4.24.0"
 pyyaml = "^6.0"
 pyzmq = ">=23.2.1"
 tqdm = "^4.66.1"
@@ -90,7 +90,7 @@ scout = [
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
-grpcio-tools = "~1.48.2"
+grpcio-tools = "^1.48.2"
 isort = "^5.12.0"
 mypy = "^1.2.0"
 mypy-protobuf = "^1.20"
@@ -102,7 +102,7 @@ pytest-benchmark = "^4.0.0"
 types-invoke = "^2.0.0.10"
 types-paramiko = "^3.0.0.8"
 types-pillow = "^10.0.0.3"
-types-protobuf = "^4.24.0.2"
+types-protobuf = ">=4.24.0.2"
 types-pyyaml = "^6.0.12.10"
 types-requests = "^2.31.0.6"
 types-tqdm = "^4.66.0.2"
