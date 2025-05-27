@@ -62,13 +62,17 @@ class TrainingState:
         torch.save(checkpoint_state, checkpoint_path)
 
     @staticmethod
-    def _load_checkpoint_state(checkpoint_path: Path | None) -> CheckpointState:
+    def _load_checkpoint_state(
+        checkpoint_path: Path, bootstrap_arch: str
+    ) -> CheckpointState:
         """Load the training state from a checkpoint file."""
-        if checkpoint_path is not None and checkpoint_path.is_file():
-            checkpoint_state: CheckpointState = torch.load(checkpoint_path)
-        else:
+        if checkpoint_path is None or not checkpoint_path.is_file():
             raise ValueError(f"Checkpoint {checkpoint_path} does not exist")
+
+        checkpoint_state: CheckpointState = torch.load(checkpoint_path)
+
         # stay backward compatible with older bootstrap models.
+        checkpoint_state.setdefault("arch", bootstrap_arch)
         checkpoint_state.setdefault("num_classes", 2)
         checkpoint_state.setdefault("weights", "IMAGENET1K_V1")
         return checkpoint_state
@@ -95,10 +99,10 @@ class TrainingState:
 
     @classmethod
     def load_for_inference(
-        cls, checkpoint_path: Path | None
+        cls, checkpoint_path: Path, bootstrap_arch: str
     ) -> tuple[torch.nn.Module, Transform, int]:
         """Load a torch model for inference from a checkpoint file."""
-        checkpoint = cls._load_checkpoint_state(checkpoint_path)
+        checkpoint = cls._load_checkpoint_state(checkpoint_path, bootstrap_arch)
         return cls._load_model_from_checkpoint(checkpoint)
 
     @classmethod
@@ -122,7 +126,9 @@ class TrainingState:
         on the specified bootstrap_arch/bootstrap_weights/num_classes parameters.
         """
         try:
-            checkpoint = cls._load_checkpoint_state(checkpoint_path)
+            if checkpoint_path is None:
+                raise ValueError
+            checkpoint = cls._load_checkpoint_state(checkpoint_path, bootstrap_arch)
         except ValueError:
             checkpoint = {
                 "arch": bootstrap_arch,
@@ -191,10 +197,10 @@ class TrainingState:
 
     def rollback(self, checkpoint_path: Path) -> None:
         """Rollback the model to a previous checkpoint."""
-        if not checkpoint_path.is_file():
+        if checkpoint_path is None or not checkpoint_path.is_file():
             return
 
-        checkpoint = self._load_checkpoint_state(checkpoint_path)
+        checkpoint = self._load_checkpoint_state(checkpoint_path, self.arch)
 
         self.torch_model.load_state_dict(checkpoint["state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer"])
@@ -205,7 +211,7 @@ class TrainingState:
         if checkpoint_path is None or not checkpoint_path.is_file() or alpha == 0.0:
             return
 
-        checkpoint = self._load_checkpoint_state(checkpoint_path)
+        checkpoint = self._load_checkpoint_state(checkpoint_path, self.arch)
 
         assert checkpoint["arch"] == self.arch
         if checkpoint["num_classes"] != self.num_classes:

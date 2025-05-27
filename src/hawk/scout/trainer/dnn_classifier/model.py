@@ -93,7 +93,7 @@ class DNNClassifierModel(ModelBase):
 
     def load_model(self, model_path: Path) -> torch.nn.Module:
         assert self.context is not None
-        model, preprocess, _ = TrainingState.load_for_inference(model_path)
+        model, preprocess, _ = TrainingState.load_for_inference(model_path, self._arch)
         return model, preprocess
 
     def get_predictions(self, inputs: torch.Tensor) -> Sequence[Sequence[float]]:

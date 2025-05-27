@@ -45,7 +45,7 @@ model_names = models.list_models()
 #
 
 parser = argparse.ArgumentParser(description="PyTorch ImageNet Training")
-parser.add_argument("--trainpath", type=str, default="", help="path to tain file")
+parser.add_argument("--trainpath", type=str, default="", help="path to train file")
 parser.add_argument("--valpath", type=str, default="", help="path to val file")
 parser.add_argument(
     "--savepath",
@@ -217,7 +217,7 @@ def eval_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None
     # load model from checkpoint
     print(f"=> loading checkpoint state '{args.resume}'")
     torch_model, preprocess, args.start_epoch = TrainingState.load_for_inference(
-        args.resume
+        args.resume, args.arch
     )
     if args.start_epoch:
         print(f"=> loaded checkpoint '{args.resume}'")
