@@ -160,3 +160,27 @@ class ExampleObjectId(ObjectId):
         """
         data_root = unwrap_or(data_root, self.DATA_DIR)
         return data_root.joinpath(self._id[8:]).resolve()
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Convert Hawk object-id to short-id to locate related resources"
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Display both short-id and object-id",
+    )
+    parser.add_argument("oid", type=ObjectId, nargs="*", help="Object ID to parse")
+    args = parser.parse_args()
+
+    oids = [ObjectId(line.strip()) for line in sys.stdin] if not args.oid else args.oid
+
+    for oid in oids:
+        if args.verbose:
+            print(oid.shortid, oid.serialize_oid())
+        else:
+            print(oid.shortid)
