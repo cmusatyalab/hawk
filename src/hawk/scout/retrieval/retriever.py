@@ -10,9 +10,11 @@ import threading
 import time
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
 
 from logzero import logger
+from PIL import Image
 
 from ...classes import (
     NEGATIVE_CLASS,
@@ -21,10 +23,11 @@ from ...classes import (
     class_label_to_int,
     class_name_to_str,
 )
+from ...hawkobject import HawkObject
 from ...objectid import ObjectId
-from ...proto.messages_pb2 import HawkObject
 from ..context.data_manager_context import DataManagerContext
 from ..core.object_provider import ObjectProvider
+from ..core.result_provider import BoundingBox
 from ..core.utils import get_server_ids
 from ..stats import (
     HAWK_RETRIEVER_DROPPED_OBJECTS,
@@ -65,15 +68,33 @@ class RetrieverBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def read_object(self, object_id: ObjectId) -> HawkObject | None:
-        pass
-
-    @abstractmethod
     def get_stats(self) -> RetrieverStats:
         pass
 
     @abstractmethod
     def is_running(self) -> bool:
+        pass
+
+    @abstractmethod
+    def get_ml_data(self, object_id: ObjectId) -> HawkObject | None:
+        """Get ML ready tile for inferencing or training.
+
+        returns None if the object_id is not found.
+        """
+        pass
+
+    @abstractmethod
+    def get_oracle_data(self, object_id: ObjectId) -> list[HawkObject]:
+        """Get Oracle ready data to for labeling at home.
+
+        raises FileNotFoundError if the object_id is not found.
+        raises ValueError if we failed to create oracle ready data.
+        """
+        pass
+
+    @abstractmethod
+    def get_groundtruth(self, object_id: ObjectId) -> list[BoundingBox]:
+        """Get groundtruth for logging, statistics and scriptlabeler."""
         pass
 
 
@@ -183,16 +204,6 @@ class Retriever(RetrieverBase):
             self.queue_length.dec()
             self.dropped_objects.inc()
 
-    def read_object(self, object_id: ObjectId) -> HawkObject | None:
-        object_path = object_id._file_path(self._data_root)
-        if object_path is None or not object_path.exists():
-            logger.error(f"Unable to read object for {object_id}")
-            return None
-
-        content = object_path.read_bytes()
-
-        return HawkObject(_objectId=object_id.serialize_oid(), content=content)
-
     def get_stats(self) -> RetrieverStats:
         self._start_event.wait()
 
@@ -215,3 +226,46 @@ class Retriever(RetrieverBase):
             class_index = class_label_to_int(class_label)
             return ClassName(sys.intern(f"class-{class_index}"))
         return self._context.class_list[class_label]
+
+    def get_ml_data(self, object_id: ObjectId) -> HawkObject | None:
+        """Get ML ready tile for inferencing or training."""
+        object_path = object_id._file_path(self._data_root)
+        if object_path is None:
+            logger.error(f"Unable to get path for {object_id}")
+            return None
+        try:
+            return HawkObject.from_file(object_path)
+        except FileNotFoundError:
+            logger.error(f"Unable to read {object_id}")
+            return None
+
+    def get_oracle_data(self, object_id: ObjectId) -> list[HawkObject]:
+        """Get Oracle ready data to for labeling at home."""
+        ml_object = self.get_ml_data(object_id)
+        if ml_object is None or not ml_object.media_type.startswith("image/"):
+            raise ValueError("Generic get_oracle_data only works for images")
+
+        with BytesIO(ml_object.content) as f:
+            image = Image.open(f)
+
+        image = image.convert("RGB")
+        image.thumbnail((256, 256))
+
+        with BytesIO() as tmpfile:
+            image.save(tmpfile, format="JPEG", quality=85)
+            content = tmpfile.getvalue()
+
+        return [HawkObject(content=content, media_type="image/jpeg")]
+
+    def get_groundtruth(self, object_id: ObjectId) -> list[BoundingBox]:
+        """Get groundtruth for logging, statistics and scriptlabeler."""
+        # only handles classification groundtruth for now
+        class_name = object_id._groundtruth()
+        if class_name is None:
+            return []
+
+        return [
+            BoundingBox(
+                x=0.5, y=0.5, w=1.0, h=1.0, class_name=class_name, confidence=1.0
+            )
+        ]

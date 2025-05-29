@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
     from ...classes import ClassName
-    from ..retrieval.retriever import Retriever
     from .object_provider import ObjectProvider
 
 
@@ -37,7 +36,3 @@ class ResultProvider:
         self.bboxes = bboxes
         self.model_version = model_version
         self.feature_vector = feature_vector
-
-    def read_object(self, retriever: Retriever) -> bytes | None:
-        obj = retriever.read_object(self.id)
-        return obj.content if obj is not None else None

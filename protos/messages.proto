@@ -217,10 +217,9 @@ message TopReexaminationStrategyConfig {
 message FullReexaminationStrategyConfig {
 }
 
-message HawkObject {
-  string _objectId = 1;
-  bytes content = 2;
-  map<string, bytes> attributes = 3;
+message _HawkObject {
+  bytes content = 1;
+  string media_type = 2;
 }
 
 message SendTile {
@@ -242,8 +241,10 @@ message SendLabel {
 
 // propagate (positive) labels and other associated data to other scouts
 message LabeledTile {
-  HawkObject obj = 1;
-  repeated BoundingBox boundingBoxes = 2;
+  string _objectId = 1;
+  _HawkObject obj = 2;
+  _HawkObject feature_vector = 3;
+  repeated BoundingBox boundingBoxes = 4;
 }
 
 // classification and confidence score for a region of the image

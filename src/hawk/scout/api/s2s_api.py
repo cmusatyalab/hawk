@@ -67,14 +67,18 @@ class S2SServicer:
         try:
             label = SendLabel()
             label.ParseFromString(msg)
+
             # Fetch data from dataretriever
             objectId = ObjectId(label._objectId)
-            obj = self._mission.retriever.read_object(objectId)
-            assert obj is not None
+            obj = self._mission.retriever.get_ml_data(objectId)
+            if obj is None:
+                logger.error("Unable to retrieve data for {objectId}")
+                return Empty
+
             # Assuming data requirement in Distribute positives
             if label.boundingBoxes:
                 # Transmit data to coordinator
-                response = obj.SerializeToString()
+                response = obj.to_protobuf().SerializeToString()
                 logger.info(
                     f"Fetch Tile for {objectId} parent {label.scoutIndex}"
                     f" Reply {len(response)}"
@@ -83,7 +87,11 @@ class S2SServicer:
                 response = Empty
 
             # Store labels (positives and negatives since we're the originating scout)
-            labeled_tile = LabeledTile(obj=obj, boundingBoxes=label.boundingBoxes)
+            labeled_tile = LabeledTile(
+                _objectId=objectId.serialize_oid(),
+                obj=obj.to_protobuf(),
+                boundingBoxes=label.boundingBoxes,
+            )
             self._mission.store_labeled_tile(labeled_tile)
         except Exception as e:
             logger.exception(e)
