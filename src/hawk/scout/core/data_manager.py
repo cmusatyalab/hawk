@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Iterable, Iterator
 
 import numpy as np
-import torch
 from logzero import logger
 
 from ...classes import (
@@ -25,8 +24,9 @@ from ...classes import (
     ClassName,
     class_label_to_int,
 )
+from ...hawkobject import HawkObject
 from ...objectid import ObjectId
-from ...proto.messages_pb2 import DatasetSplit, HawkObject, LabeledTile, SendLabel
+from ...proto.messages_pb2 import DatasetSplit, LabeledTile, SendLabel
 from ..retrieval.network_retriever import NetworkRetriever
 from .utils import get_example_key
 
@@ -101,7 +101,7 @@ class DataManager:
                 # idle scout should only accept 1 out of every 7 negative
                 # samples to mimic active scouts (1 scouts worth of neg samples).
 
-        if self._context.novel_class_discovery:
+        if self._context.novel_class_discovery and tile.HasField("feature_vector"):
             ## handles saving renaming feature vectors when receiving labels and
             ## puts labels in the labels queue for future clustering.
             self.store_feature_vector(tile)
@@ -147,8 +147,11 @@ class DataManager:
                     np.save(tmp, crop_arr_padded)
                     crop_arr_bytes = tmp.getvalue()
 
+                obj = HawkObject(content=crop_arr_bytes, media_type="x-array/numpy")
+
                 crop_tile = LabeledTile(
-                    obj=HawkObject(_objectId="", content=crop_arr_bytes, attributes={}),
+                    _objectId="",
+                    obj=obj.to_protobuf(),
                     boundingBoxes=[box],
                 )
                 crop_list.append(crop_tile)
@@ -177,23 +180,29 @@ class DataManager:
             stub.internal.send_multipart(msg)
             reply = stub.internal.recv()
             if len(reply) == 0:
-                obj = None
-            else:
-                obj = HawkObject()
-                obj.ParseFromString(reply)
+                return
+
+            obj: HawkObject | None = HawkObject.from_protobuf(reply)
+            fv = None
         else:
             # Local scout contains image of respective label received.
-            obj = self._context.retriever.read_object(object_id)
-            if self._context.novel_class_discovery and obj is not None:
-                ## modify hawk obj - add fv and scout index for storage and
-                ## transmission.
-                obj = self.read_feature_vector(obj)
+            obj = self._context.retriever.get_ml_data(object_id)
 
         if obj is None:
+            logger.error("Failed to get data for labeled object {object_id}")
             return
 
         # Save labeled tile
-        labeled_tile = LabeledTile(obj=obj, boundingBoxes=label.boundingBoxes)
+        labeled_tile = LabeledTile(
+            _objectId=object_id.serialize_oid(),
+            obj=obj.to_protobuf(),
+            boundingBoxes=label.boundingBoxes,
+        )
+        if self._context.novel_class_discovery:
+            fv = self.read_feature_vector(object_id)
+            labeled_tile.feature_vector.CopyFrom(fv.to_protobuf())
+        else:
+            labeled_tile.ClearField("feature_vector")
 
         # save copy of original image and label to examples dir for future training
         self._context.store_labeled_tile(labeled_tile)
@@ -550,58 +559,44 @@ class DataManager:
         return DatasetSplit.Name(example_set).lower()
 
     def store_feature_vector(self, tile: LabeledTile) -> None:
-        obj = tile.obj
-        objectId = ObjectId(obj._objectId)
+        objectId = ObjectId(tile._objectId)
+        feature_vector = HawkObject.from_protobuf(tile.feature_vector)
 
-        label = tile.boundingBoxes
-        if not label:
-            label_dir = "0"
-        else:
-            class_name = ClassName(label[0].class_name)
+        labels = tile.boundingBoxes
+        if labels:
+            class_name = ClassName(labels[0].class_name)
             label_dir = str(self._class_to_label(class_name))  ## get the label
+        else:
+            label_dir = "0"
 
-        label_file_path = objectId.file_name(
+        feature_vector_path = objectId.file_name(
             self._context._feature_vector_dir / label_dir, ".pt"
         )
-        label_file_path.parent.mkdir(parents=True, exist_ok=True)
+        feature_vector_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if (
-            int(obj.attributes["source_scout_index"].decode())
-            == self._context.scout_index
-        ):  ## receiving a label from this scout
-            temp_file_path = objectId.file_name(
-                self._context._feature_vector_dir / "temp", ".pt"
-            )
-            assert os.path.exists(temp_file_path)
-            ## move fv from temp to label dir once label received.
-            os.rename(temp_file_path, label_file_path)
-        else:
-            if obj.attributes["feature_vector"] is not None:
-                vector: torch.Tensor = torch.load(
-                    io.BytesIO(obj.attributes["feature_vector"])
-                )
-                torch.save(vector, label_file_path)
-                ## saves the feature vector of any labeled sample received by
-                ## another scout.
+        temp_file_path = objectId.file_name(
+            self._context._feature_vector_dir / "temp", ".pt"
+        )
+        if not temp_file_path.exists():
+            # save the feature vector of any labeled sample received by another scout.
+            temp_file_path = feature_vector.to_file(temp_file_path)
+        temp_file_path.rename(feature_vector_path)
 
         ## send only relevant info to novel class labels queue for future
         ## clustering.
-        label_tuple = (label_dir, label_file_path)
+        label_tuple = (label_dir, feature_vector_path)
         self._context.labels_queue.put(label_tuple)
 
-    def read_feature_vector(self, obj: HawkObject) -> HawkObject:
-        ## read the feature vector from its temp location and add to HawkObject
-        ## for transmission to other scouts.
-        objectId = ObjectId(obj._objectId)
-        temp_dir = self._context._feature_vector_dir / "temp"
-        feature_vector_path = objectId.file_name(temp_dir, ".pt")
-        feature_vector = torch.load(feature_vector_path)
-        with io.BytesIO() as fv_bytes:
-            torch.save(feature_vector, fv_bytes)
-            feat_vect = fv_bytes.getvalue()
+    def read_feature_vector(self, object_id: ObjectId) -> HawkObject:
+        """Read the feature vector from its temp location.
 
-        obj.attributes["feature_vector"] = feat_vect
-        obj.attributes["source_scout_index"] = str.encode(
-            str(self._context.scout_index)
-        )
-        return obj
+        Return HawkObject for transmission to other scouts.
+        """
+        try:
+            feature_vector_path = object_id.file_name(
+                self._context._feature_vector_dir / "temp", ".pt"
+            )
+            return HawkObject.from_file(feature_vector_path)
+        except FileNotFoundError:
+            logger.error(f"Unable to read feature vector {feature_vector_path}")
+            raise

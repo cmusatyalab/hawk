@@ -148,13 +148,12 @@ class TopKSelector(SelectorBase):
         self.num_negatives_added += len(auto_negative_list)
 
         for result in auto_negative_list:
-            example_data = result.read_object(self._mission.retriever)
-            if example_data is None:
+            example_obj = self._mission.retriever.get_ml_data(result.id)
+            if example_obj is None:
                 continue
 
-            example_file = get_example_key(example_data)
-            example_path = negative_path.joinpath(example_file)
-            example_path.write_bytes(example_data)
+            example_file = get_example_key(example_obj.content)
+            example_path = example_obj.to_file(negative_path / example_file)
             with self._insert_lock:
                 self.easy_negatives[self.version].append(example_path)
 

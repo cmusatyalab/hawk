@@ -12,7 +12,6 @@ import numpy.typing as npt
 from PIL import Image
 
 from ...classes import NEGATIVE_CLASS, ClassName
-from ...rusty import unwrap
 
 if TYPE_CHECKING:
     from ...objectid import ObjectId
@@ -38,12 +37,12 @@ class ObjectProvider:
     def from_result_provider(
         cls, result: ResultProvider, retriever: Retriever
     ) -> ObjectProvider | None:
-        obj = result.read_object(retriever)
+        obj = retriever.get_ml_data(result.id)
         if obj is None:
             return None
 
-        is_numpy = unwrap(result.id._file_path()).suffix == ".npy"
-        content = cls.load_content(obj, is_numpy)
+        is_numpy = obj.media_type in ["x-array/numpy", "x-array/numpyz"]
+        content = cls.load_content(obj.content, is_numpy)
 
         return cls(
             result.id,
