@@ -226,7 +226,7 @@ message SendTile {
   string _objectId = 1;
   int32 scoutIndex = 2;
   int32 version = 3;
-  map<string, bytes> attributes = 4;
+  repeated _HawkObject oracle_data = 4;
   repeated BoundingBox boundingBoxes = 5;
   bytes feature_vector = 6;
   bool novel_sample = 7;

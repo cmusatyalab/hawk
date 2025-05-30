@@ -16,7 +16,6 @@ from PIL import Image
 from ...classes import NEGATIVE_CLASS, ClassLabel, ClassName
 from ...objectid import ObjectId
 from ...proto.messages_pb2 import FileDataset
-from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
 from ..stats import collect_metrics_total
 from .retriever import Retriever
@@ -98,13 +97,10 @@ class RandomRetriever(Retriever):
                     self.failed_objects.inc()
                     continue
 
-                attributes = self.set_tile_attributes(object_id, class_name)
-
                 self.put_objects(
                     ObjectProvider(
                         object_id,
                         content,
-                        HawkAttributeProvider(attributes, image_path, self._resize),
                         class_name,
                     )
                 )

@@ -239,6 +239,7 @@ class Mission(DataManagerContext, ModelContext):
             novel_cluster_process = mp.Process(
                 target=novel_class_discover.main,
                 args=(
+                    self.retriever,
                     self.clustering_input_queue,
                     self.labels_queue,
                     s2h_input,
@@ -564,12 +565,14 @@ class Mission(DataManagerContext, ModelContext):
                     for bbox in result.bboxes
                 ]
 
+                oracle_data = self.retriever.get_oracle_data(result.id)
+
                 tile = SendTile(
                     _objectId=result.id.serialize_oid(),
                     scoutIndex=self._scout_index,
                     version=result.model_version,
                     feature_vector=result.feature_vector,
-                    attributes=result.attributes.get(),
+                    oracle_data=[obj.to_protobuf() for obj in oracle_data],
                     boundingBoxes=bboxes,
                     novel_sample=False,
                 )

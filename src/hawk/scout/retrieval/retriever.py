@@ -21,7 +21,6 @@ from ...classes import (
     ClassLabel,
     ClassName,
     class_label_to_int,
-    class_name_to_str,
 )
 from ...hawkobject import HawkObject
 from ...objectid import ObjectId
@@ -39,6 +38,8 @@ from ..stats import (
     HAWK_RETRIEVER_TOTAL_OBJECTS,
     collect_metrics_total,
 )
+
+THUMBNAIL_SIZE = (256, 256)
 
 
 @dataclass
@@ -179,16 +180,6 @@ class Retriever(RetrieverBase):
         ## placeholder for server in network retriever
         pass
 
-    def set_tile_attributes(
-        self, object_id: ObjectId, class_name: ClassName
-    ) -> dict[str, bytes]:
-        attributes = {
-            "Device-Name": str.encode(self.server_id),
-            "_ObjectID": object_id.serialize_oid().encode(),
-            "_gt_label": str.encode(class_name_to_str(class_name)),
-        }
-        return attributes
-
     def get_objects(self) -> ObjectProvider:
         result = self.result_queue.get()
         self.queue_length.dec()
@@ -249,7 +240,19 @@ class Retriever(RetrieverBase):
             image = Image.open(f)
 
         image = image.convert("RGB")
-        image.thumbnail((256, 256))
+
+        # crop to centered square
+        if image.size[0] != image.size[1]:
+            short_edge = min(image.size)
+            left = (image.size[0] - short_edge) // 2
+            top = (image.size[1] - short_edge) // 2
+            right = left + short_edge
+            bottom = top + short_edge
+            image = image.crop((left, top, right, bottom))
+
+        # resize to THUMBNAIL_SIZE
+        # image.thumbnail(THUMBNAIL_SIZE)
+        image = image.resize(THUMBNAIL_SIZE)
 
         with BytesIO() as tmpfile:
             image.save(tmpfile, format="JPEG", quality=85)

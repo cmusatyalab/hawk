@@ -14,7 +14,6 @@ from PIL import Image
 from ...classes import ClassLabel
 from ...objectid import ObjectId
 from ...proto.messages_pb2 import FileDataset
-from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
 from ..stats import collect_metrics_total
 from .retriever import Retriever
@@ -71,15 +70,11 @@ class TileRetriever(Retriever):
                 class_label = ClassLabel(int(label))
                 class_name = self._class_id_to_name(class_label)
                 object_id = ObjectId(f"/{class_name}/collection/id/{image_path}")
-                attributes = self.set_tile_attributes(object_id, class_name)
 
                 self.put_objects(
                     ObjectProvider(
                         object_id,
                         content,
-                        HawkAttributeProvider(
-                            attributes, Path(image_path), self._resize
-                        ),
                         class_name,
                     )
                 )
