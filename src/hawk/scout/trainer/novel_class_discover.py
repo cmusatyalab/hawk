@@ -24,11 +24,13 @@ from sklearn.cluster import KMeans, kmeans_plusplus
 from ...classes import class_name_to_str
 from ...proto.messages_pb2 import BoundingBox, SendTile
 from ..core.result_provider import ResultProvider
+from ..retrieval.retriever import Retriever
 
 
 class Novel_Class_Clustering:
     def __init__(
         self,
+        retriever: Retriever,
         inbound_result_queue: mp.Queue[ResultProvider],
         labels_queue: mp.Queue[tuple[str, Path]],
         outbound_pipe: _ConnectionBase,
@@ -36,6 +38,7 @@ class Novel_Class_Clustering:
         scout_index: int,
         semi_supervised: bool = False,
     ):
+        self.retriever = retriever
         self.fv_dir = fv_dir
         self.inbound_result_queue = inbound_result_queue
         self.labels_queue = labels_queue
@@ -244,12 +247,14 @@ class Novel_Class_Clustering:
                 for bbox in selected_sample.bboxes
             ]
 
+            oracle_data = self.retriever.get_oracle_data(selected_sample.id)
+
             tile = SendTile(
                 _objectId=selected_sample.id.serialize_oid(),
                 scoutIndex=self.scout_index,
                 version=selected_sample.model_version,
+                oracle_data=[obj.to_protobuf() for obj in oracle_data],
                 feature_vector=selected_sample.feature_vector,
-                attributes=selected_sample.attributes.get(),
                 boundingBoxes=bboxes,
                 novel_sample=True,
                 ## the cluster label integer: if 1 is first cluster, 2 is second cluster
@@ -408,6 +413,7 @@ class Novel_Class_Clustering:
 
 
 def main(
+    retriever: Retriever,
     result_queue: mp.Queue[ResultProvider],
     labels_queue: mp.Queue[tuple[str, Path]],
     home_pipe: _ConnectionBase,
@@ -416,6 +422,7 @@ def main(
 ) -> None:
     ### create clustering object
     novel_clustering = Novel_Class_Clustering(
+        retriever,
         result_queue,
         labels_queue,
         home_pipe,

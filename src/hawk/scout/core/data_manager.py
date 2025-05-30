@@ -105,6 +105,7 @@ class DataManager:
             ## handles saving renaming feature vectors when receiving labels and
             ## puts labels in the labels queue for future clustering.
             self.store_feature_vector(tile)
+
         if tile.boundingBoxes:
             self._total_positives += 1
         # logger.info(f"Original tile name: {tile.obj.objectId}")

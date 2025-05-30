@@ -54,8 +54,6 @@ class ObjectId:
     def __repr__(self) -> str:
         return f"ObjectId('{self.oid}')"
 
-    # __str__ = None
-
     def serialize_oid(self) -> str:
         """Get the objectid value so we can store it or send across a network.
 
@@ -82,11 +80,10 @@ class ObjectId:
         compatibility, but OTOH it only works properly for a subset of
         retrievers (f.i. it breaks for video_retriever).
 
-        Also this information should be stored in the attributes of the object
-        and not in the objectid itself, so extracing this information should be
-        a retriever specific function.
+        Also this information should not be encoded in the objectid itself,
+        extracing this information should be a retriever specific function.
 
-        Also we should avoid referencing the ground truth data and make sure it
+        We must always avoid referencing the ground truth data and make sure it
         is only used for debugging and mission evaluation purposes only.
         """
         m = re.match(OID_RE, self.oid)

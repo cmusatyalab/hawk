@@ -18,7 +18,6 @@ from PIL import Image
 from ...classes import NEGATIVE_CLASS
 from ...objectid import ObjectId
 from ...proto.messages_pb2 import Streaming_Video
-from ..core.attribute_provider import HawkAttributeProvider
 from ..core.object_provider import ObjectProvider
 from ..stats import collect_metrics_total
 from .retriever import Retriever
@@ -159,18 +158,11 @@ class VideoRetriever(Retriever):
                 content = tmpfile.getvalue()
 
                 object_id = ObjectId(f"/negative/collection/id/{tile_path}")
-                """attributes = {
-                    'Device-Name': str.encode(get_server_ids()[0]),
-                    '_ObjectID': str.encode(object_id),
-                    ATTR_GT_LABEL: str.encode(label),
-                }"""
-                attributes = self.set_tile_attributes(object_id, label)
 
                 self.put_objects(
                     ObjectProvider(
                         object_id,
                         content,
-                        HawkAttributeProvider(attributes, tile_path, resize=False),
                         label,
                     )
                 )

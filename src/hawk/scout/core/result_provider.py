@@ -30,7 +30,6 @@ class ResultProvider:
         feature_vector: bytes | None = None,
     ):
         self.id = obj.id
-        self.attributes = obj.attributes
         self.gt = obj.gt
         self.score = score
         self.bboxes = bboxes

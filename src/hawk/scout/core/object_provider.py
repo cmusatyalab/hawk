@@ -16,7 +16,6 @@ from ...classes import NEGATIVE_CLASS, ClassName
 if TYPE_CHECKING:
     from ...objectid import ObjectId
     from ..retrieval.retriever import Retriever
-    from .attribute_provider import AttributeProvider
     from .result_provider import ResultProvider
 
 
@@ -25,12 +24,10 @@ class ObjectProvider:
         self,
         obj_id: ObjectId,
         content: bytes | npt.NDArray[Any],
-        attributes: AttributeProvider,
         gt: ClassName | None = None,
     ):
         self.id = obj_id
         self.content = content
-        self.attributes = attributes
         self.gt = gt if gt is not None else NEGATIVE_CLASS
 
     @classmethod
@@ -47,7 +44,6 @@ class ObjectProvider:
         return cls(
             result.id,
             content,
-            result.attributes,
             result.gt,
         )
 
