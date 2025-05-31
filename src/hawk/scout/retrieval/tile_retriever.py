@@ -2,19 +2,16 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import io
 import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List
 
 from logzero import logger
-from PIL import Image
 
 from ...classes import ClassLabel
 from ...objectid import ObjectId
 from ...proto.messages_pb2 import FileDataset
-from ..core.object_provider import ObjectProvider
 from ..stats import collect_metrics_total
 from .retriever import Retriever
 
@@ -61,23 +58,12 @@ class TileRetriever(Retriever):
             logger.info(f"Retrieved Image:{key} Tiles:{len(tiles)} @ {delta_t}")
 
             for tile in tiles:
-                tmpfile = io.BytesIO()
                 image_path, label = tile.split()
-                image = Image.open(image_path).convert("RGB")
-                image.save(tmpfile, format="JPEG", quality=85)
-                content = tmpfile.getvalue()
-
                 class_label = ClassLabel(int(label))
                 class_name = self._class_id_to_name(class_label)
-                object_id = ObjectId(f"/{class_name}/collection/id/{image_path}")
 
-                self.put_objects(
-                    ObjectProvider(
-                        object_id,
-                        content,
-                        class_name,
-                    )
-                )
+                object_id = ObjectId(f"/{class_name}/collection/id/{image_path}")
+                self.put_objectid(object_id)
 
             retrieved_tiles = collect_metrics_total(self.retrieved_objects)
             logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
