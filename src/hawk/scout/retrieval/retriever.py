@@ -77,6 +77,13 @@ class RetrieverBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def get_ml_batch(
+        self, batch_size: int, timeout: float | None = None
+    ) -> tuple[list[ObjectId], list[HawkObject]]:
+        """Get a batch of ML ready items."""
+        pass
+
+    @abstractmethod
     def get_ml_data(self, object_id: ObjectId) -> HawkObject | None:
         """Get ML ready tile for inferencing or training.
 
@@ -217,6 +224,35 @@ class Retriever(RetrieverBase):
             class_index = class_label_to_int(class_label)
             return ClassName(sys.intern(f"class-{class_index}"))
         return self._context.class_list[class_label]
+
+    def get_ml_batch(
+        self, batch_size: int, timeout: float | None = None
+    ) -> tuple[list[ObjectId], list[HawkObject]]:
+        """Get a batch of ML ready items."""
+        object_ids: list[ObjectId] = []
+        hawk_objects: list[HawkObject] = []
+
+        wait_time: float | None = None
+        end_time = time.time() + timeout if timeout is not None else None
+        while len(hawk_objects) < batch_size:
+            if end_time is not None:
+                wait_time = end_time - time.time()
+                if wait_time <= 0:
+                    break
+            try:
+                obj = self.result_queue.get(timeout=wait_time)
+                self.queue_length.dec()
+            except queue.Empty:
+                break
+
+            data = self.get_ml_data(obj.id)
+            if data is None:
+                continue
+
+            object_ids.append(obj.id)
+            hawk_objects.append(data)
+
+        return (object_ids, hawk_objects)
 
     def get_ml_data(self, object_id: ObjectId) -> HawkObject | None:
         """Get ML ready tile for inferencing or training."""
