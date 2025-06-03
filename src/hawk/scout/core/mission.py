@@ -52,6 +52,7 @@ from .data_manager import DataManager
 from .hawk_stub import HawkStub
 from .model import Model
 from .model_trainer import ModelTrainer
+from .object_provider import ObjectProvider
 from .result_provider import ResultProvider
 from .utils import get_server_ids, log_exceptions
 
@@ -472,7 +473,14 @@ class Mission(DataManagerContext, ModelContext):
         logger.info(f"Starting evaluation with model version {starting_version}")
 
         while not self._abort_event.is_set():
-            retriever_object = self.retriever.get_objects()
+            # we should do better, but it requires untangling the various
+            # queues and moving get_ml_batch into the inference loop.
+            # for now do a blocking get for the next object.
+            object_ids, objects = self.retriever.get_ml_batch(1)
+
+            retriever_object = ObjectProvider(
+                object_ids[0], objects[0].content, object_ids[0]._groundtruth()
+            )
             with self._model_lock:
                 if self._model is not None and self._model.version != starting_version:
                     logger.info(
@@ -480,7 +488,7 @@ class Mission(DataManagerContext, ModelContext):
                         f"(new version {self._model.version} available)"
                     )
                     ## make sure to put this back in retriever put object
-                    self.retriever.put_objects(retriever_object, dup=True)
+                    self.retriever.put_objectid(retriever_object.id, dup=True)
                     logger.info(
                         "\n\nATTENTION --- PUTTING OBJECT BACK  IN RETRIEVER QUEUE\n\n"
                     )

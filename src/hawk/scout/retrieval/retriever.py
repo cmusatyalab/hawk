@@ -25,7 +25,6 @@ from ...classes import (
 from ...hawkobject import HawkObject
 from ...objectid import ObjectId
 from ..context.data_manager_context import DataManagerContext
-from ..core.object_provider import ObjectProvider
 from ..core.result_provider import BoundingBox
 from ..core.utils import get_server_ids
 from ..stats import (
@@ -61,11 +60,7 @@ class RetrieverBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_objects(self) -> ObjectProvider:
-        pass
-
-    @abstractmethod
-    def put_objects(self, obj: ObjectProvider) -> None:
+    def put_objectid(self, object_id: ObjectId) -> None:
         pass
 
     @abstractmethod
@@ -119,7 +114,7 @@ class Retriever(RetrieverBase):
         self._stop_event = threading.Event()
         self._command_lock = threading.RLock()
         self._start_time = time.time()
-        self.result_queue: queue.Queue[ObjectProvider] = queue.Queue()
+        self.result_queue: queue.Queue[ObjectId] = queue.Queue()
         self.server_id = get_server_ids()[0]
         self.total_tiles = 0
 
@@ -187,12 +182,7 @@ class Retriever(RetrieverBase):
         ## placeholder for server in network retriever
         pass
 
-    def get_objects(self) -> ObjectProvider:
-        result = self.result_queue.get()
-        self.queue_length.dec()
-        return result
-
-    def put_objects(self, result_object: ObjectProvider, dup: bool = False) -> None:
+    def put_objectid(self, result_object: ObjectId, dup: bool = False) -> None:
         if not dup:
             self.retrieved_objects.inc()
         try:
@@ -201,6 +191,18 @@ class Retriever(RetrieverBase):
         except queue.Full:
             self.queue_length.dec()
             self.dropped_objects.inc()
+
+    def get_objectid(self, timeout: float | None = None) -> ObjectId | None:
+        """Get a single ML ready object identifier.
+
+        Returns None when there was no candidate before the timeout expired.
+        """
+        try:
+            object_id = self.result_queue.get(timeout=timeout)
+            self.queue_length.dec()
+            return object_id
+        except queue.Empty:
+            return None
 
     def get_stats(self) -> RetrieverStats:
         self._start_event.wait()
@@ -232,25 +234,29 @@ class Retriever(RetrieverBase):
         object_ids: list[ObjectId] = []
         hawk_objects: list[HawkObject] = []
 
+        time_now = time.time()
         wait_time: float | None = None
-        end_time = time.time() + timeout if timeout is not None else None
+        end_time = time_now + timeout if timeout is not None else None
+
         while len(hawk_objects) < batch_size:
             if end_time is not None:
-                wait_time = end_time - time.time()
-                if wait_time <= 0:
+                # we use time_now so that a timeout of 0 will still end up
+                # trying to get something off the queue (get_nowait)
+                wait_time = end_time - time_now
+                if wait_time < 0:
                     break
-            try:
-                obj = self.result_queue.get(timeout=wait_time)
-                self.queue_length.dec()
-            except queue.Empty:
+
+            object_id = self.get_objectid(timeout=wait_time)
+            if object_id is None:
                 break
 
-            data = self.get_ml_data(obj.id)
-            if data is None:
-                continue
+            data = self.get_ml_data(object_id)
+            if data is not None:
+                object_ids.append(object_id)
+                hawk_objects.append(data)
 
-            object_ids.append(obj.id)
-            hawk_objects.append(data)
+            # we have to make sure to update time_now before we loop
+            time_now = time.time()
 
         return (object_ids, hawk_objects)
 
@@ -298,7 +304,8 @@ class Retriever(RetrieverBase):
 
     def get_groundtruth(self, object_id: ObjectId) -> list[BoundingBox]:
         """Get groundtruth for logging, statistics and scriptlabeler."""
-        # only handles classification groundtruth for now
+        # only handles classification groundtruth for now and gets it the wrong
+        # way by assuming it is stashed in the object id.
         class_name = object_id._groundtruth()
         if class_name is None:
             return []
