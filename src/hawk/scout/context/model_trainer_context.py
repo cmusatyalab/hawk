@@ -8,21 +8,25 @@
 import multiprocessing as mp
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any, Tuple
+from typing import TYPE_CHECKING, Any, Tuple
 
-from ..core.object_provider import ObjectProvider
+from ...objectid import ObjectId
 from ..core.result_provider import ResultProvider
 from .context_base import ContextBase
+
+if TYPE_CHECKING:
+    from ..retrieval.retriever import Retriever
 
 
 class ModelContext(ContextBase):
     novel_class_discovery: bool
     sub_class_discovery: bool
 
-    def __init__(self) -> None:
+    def __init__(self, retriever: Retriever) -> None:
         super().__init__()
-        self.model_input_queue: mp.Queue[Tuple[ObjectProvider, Any]] = mp.Queue()
+        self.model_input_queue: mp.Queue[Tuple[ObjectId, Any]] = mp.Queue()
         self.model_output_queue: mp.Queue[ResultProvider] = mp.Queue()
+        self.retriever = retriever
 
     @property
     @abstractmethod

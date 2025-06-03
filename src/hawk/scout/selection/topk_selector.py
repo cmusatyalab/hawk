@@ -135,10 +135,7 @@ class TopKSelector(SelectorBase):
         # auto_negative_list = result_list[:num_auto_negative]
         auto_negative_list = random.sample(result_list, num_auto_negative)
 
-        labels = [
-            0 if item.id._groundtruth() == NEGATIVE_CLASS else 1
-            for item in auto_negative_list
-        ]
+        labels = [0 if item.gt == NEGATIVE_CLASS else 1 for item in auto_negative_list]
         logger.info(
             f"[EASY NEG] Length of result list {length_results}"
             f" negatives added: {num_auto_negative}"

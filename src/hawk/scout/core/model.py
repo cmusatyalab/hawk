@@ -8,7 +8,7 @@ import threading
 import time
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -21,14 +21,16 @@ from sklearn.metrics import (
 
 from ...proto.messages_pb2 import ModelMetrics, TestResults
 from ..context.model_trainer_context import ModelContext
-from .object_provider import ObjectProvider
 from .result_provider import ResultProvider
 from .utils import log_exceptions
+
+if TYPE_CHECKING:
+    from ...objectid import ObjectId
 
 
 class Model(metaclass=ABCMeta):
     @abstractmethod
-    def infer(self, requests: Sequence[ObjectProvider]) -> Iterable[ResultProvider]:
+    def infer(self, requests: Sequence[ObjectId]) -> Iterable[ResultProvider]:
         pass
 
     @abstractmethod
@@ -52,7 +54,7 @@ class Model(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def add_requests(self, request: ObjectProvider) -> None:
+    def add_requests(self, request: ObjectId) -> None:
         pass
 
     @abstractmethod
@@ -89,7 +91,7 @@ class ModelBase(Model):
         self,
         args: Dict[str, Any],
         model_path: Path,
-        context: Optional[ModelContext] = None,
+        context: ModelContext,
     ):
         self.context = context
         self.request_count = 0
@@ -97,9 +99,8 @@ class ModelBase(Model):
         self._model_lock = threading.Lock()
         self._running = True
 
-        if self.context is not None:
-            self.request_queue = self.context.model_input_queue
-            self.result_queue = self.context.model_output_queue
+        self.request_queue = self.context.model_input_queue
+        self.result_queue = self.context.model_output_queue
 
         self._version = int(args.get("version", 0))
         self._mode = str(args.get("mode", "hawk"))
@@ -128,13 +129,11 @@ class ModelBase(Model):
         return self._train_time
 
     @log_exceptions
-    def preprocess(
-        self, request: ObjectProvider
-    ) -> Tuple[ObjectProvider, Optional[torch.Tensor]]:
+    def preprocess(self, request: ObjectId) -> Tuple[ObjectId, Optional[torch.Tensor]]:
         return (request, None)
 
     @log_exceptions
-    def add_requests(self, request: ObjectProvider) -> None:
+    def add_requests(self, request: ObjectId) -> None:
         if self.context is None:
             return
         self.request_count += 1

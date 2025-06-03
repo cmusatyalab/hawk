@@ -247,10 +247,10 @@ class Novel_Class_Clustering:
                 for bbox in selected_sample.bboxes
             ]
 
-            oracle_data = self.retriever.get_oracle_data(selected_sample.id)
+            oracle_data = self.retriever.get_oracle_data(selected_sample.object_id)
 
             tile = SendTile(
-                _objectId=selected_sample.id.serialize_oid(),
+                _objectId=selected_sample.object_id.serialize_oid(),
                 scoutIndex=self.scout_index,
                 version=selected_sample.model_version,
                 oracle_data=[obj.to_protobuf() for obj in oracle_data],

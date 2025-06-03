@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
     from ...classes import ClassName
-    from .object_provider import ObjectProvider
+    from ...objectid import ObjectId
 
 
 class BoundingBox(TypedDict, total=False):
@@ -23,15 +23,16 @@ class BoundingBox(TypedDict, total=False):
 class ResultProvider:
     def __init__(
         self,
-        obj: ObjectProvider,
+        object_id: ObjectId,
         score: float,
         bboxes: list[BoundingBox],
         model_version: int | None = None,
         feature_vector: bytes | None = None,
     ):
-        self.id = obj.id
-        self.gt = obj.gt
+        self.id = object_id
         self.score = score
         self.bboxes = bboxes
         self.model_version = model_version
         self.feature_vector = feature_vector
+
+        self.gt = object_id._groundtruth()
