@@ -9,7 +9,7 @@ import time
 import zipfile
 from argparse import Namespace
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -20,10 +20,13 @@ from PIL import Image, ImageFile
 
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
-from ...core.object_provider import ObjectProvider
-from ...core.result_provider import ResultProvider
+from ...core.result_provider import BoundingBox, ResultProvider
 from ...core.utils import log_exceptions
 from .models.SnaTCHerF import SnaTCHerF
+
+if TYPE_CHECKING:
+    from ....hawkobject import HawkObject
+    from ....objectid import ObjectId
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -119,18 +122,14 @@ class FewShotModel(ModelBase):
     def version(self) -> int:
         return self._version
 
-    def preprocess(
-        self, request: ObjectProvider
-    ) -> Tuple[ObjectProvider, torch.Tensor]:
-        try:
-            image = Image.open(io.BytesIO(request.content))
+    def preprocess(self, obj: HawkObject) -> torch.Tensor:
+        assert obj.media_type.startswith("image/")
 
-            if image.mode != "RGB":
-                image = image.convert("RGB")
-        except Exception as e:
-            raise (e)
+        image = Image.open(io.BytesIO(obj.content))
+        if image.mode != "RGB":
+            image = image.convert("RGB")
 
-        return request, self._test_transforms(image)
+        return self._test_transforms(image)
 
     def serialize(self) -> bytes:
         if self._model is None:
@@ -213,15 +212,17 @@ class FewShotModel(ModelBase):
             requests = []
             next_infer = time.time() + timeout
 
-    def infer(self, requests: Iterable[ObjectProvider]) -> Iterable[ResultProvider]:
+    def infer(self, requests: Sequence[ObjectId]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:
-            return
+            return []
 
         output = []
         for i in range(0, len(requests), self._batch_size):
             batch = []
-            for request in requests[i : i + self._batch_size]:
-                batch.append(self.preprocess(request))
+            for object_id in requests[i : i + self._batch_size]:
+                obj = self.context.retriever.get_ml_data(object_id)
+                assert obj is not None
+                batch.append((object_id, self.preprocess(obj)))
             results = self._process_batch(batch)
             for result in results:
                 output.append(result)
@@ -229,7 +230,7 @@ class FewShotModel(ModelBase):
         return output
 
     def _process_batch(
-        self, batch: List[Tuple[ObjectProvider, torch.Tensor]]
+        self, batch: List[Tuple[ObjectId, torch.Tensor]]
     ) -> Iterable[ResultProvider]:
         if self._model is None:
             if len(batch) > 0:
@@ -244,8 +245,8 @@ class FewShotModel(ModelBase):
             del tensors
             for i in range(len(batch)):
                 score = predictions[i]
-                batch[i][0].attributes.add({"score": str.encode(str(score))})
-                yield ResultProvider(batch[i][0], score, self.version)
+                bboxes: list[BoundingBox] = [{"confidence": score}]
+                yield ResultProvider(batch[i][0], score, bboxes, self.version)
 
     def stop(self):
         logger.info(f"Stopping model of version {self.version}")
