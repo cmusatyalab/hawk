@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import copy
-import io
 import multiprocessing as mp
 import time
 from pathlib import Path
@@ -13,12 +12,10 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 from logzero import logger
-from PIL import Image
 
 from ...classes import NEGATIVE_CLASS
 from ...objectid import ObjectId
 from ...proto.messages_pb2 import Streaming_Video
-from ..core.object_provider import ObjectProvider
 from ..stats import collect_metrics_total
 from .retriever import Retriever
 from .video_parser import produce_video_frames
@@ -151,21 +148,8 @@ class VideoRetriever(Retriever):
                 f"Tiles:{len(tiles)} @ {delta_t}"
             )
             for tile_path in tiles:
-                tmpfile = io.BytesIO()
-                label = NEGATIVE_CLASS
-                image = Image.open(tile_path).convert("RGB")
-                image.save(tmpfile, format="JPEG", quality=85)
-                content = tmpfile.getvalue()
-
-                object_id = ObjectId(f"/negative/collection/id/{tile_path}")
-
-                self.put_objects(
-                    ObjectProvider(
-                        object_id,
-                        content,
-                        label,
-                    )
-                )
+                object_id = ObjectId(f"/{NEGATIVE_CLASS}/collection/id/{tile_path}")
+                self.put_objectid(object_id)
             time.sleep(8)
 
             retrieved_tiles = collect_metrics_total(self.retrieved_objects)
