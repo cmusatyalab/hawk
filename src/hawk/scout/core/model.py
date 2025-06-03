@@ -8,10 +8,9 @@ import threading
 import time
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence
 
 import numpy as np
-import torch
 from logzero import logger
 from sklearn.metrics import (
     average_precision_score,
@@ -25,6 +24,7 @@ from .result_provider import ResultProvider
 from .utils import log_exceptions
 
 if TYPE_CHECKING:
+    from ...hawkobject import HawkObject
     from ...objectid import ObjectId
 
 
@@ -129,15 +129,21 @@ class ModelBase(Model):
         return self._train_time
 
     @log_exceptions
-    def preprocess(self, request: ObjectId) -> Tuple[ObjectId, Optional[torch.Tensor]]:
-        return (request, None)
+    def preprocess(self, obj: HawkObject) -> None:
+        return None
 
     @log_exceptions
-    def add_requests(self, request: ObjectId) -> None:
+    def add_requests(self, object_id: ObjectId) -> None:
         if self.context is None:
             return
+
+        obj = self.context.retriever.get_ml_data(object_id)
+        if obj is None:
+            logger.error(f"Model.add_requests {object_id} not found")
+            return
+
         self.request_count += 1
-        self.request_queue.put(self.preprocess(request))
+        self.request_queue.put((object_id, self.preprocess(obj)))
         if self.request_count == 1:
             threading.Thread(target=self._infer_results, name="model-infer").start()
 

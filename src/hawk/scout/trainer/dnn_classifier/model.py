@@ -24,6 +24,7 @@ from ...core.utils import ImageFromList, log_exceptions
 from .training_state import TrainingState
 
 if TYPE_CHECKING:
+    from ....hawkobject import HawkObject
     from ....objectid import ObjectId
 
 torch.multiprocessing.set_sharing_strategy("file_system")
@@ -69,15 +70,14 @@ class DNNClassifierModel(ModelBase):
     def version(self) -> int:
         return self._version
 
-    def preprocess(self, request: ObjectId) -> Tuple[ObjectId, torch.Tensor]:
-        obj = self.context.retriever.get_ml_data(request)
-        assert obj is not None and obj.media_type.startswith("image/")
+    def preprocess(self, obj: HawkObject) -> torch.Tensor:
+        assert obj.media_type.startswith("image/")
 
         image = Image.open(io.BytesIO(obj.content))
         if image.mode != "RGB":
             image = image.convert("RGB")
 
-        return request, self._preprocess(image)
+        return self._preprocess(image)
 
     def serialize(self) -> bytes:
         if self._model is None:
@@ -163,8 +163,10 @@ class DNNClassifierModel(ModelBase):
 
         for i in range(0, len(requests), self._batch_size):
             batch = []
-            for request in requests[i : i + self._batch_size]:
-                batch.append(self.preprocess(request))
+            for object_id in requests[i : i + self._batch_size]:
+                obj = self.context.retriever.get_ml_data(object_id)
+                assert obj is not None
+                batch.append((object_id, self.preprocess(obj)))
             results = self._process_batch(batch)
             yield from results
 

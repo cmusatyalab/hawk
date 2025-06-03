@@ -24,6 +24,7 @@ from ...core.result_provider import BoundingBox, ResultProvider
 from ...core.utils import log_exceptions
 
 if TYPE_CHECKING:
+    from ....hawkobject import HawkObject
     from ....objectid import ObjectId
 
 torch.multiprocessing.set_sharing_strategy("file_system")
@@ -89,20 +90,14 @@ class FSLModel(ModelBase):
     def version(self) -> int:
         return self._version
 
-    def preprocess(self, request: ObjectId) -> Tuple[ObjectId, Sequence[float]]:
-        try:
-            obj = self.context.retriever.get_ml_data(request)
-            assert obj is not None and obj.media_type.startswith("image/")
+    def preprocess(self, obj: HawkObject) -> Sequence[float]:
+        assert obj.media_type.startswith("image/")
 
-            image = Image.open(io.BytesIO(obj.content))
+        image = Image.open(io.BytesIO(obj.content))
+        if image.mode != "RGB":
+            image = image.convert("RGB")
 
-            if image.mode != "RGB":
-                image = image.convert("RGB")
-            embed = self.get_embed(image)
-        except Exception as e:
-            raise (e)
-
-        return request, embed
+        return self.get_embed(image)
 
     def serialize(self) -> bytes:
         if self._model is None:
@@ -172,8 +167,10 @@ class FSLModel(ModelBase):
         output = []
         for i in range(0, len(requests), self._batch_size):
             batch = []
-            for request in requests[i : i + self._batch_size]:
-                batch.append(self.preprocess(request))
+            for object_id in requests[i : i + self._batch_size]:
+                obj = self.context.retriever.get_ml_data(object_id)
+                assert obj is not None
+                batch.append((object_id, self.preprocess(obj)))
             results = self._process_batch(batch)
             for result in results:
                 output.append(result)
