@@ -15,7 +15,7 @@ from .proto.messages_pb2 import _HawkObject as pb2_HawkObject
 
 # Is there a better way to do this?
 # This breaks down for audio/video formats because there are several containers
-# that can a wide range of different formats, an mp4 can be audio-only,
+# that can contain a wide range of different formats, an mp4 can be audio-only,
 # video-only, or both, or even the same data encoded with different codecs.
 
 # Simple media type -> filename suffix map
@@ -57,6 +57,10 @@ MEDIA_SUFFIXES = {
 }
 
 
+class MediaTypeError(FileNotFoundError):
+    """Raised when a media type is unknown."""
+
+
 @dataclass
 class HawkObject:
     content: bytes
@@ -68,38 +72,48 @@ class HawkObject:
     def from_file(cls, object_path: Path) -> HawkObject:
         """Identify media type based on file suffix and read object content from file.
 
-        raises FileNotFoundError if the media type is unknown or object cannot be read.
+        raises MediaTypeError if the media type is unknown or FileNotFoundError
+        when the object cannot be read.
+
+        MediaTypeError is a subclass of FileNotFoundError so that both can be
+        caught by a single except clause.
         """
         try:
             media_type = MEDIA_SUFFIXES[object_path.suffix]
         except KeyError as e:
             msg = f"Unknown media type for {object_path.name}"
-            raise FileNotFoundError(msg) from e
+            raise MediaTypeError(msg) from e
 
         content = object_path.read_bytes()
         return cls(content, media_type)
 
     @classmethod
     def from_protobuf(cls, msg: bytes | pb2_HawkObject) -> HawkObject:
-        """Parses a HawkObject from a protobuf message."""
+        """Parses a HawkObject from a protobuf message.
+
+        raises MediaTypeError if the media type is unknown.
+        """
         if isinstance(msg, bytes):
             obj = pb2_HawkObject()
             obj.ParseFromString(msg)
         else:
             obj = msg
+
         if obj.media_type not in MEDIA_TYPES:
-            raise ValueError(f"Unknown media type: {obj.media_type}")
+            raise MediaTypeError(f"Unknown media type: {obj.media_type}")
         return cls(obj.content or b"", obj.media_type or "binary/octet-stream")
 
     ## Helpers
 
     @property
     def suffix(self) -> str:
-        """Return file suffix."""
+        """Return file suffix for the object based on it's media type."""
         return MEDIA_TYPES[self.media_type][0]
 
     def file_path(self, path: Path, index: int | None = None) -> Path:
-        """Return a path to the object file with a proper file-type based suffix."""
+        """Update a path to the object file to use a proper file-type based
+        suffix and optionally a sequence number in case there are multiple
+        derived artifacts."""
         if not index:
             return path.with_suffix(self.suffix)
         return path.with_suffix(f".{index}.{self.suffix}")
