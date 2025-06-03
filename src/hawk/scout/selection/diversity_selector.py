@@ -125,7 +125,7 @@ class DiversitySelector(TopKSelector):
             result = self._priority_queues.get()[-1]
             self.priority_queue_length.dec()
             self._mission.log(
-                f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}"
+                f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.object_id}"
             )
             if self._mode != "oracle":
                 # self.result_queue_length.inc()
@@ -142,6 +142,6 @@ class DiversitySelector(TopKSelector):
         for result in results:
             self.result_queue_length.inc()
             self.result_queue.put(result)
-            logger.info(f"[Result] Id {result.id} Score {result.score}")
+            logger.info(f"[Result] Id {result.object_id} Score {result.score}")
 
         self._batch_added -= self._batch_size

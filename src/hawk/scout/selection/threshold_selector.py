@@ -50,7 +50,7 @@ class ThresholdSelector(SelectorBase):
 
     def _add_result(self, result: ResultProvider) -> None:
         if result.gt != NEGATIVE_CLASS:
-            logger.info(f"{result.id} Score {result.score}")
+            logger.info(f"{result.object_id} Score {result.score}")
 
         if result.score > self._threshold:
             self.result_queue_length.inc()

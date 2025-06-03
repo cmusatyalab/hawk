@@ -7,7 +7,7 @@ import multiprocessing as mp
 import queue
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Sequence, Tuple
 
 import torch
 from logzero import logger
@@ -19,10 +19,12 @@ from ....classes import class_label_to_int
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
-from ...core.object_provider import ObjectProvider
 from ...core.result_provider import BoundingBox, ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
 from .training_state import TrainingState
+
+if TYPE_CHECKING:
+    from ....objectid import ObjectId
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -67,12 +69,11 @@ class DNNClassifierModel(ModelBase):
     def version(self) -> int:
         return self._version
 
-    def preprocess(
-        self, request: ObjectProvider
-    ) -> Tuple[ObjectProvider, torch.Tensor]:
-        assert isinstance(request.content, bytes)
-        image = Image.open(io.BytesIO(request.content))
+    def preprocess(self, request: ObjectId) -> Tuple[ObjectId, torch.Tensor]:
+        obj = self.context.retriever.get_ml_data(request)
+        assert obj is not None and obj.media_type.startswith("image/")
 
+        image = Image.open(io.BytesIO(obj.content))
         if image.mode != "RGB":
             image = image.convert("RGB")
 
@@ -156,7 +157,7 @@ class DNNClassifierModel(ModelBase):
             # logger.info(f"Total results inferenced by model: {self.result_count}")
             # logger.info(f"Request queue size: {self.request_queue.qsize()}")
 
-    def infer(self, requests: Sequence[ObjectProvider]) -> Iterable[ResultProvider]:
+    def infer(self, requests: Sequence[ObjectId]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:
             return
 
@@ -245,7 +246,7 @@ class DNNClassifierModel(ModelBase):
             raise Exception(f"ERROR: {test_path} does not exist")
 
     def _process_batch(
-        self, batch: List[Tuple[ObjectProvider, torch.Tensor]]
+        self, batch: List[Tuple[ObjectId, torch.Tensor]]
     ) -> Iterable[ResultProvider]:
         assert self.context is not None
         if self._model is None:
@@ -275,7 +276,7 @@ class DNNClassifierModel(ModelBase):
                 if self._mode == "oracle":
                     num_classes = len(self.context.class_list)
 
-                    class_name = result_object.id._groundtruth()
+                    class_name = result_object._groundtruth()
                     class_label = self.context.class_list.index(class_name)
 
                     score = [0.0] * num_classes

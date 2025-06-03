@@ -9,7 +9,7 @@ import multiprocessing as mp
 import queue
 import time
 from pathlib import Path
-from typing import Any, Callable, Iterable, Sequence
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -25,9 +25,11 @@ from ....classes import class_label_to_int
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
-from ...core.object_provider import ObjectProvider
 from ...core.result_provider import BoundingBox, ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
+
+if TYPE_CHECKING:
+    from ....objectid import ObjectId
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -84,15 +86,17 @@ class DNNClassifierModelRadar(ModelBase):
     def version(self) -> int:
         return self._version
 
-    def preprocess(
-        self, request: ObjectProvider
-    ) -> tuple[ObjectProvider, torch.Tensor]:
-        if isinstance(request.content, (np.ndarray, np.generic)):
-            array = request.content
+    def preprocess(self, request: ObjectId) -> tuple[ObjectId, torch.Tensor]:
+        obj = self.context.retriever.get_ml_data(request)
+        assert obj is not None
+
+        if obj.media_type in ("x-array/numpy", "x-array/numpyz"):
+            array = np.load(io.BytesIO(obj.content))
             array = (array - np.min(array)) / (np.max(array) - np.min(array))
             image = Image.fromarray((array * 255).astype(np.uint8))
         else:
-            image = Image.open(io.BytesIO(request.content))
+            assert obj.media_type.startswith("image/")
+            image = Image.open(io.BytesIO(obj.content))
 
             if image.mode != "RGB":
                 image = image.convert("RGB")
@@ -211,7 +215,7 @@ class DNNClassifierModelRadar(ModelBase):
             next_infer = time.time() + timeout
             logger.info(f"Total results inferenced by model: {self.result_count}")
 
-    def infer(self, requests: Sequence[ObjectProvider]) -> Iterable[ResultProvider]:
+    def infer(self, requests: Sequence[ObjectId]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:
             return
 
@@ -300,7 +304,7 @@ class DNNClassifierModelRadar(ModelBase):
             raise Exception(f"ERROR: {test_path} does not exist")
 
     def _process_batch(
-        self, batch: list[tuple[ObjectProvider, torch.Tensor]]
+        self, batch: list[tuple[ObjectId, torch.Tensor]]
     ) -> Iterable[ResultProvider]:
         assert self.context is not None
         if self._model is None:
@@ -329,7 +333,7 @@ class DNNClassifierModelRadar(ModelBase):
                 if self._mode == "oracle":
                     num_classes = len(self.context.class_list)
 
-                    class_name = result_object.id._groundtruth()
+                    class_name = result_object._groundtruth()
                     class_label = self.context.class_list.index(class_name)
 
                     score = [0.0] * num_classes
@@ -376,17 +380,23 @@ class DNNClassifierModelRadar(ModelBase):
             self._model = None
 
     def patch_processing(
-        self, img_batch: list[tuple[ObjectProvider, torch.Tensor]]
+        self, img_batch: list[tuple[ObjectId, torch.Tensor]]
     ) -> tuple[Sequence[Sequence[float]], list[list[tuple[int, int, int, int]]]]:
         num_image = 0
         tensors_for_predict = []
         crop_assign = []
         boxes_list: list[list[tuple[int, int, int, int]]] = []
         ## loop through batch and determine which samples have potential instances
-        for obj, tensor in img_batch:
+        for object_id, tensor in img_batch:
+            obj = self.context.retriever.get_ml_data(object_id)
+            assert obj is not None and obj.media_type in (
+                "x-array/numpy",
+                "x-array/numpyz",
+            )
+
             # select the patches and crop
-            assert isinstance(obj.content, (np.ndarray, np.generic))
-            cropped_images, coords = self.select_patches(obj.content)
+            array = np.load(io.BytesIO(obj.content))
+            cropped_images, coords = self.select_patches(array)
             num_crops = len(cropped_images)
 
             if not num_crops:  # no potential objects in sample
