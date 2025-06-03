@@ -52,7 +52,6 @@ from .data_manager import DataManager
 from .hawk_stub import HawkStub
 from .model import Model
 from .model_trainer import ModelTrainer
-from .object_provider import ObjectProvider
 from .result_provider import ResultProvider
 from .utils import get_server_ids, log_exceptions
 
@@ -82,7 +81,7 @@ class Mission(DataManagerContext, ModelContext):
         novel_class_discovery: bool = False,
         sub_class_discovery: bool = False,
     ):
-        super().__init__()
+        super().__init__(retriever=retriever)
 
         self.start_time = time.time()
 
@@ -476,11 +475,10 @@ class Mission(DataManagerContext, ModelContext):
             # we should do better, but it requires untangling the various
             # queues and moving get_ml_batch into the inference loop.
             # for now do a blocking get for the next object.
-            object_ids, objects = self.retriever.get_ml_batch(1)
+            object_id = self.retriever._get_objectid()
+            if object_id is None:
+                break
 
-            retriever_object = ObjectProvider(
-                object_ids[0], objects[0].content, object_ids[0]._groundtruth()
-            )
             with self._model_lock:
                 if self._model is not None and self._model.version != starting_version:
                     logger.info(
@@ -488,7 +486,7 @@ class Mission(DataManagerContext, ModelContext):
                         f"(new version {self._model.version} available)"
                     )
                     ## make sure to put this back in retriever put object
-                    self.retriever.put_objectid(retriever_object.id, dup=True)
+                    self.retriever.put_objectid(object_id, dup=True)
                     logger.info(
                         "\n\nATTENTION --- PUTTING OBJECT BACK  IN RETRIEVER QUEUE\n\n"
                     )
@@ -500,7 +498,7 @@ class Mission(DataManagerContext, ModelContext):
                 # get_objects() outside the lock above.
 
                 # put single retriever object into model inference request queue
-                model.add_requests(retriever_object)
+                model.add_requests(object_id)
 
                 if isinstance(self._retrain_policy, SampleIntervalPolicy):
                     self._retrain_policy.interval_samples_retrieved += 1
@@ -573,10 +571,10 @@ class Mission(DataManagerContext, ModelContext):
                     for bbox in result.bboxes
                 ]
 
-                oracle_data = self.retriever.get_oracle_data(result.id)
+                oracle_data = self.retriever.get_oracle_data(result.object_id)
 
                 tile = SendTile(
-                    _objectId=result.id.serialize_oid(),
+                    _objectId=result.object_id.serialize_oid(),
                     scoutIndex=self._scout_index,
                     version=result.model_version,
                     feature_vector=result.feature_vector,
