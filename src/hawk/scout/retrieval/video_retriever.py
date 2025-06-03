@@ -17,11 +17,11 @@ from ...classes import NEGATIVE_CLASS
 from ...objectid import ObjectId
 from ...proto.messages_pb2 import Streaming_Video
 from ..stats import collect_metrics_total
-from .retriever import Retriever
+from .retriever import LegacyRetrieverMixin, Retriever
 from .video_parser import produce_video_frames
 
 
-class VideoRetriever(Retriever):
+class VideoRetriever(Retriever, LegacyRetrieverMixin):
     def __init__(self, mission_id: str, dataset: Streaming_Video):
         super().__init__(mission_id)
         self.network = False

@@ -20,10 +20,10 @@ from ...classes import NEGATIVE_CLASS, ClassLabel, ClassName
 from ...objectid import ObjectId
 from ...proto.messages_pb2 import NetworkDataset
 from ..stats import collect_metrics_total
-from .retriever import Retriever
+from .retriever import LegacyRetrieverMixin, Retriever
 
 
-class NetworkRetriever(Retriever):
+class NetworkRetriever(Retriever, LegacyRetrieverMixin):
     def __init__(self, mission_id: str, dataset: NetworkDataset, host_name: str):
         globally_constant_rate = dataset.dataBalanceMode == "globally_constant"
         super().__init__(

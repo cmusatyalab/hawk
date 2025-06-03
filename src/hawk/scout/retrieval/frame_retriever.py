@@ -17,10 +17,10 @@ from ...classes import NEGATIVE_CLASS
 from ...objectid import ObjectId
 from ...proto.messages_pb2 import FileDataset
 from ..stats import collect_metrics_total
-from .retriever import Retriever
+from .retriever import LegacyRetrieverMixin, Retriever
 
 
-class FrameRetriever(Retriever):
+class FrameRetriever(Retriever, LegacyRetrieverMixin):
     def __init__(self, mission_id: str, dataset: FileDataset):
         super().__init__(mission_id)
         self.network = False
