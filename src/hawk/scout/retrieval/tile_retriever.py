@@ -13,10 +13,10 @@ from ...classes import ClassLabel
 from ...objectid import ObjectId
 from ...proto.messages_pb2 import FileDataset
 from ..stats import collect_metrics_total
-from .retriever import Retriever
+from .retriever import LegacyRetrieverMixin, Retriever
 
 
-class TileRetriever(Retriever):
+class TileRetriever(Retriever, LegacyRetrieverMixin):
     def __init__(self, mission_id: str, dataset: FileDataset):
         super().__init__(mission_id)
         self.network = False
