@@ -7,14 +7,15 @@
 
 import multiprocessing as mp
 from abc import abstractmethod
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, Tuple
 
-from ...objectid import ObjectId
-from ..core.result_provider import ResultProvider
 from .context_base import ContextBase
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ...objectid import ObjectId
+    from ..core.result_provider import ResultProvider
     from ..retrieval.retriever import Retriever
 
 
