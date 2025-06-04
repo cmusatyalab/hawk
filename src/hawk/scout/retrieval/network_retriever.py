@@ -20,7 +20,8 @@ from ...classes import NEGATIVE_CLASS, ClassLabel, ClassName
 from ...objectid import ObjectId
 from ...proto.messages_pb2 import NetworkDataset
 from ..stats import collect_metrics_total
-from .retriever import LegacyRetrieverMixin, Retriever
+from .retriever import Retriever
+from .retriever_mixins import LegacyRetrieverMixin
 
 
 class NetworkRetriever(Retriever, LegacyRetrieverMixin):
