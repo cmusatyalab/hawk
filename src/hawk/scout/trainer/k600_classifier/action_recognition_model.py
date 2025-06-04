@@ -99,6 +99,7 @@ class ActionRecognitionModel(nn.Module):
 if __name__ == '__main__':
     import torchvision.transforms as transforms
     from movinet_a0s_encoder import MovinetEncoder
+    from src.hawk.scout.retrieval.kinetics600.kinetics_600_retriever import K600Retriever
     T = 5
     stride = 5
     transformer_params = TransformerParams(embed_dim=480,depth=2,num_heads=16,mlp_dim=4*480,num_classes=2,head_dim=480//16)
@@ -109,9 +110,16 @@ if __name__ == '__main__':
     model = ActionRecognitionModel(MovinetEncoder(embed_dim=transformer_params.embed_dim),
                                    transformer_params, T=T, stride=stride)
     model.eval()
-    X = torch.randn(1, 10, 3, 172, 172)
-    logits, Z = model(X)
-    print(logits.shape)
-    print(Z.shape)
-    print(logits.mean(dim=0))
+
+    k600_retriever = K600Retriever(root='/home/gil/data/k600',
+                                  frames_per_clip=50,
+                                  frame_rate=5,
+                                  positive_class_idx=0)
+    id_stream = k600_retriever.object_ids_stream()
+    video_id = next(id_stream)
+    video, id = k600_retriever.get_ml_ready_data(video_id)
+    with torch.no_grad():
+        X = transform(video).unsqueeze(dim=0)
+        logits, _ = model(X)
+    print(f'logits={logits.squeeze()}')
 
