@@ -10,21 +10,22 @@ import threading
 import time
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
 
 from logzero import logger
+from PIL import Image
 
 from ...classes import (
     NEGATIVE_CLASS,
     ClassLabel,
     ClassName,
     class_label_to_int,
-    class_name_to_str,
 )
+from ...hawkobject import HawkObject
 from ...objectid import ObjectId
-from ...proto.messages_pb2 import HawkObject
 from ..context.data_manager_context import DataManagerContext
-from ..core.object_provider import ObjectProvider
+from ..core.result_provider import BoundingBox
 from ..core.utils import get_server_ids
 from ..stats import (
     HAWK_RETRIEVER_DROPPED_OBJECTS,
@@ -36,6 +37,8 @@ from ..stats import (
     HAWK_RETRIEVER_TOTAL_OBJECTS,
     collect_metrics_total,
 )
+
+THUMBNAIL_SIZE = (256, 256)
 
 
 @dataclass
@@ -57,15 +60,7 @@ class RetrieverBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_objects(self) -> ObjectProvider:
-        pass
-
-    @abstractmethod
-    def put_objects(self, obj: ObjectProvider) -> None:
-        pass
-
-    @abstractmethod
-    def read_object(self, object_id: ObjectId) -> HawkObject | None:
+    def put_objectid(self, object_id: ObjectId) -> None:
         pass
 
     @abstractmethod
@@ -74,6 +69,35 @@ class RetrieverBase(metaclass=ABCMeta):
 
     @abstractmethod
     def is_running(self) -> bool:
+        pass
+
+    @abstractmethod
+    def get_ml_batch(
+        self, batch_size: int, timeout: float | None = None
+    ) -> tuple[list[ObjectId], list[HawkObject]]:
+        """Get a batch of ML ready items."""
+        pass
+
+    @abstractmethod
+    def get_ml_data(self, object_id: ObjectId) -> HawkObject | None:
+        """Get ML ready tile for inferencing or training.
+
+        returns None if the object_id is not found.
+        """
+        pass
+
+    @abstractmethod
+    def get_oracle_data(self, object_id: ObjectId) -> list[HawkObject]:
+        """Get Oracle ready data to for labeling at home.
+
+        raises FileNotFoundError if the object_id is not found.
+        raises ValueError if we failed to create oracle ready data.
+        """
+        pass
+
+    @abstractmethod
+    def get_groundtruth(self, object_id: ObjectId) -> list[BoundingBox]:
+        """Get groundtruth for logging, statistics and scriptlabeler."""
         pass
 
 
@@ -90,7 +114,7 @@ class Retriever(RetrieverBase):
         self._stop_event = threading.Event()
         self._command_lock = threading.RLock()
         self._start_time = time.time()
-        self.result_queue: queue.Queue[ObjectProvider] = queue.Queue()
+        self.result_queue: queue.Queue[ObjectId] = queue.Queue()
         self.server_id = get_server_ids()[0]
         self.total_tiles = 0
 
@@ -158,22 +182,7 @@ class Retriever(RetrieverBase):
         ## placeholder for server in network retriever
         pass
 
-    def set_tile_attributes(
-        self, object_id: ObjectId, class_name: ClassName
-    ) -> dict[str, bytes]:
-        attributes = {
-            "Device-Name": str.encode(self.server_id),
-            "_ObjectID": object_id.serialize_oid().encode(),
-            "_gt_label": str.encode(class_name_to_str(class_name)),
-        }
-        return attributes
-
-    def get_objects(self) -> ObjectProvider:
-        result = self.result_queue.get()
-        self.queue_length.dec()
-        return result
-
-    def put_objects(self, result_object: ObjectProvider, dup: bool = False) -> None:
+    def put_objectid(self, result_object: ObjectId, dup: bool = False) -> None:
         if not dup:
             self.retrieved_objects.inc()
         try:
@@ -183,15 +192,14 @@ class Retriever(RetrieverBase):
             self.queue_length.dec()
             self.dropped_objects.inc()
 
-    def read_object(self, object_id: ObjectId) -> HawkObject | None:
-        object_path = object_id._file_path(self._data_root)
-        if object_path is None or not object_path.exists():
-            logger.error(f"Unable to read object for {object_id}")
+    def _get_objectid(self, timeout: float | None = None) -> ObjectId | None:
+        """Pop a single ML ready object identifier from the result queue."""
+        try:
+            object_id = self.result_queue.get(timeout=timeout)
+            self.queue_length.dec()
+            return object_id
+        except queue.Empty:
             return None
-
-        content = object_path.read_bytes()
-
-        return HawkObject(_objectId=object_id.serialize_oid(), content=content)
 
     def get_stats(self) -> RetrieverStats:
         self._start_event.wait()
@@ -215,3 +223,107 @@ class Retriever(RetrieverBase):
             class_index = class_label_to_int(class_label)
             return ClassName(sys.intern(f"class-{class_index}"))
         return self._context.class_list[class_label]
+
+    def get_ml_batch(
+        self, batch_size: int, timeout: float | None = None
+    ) -> tuple[list[ObjectId], list[HawkObject]]:
+        """Get a batch of ML ready items."""
+        object_ids: list[ObjectId] = []
+        hawk_objects: list[HawkObject] = []
+
+        time_now = time.time()
+        wait_time: float | None = None
+        end_time = time_now + timeout if timeout is not None else None
+
+        while len(hawk_objects) < batch_size:
+            if end_time is not None:
+                # we use time_now so that a timeout of 0 will still end up
+                # trying to get something off the queue (get_nowait)
+                wait_time = end_time - time_now
+                if wait_time < 0:
+                    break
+
+            object_id = self._get_objectid(timeout=wait_time)
+            if object_id is None:
+                break
+
+            data = self.get_ml_data(object_id)
+            if data is not None:
+                object_ids.append(object_id)
+                hawk_objects.append(data)
+
+            # we have to make sure to update time_now before we loop
+            time_now = time.time()
+
+        return (object_ids, hawk_objects)
+
+
+class ThumbnailImageMixin(RetrieverBase):
+    """Uses Pillow to derive a thumbnail image from the ML ready data."""
+
+    def get_oracle_data(self, object_id: ObjectId) -> list[HawkObject]:
+        ml_object = self.get_ml_data(object_id)
+        if ml_object is None or not ml_object.media_type.startswith("image/"):
+            raise ValueError("Generic get_oracle_data only works for images")
+
+        with BytesIO(ml_object.content) as f:
+            image = Image.open(f)
+
+        image = image.convert("RGB")
+
+        # crop to centered square
+        if image.size[0] != image.size[1]:
+            short_edge = min(image.size)
+            left = (image.size[0] - short_edge) // 2
+            top = (image.size[1] - short_edge) // 2
+            right = left + short_edge
+            bottom = top + short_edge
+            image = image.crop((left, top, right, bottom))
+
+        # resize to THUMBNAIL_SIZE
+        # image.thumbnail(THUMBNAIL_SIZE)
+        image = image.resize(THUMBNAIL_SIZE)
+
+        with BytesIO() as tmpfile:
+            image.save(tmpfile, format="JPEG", quality=85)
+            content = tmpfile.getvalue()
+
+        return [HawkObject(content=content, media_type="image/jpeg")]
+
+
+class LegacyRetrieverMixin(ThumbnailImageMixin):
+    """Get tile and groundtruth based on the legacy ObjectId format."""
+
+    def __init__(self) -> None:
+        super().__init__()
+
+        # TODO: we probably should be more restrictive about where images
+        # are allowed to be retrieved from.
+        # Random retriever sets this to the parent of the INDEXES directory.
+        self._data_root = Path("/")
+
+    def get_ml_data(self, object_id: ObjectId) -> HawkObject | None:
+        """Return ML ready tile for inferencing or training."""
+        object_path = object_id._file_path(self._data_root)
+        if object_path is None:
+            logger.error(f"Unable to get path for {object_id}")
+            return None
+        try:
+            return HawkObject.from_file(object_path)
+        except FileNotFoundError:
+            logger.error(f"Unable to read {object_id}")
+            return None
+
+    def get_groundtruth(self, object_id: ObjectId) -> list[BoundingBox]:
+        """Return groundtruth for logging, statistics and scriptlabeler."""
+        # only handles classification groundtruth as it assumes it is stashed
+        # in the object id.
+        class_name = object_id._groundtruth()
+        if class_name is None:
+            return []
+
+        return [
+            BoundingBox(
+                x=0.5, y=0.5, w=1.0, h=1.0, class_name=class_name, confidence=1.0
+            )
+        ]

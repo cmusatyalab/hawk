@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import copy
-import io
 import os
 import time
 from pathlib import Path
@@ -13,18 +12,15 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 from logzero import logger
-from PIL import Image
 
 from ...classes import NEGATIVE_CLASS
 from ...objectid import ObjectId
 from ...proto.messages_pb2 import FileDataset
-from ..core.attribute_provider import HawkAttributeProvider
-from ..core.object_provider import ObjectProvider
 from ..stats import collect_metrics_total
-from .retriever import Retriever
+from .retriever import LegacyRetrieverMixin, Retriever
 
 
-class FrameRetriever(Retriever):
+class FrameRetriever(Retriever, LegacyRetrieverMixin):
     def __init__(self, mission_id: str, dataset: FileDataset):
         super().__init__(mission_id)
         self.network = False
@@ -111,23 +107,8 @@ class FrameRetriever(Retriever):
             self.total_objects.inc(len(tiles) - 1)
 
             for image_path in tiles:
-                tmpfile = io.BytesIO()
-                class_name = NEGATIVE_CLASS
-                image = Image.open(image_path).convert("RGB")
-                image.save(tmpfile, format="JPEG", quality=85)
-                content = tmpfile.getvalue()
-
-                object_id = ObjectId(f"/{class_name}/collection/id/{image_path}")
-                attributes = self.set_tile_attributes(object_id, class_name)
-
-                self.put_objects(
-                    ObjectProvider(
-                        object_id,
-                        content,
-                        HawkAttributeProvider(attributes, image_path, self._resize),
-                        class_name,
-                    )
-                )
+                object_id = ObjectId(f"/{NEGATIVE_CLASS}/collection/id/{image_path}")
+                self.put_objectid(object_id)
 
             retrieved_tiles = collect_metrics_total(self.retrieved_objects)
             logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")

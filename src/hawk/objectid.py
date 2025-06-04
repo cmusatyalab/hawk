@@ -54,8 +54,6 @@ class ObjectId:
     def __repr__(self) -> str:
         return f"ObjectId('{self._id}')"
 
-    # __str__ = None
-
     def serialize_oid(self) -> str:
         """Get the objectid value so we can store it or send across a network.
 
@@ -82,11 +80,10 @@ class ObjectId:
         compatibility, but OTOH it only works properly for a subset of
         retrievers (f.i. it breaks for video_retriever).
 
-        Also this information should be stored in the attributes of the object
-        and not in the objectid itself, so extracing this information should be
-        a retriever specific function.
+        Also this information should not be encoded in the objectid itself,
+        extracing this information should be a retriever specific function.
 
-        Also we should avoid referencing the ground truth data and make sure it
+        We must always avoid referencing the ground truth data and make sure it
         is only used for debugging and mission evaluation purposes only.
         """
         m = re.match(OID_RE, self._id)
@@ -160,3 +157,27 @@ class ExampleObjectId(ObjectId):
         """
         data_root = unwrap_or(data_root, self.DATA_DIR)
         return data_root.joinpath(self._id[8:]).resolve()
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Convert Hawk object-id to short-id to locate related resources"
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Display both short-id and object-id",
+    )
+    parser.add_argument("oid", type=ObjectId, nargs="*", help="Object ID to parse")
+    args = parser.parse_args()
+
+    oids = [ObjectId(line.strip()) for line in sys.stdin] if not args.oid else args.oid
+
+    for oid in oids:
+        if args.verbose:
+            print(oid.shortid, oid.serialize_oid())
+        else:
+            print(oid.shortid)

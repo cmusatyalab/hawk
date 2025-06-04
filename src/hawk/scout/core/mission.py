@@ -81,7 +81,7 @@ class Mission(DataManagerContext, ModelContext):
         novel_class_discovery: bool = False,
         sub_class_discovery: bool = False,
     ):
-        super().__init__()
+        super().__init__(retriever=retriever)
 
         self.start_time = time.time()
 
@@ -239,6 +239,7 @@ class Mission(DataManagerContext, ModelContext):
             novel_cluster_process = mp.Process(
                 target=novel_class_discover.main,
                 args=(
+                    self.retriever,
                     self.clustering_input_queue,
                     self.labels_queue,
                     s2h_input,
@@ -471,7 +472,13 @@ class Mission(DataManagerContext, ModelContext):
         logger.info(f"Starting evaluation with model version {starting_version}")
 
         while not self._abort_event.is_set():
-            retriever_object = self.retriever.get_objects()
+            # we should do better, but it requires untangling the various
+            # queues and moving get_ml_batch into the inference loop.
+            # for now do a blocking get for the next object.
+            object_id = self.retriever._get_objectid()
+            if object_id is None:
+                break
+
             with self._model_lock:
                 if self._model is not None and self._model.version != starting_version:
                     logger.info(
@@ -479,7 +486,7 @@ class Mission(DataManagerContext, ModelContext):
                         f"(new version {self._model.version} available)"
                     )
                     ## make sure to put this back in retriever put object
-                    self.retriever.put_objects(retriever_object, dup=True)
+                    self.retriever.put_objectid(object_id, dup=True)
                     logger.info(
                         "\n\nATTENTION --- PUTTING OBJECT BACK  IN RETRIEVER QUEUE\n\n"
                     )
@@ -491,7 +498,7 @@ class Mission(DataManagerContext, ModelContext):
                 # get_objects() outside the lock above.
 
                 # put single retriever object into model inference request queue
-                model.add_requests(retriever_object)
+                model.add_requests(object_id)
 
                 if isinstance(self._retrain_policy, SampleIntervalPolicy):
                     self._retrain_policy.interval_samples_retrieved += 1
@@ -564,12 +571,14 @@ class Mission(DataManagerContext, ModelContext):
                     for bbox in result.bboxes
                 ]
 
+                oracle_data = self.retriever.get_oracle_data(result.object_id)
+
                 tile = SendTile(
-                    _objectId=result.id.serialize_oid(),
+                    _objectId=result.object_id.serialize_oid(),
                     scoutIndex=self._scout_index,
                     version=result.model_version,
                     feature_vector=result.feature_vector,
-                    attributes=result.attributes.get(),
+                    oracle_data=[obj.to_protobuf() for obj in oracle_data],
                     boundingBoxes=bboxes,
                     novel_sample=False,
                 )

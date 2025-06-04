@@ -21,10 +21,10 @@ from logzero import logger
 from prometheus_client import Gauge, Histogram, Summary
 
 from ..classes import class_name_to_str
+from ..hawkobject import HawkObject
 from ..objectid import ObjectId
 from ..ports import H2C_PORT, S2H_PORT
 from ..proto.messages_pb2 import BoundingBox, SendLabel, SendTile
-from ..rusty import unwrap
 from .label_utils import Detection, LabelSample
 from .stats import (
     HAWK_LABELED_QUEUE_LENGTH,
@@ -85,23 +85,19 @@ class UnlabeledResult(LabelSample):
             novel_sample=request.novel_sample,
         )
 
-        data = request.attributes["thumbnail.jpeg"]
+        for index, _data in enumerate(request.oracle_data):
+            data = HawkObject.from_protobuf(_data)
 
-        image_dir = "images" if not request.novel_sample else "novel"
-        image_file = result.content(mission_dir / image_dir, ".jpeg")
-        image_file.parent.mkdir(exist_ok=True)
+            image_dir = "images" if not request.novel_sample else "novel"
+            image_path = result.content(mission_dir / image_dir, ".bin")
+            image_file = data.to_file(image_path, index=index, mkdirs=True)
 
-        if unwrap(objectId._file_path()).suffix == ".npy":
-            # for radar missions with .npy files
-            result.gen_heatmap(image_file, data)
-        else:
-            image_file.write_bytes(data)
-        logger.info(f"SAVED TILE {image_file} for {result.objectId}")
+            logger.info(f"SAVED {image_file} for {result.objectId}")
 
-        if request.feature_vector:
+        if request.HasField("feature_vector"):
             fv_path = result.content(mission_dir / "feature_vectors", ".pt")
-            fv_path.parent.mkdir(exist_ok=True)
-            fv_path.write_bytes(request.feature_vector)
+            feature_vector = HawkObject.from_protobuf(request.feature_vector)
+            feature_vector.to_file(fv_path, mkdirs=True)
 
         return result
 

@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import io
 import math
 import sys
 import time
@@ -11,18 +10,15 @@ from pathlib import Path
 
 import numpy as np
 from logzero import logger
-from PIL import Image
 
 from ...classes import NEGATIVE_CLASS, ClassLabel, ClassName
 from ...objectid import ObjectId
 from ...proto.messages_pb2 import FileDataset
-from ..core.attribute_provider import HawkAttributeProvider
-from ..core.object_provider import ObjectProvider
 from ..stats import collect_metrics_total
-from .retriever import Retriever
+from .retriever import LegacyRetrieverMixin, Retriever
 
 
-class RandomRetriever(Retriever):
+class RandomRetriever(Retriever, LegacyRetrieverMixin):
     def __init__(self, mission_id: str, dataset: FileDataset):
         super().__init__(mission_id)
         self.network = False
@@ -82,32 +78,7 @@ class RandomRetriever(Retriever):
                     class_name = NEGATIVE_CLASS
 
                 object_id = ObjectId(f"/{class_name}/collection/id/{image_path}")
-
-                image_path = self._data_root / image_path
-
-                try:
-                    if image_path.suffix == ".npy":
-                        content = np.load(image_path)
-                    else:
-                        tmpfile = io.BytesIO()
-                        image = Image.open(image_path).convert("RGB")
-                        image.save(tmpfile, format="JPEG", quality=85)
-                        content = tmpfile.getvalue()
-                except (OSError, ValueError):
-                    logger.error(f"Failed to read {object_id}")
-                    self.failed_objects.inc()
-                    continue
-
-                attributes = self.set_tile_attributes(object_id, class_name)
-
-                self.put_objects(
-                    ObjectProvider(
-                        object_id,
-                        content,
-                        HawkAttributeProvider(attributes, image_path, self._resize),
-                        class_name,
-                    )
-                )
+                self.put_objectid(object_id)
 
             retrieved_tiles = collect_metrics_total(self.retrieved_objects)
             logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
