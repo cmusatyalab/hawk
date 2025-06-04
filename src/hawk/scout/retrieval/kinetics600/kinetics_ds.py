@@ -43,3 +43,13 @@ class KineticsDs(Kinetics):
             label = self.label_transform(label)
 
         return video, label
+
+    def get_label(self, idx: int):
+        if idx >= self.video_clips.num_clips():
+            raise IndexError(f"Index {idx} out of range ({self.video_clips.num_clips()} number of clips)")
+        video_idx, clip_idx = self.video_clips.get_clip_location(idx)
+        # video_path = self.video_clips.video_paths[video_idx]
+        label = self.samples[video_idx][1]
+        if self.label_transform is not None:
+            label = self.label_transform(self.samples[video_idx][1])
+        return label
