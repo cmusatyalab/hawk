@@ -17,7 +17,8 @@ from ...classes import NEGATIVE_CLASS
 from ...objectid import ObjectId
 from ...proto.messages_pb2 import FileDataset
 from ..stats import collect_metrics_total
-from .retriever import LegacyRetrieverMixin, Retriever
+from .retriever import Retriever
+from .retriever_mixins import LegacyRetrieverMixin
 
 
 class FrameRetriever(Retriever, LegacyRetrieverMixin):

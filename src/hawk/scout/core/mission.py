@@ -475,7 +475,7 @@ class Mission(DataManagerContext, ModelContext):
             # we should do better, but it requires untangling the various
             # queues and moving get_ml_batch into the inference loop.
             # for now do a blocking get for the next object.
-            object_id = self.retriever._get_objectid()
+            object_id = self.retriever.get_objectid()
             if object_id is None:
                 break
 
