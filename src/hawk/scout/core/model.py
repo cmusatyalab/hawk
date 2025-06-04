@@ -129,7 +129,7 @@ class ModelBase(Model):
         return self._train_time
 
     @log_exceptions
-    def preprocess(self, obj: HawkObject) -> None:
+    def preprocess(self, obj: HawkObject) -> Any:
         return None
 
     @log_exceptions

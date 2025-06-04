@@ -68,10 +68,6 @@ class RetrieverBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def is_running(self) -> bool:
-        pass
-
-    @abstractmethod
     def get_ml_batch(
         self, batch_size: int, timeout: float | None = None
     ) -> tuple[list[ObjectId], list[HawkObject]]:
@@ -163,9 +159,6 @@ class Retriever(RetrieverBase):
 
     def stop(self) -> None:
         self._stop_event.set()
-
-    def is_running(self) -> bool:
-        return not self._stop_event.is_set()
 
     def add_context(self, context: DataManagerContext) -> None:
         self._context = context
