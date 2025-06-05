@@ -28,6 +28,7 @@ from ...proto.messages_pb2 import (
     SendTile,
     TestResults,
 )
+from ...rusty import map_or
 from ..api.h2c_api import H2CSubscriber
 from ..api.s2h_api import S2HPublisher
 from ..api.s2s_api import S2SServicer, s2s_receive_request
@@ -266,9 +267,8 @@ class Mission(DataManagerContext, ModelContext):
         self._mission_training_bootstrap.set(0)
 
     def check_initial_model(self) -> bool:
-        if self.initial_model is None:
-            return False
-        return len(self.initial_model.content) != 0
+        """Check if the initial model is available."""
+        return map_or(self.initial_model, False, lambda x: len(x.content) != 0)
 
     def store_labeled_tile(self, tile: LabeledTile, net: bool = False) -> None:
         self._data_manager.store_labeled_tile(tile, net)
