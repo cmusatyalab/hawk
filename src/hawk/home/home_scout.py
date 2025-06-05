@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import io
 import queue
 import threading
 import time
@@ -13,9 +12,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
-import matplotlib
-import matplotlib.pyplot as plt
-import numpy as np
 import zmq
 from logzero import logger
 from prometheus_client import Gauge, Histogram, Summary
@@ -33,8 +29,6 @@ from .stats import (
     HAWK_UNLABELED_RECEIVED,
     HAWK_UNLABELED_RECEIVED_SCORE,
 )
-
-matplotlib.use("agg")
 
 
 class Strategy(Enum):
@@ -100,21 +94,6 @@ class UnlabeledResult(LabelSample):
             feature_vector.to_file(fv_path, mkdirs=True)
 
         return result
-
-    @staticmethod
-    def gen_heatmap(tile_path: Path, data_: bytes) -> None:
-        with io.BytesIO(data_) as bytes_file:
-            data = np.load(bytes_file, allow_pickle=True)
-        plt.imshow(
-            data.sum(axis=2).transpose(), cmap="viridis", interpolation="nearest"
-        )
-        plt.xticks([0, 16, 32, 48, 63], ["-13", "-6.5", "0", "6.5", "13"], fontsize=8)
-        plt.yticks([0, 64, 128, 192, 255], ["50", "37.5", "25", "12.5", "0"])
-        plt.xlabel("velocity (m/s)")
-        plt.ylabel("range (m)")
-        # plt.title("RD Map")
-        plt.savefig(tile_path, bbox_inches="tight")
-        plt.close("all")
 
 
 @dataclass
