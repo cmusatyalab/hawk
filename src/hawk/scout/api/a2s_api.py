@@ -20,6 +20,7 @@ from google.protobuf import json_format
 from logzero import logger
 from PIL import Image
 
+from ..trainer.k600_classifier.trainer import ActivityTrainer
 from ...proto import Empty
 from ...proto.messages_pb2 import (
     ChangeDeploymentStatus,
@@ -51,6 +52,7 @@ from ..retrain.sampleInterval_policy import SampleIntervalPolicy
 from ..retrieval.frame_retriever import FrameRetriever
 from ..retrieval.network_retriever import NetworkRetriever
 from ..retrieval.random_retriever import RandomRetriever
+from ..retrieval.activity_retriever import ActivityRetriever
 from ..retrieval.retriever import Retriever
 from ..retrieval.tile_retriever import TileRetriever
 from ..retrieval.video_retriever import VideoRetriever
@@ -318,6 +320,9 @@ class A2SAPI:
         elif model.HasField("dnn_classifier"):
             config = model.dnn_classifier
             trainer = DNNClassifierTrainer(mission, dict(config.args))
+        elif model.HasField("activity_classifier"):
+            config = model.activity_classifier
+            trainer = ActivityTrainer(mission, dict(config.args))
         elif model.HasField("yolo"):
             config = model.yolo
             trainer = YOLOTrainer(mission, dict(config.args))
@@ -668,6 +673,8 @@ class A2SAPI:
             return VideoRetriever(mission_id, dataset.video)
         elif dataset.HasField("network"):
             return NetworkRetriever(mission_id, dataset.network, this_host)
+        elif dataset.HasField("activity"):
+            return ActivityRetriever(mission_id, dataset.activity)
 
         msg = f"unknown dataset: {json_format.MessageToJson(dataset)}"
         raise NotImplementedError(msg)

@@ -5,12 +5,12 @@ from pathlib import Path
 from pandas import DataFrame
 from torch import Tensor
 
-from src.hawk.scout.retrieval.kinetics600.kinetics_ds import KineticsDs
-from src.hawk.scout.retrieval.kinetics600.video_utils import create_gif_from_video_tensor_bytes
-from src.hawk.scout.retrieval.retriever_ifc import RetrieverIfc
+from .kinetics_ds import KineticsDs
+from .video_utils import create_gif_from_video_tensor_bytes
+from ..retriever_ifc import RetrieverIfc
 
 
-class K600Retriever(RetrieverIfc):
+class K600RetrieverHelper(RetrieverIfc):
     def __init__(self, root: str, frames_per_clip, frame_rate: int, positive_class_idx: int = 0):
         self.frame_rate: int = frame_rate
         self.frames_per_clip: int = frames_per_clip
@@ -106,10 +106,10 @@ class K600Retriever(RetrieverIfc):
 
 
 if __name__ == '__main__':
-    k600_retriever = K600Retriever(root='/home/gil/data/k600',
-                                  frames_per_clip=30,
-                                  frame_rate=5,
-                                  positive_class_idx=0)
+    k600_retriever = K600RetrieverHelper(root='/home/gil/data/k600',
+                                         frames_per_clip=30,
+                                         frame_rate=5,
+                                         positive_class_idx=0)
     k600_retriever.generate_index_files(num_scouts=1, path='./')
     id_stream = k600_retriever.object_ids_stream()
     video_id = next(id_stream)

@@ -189,6 +189,22 @@ class Admin:
                     # args=train_config.get('args', default_args),
                 )
             )
+        elif train_type == "activity_classifier":
+            default_args = {
+                "mode": "hawk",
+                "embed_dim": "480",
+                "depth": "2",
+                "num_heads": "16",
+                "mlp_dim": "1920",
+                "num_classes": "2",
+                "head_dim": "480",
+                "T": "5"
+            }
+            train_strategy = TrainConfig(
+                activity_classifier=ModelConfig(
+                    args=train_config.get("args", default_args),
+                )
+            )
         else:
             errmsg = f"Unknown train strategy {train_type}"
             raise NotImplementedError(errmsg)
@@ -285,6 +301,17 @@ class Admin:
                         tile_width=250,
                         tile_height=250,
                         # timeout=timeout,
+                    )
+                )
+            elif dataset_type == "activity":
+                dataset = Dataset(
+                    activity=FileDataset(
+                        dataPath=dataset_config["index_path"],
+                        numTiles=int(dataset_config.get("tiles_per_frame", 200)),
+                        resizeTile=bool(dataset_config.get("resize_tile", False)),
+                        timeout=timeout,
+                        N=int(dataset_config.get("N",50)),
+                        fps=int(dataset_config.get("fps",5))
                     )
                 )
             else:

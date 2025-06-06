@@ -84,6 +84,7 @@ message TrainConfig {
     ModelConfig fsl = 3;
     ModelConfig dnn_classifier_radar = 4;
     ModelConfig yolo_radar = 5;
+    ModelConfig activity_classifier = 6;
   }
 }
 
@@ -131,6 +132,7 @@ message Dataset {
     FileDataset scope = 4; // scopecookie
     Streaming_Video video = 5; // ingest video stream
     NetworkDataset network = 6;
+    FileDataset activity = 7;
   }
 }
 
@@ -140,6 +142,8 @@ message FileDataset {
   int32 numTiles = 3; // optional param for random sampling
   int32 timeout = 4; // optional param for random sampling
   bool resizeTile = 5;
+  int32 fps = 6; // optional param for activity recognition : frame per second
+  int32 N = 7;   // optional param for activity recognition : number of frames in video
 }
 
 message NetworkDataset {

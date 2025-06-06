@@ -547,6 +547,7 @@ class Mission(DataManagerContext, ModelContext):
     def _get_results(self, pipe: _ConnectionBase) -> None:
         try:
             while True:  # not self._abort_event.is_set():
+                logger.info('--------------gil------------------')
                 ## if  in scml idle mode, time.sleep(10), and continue
                 result = self.selector.get_result()
                 if result is None:

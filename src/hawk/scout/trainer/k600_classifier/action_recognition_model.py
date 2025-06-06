@@ -3,8 +3,8 @@ from typing import Tuple, Dict, TypeVar
 import torch
 from torch import nn, Tensor
 
-from backbone_encoder import BackboneEncoder
-from temporal_encoder import TransformerParams, SimpleViT
+from .backbone_encoder import BackboneEncoder
+from .temporal_encoder import TransformerParams, SimpleViT
 
 Encoder = TypeVar('Encoder', bound=BackboneEncoder)
 
@@ -99,7 +99,7 @@ class ActionRecognitionModel(nn.Module):
 if __name__ == '__main__':
     import torchvision.transforms as transforms
     from movinet_a0s_encoder import MovinetEncoder
-    from src.hawk.scout.retrieval.kinetics600.kinetics_600_retriever import K600Retriever
+    from src.hawk.scout.retrieval.kinetics600.kinetics_600_retriever_helper import K600RetrieverHelper
     T = 5
     stride = 5
     transformer_params = TransformerParams(embed_dim=480,depth=2,num_heads=16,mlp_dim=4*480,num_classes=2,head_dim=480//16)
@@ -111,10 +111,10 @@ if __name__ == '__main__':
                                    transformer_params, T=T, stride=stride)
     model.eval()
 
-    k600_retriever = K600Retriever(root='/home/gil/data/k600',
-                                  frames_per_clip=50,
-                                  frame_rate=5,
-                                  positive_class_idx=0)
+    k600_retriever = K600RetrieverHelper(root='/home/gil/data/k600',
+                                         frames_per_clip=50,
+                                         frame_rate=5,
+                                         positive_class_idx=0)
     id_stream = k600_retriever.object_ids_stream()
     video_id = next(id_stream)
     video, id = k600_retriever.get_ml_ready_data(video_id)

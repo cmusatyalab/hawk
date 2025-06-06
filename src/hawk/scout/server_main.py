@@ -52,6 +52,7 @@ def main() -> None:
     args = parser.parse_args()
 
     metrics_port = args.a2s_port + 3 if args.metrics_port is None else args.metrics_port
+    print(metrics_port)
     start_metrics_server(port=metrics_port)
 
     multiprocessing_logging.install_mp_handler()

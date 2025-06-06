@@ -38,6 +38,7 @@ class S2HPublisher:
                     logger.debug("[SendTile]: GOT RESULT NONE")
                     return
                 socket.send(msg)
+                logger.info("----gil------receive msg at s2h_send_tiles----")
         except Exception as e:
             logger.exception(e)
             raise e

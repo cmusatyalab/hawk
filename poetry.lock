@@ -3802,7 +3802,7 @@ files = [
 name = "pandas"
 version = "2.0.3"
 description = "Powerful data structures for data analysis, time series, and statistics"
-optional = true
+optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 markers = "python_version == \"3.8\" and extra == \"home\""
@@ -3867,7 +3867,7 @@ xml = ["lxml (>=4.6.3)"]
 name = "pandas"
 version = "2.2.3"
 description = "Powerful data structures for data analysis, time series, and statistics"
-optional = true
+optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "python_version >= \"3.9\" and extra == \"home\""
@@ -5066,7 +5066,7 @@ six = ">=1.5"
 name = "pytz"
 version = "2025.2"
 description = "World timezone definitions, modern and historical"
-optional = true
+optional = false
 python-versions = "*"
 groups = ["main"]
 markers = "extra == \"home\""
@@ -7303,7 +7303,7 @@ typing-extensions = ">=4.12.0"
 name = "tzdata"
 version = "2025.2"
 description = "Provider of IANA time zone data"
-optional = true
+optional = false
 python-versions = ">=2"
 groups = ["main"]
 markers = "extra == \"home\""
@@ -7686,4 +7686,4 @@ scout = ["albumentations", "lovely-tensors", "multiprocessing-logging", "opencv-
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.8"
-content-hash = "8061a5c0d4258610e6e7cb2747fdf923182a66ea1ef186ac9aa0514f9ef9d627"
+content-hash = "a78698d77aa7e66eff8b2013cd6d177d285791a5483d4cda8273f745b85eb365"

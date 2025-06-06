@@ -3,7 +3,7 @@ from movinets import MoViNet
 from movinets.config import _C
 from torch import nn, Tensor
 
-from backbone_encoder import BackboneEncoder
+from .backbone_encoder import BackboneEncoder
 
 
 class MoViNet_(MoViNet):

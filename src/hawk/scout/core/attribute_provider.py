@@ -6,7 +6,7 @@ import io
 import pickle
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Mapping, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -38,33 +38,39 @@ class HawkAttributeProvider(AttributeProvider):
         attributes: Dict[str, bytes],
         image_provider: Path,
         resize: bool = True,
+        thumbnail: Optional[bytes] = None,
     ):
         self._attributes = attributes
         self.thumbnail_size = (256, 256)
         self.resize = resize
         self._image_provider = image_provider
         self._is_npy = image_provider.suffix == ".npy"
-
-        self.thumbnail = io.BytesIO()
-        if self._is_npy:
-            arr: npt.NDArray[Any] = np.load(self._image_provider)
-            pickle.dump(arr, self.thumbnail)
+        self._is_activity: bool = False
+        if thumbnail:
+            self.thumbnail = thumbnail
+            self._is_activity = True
+            assert not self._is_npy
         else:
-            image = Image.open(self._image_provider).convert("RGB")
-            image = image.copy()
+            self.thumbnail = io.BytesIO()
+            if self._is_npy:
+                arr: npt.NDArray[Any] = np.load(self._image_provider)
+                pickle.dump(arr, self.thumbnail)
+            else:
+                image = Image.open(self._image_provider).convert("RGB")
+                image = image.copy()
 
-            if self.resize and image.size != self.thumbnail_size:
-                # crop to centered square and resize to thumbnail_size
-                short_edge = min(image.size)
-                left = (image.size[0] - short_edge) // 2
-                top = (image.size[1] - short_edge) // 2
-                right = left + short_edge
-                bottom = top + short_edge
+                if self.resize and image.size != self.thumbnail_size:
+                    # crop to centered square and resize to thumbnail_size
+                    short_edge = min(image.size)
+                    left = (image.size[0] - short_edge) // 2
+                    top = (image.size[1] - short_edge) // 2
+                    right = left + short_edge
+                    bottom = top + short_edge
 
-                image = image.crop((left, top, right, bottom))
-                image = image.resize(self.thumbnail_size)
+                    image = image.crop((left, top, right, bottom))
+                    image = image.resize(self.thumbnail_size)
 
-            image.save(self.thumbnail, "JPEG")
+                image.save(self.thumbnail, "JPEG")
 
     def get_image(self) -> Image.Image:
         return Image.open(self._image_provider).convert("RGB")
@@ -81,6 +87,8 @@ class HawkAttributeProvider(AttributeProvider):
         if self._is_npy:
             # maybe we should store this as thumbnail.npy?
             attributes["thumbnail.jpeg"] = self.thumbnail.getvalue()
+        elif self._is_activity:
+            attributes["thumbnail.gif"] = self.thumbnail
         else:
             attributes["thumbnail.jpeg"] = self.thumbnail.getvalue()
 

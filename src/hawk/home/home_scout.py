@@ -243,6 +243,7 @@ class ScoutQueue:
         received_from_scout: Counter[int] = Counter()
 
         while True:
+            logger.info('-------gil-socket.recv()')
             msg = socket.recv()
             result = UnlabeledResult.from_msg(msg, self.mission_dir)
 
