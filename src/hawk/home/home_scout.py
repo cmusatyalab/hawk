@@ -85,10 +85,10 @@ class UnlabeledResult(LabelSample):
             novel_sample=request.novel_sample,
         )
 
-        data = request.attributes["thumbnail.jpeg"]
+        data = request.attributes["thumbnail.gif"]
 
         image_dir = "images" if not request.novel_sample else "novel"
-        image_file = result.content(mission_dir / image_dir, ".jpeg")
+        image_file = result.content(mission_dir / image_dir, ".gif")
         image_file.parent.mkdir(exist_ok=True)
 
         if unwrap(objectId._file_path()).suffix == ".npy":

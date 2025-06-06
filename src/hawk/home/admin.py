@@ -243,7 +243,7 @@ class Admin:
         if dataset_type == "video":
             video_file_list = dataset_config["video_list"]
         logger.info("Index {}".format(dataset_config["index_path"]))
-        timeout = dataset_config.get("timeout", 20)
+        timeout = dataset_config.get("timeout", 2)
         self.class_list = dataset_config.get("class_list", ["positive"])
         logger.info(f"Class list: {self.class_list}")
 
