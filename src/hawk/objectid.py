@@ -32,14 +32,14 @@ class ObjectId:
     and to create unique on-disk file names,
     """
 
-    _id: str
+    oid: str
 
     @cached_property
     def shortid(self) -> uuid.UUID:
         """Return (cached) UUID representing the ObjectId's value."""
         # we likely use this often enough to always compute it in __post_init__
         # but a cached property makes initialization and inheritence easier.
-        return uuid.uuid5(HAWK_OBJECTID_NAMESPACE, self._id)
+        return uuid.uuid5(HAWK_OBJECTID_NAMESPACE, self.oid)
 
     def __eq__(self, other: object) -> bool:
         """Compare against UUID (shortid) or other ObjectId objects."""
@@ -52,7 +52,7 @@ class ObjectId:
         return self.shortid.__hash__()
 
     def __repr__(self) -> str:
-        return f"ObjectId('{self._id}')"
+        return f"ObjectId('{self.oid}')"
 
     # __str__ = None
 
@@ -62,7 +62,7 @@ class ObjectId:
         Using this as the accessor should make it easy to find all places we do
         something special with the ObjectId (git grep serialize_oid).
         """
-        return self._id
+        return self.oid
 
     # compat functions
     def file_name(
@@ -89,7 +89,7 @@ class ObjectId:
         Also we should avoid referencing the ground truth data and make sure it
         is only used for debugging and mission evaluation purposes only.
         """
-        m = re.match(OID_RE, self._id)
+        m = re.match(OID_RE, self.oid)
         if m is None:
             return NEGATIVE_CLASS
         return ClassName(sys.intern(m.group("gt")))
@@ -105,7 +105,7 @@ class ObjectId:
         Not convinced that anyone, aside from the retrievers, should really
         know or have access to this information to begin with.
         """
-        m = re.match(OID_RE, self._id)
+        m = re.match(OID_RE, self.oid)
         if m is None:
             return None
 
@@ -159,7 +159,7 @@ class ExampleObjectId(ObjectId):
         This assumes our object ids are `example:path/in/data_dir/object.ext`
         """
         data_root = unwrap_or(data_root, self.DATA_DIR)
-        return data_root.joinpath(self._id[8:]).resolve()
+        return data_root.joinpath(self.oid[8:]).resolve()
 
 
 if __name__ == "__main__":

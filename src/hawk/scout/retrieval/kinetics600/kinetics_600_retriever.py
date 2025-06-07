@@ -29,14 +29,14 @@ class K600_ObjectId(ObjectId):
     @classmethod
     def from_oid(cls, object_id: ObjectId) -> K600_ObjectId:
         try:
-            int(object_id._id)
+            int(object_id.oid)
         except ValueError:
             assert "ObjectId does not contain a valid index"
-        return cls(object_id._id)
+        return cls(object_id.oid)
 
     @property
     def index(self) -> int:
-        return int(self._id)
+        return int(self.oid)
 
 
 class K600Retriever(RetrieverIfc):
