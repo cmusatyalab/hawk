@@ -224,6 +224,7 @@ class LabelSample:
     model_version: int = -1  # version of the model used to generate the sample
     queued: float = field(default_factory=time.time)
     detections: list[Detection] = field(default_factory=list)
+    groundtruth: list[Detection] = field(default_factory=list)
     novel_sample: bool = False
     line: InitVar[int] = -1  # used to track line number in jsonl file
     image_name: InitVar[Path | None] = None  # must be defined for new examples
@@ -245,7 +246,8 @@ class LabelSample:
         detections = [
             Detection.from_dict(detection) for detection in obj.pop("detections", [])
         ]
-        return cls(line=line, detections=detections, **obj)
+        groundtruth = [Detection.from_dict(gt) for gt in obj.pop("groundtruth", [])]
+        return cls(line=line, detections=detections, groundtruth=groundtruth, **obj)
 
     def replace(self, detections: list[Detection]) -> LabelSample:
         return dataclasses.replace(self, detections=detections, line=self.index)
@@ -268,6 +270,9 @@ class LabelSample:
                 queued=self.queued,
                 detections=[
                     detection.to_dict(class_list) for detection in self.detections
+                ],
+                groundtruth=[
+                    groundtruth.to_dict(class_list) for groundtruth in self.groundtruth
                 ],
                 **kwargs,
             )
