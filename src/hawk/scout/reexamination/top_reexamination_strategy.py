@@ -47,14 +47,14 @@ class TopReexaminationStrategy(ReexaminationStrategy):
         if not len(to_reexamine):
             return old_queues, 0
 
-        reexamine = [result.object_id for _, _, result in to_reexamine]
+        reexamine = [result.id for _, _, result in to_reexamine]
 
         results = model.infer(reexamine)
         for result, prev_result in zip(results, to_reexamine):
             time_result = time.time() - start_time
             prev_score = prev_result[0]
             logger.info(
-                f"Reexamine score id: {result.object_id} "
+                f"Reexamine score id: {result.id} "
                 f"prev_score {prev_score} curr_score {result.score}"
             )
             new_queue.put((-score, time_result, result))

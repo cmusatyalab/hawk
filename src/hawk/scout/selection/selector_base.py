@@ -249,7 +249,7 @@ class SelectorBase(Selector):
                         vector: torch.Tensor = torch.load(
                             io.BytesIO(result.feature_vector)
                         )
-                        fv_path = result.object_id.file_name(temp_dir, ".pt")
+                        fv_path = result.id.file_name(temp_dir, ".pt")
                         torch.save(vector, fv_path)
                         # logger.info(f"Wrote feature vector temp: {fv_path}")
 

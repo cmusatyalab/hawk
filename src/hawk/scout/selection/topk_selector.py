@@ -68,12 +68,12 @@ class TopKSelector(SelectorBase):
             result = self._priority_queues.get()[-1]
             self.priority_queue_length.dec()
             self._mission.log(
-                f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.object_id}"
+                f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}"
             )
             if self._mode != "oracle":
                 self.result_queue_length.inc()
                 self.result_queue.put(result)
-                logger.info(f"[Result] Id {result.object_id} Score {result.score}")
+                logger.info(f"[Result] Id {result.id} Score {result.score}")
         self._batch_added -= self._batch_size
 
     @log_exceptions
@@ -82,18 +82,18 @@ class TopKSelector(SelectorBase):
         with self._insert_lock:
             time_result = self._mission.mission_time()
             self._mission.log(
-                f"{self.version} CLASSIFICATION: {result.object_id} "
+                f"{self.version} CLASSIFICATION: {result.id} "
                 f"GT {result.gt} Score {result.score:.4f}"
             )
 
             # Incrementing positives in stream
             if result.gt != NEGATIVE_CLASS:
-                logger.info(f"Queueing {result.object_id} Score {result.score}")
+                logger.info(f"Queueing {result.id} Score {result.score}")
 
             if self._mode == "oracle" and int(result.score) == 1:
                 self.result_queue_length.inc()
                 self.result_queue.put(result)
-                logger.info(f"[Result] Id {result.object_id} Score {result.score}")
+                logger.info(f"[Result] Id {result.id} Score {result.score}")
 
             self.priority_queue_length.inc()
             ## need adjustment here to account for different simple methods for
@@ -145,7 +145,7 @@ class TopKSelector(SelectorBase):
         self.num_negatives_added += len(auto_negative_list)
 
         for result in auto_negative_list:
-            example_obj = self._mission.retriever.get_ml_data(result.object_id)
+            example_obj = self._mission.retriever.get_ml_data(result.id)
             if example_obj is None:
                 continue
 

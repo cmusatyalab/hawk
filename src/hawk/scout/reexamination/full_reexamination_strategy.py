@@ -38,7 +38,7 @@ class FullReexaminationStrategy(ReexaminationStrategy):
         except queue.Empty:
             pass
 
-        reexamine = [result.object_id for _, _, result in to_reexamine]
+        reexamine = [result.id for _, _, result in to_reexamine]
 
         results = model.infer(reexamine)
 
@@ -46,7 +46,7 @@ class FullReexaminationStrategy(ReexaminationStrategy):
             time_result = time.time() - start_time
             prev_score = prev_result[0]
             logger.info(
-                f"Reexamine score id: {result.object_id} "
+                f"Reexamine score id: {result.id} "
                 f"prev_score{prev_score} curr_score {result.score}"
             )
             new_queue.put((-score, time_result, result))

@@ -82,19 +82,19 @@ class TokenSelector(TopKSelector):
 
             time_result = self._mission.mission_time()
             self._mission.log(
-                f"{self.version} CLASSIFICATION: {result.object_id} "
+                f"{self.version} CLASSIFICATION: {result.id} "
                 f"GT {result.gt} Score {result.score:.4f}"
             )
 
             # Queueing positives in stream
             if result.gt != NEGATIVE_CLASS:
-                logger.info(f"Queueing {result.object_id} Score {result.score}")
+                logger.info(f"Queueing {result.id} Score {result.score}")
 
             self.priority_queue_length.inc()
             self._priority_queues.put((-result.score, time_result, result))
 
             if self._mode == "oracle" and int(result.score) == 1:
-                logger.info(f"[Result] Id {result.object_id} Score {result.score}")
+                logger.info(f"[Result] Id {result.id} Score {result.score}")
 
             if self.sample_count % 200 == 0:
                 logger.info(f"Total Placed into priority queue: {self.sample_count}")

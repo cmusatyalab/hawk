@@ -44,7 +44,7 @@ class ResultProvider:
         model_version: int | None = None,
         feature_vector: bytes | None = None,
     ):
-        self.object_id = object_id
+        self.id = object_id
         self.score = score
         self.bboxes = bboxes
         self.model_version = model_version
@@ -55,11 +55,11 @@ class ResultProvider:
     def to_protobuf(
         self, retriever: Retriever, scout_index: int, *, novel_sample: bool = False
     ) -> SendTile:
-        oracle_data = retriever.get_oracle_data(self.object_id)
-        groundtruth = retriever.get_groundtruth(self.object_id)
+        oracle_data = retriever.get_oracle_data(self.id)
+        groundtruth = retriever.get_groundtruth(self.id)
 
         return SendTile(
-            _objectId=self.object_id.serialize_oid(),
+            _objectId=self.id.serialize_oid(),
             scoutIndex=scout_index,
             version=self.model_version,
             feature_vector=self.feature_vector,
