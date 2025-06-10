@@ -227,16 +227,17 @@ message SendTile {
   int32 scoutIndex = 2;
   int32 version = 3;
   repeated _HawkObject oracle_data = 4;
-  repeated BoundingBox boundingBoxes = 5;
-  bytes feature_vector = 6;
-  bool novel_sample = 7;
+  repeated _BoundingBox inferenced = 5;
+  repeated _BoundingBox groundtruth = 6;
+  bytes feature_vector = 7;
+  bool novel_sample = 8;
 }
 
 // send labels for an object back from home to scout
 message SendLabel {
   string _objectId = 1;
   int32 scoutIndex = 2;
-  repeated BoundingBox boundingBoxes = 3;
+  repeated _BoundingBox boundingBoxes = 3;
 }
 
 // propagate (positive) labels and other associated data to other scouts
@@ -244,7 +245,7 @@ message LabeledTile {
   string _objectId = 1;
   _HawkObject obj = 2;
   _HawkObject feature_vector = 3;
-  repeated BoundingBox boundingBoxes = 4;
+  repeated _BoundingBox boundingBoxes = 4;
 }
 
 // classification and confidence score for a region of the image
@@ -253,7 +254,7 @@ message LabeledTile {
 // The whole image would be represented as [x=0.5, y=0.5, w=1.0, h=1.0].
 // Classification only describes the whole image, detection may have one or
 // more smaller regions. A negative sample has no associated bounding boxes.
-message BoundingBox {
+message _BoundingBox {
   float x = 1;
   float y = 2;
   float w = 3;

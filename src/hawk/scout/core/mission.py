@@ -17,15 +17,13 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
-from ...classes import ClassCounter, ClassName, class_name_to_str
+from ...classes import ClassCounter, ClassName
 from ...proto.messages_pb2 import (
-    BoundingBox,
     DatasetSplit,
     LabeledTile,
     MissionId,
     ModelArchive,
     SendLabel,
-    SendTile,
     TestResults,
 )
 from ...rusty import map_or
@@ -554,34 +552,12 @@ class Mission(DataManagerContext, ModelContext):
     def _get_results(self, pipe: _ConnectionBase) -> None:
         try:
             while True:  # not self._abort_event.is_set():
-                ## if  in scml idle mode, time.sleep(10), and continue
+                ## if in scml idle mode, time.sleep(10), and continue
                 result = self.selector.get_result()
                 if result is None:
                     break
 
-                bboxes = [
-                    BoundingBox(
-                        x=bbox.get("x", 0.5),
-                        y=bbox.get("y", 0.5),
-                        w=bbox.get("w", 1.0),
-                        h=bbox.get("h", 1.0),
-                        class_name=class_name_to_str(bbox["class_name"]),
-                        confidence=bbox["confidence"],
-                    )
-                    for bbox in result.bboxes
-                ]
-
-                oracle_data = self.retriever.get_oracle_data(result.object_id)
-
-                tile = SendTile(
-                    _objectId=result.object_id.serialize_oid(),
-                    scoutIndex=self._scout_index,
-                    version=result.model_version,
-                    feature_vector=result.feature_vector,
-                    oracle_data=[obj.to_protobuf() for obj in oracle_data],
-                    boundingBoxes=bboxes,
-                    novel_sample=False,
-                )
+                tile = result.to_protobuf(self.retriever, self.scout_index)
                 pipe.send(tile.SerializeToString())
         except Exception as e:
             logger.error(e)

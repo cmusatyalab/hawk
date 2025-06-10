@@ -20,7 +20,7 @@ from ..classes import class_name_to_str
 from ..hawkobject import HawkObject
 from ..objectid import ObjectId
 from ..ports import H2C_PORT, S2H_PORT
-from ..proto.messages_pb2 import BoundingBox, SendLabel, SendTile
+from ..proto.messages_pb2 import SendLabel, SendTile, _BoundingBox
 from .label_utils import Detection, LabelSample
 from .stats import (
     HAWK_LABELED_QUEUE_LENGTH,
@@ -62,7 +62,16 @@ class UnlabeledResult(LabelSample):
                 Detection.from_boundingbox(
                     bbox.x, bbox.y, bbox.w, bbox.h, bbox.class_name, bbox.confidence
                 )
-                for bbox in request.boundingBoxes
+                for bbox in request.inferenced
+                if bbox.confidence and bbox.class_name not in ["", "neg", "negative"]
+            )
+        )
+        groundtruth = list(
+            Detection.merge_detections(
+                Detection.from_boundingbox(
+                    bbox.x, bbox.y, bbox.w, bbox.h, bbox.class_name, bbox.confidence
+                )
+                for bbox in request.groundtruth
                 if bbox.confidence and bbox.class_name not in ["", "neg", "negative"]
             )
         )
@@ -76,6 +85,7 @@ class UnlabeledResult(LabelSample):
             model_version=request.version,
             score=score,
             detections=detections,
+            groundtruth=groundtruth,
             novel_sample=request.novel_sample,
         )
 
@@ -130,7 +140,7 @@ class HomeToScoutWorker:
     def put(self, result: LabelSample) -> None:
         """Queue a label from any thread which will be sent to the scout."""
         bboxes = [
-            BoundingBox(
+            _BoundingBox(
                 x=bbox.x,
                 y=bbox.y,
                 w=bbox.w,
