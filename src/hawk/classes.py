@@ -9,6 +9,7 @@ from __future__ import annotations
 import sys
 from collections import Counter
 from dataclasses import InitVar, dataclass, field
+from pathlib import Path
 from threading import Lock
 from typing import TYPE_CHECKING, Iterable, Iterator, NewType, Sequence
 
@@ -143,3 +144,39 @@ class ClassCounter:
 
     def copy(self) -> ClassCounter:
         return ClassCounter(class_list=self.class_list, counter=self.counter.copy())
+
+
+@dataclass
+class LabelRemap:
+    """Class used to remap class labels or names to (different) class names.
+    takes as input a file containing lines like,
+
+        <old-class-or-label> <class-name>
+
+    or a previously loaded dict with integers or strings as keys and the new
+    class names as values.
+    If the old classname or label is not found in the map, the class name
+    is returned unchanged.
+    If default_to_negative is set to True, the default is to return "negative".
+    """
+
+    map: dict[str, str] = field(default_factory=dict)
+    default_to_negative: bool = False
+
+    @classmethod
+    def from_config(cls, label_map: str | dict[int | str, str]) -> LabelRemap:
+        if isinstance(label_map, str):
+            with Path(label_map).open() as f:
+                remap: dict[str, str] = dict(line.strip().split(None, 1) for line in f)
+        else:
+            remap = {str(k): v for k, v in label_map.items()}
+
+        return cls(remap)
+
+    def __getitem__(self, label: str) -> ClassName:
+        return ClassName(
+            self.map.get(label, "negative" if self.default_to_negative else label)
+        )
+
+    def is_empty(self) -> bool:
+        return not self.map
