@@ -6,23 +6,20 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any, Iterator
 
+from ...objectid import ObjectId
+from ..core.result_provider import BoundingBox
+
 
 class RetrieverIfc:
 
     @abstractmethod
-    def get_ml_ready_data(
-        self, object_ids: list[str | int] | str | int
-    ) -> list[tuple[Any, str | int]] | tuple[Any, str | int]: ...
+    def object_ids_stream(self) -> Iterator[ObjectId]: ...
 
     @abstractmethod
-    def get_oracle_ready_data(
-        self, object_ids: list[str | int] | str | int
-    ) -> list[tuple[Any, str | int]] | tuple[Any, str | int]: ...
+    def get_ml_ready_data(self, object_id: ObjectId) -> tuple[Any, str]: ...
 
     @abstractmethod
-    def object_ids_stream(self) -> Iterator[str | int]: ...  ## Generator
+    def get_oracle_ready_data(self, object_id: ObjectId) -> list[tuple[Any, str]]: ...
 
     @abstractmethod
-    def get_ground_truth(
-        self, object_ids: list[str | int] | str | int
-    ) -> list[tuple[int, str | int]] | tuple[int, str | int]: ...
+    def get_ground_truth(self, object_id: ObjectId) -> list[BoundingBox]: ...

@@ -19,13 +19,13 @@ class BackboneEncoder(nn.Module):
         pass
 
     @property
-    def embed_dim(self):
+    def embed_dim(self) -> int:
         return self._embed_dim
 
     @embed_dim.setter
-    def embed_dim(self, embed_dim):
+    def embed_dim(self, embed_dim: int) -> None:
         self._set_embed_dim(embed_dim)
         self._embed_dim = embed_dim
 
-    def _set_embed_dim(self, embed_dim: int):
+    def _set_embed_dim(self, embed_dim: int) -> None:
         pass

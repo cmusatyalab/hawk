@@ -67,5 +67,5 @@ class MovinetEncoder(BackboneEncoder):
         self._encoder.clean_activation_buffers()
         return Z
 
-    def _set_embed_dim(self, dim: int):
+    def _set_embed_dim(self, dim: int) -> None:
         self._encoder.classifier = nn.Linear(480, dim)

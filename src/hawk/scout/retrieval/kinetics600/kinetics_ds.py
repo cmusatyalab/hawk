@@ -60,7 +60,7 @@ class KineticsDs(Kinetics):
 
         video_idx, clip_idx = self.video_clips.get_clip_location(idx)
         # video_path = self.video_clips.video_paths[video_idx]
-        label = self.samples[video_idx][1]
+        label: int = self.samples[video_idx][1]
         if self.label_transform is not None:
             label = self.label_transform(label)
         return label

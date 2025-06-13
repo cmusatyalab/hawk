@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import torch
 from torch import Tensor, nn
@@ -58,7 +58,7 @@ class ActionRecognitionModel(nn.Module):
         assert Z.shape == (B, n_clips, self.T, self.embed_dim)
         return logits, Z
 
-    def save(self, model_path: str, num_samples: int):
+    def save(self, model_path: str, num_samples: int) -> None:
         snapshot = {
             "model_state": self.state_dict(),
             "num_samples": num_samples,
@@ -79,7 +79,7 @@ class ActionRecognitionModel(nn.Module):
 
         model_path_without_extension, extension = os.path.splitext(model_path)
         if extension == ".pt":
-            snapshot: dict = torch.load(
+            snapshot: dict[str, Any] = torch.load(
                 model_path, map_location="cpu", pickle_module=patch
             )
             transformer_params = snapshot["transformer_params"]
