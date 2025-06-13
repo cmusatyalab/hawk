@@ -1,10 +1,23 @@
+# SPDX-FileCopyrightText: 2025 Carnegie Mellon University
+# SPDX-License-Identifier: GPL-2.0-only
+
+from __future__ import annotations
+
 import torch
-from torch import nn
 from einops import rearrange
+from torch import nn
 
 
 class TransformerParams:
-    def __init__(self, embed_dim: int, depth: int, num_heads: int, mlp_dim: int, num_classes: int, head_dim: int):
+    def __init__(
+        self,
+        embed_dim: int,
+        depth: int,
+        num_heads: int,
+        mlp_dim: int,
+        num_classes: int,
+        head_dim: int,
+    ):
         assert embed_dim % num_heads == 0
         assert embed_dim / num_heads == head_dim
         self.head_dim: int = head_dim
@@ -15,20 +28,22 @@ class TransformerParams:
         self.num_classes: int = num_classes
 
     def __str__(self):
-        return f'TransformerParams = {self.__dict__}'
+        return f"TransformerParams = {self.__dict__}"
 
 
 def posemb_sincos_1d(tokens, temperature=10000):
-    _, N, dim, device, dtype = *tokens.shape, tokens.device, tokens.dtype
+    _, N, dim = tokens.shape
+    device, dtype = tokens.device, tokens.dtype
 
     N = torch.arange(N, device=device)
-    assert (dim % 2) == 0, 'feature dimension must be multiple of 2 for sincos emb'
+    assert (dim % 2) == 0, "feature dimension must be multiple of 2 for sincos emb"
     omega = torch.arange(dim // 2, device=device) / (dim // 2 - 1)
-    omega = 1. / (temperature ** omega)
+    omega = 1.0 / (temperature**omega)
 
     N = N.flatten()[:, None] * omega[None, :]
     pe = torch.cat((N.sin(), N.cos()), dim=1)
     return pe.type(dtype)
+
 
 class FeedForward(nn.Module):
     def __init__(self, dim, hidden_dim):
@@ -49,7 +64,7 @@ class Attention(nn.Module):
         super().__init__()
         inner_dim = dim_head * heads
         self.heads = heads
-        self.scale = dim_head ** -0.5
+        self.scale = dim_head**-0.5
         self.norm = nn.LayerNorm(dim)
 
         self.attend = nn.Softmax(dim=-1)
@@ -61,14 +76,14 @@ class Attention(nn.Module):
         x = self.norm(x)
 
         qkv = self.to_qkv(x).chunk(3, dim=-1)
-        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h=self.heads), qkv)
+        q, k, v = map(lambda t: rearrange(t, "b n (h d) -> b h n d", h=self.heads), qkv)
 
         dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
 
         attn = self.attend(dots)
 
         out = torch.matmul(attn, v)
-        out = rearrange(out, 'b h n d -> b n (h d)')
+        out = rearrange(out, "b h n d -> b n (h d)")
         return self.to_out(out)
 
 
@@ -78,10 +93,14 @@ class Transformer(nn.Module):
         self.norm = nn.LayerNorm(dim)
         self.layers = nn.ModuleList([])
         for _ in range(depth):
-            self.layers.append(nn.ModuleList([
-                Attention(dim, heads=heads, dim_head=dim_head),
-                FeedForward(dim, mlp_dim)
-            ]))
+            self.layers.append(
+                nn.ModuleList(
+                    [
+                        Attention(dim, heads=heads, dim_head=dim_head),
+                        FeedForward(dim, mlp_dim),
+                    ]
+                )
+            )
 
     def forward(self, x):
         for attn, ff in self.layers:

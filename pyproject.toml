@@ -60,6 +60,10 @@ tensorboard = { version = "^2.1.1", optional = true }
 torch = { version = "^2.2", optional = true, source = "torch-cu11" }
 torchvision = { version = "^0.17", optional = true, source = "torch-cu11" }
 
+# for activity recognition
+av = { version = "12.0.0", optional = true }
+einops = { version = "^0.8.0", optional = true }
+movinet-pytorch = { git = "https://github.com/Atze00/MoViNet-pytorch.git", branch = "main", optional = true } # <-- Changed to "movinet-pytorch"
 
 [[tool.poetry.source]]
 name = "torch-cu11"
@@ -87,6 +91,12 @@ scout = [
     "torch",
     "torchvision",
 ]
+# under development, to be added to scout
+activity = [
+    "av",
+    "einops",
+    "movinet-pytorch",
+]
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
@@ -106,9 +116,6 @@ types-protobuf = ">=4.24.0.2"
 types-pyyaml = "^6.0.12.10"
 types-requests = "^2.31.0.6"
 types-tqdm = "^4.66.0.2"
-av = "12.0.0"
-einops = "^0.8.0"
-movinet-pytorch = { git = "https://github.com/Atze00/MoViNet-pytorch.git", branch = "main" } # <-- Changed to "movinet-pytorch"
 
 [tool.poetry.scripts]
 hawk_deploy = "hawk.deploy.__main__:main"
@@ -138,7 +145,7 @@ skip_glob = [
 [tool.mypy]
 strict = true
 files = ["src"]
-exclude = "^src/hawk/scout/trainer/(few_shot/|yolo.*/|yolov5.*/)"
+exclude = "^src/hawk/scout/trainer/(few_shot/|k600_classifier/|yolo.*/|yolov5.*/)"
 plugins = ["numpy.typing.mypy_plugin"]
 
 [[tool.mypy.overrides]]

@@ -1,27 +1,30 @@
+# SPDX-FileCopyrightText: 2025 Carnegie Mellon University
+# SPDX-License-Identifier: GPL-2.0-only
+
+from __future__ import annotations
+
+from typing import Any
+
 import torch.nn.functional as F
 from movinets import MoViNet
 from movinets.config import _C
-from torch import nn, Tensor
+from torch import Tensor, nn
 
-from backbone_encoder import BackboneEncoder
+from .backbone_encoder import BackboneEncoder
 
 
 class MoViNet_(MoViNet):
-    def __init__(self,
-                 embed_dim: int,
-                 cfg: "CfgNode",
-                 causal: bool = True,
-                 pretrained: bool = False,
-                 num_classes: int = 600,
-                 conv_type: str = "3d",
-                 tf_like: bool = False
-                 ) -> None:
-        super().__init__(cfg,
-                         causal,
-                         pretrained,
-                         num_classes,
-                         conv_type,
-                         tf_like)
+    def __init__(
+        self,
+        embed_dim: int,
+        cfg: Any,
+        causal: bool = True,
+        pretrained: bool = False,
+        num_classes: int = 600,
+        conv_type: str = "3d",
+        tf_like: bool = False,
+    ) -> None:
+        super().__init__(cfg, causal, pretrained, num_classes, conv_type, tf_like)
         self.embed_dim = embed_dim
         self.classifier = nn.Linear(480, embed_dim)
 
@@ -48,7 +51,9 @@ class MovinetEncoder(BackboneEncoder):
 
     def __init__(self, embed_dim: int):
         super().__init__(embed_dim=embed_dim)
-        self._encoder = MoViNet_(embed_dim=embed_dim, cfg=_C.MODEL.MoViNetA0, causal=True, pretrained=True)
+        self._encoder = MoViNet_(
+            embed_dim=embed_dim, cfg=_C.MODEL.MoViNetA0, causal=True, pretrained=True
+        )
 
     def forward(self, X: Tensor) -> Tensor:
         """
