@@ -18,7 +18,6 @@ packages = [
 python = "^3.8"
 cattrs = ">=23.1.0"
 logzero = "^1.5.0"
-matplotlib = "^3.6"
 numpy = [
     { version = "^1.24.4", python = "<3.9" },
     { version = "^1.26.4", python = "^3.9" },
@@ -43,6 +42,7 @@ streamlit-label-kit = {version = "^0.1.2", optional = true, python = "!=3.9.7"}
 # scout
 albumentations = { version = "^1.3.1", optional = true }
 lovely-tensors = { version = "^0.1.15", optional = true }
+matplotlib = { version = "^3.6", optional = true }
 multiprocessing-logging = { version = "^0.2.6", optional = true }
 opencv-python-headless = { version = "^4.7.0.72", optional = true }
 scikit-image = { version = ">=0.21", optional = true }
@@ -60,6 +60,10 @@ tensorboard = { version = "^2.1.1", optional = true }
 torch = { version = "^2.2", optional = true, source = "torch-cu11" }
 torchvision = { version = "^0.17", optional = true, source = "torch-cu11" }
 
+# for activity recognition
+av = { version = "12.0.0", optional = true }
+einops = { version = "^0.8.0", optional = true }
+movinet-pytorch = { git = "https://github.com/Atze00/MoViNet-pytorch.git", branch = "main", optional = true } # <-- Changed to "movinet-pytorch"
 
 [[tool.poetry.source]]
 name = "torch-cu11"
@@ -79,6 +83,7 @@ home = [
 scout = [
     "albumentations",
     "lovely-tensors",
+    "matplotlib",
     "multiprocessing-logging",
     "opencv-python-headless",
     "scikit-image",
@@ -86,6 +91,12 @@ scout = [
     "tensorboard",
     "torch",
     "torchvision",
+]
+# under development, to be added to scout
+activity = [
+    "av",
+    "einops",
+    "movinet-pytorch",
 ]
 
 [tool.poetry.group.dev.dependencies]
@@ -106,9 +117,6 @@ types-protobuf = ">=4.24.0.2"
 types-pyyaml = "^6.0.12.10"
 types-requests = "^2.31.0.6"
 types-tqdm = "^4.66.0.2"
-av = "12.0.0"
-einops = "^0.8.0"
-movinet-pytorch = { git = "https://github.com/Atze00/MoViNet-pytorch.git", branch = "main" } # <-- Changed to "movinet-pytorch"
 
 [tool.poetry.scripts]
 hawk_deploy = "hawk.deploy.__main__:main"
@@ -150,7 +158,6 @@ module = [
     "logzero.*",
     "matplotlib.*",
     "multiprocessing_logging.*",
-    "skimage.*",
     "sklearn.*",
     "streamlit_label_kit",
     "websockets.*",

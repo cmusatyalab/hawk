@@ -1,10 +1,15 @@
-from torch import nn, Tensor
+# SPDX-FileCopyrightText: 2025 Carnegie Mellon University
+# SPDX-License-Identifier: GPL-2.0-only
+
+from __future__ import annotations
+
+from torch import Tensor, nn
 
 
 class BackboneEncoder(nn.Module):
 
     def __init__(self, embed_dim: int):
-        super(BackboneEncoder, self).__init__()
+        super().__init__()
         self._embed_dim: int = embed_dim
 
     def forward(self, X: Tensor) -> Tensor:
@@ -14,13 +19,13 @@ class BackboneEncoder(nn.Module):
         pass
 
     @property
-    def embed_dim(self):
+    def embed_dim(self) -> int:
         return self._embed_dim
 
     @embed_dim.setter
-    def embed_dim(self, embed_dim):
+    def embed_dim(self, embed_dim: int) -> None:
         self._set_embed_dim(embed_dim)
         self._embed_dim = embed_dim
 
-    def _set_embed_dim(self, embed_dim: int):
+    def _set_embed_dim(self, embed_dim: int) -> None:
         pass

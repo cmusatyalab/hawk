@@ -17,17 +17,16 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
-from ...classes import ClassCounter, ClassName, class_name_to_str
+from ...classes import ClassCounter, ClassName
 from ...proto.messages_pb2 import (
-    BoundingBox,
     DatasetSplit,
     LabeledTile,
     MissionId,
     ModelArchive,
     SendLabel,
-    SendTile,
     TestResults,
 )
+from ...rusty import map_or
 from ..api.h2c_api import H2CSubscriber
 from ..api.s2h_api import S2HPublisher
 from ..api.s2s_api import S2SServicer, s2s_receive_request
@@ -81,7 +80,7 @@ class Mission(DataManagerContext, ModelContext):
         novel_class_discovery: bool = False,
         sub_class_discovery: bool = False,
     ):
-        super().__init__()
+        super().__init__(retriever=retriever)
 
         self.start_time = time.time()
 
@@ -239,6 +238,7 @@ class Mission(DataManagerContext, ModelContext):
             novel_cluster_process = mp.Process(
                 target=novel_class_discover.main,
                 args=(
+                    self.retriever,
                     self.clustering_input_queue,
                     self.labels_queue,
                     s2h_input,
@@ -265,9 +265,8 @@ class Mission(DataManagerContext, ModelContext):
         self._mission_training_bootstrap.set(0)
 
     def check_initial_model(self) -> bool:
-        if self.initial_model is None:
-            return False
-        return len(self.initial_model.content) != 0
+        """Check if the initial model is available."""
+        return map_or(self.initial_model, False, lambda x: len(x.content) != 0)
 
     def store_labeled_tile(self, tile: LabeledTile, net: bool = False) -> None:
         self._data_manager.store_labeled_tile(tile, net)
@@ -471,7 +470,13 @@ class Mission(DataManagerContext, ModelContext):
         logger.info(f"Starting evaluation with model version {starting_version}")
 
         while not self._abort_event.is_set():
-            retriever_object = self.retriever.get_objects()
+            # we should do better, but it requires untangling the various
+            # queues and moving get_ml_batch into the inference loop.
+            # for now do a blocking get for the next object.
+            object_id = self.retriever.get_objectid()
+            if object_id is None:
+                break
+
             with self._model_lock:
                 if self._model is not None and self._model.version != starting_version:
                     logger.info(
@@ -479,7 +484,7 @@ class Mission(DataManagerContext, ModelContext):
                         f"(new version {self._model.version} available)"
                     )
                     ## make sure to put this back in retriever put object
-                    self.retriever.put_objects(retriever_object, dup=True)
+                    self.retriever.put_objectid(object_id, dup=True)
                     logger.info(
                         "\n\nATTENTION --- PUTTING OBJECT BACK  IN RETRIEVER QUEUE\n\n"
                     )
@@ -491,7 +496,7 @@ class Mission(DataManagerContext, ModelContext):
                 # get_objects() outside the lock above.
 
                 # put single retriever object into model inference request queue
-                model.add_requests(retriever_object)
+                model.add_requests(object_id)
 
                 if isinstance(self._retrain_policy, SampleIntervalPolicy):
                     self._retrain_policy.interval_samples_retrieved += 1
@@ -547,32 +552,12 @@ class Mission(DataManagerContext, ModelContext):
     def _get_results(self, pipe: _ConnectionBase) -> None:
         try:
             while True:  # not self._abort_event.is_set():
-                ## if  in scml idle mode, time.sleep(10), and continue
+                ## if in scml idle mode, time.sleep(10), and continue
                 result = self.selector.get_result()
                 if result is None:
                     break
 
-                bboxes = [
-                    BoundingBox(
-                        x=bbox.get("x", 0.5),
-                        y=bbox.get("y", 0.5),
-                        w=bbox.get("w", 1.0),
-                        h=bbox.get("h", 1.0),
-                        class_name=class_name_to_str(bbox["class_name"]),
-                        confidence=bbox["confidence"],
-                    )
-                    for bbox in result.bboxes
-                ]
-
-                tile = SendTile(
-                    _objectId=result.id.serialize_oid(),
-                    scoutIndex=self._scout_index,
-                    version=result.model_version,
-                    feature_vector=result.feature_vector,
-                    attributes=result.attributes.get(),
-                    boundingBoxes=bboxes,
-                    novel_sample=False,
-                )
+                tile = result.to_protobuf(self.retriever, self.scout_index)
                 pipe.send(tile.SerializeToString())
         except Exception as e:
             logger.error(e)

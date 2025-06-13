@@ -9,7 +9,18 @@ import os
 import queue
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    cast,
+)
 
 import numpy.typing as npt
 import torch
@@ -24,9 +35,12 @@ from ....classes import ClassLabel
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
-from ...core.object_provider import ObjectProvider
 from ...core.result_provider import BoundingBox, ResultProvider
 from ...core.utils import log_exceptions
+
+if TYPE_CHECKING:
+    from ....hawkobject import HawkObject
+    from ....objectid import ObjectId
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -81,18 +95,14 @@ class YOLOModel(ModelBase):
     def version(self) -> int:
         return self._version
 
-    def preprocess(
-        self, request: ObjectProvider
-    ) -> Tuple[ObjectProvider, torch.Tensor]:
-        try:
-            image = Image.open(io.BytesIO(request.content))
+    def preprocess(self, obj: HawkObject) -> torch.Tensor:
+        assert obj.media_type.startswith("image/")
 
-            if image.mode != "RGB":
-                image = image.convert("RGB")
-        except Exception as e:
-            raise (e)
+        image = Image.open(io.BytesIO(obj.content))
+        if image.mode != "RGB":
+            image = image.convert("RGB")
 
-        return request, self._test_transforms(image)
+        return self._test_transforms(image)
 
     def serialize(self) -> bytes:
         if self._model is None:
@@ -154,15 +164,17 @@ class YOLOModel(ModelBase):
             requests = []
             next_infer = time.time() + timeout
 
-    def infer(self, requests: Sequence[ObjectProvider]) -> Iterable[ResultProvider]:
+    def infer(self, requests: Sequence[ObjectId]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:
             return []
 
         output = []
         for i in range(0, len(requests), self._batch_size):
             batch = []
-            for request in requests[i : i + self._batch_size]:
-                batch.append(self.preprocess(request))
+            for object_id in requests[i : i + self._batch_size]:
+                obj = self.context.retriever.get_ml_data(object_id)
+                assert obj is not None
+                batch.append((object_id, self.preprocess(obj)))
             results = self._process_batch(batch)
             for result in results:
                 output.append(result)
@@ -204,7 +216,7 @@ class YOLOModel(ModelBase):
         return self.infer_dir(test_path, calculate_performance)
 
     def _process_batch(
-        self, batch: Sequence[Tuple[ObjectProvider, torch.Tensor]]
+        self, batch: Sequence[Tuple[ObjectId, torch.Tensor]]
     ) -> Iterable[ResultProvider]:
         if self._model is None:
             if len(batch) > 0:

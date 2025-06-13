@@ -32,14 +32,14 @@ class ObjectId:
     and to create unique on-disk file names,
     """
 
-    _id: str
+    oid: str
 
     @cached_property
     def shortid(self) -> uuid.UUID:
         """Return (cached) UUID representing the ObjectId's value."""
         # we likely use this often enough to always compute it in __post_init__
         # but a cached property makes initialization and inheritence easier.
-        return uuid.uuid5(HAWK_OBJECTID_NAMESPACE, self._id)
+        return uuid.uuid5(HAWK_OBJECTID_NAMESPACE, self.oid)
 
     def __eq__(self, other: object) -> bool:
         """Compare against UUID (shortid) or other ObjectId objects."""
@@ -52,9 +52,7 @@ class ObjectId:
         return self.shortid.__hash__()
 
     def __repr__(self) -> str:
-        return f"ObjectId('{self._id}')"
-
-    # __str__ = None
+        return f"ObjectId('{self.oid}')"
 
     def serialize_oid(self) -> str:
         """Get the objectid value so we can store it or send across a network.
@@ -62,7 +60,7 @@ class ObjectId:
         Using this as the accessor should make it easy to find all places we do
         something special with the ObjectId (git grep serialize_oid).
         """
-        return self._id
+        return self.oid
 
     # compat functions
     def file_name(
@@ -82,14 +80,13 @@ class ObjectId:
         compatibility, but OTOH it only works properly for a subset of
         retrievers (f.i. it breaks for video_retriever).
 
-        Also this information should be stored in the attributes of the object
-        and not in the objectid itself, so extracing this information should be
-        a retriever specific function.
+        Also this information should not be encoded in the objectid itself,
+        extracing this information should be a retriever specific function.
 
-        Also we should avoid referencing the ground truth data and make sure it
+        We must always avoid referencing the ground truth data and make sure it
         is only used for debugging and mission evaluation purposes only.
         """
-        m = re.match(OID_RE, self._id)
+        m = re.match(OID_RE, self.oid)
         if m is None:
             return NEGATIVE_CLASS
         return ClassName(sys.intern(m.group("gt")))
@@ -105,7 +102,7 @@ class ObjectId:
         Not convinced that anyone, aside from the retrievers, should really
         know or have access to this information to begin with.
         """
-        m = re.match(OID_RE, self._id)
+        m = re.match(OID_RE, self.oid)
         if m is None:
             return None
 
@@ -159,4 +156,28 @@ class ExampleObjectId(ObjectId):
         This assumes our object ids are `example:path/in/data_dir/object.ext`
         """
         data_root = unwrap_or(data_root, self.DATA_DIR)
-        return data_root.joinpath(self._id[8:]).resolve()
+        return data_root.joinpath(self.oid[8:]).resolve()
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Convert Hawk object-id to short-id to locate related resources"
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Display both short-id and object-id",
+    )
+    parser.add_argument("oid", type=ObjectId, nargs="*", help="Object ID to parse")
+    args = parser.parse_args()
+
+    oids = [ObjectId(line.strip()) for line in sys.stdin] if not args.oid else args.oid
+
+    for oid in oids:
+        if args.verbose:
+            print(oid.shortid, oid.serialize_oid())
+        else:
+            print(oid.shortid)

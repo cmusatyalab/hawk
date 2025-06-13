@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 from logzero import logger
 
 from ..core.model import Model
-from ..core.object_provider import ObjectProvider
 from .reexamination_strategy import ReexaminationStrategy
 
 if TYPE_CHECKING:
@@ -48,23 +47,15 @@ class TopReexaminationStrategy(ReexaminationStrategy):
         if not len(to_reexamine):
             return old_queues, 0
 
-        reexamine = [
-            obj
-            for _, _, result in to_reexamine
-            if (obj := ObjectProvider.from_result_provider(result, self.retriever))
-            is not None
-        ]
+        reexamine = [result.id for _, _, result in to_reexamine]
 
         results = model.infer(reexamine)
         for result, prev_result in zip(results, to_reexamine):
             time_result = time.time() - start_time
-            obj_id = result.id
             prev_score = prev_result[0]
-            score = result.score
             logger.info(
-                f"Reexamine score id: {obj_id} "
-                f"prev_score{prev_score} "
-                f"curr_score {score}"
+                f"Reexamine score id: {result.id} "
+                f"prev_score {prev_score} curr_score {result.score}"
             )
             new_queue.put((-score, time_result, result))
             # old_queues.put((-score, time_result, result))

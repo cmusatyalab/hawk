@@ -135,10 +135,7 @@ class TopKSelector(SelectorBase):
         # auto_negative_list = result_list[:num_auto_negative]
         auto_negative_list = random.sample(result_list, num_auto_negative)
 
-        labels = [
-            0 if item.id._groundtruth() == NEGATIVE_CLASS else 1
-            for item in auto_negative_list
-        ]
+        labels = [0 if item.gt == NEGATIVE_CLASS else 1 for item in auto_negative_list]
         logger.info(
             f"[EASY NEG] Length of result list {length_results}"
             f" negatives added: {num_auto_negative}"
@@ -148,13 +145,12 @@ class TopKSelector(SelectorBase):
         self.num_negatives_added += len(auto_negative_list)
 
         for result in auto_negative_list:
-            example_data = result.read_object(self._mission.retriever)
-            if example_data is None:
+            example_obj = self._mission.retriever.get_ml_data(result.id)
+            if example_obj is None:
                 continue
 
-            example_file = get_example_key(example_data)
-            example_path = negative_path.joinpath(example_file)
-            example_path.write_bytes(example_data)
+            example_file = get_example_key(example_obj.content)
+            example_path = example_obj.to_file(negative_path / example_file)
             with self._insert_lock:
                 self.easy_negatives[self.version].append(example_path)
 

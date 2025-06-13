@@ -1,27 +1,32 @@
+# SPDX-FileCopyrightText: 2025 Carnegie Mellon University
+# SPDX-License-Identifier: GPL-2.0-only
+
+from __future__ import annotations
+
+import io  # Import the io module
 import os
 import pickle
-from typing import List, Optional, Dict, Any, Tuple
-import torch
-import numpy as np
-import imageio.v2 as imageio
-import io # Import the io module
+from typing import Any
 
+import imageio.v2 as imageio
+import numpy as np
+import torch
 from torchvision.datasets.folder import find_classes, make_dataset
 from torchvision.datasets.video_utils import VideoClips
 
 
-
-
 class StoreMetadataVideoClips(VideoClips):
-    def __init__(self,
-                 metadata_path: str,
-                 video_paths: List[str],
-                 clip_length_in_frames: int,
-                 frames_between_clips: int,
-                 frame_rate: Optional[int] = None,
-                 _precomputed_metadata: Optional[Dict[str, Any]] = None,
-                 num_workers: int = 0,
-                 output_format: str = "THWC"):
+    def __init__(
+        self,
+        metadata_path: str,
+        video_paths: list[str],
+        clip_length_in_frames: int,
+        frames_between_clips: int,
+        frame_rate: int | None = None,
+        _precomputed_metadata: dict[str, Any] | None = None,
+        num_workers: int = 0,
+        output_format: str = "THWC",
+    ):
         self.metadata_path: str = metadata_path
         super().__init__(
             video_paths=video_paths,
@@ -30,41 +35,40 @@ class StoreMetadataVideoClips(VideoClips):
             frame_rate=frame_rate,
             _precomputed_metadata=_precomputed_metadata,
             num_workers=num_workers,
-            output_format=output_format)
+            output_format=output_format,
+        )
 
     def _compute_frame_pts(self) -> None:
         super()._compute_frame_pts()
         metadata = self.metadata
-        with open(self.metadata_path, 'wb') as f:
+        with open(self.metadata_path, "wb") as f:
             pickle.dump(metadata, f)
 
 
 def calculate_metadata(
-                       pkl_name: str,
-                       root: str,
-                       frames_per_clip: int,
-                       split: str,
-                       step_between_clips: int,
-                       extensions: Tuple[str, ...],
-                       frame_rate: Optional[int] = None,
-                       num_workers: int = 1,
-                       output_format: str = "TCHW",
-                       ) -> None:
+    pkl_name: str,
+    root: str,
+    frames_per_clip: int,
+    split: str,
+    step_between_clips: int,
+    extensions: tuple[str, ...],
+    frame_rate: int | None = None,
+    num_workers: int = 1,
+    output_format: str = "TCHW",
+) -> None:
     split_folder = os.path.join(root, split)
     classes, class_to_idx = find_classes(split_folder)
     samples = make_dataset(split_folder, class_to_idx, extensions, is_valid_file=None)
     video_list = [x[0] for x in samples]
     StoreMetadataVideoClips(
-        metadata_path=os.path.join(root, 'video_clips_cache', pkl_name),
+        metadata_path=os.path.join(root, "video_clips_cache", pkl_name),
         video_paths=video_list,
         clip_length_in_frames=frames_per_clip,
         frames_between_clips=step_between_clips,
         frame_rate=frame_rate,
         num_workers=num_workers,
-        output_format=output_format
+        output_format=output_format,
     )
-
-
 
 
 def create_gif_from_video_tensor_bytes(video: torch.Tensor, fps: int = 10) -> bytes:
@@ -91,7 +95,9 @@ def create_gif_from_video_tensor_bytes(video: torch.Tensor, fps: int = 10) -> by
     if video.shape[1] != 3:
         raise ValueError("Input 'video' tensor must have 3 channels (RGB).")
     if not torch.all((video >= 0) & (video <= 255)):
-        print("Warning: Pixel values are not strictly within 0-255. Clamping will occur.")
+        print(
+            "Warning: Pixel values are not strictly within 0-255. Clamping will occur."
+        )
 
     # Convert PyTorch tensor to NumPy array
     # Permute dimensions from (T, C, H, W) to (T, H, W, C) for imageio
@@ -105,13 +111,14 @@ def create_gif_from_video_tensor_bytes(video: torch.Tensor, fps: int = 10) -> by
 
     try:
         # Pass the BytesIO object as the 'uri' to mimsave
-        imageio.mimsave(byte_stream, frames_np, format='GIF', fps=fps)
+        imageio.mimsave(byte_stream, frames_np, format="GIF", fps=fps)
         # Get the binary data from the BytesIO object
         gif_bytes = byte_stream.getvalue()
         return gif_bytes
     except Exception as e:
         print(f"Error creating GIF in memory: {e}")
-        raise # Re-raise the exception after printing
+        raise  # Re-raise the exception after printing
+
 
 # --- Example Usage ---
 if __name__ == "__main__":
@@ -123,7 +130,7 @@ if __name__ == "__main__":
         # Create a simple animation: colors shifting
         r_val = int(255 * (i / (T - 1)))
         g_val = int(255 * ((T - 1 - i) / (T - 1)))
-        b_val = int(128 + 127 * np.sin(i * np.pi / (T - 1))) # Oscillating blue
+        b_val = int(128 + 127 * np.sin(i * np.pi / (T - 1)))  # Oscillating blue
 
         video_tensor[i, 0, :, :] = r_val
         video_tensor[i, 1, :, :] = g_val
@@ -138,23 +145,28 @@ if __name__ == "__main__":
 
             # You can now do anything with `gif_data_bytes`, e.g.:
             # 1. Send it over a network (e.g., in a web API response)
-            # 2. Embed it in a data URL for display in HTML (e.g., in a Jupyter Notebook)
+            # 2. Embed it in a data URL for display in HTML
+            #    (e.g., in a Jupyter Notebook)
             # 3. Save it to a file programmatically (if you decide to later)
 
             # Example: Save the bytes to a file (optional, just to verify it works)
             with open("in_memory_output.gif", "wb") as f:
                 f.write(gif_data_bytes)
-            print("In-memory GIF also saved to 'in_memory_output.gif' for verification.")
+            print(
+                "In-memory GIF also saved to 'in_memory_output.gif' for verification."
+            )
 
     except Exception as e:
         print(f"An error occurred during GIF creation: {e}")
 
-if __name__ == '__main__':
-    calculate_metadata(pkl_name='train.pkl',
-                       root='/home/gil/data/k600/',
-                       split='train',
-                       step_between_clips=50,
-                       num_workers=8,
-                       frames_per_clip=50,
-                       frame_rate=5,
-                       extensions=("avi", "mp4"))
+if __name__ == "__main__":
+    calculate_metadata(
+        pkl_name="train.pkl",
+        root="/home/gil/data/k600/",
+        split="train",
+        step_between_clips=50,
+        num_workers=8,
+        frames_per_clip=50,
+        frame_rate=5,
+        extensions=("avi", "mp4"),
+    )

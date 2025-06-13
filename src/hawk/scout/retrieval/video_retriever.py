@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import copy
-import io
 import multiprocessing as mp
 import time
 from pathlib import Path
@@ -13,19 +12,17 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 from logzero import logger
-from PIL import Image
 
 from ...classes import NEGATIVE_CLASS
 from ...objectid import ObjectId
 from ...proto.messages_pb2 import Streaming_Video
-from ..core.attribute_provider import HawkAttributeProvider
-from ..core.object_provider import ObjectProvider
 from ..stats import collect_metrics_total
 from .retriever import Retriever
+from .retriever_mixins import LegacyRetrieverMixin
 from .video_parser import produce_video_frames
 
 
-class VideoRetriever(Retriever):
+class VideoRetriever(Retriever, LegacyRetrieverMixin):
     def __init__(self, mission_id: str, dataset: Streaming_Video):
         super().__init__(mission_id)
         self.network = False
@@ -152,28 +149,8 @@ class VideoRetriever(Retriever):
                 f"Tiles:{len(tiles)} @ {delta_t}"
             )
             for tile_path in tiles:
-                tmpfile = io.BytesIO()
-                label = NEGATIVE_CLASS
-                image = Image.open(tile_path).convert("RGB")
-                image.save(tmpfile, format="JPEG", quality=85)
-                content = tmpfile.getvalue()
-
-                object_id = ObjectId(f"/negative/collection/id/{tile_path}")
-                """attributes = {
-                    'Device-Name': str.encode(get_server_ids()[0]),
-                    '_ObjectID': str.encode(object_id),
-                    ATTR_GT_LABEL: str.encode(label),
-                }"""
-                attributes = self.set_tile_attributes(object_id, label)
-
-                self.put_objects(
-                    ObjectProvider(
-                        object_id,
-                        content,
-                        HawkAttributeProvider(attributes, tile_path, resize=False),
-                        label,
-                    )
-                )
+                object_id = ObjectId(f"/{NEGATIVE_CLASS}/collection/id/{tile_path}")
+                self.put_objectid(object_id)
             time.sleep(8)
 
             retrieved_tiles = collect_metrics_total(self.retrieved_objects)

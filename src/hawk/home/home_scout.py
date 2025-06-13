@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import io
 import queue
 import threading
 import time
@@ -13,18 +12,15 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
-import matplotlib
-import matplotlib.pyplot as plt
-import numpy as np
 import zmq
 from logzero import logger
 from prometheus_client import Gauge, Histogram, Summary
 
 from ..classes import class_name_to_str
+from ..hawkobject import HawkObject
 from ..objectid import ObjectId
 from ..ports import H2C_PORT, S2H_PORT
-from ..proto.messages_pb2 import BoundingBox, SendLabel, SendTile
-from ..rusty import unwrap
+from ..proto.messages_pb2 import SendLabel, SendTile, _BoundingBox
 from .label_utils import Detection, LabelSample
 from .stats import (
     HAWK_LABELED_QUEUE_LENGTH,
@@ -33,8 +29,6 @@ from .stats import (
     HAWK_UNLABELED_RECEIVED,
     HAWK_UNLABELED_RECEIVED_SCORE,
 )
-
-matplotlib.use("agg")
 
 
 class Strategy(Enum):
@@ -68,7 +62,16 @@ class UnlabeledResult(LabelSample):
                 Detection.from_boundingbox(
                     bbox.x, bbox.y, bbox.w, bbox.h, bbox.class_name, bbox.confidence
                 )
-                for bbox in request.boundingBoxes
+                for bbox in request.inferenced
+                if bbox.confidence and bbox.class_name not in ["", "neg", "negative"]
+            )
+        )
+        groundtruth = list(
+            Detection.merge_detections(
+                Detection.from_boundingbox(
+                    bbox.x, bbox.y, bbox.w, bbox.h, bbox.class_name, bbox.confidence
+                )
+                for bbox in request.groundtruth
                 if bbox.confidence and bbox.class_name not in ["", "neg", "negative"]
             )
         )
@@ -82,43 +85,25 @@ class UnlabeledResult(LabelSample):
             model_version=request.version,
             score=score,
             detections=detections,
+            groundtruth=groundtruth,
             novel_sample=request.novel_sample,
         )
 
-        data = request.attributes["thumbnail.jpeg"]
+        for index, _data in enumerate(request.oracle_data):
+            data = HawkObject.from_protobuf(_data)
 
-        image_dir = "images" if not request.novel_sample else "novel"
-        image_file = result.content(mission_dir / image_dir, ".jpeg")
-        image_file.parent.mkdir(exist_ok=True)
+            image_dir = "images" if not request.novel_sample else "novel"
+            image_path = result.content(mission_dir / image_dir, ".bin")
+            image_file = data.to_file(image_path, index=index, mkdirs=True)
 
-        if unwrap(objectId._file_path()).suffix == ".npy":
-            # for radar missions with .npy files
-            result.gen_heatmap(image_file, data)
-        else:
-            image_file.write_bytes(data)
-        logger.info(f"SAVED TILE {image_file} for {result.objectId}")
+            logger.info(f"SAVED {image_file} for {result.objectId}")
 
-        if request.feature_vector:
+        if request.HasField("feature_vector"):
             fv_path = result.content(mission_dir / "feature_vectors", ".pt")
-            fv_path.parent.mkdir(exist_ok=True)
-            fv_path.write_bytes(request.feature_vector)
+            feature_vector = HawkObject.from_protobuf(request.feature_vector)
+            feature_vector.to_file(fv_path, mkdirs=True)
 
         return result
-
-    @staticmethod
-    def gen_heatmap(tile_path: Path, data_: bytes) -> None:
-        with io.BytesIO(data_) as bytes_file:
-            data = np.load(bytes_file, allow_pickle=True)
-        plt.imshow(
-            data.sum(axis=2).transpose(), cmap="viridis", interpolation="nearest"
-        )
-        plt.xticks([0, 16, 32, 48, 63], ["-13", "-6.5", "0", "6.5", "13"], fontsize=8)
-        plt.yticks([0, 64, 128, 192, 255], ["50", "37.5", "25", "12.5", "0"])
-        plt.xlabel("velocity (m/s)")
-        plt.ylabel("range (m)")
-        # plt.title("RD Map")
-        plt.savefig(tile_path, bbox_inches="tight")
-        plt.close("all")
 
 
 @dataclass
@@ -155,7 +140,7 @@ class HomeToScoutWorker:
     def put(self, result: LabelSample) -> None:
         """Queue a label from any thread which will be sent to the scout."""
         bboxes = [
-            BoundingBox(
+            _BoundingBox(
                 x=bbox.x,
                 y=bbox.y,
                 w=bbox.w,

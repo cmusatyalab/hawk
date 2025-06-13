@@ -21,14 +21,14 @@ import torch
 from logzero import logger
 from sklearn.cluster import KMeans, kmeans_plusplus
 
-from ...classes import class_name_to_str
-from ...proto.messages_pb2 import BoundingBox, SendTile
 from ..core.result_provider import ResultProvider
+from ..retrieval.retriever import Retriever
 
 
 class Novel_Class_Clustering:
     def __init__(
         self,
+        retriever: Retriever,
         inbound_result_queue: mp.Queue[ResultProvider],
         labels_queue: mp.Queue[tuple[str, Path]],
         outbound_pipe: _ConnectionBase,
@@ -36,6 +36,7 @@ class Novel_Class_Clustering:
         scout_index: int,
         semi_supervised: bool = False,
     ):
+        self.retriever = retriever
         self.fv_dir = fv_dir
         self.inbound_result_queue = inbound_result_queue
         self.labels_queue = labels_queue
@@ -232,34 +233,15 @@ class Novel_Class_Clustering:
     def send_samples(self, selected_samples: list[ResultProvider]) -> None:
         ## For each selected sample, create tile and send to home
         for i, selected_sample in enumerate(selected_samples):
-            bboxes = [
-                BoundingBox(
-                    x=bbox.get("x", 0.5),
-                    y=bbox.get("y", 0.5),
-                    w=bbox.get("w", 1.0),
-                    h=bbox.get("h", 1.0),
-                    class_name=class_name_to_str(bbox["class_name"]),
-                    confidence=bbox["confidence"],
-                )
-                for bbox in selected_sample.bboxes
-            ]
-
-            tile = SendTile(
-                _objectId=selected_sample.id.serialize_oid(),
-                scoutIndex=self.scout_index,
-                version=selected_sample.model_version,
-                feature_vector=selected_sample.feature_vector,
-                attributes=selected_sample.attributes.get(),
-                boundingBoxes=bboxes,
-                novel_sample=True,
-                ## the cluster label integer: if 1 is first cluster, 2 is second cluster
-                ## cluster assignment
-                ## cluster iteration source
+            tile = selected_sample.to_protobuf(
+                self.retriever, self.scout_index, novel_sample=True
             )
+            ## the cluster label integer: if 1 is first cluster, 2 is second cluster
+            ## cluster assignment
+            ## cluster iteration source
 
-            self.outbound_pipe.send(
-                tile.SerializeToString()
-            )  ## send each sample to home
+            ## send each sample to home
+            self.outbound_pipe.send(tile.SerializeToString())
             logger.info(f" Sent item {i} to home...\n")
 
     def receive_labels_thread(self) -> None:
@@ -408,6 +390,7 @@ class Novel_Class_Clustering:
 
 
 def main(
+    retriever: Retriever,
     result_queue: mp.Queue[ResultProvider],
     labels_queue: mp.Queue[tuple[str, Path]],
     home_pipe: _ConnectionBase,
@@ -416,6 +399,7 @@ def main(
 ) -> None:
     ### create clustering object
     novel_clustering = Novel_Class_Clustering(
+        retriever,
         result_queue,
         labels_queue,
         home_pipe,

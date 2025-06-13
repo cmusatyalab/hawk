@@ -6,7 +6,7 @@ import io
 import queue
 import time
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Sequence, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Sequence, Tuple, cast
 
 import numpy as np
 import torch
@@ -20,9 +20,12 @@ from ....classes import NEGATIVE_CLASS, POSITIVE_CLASS
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
-from ...core.object_provider import ObjectProvider
 from ...core.result_provider import BoundingBox, ResultProvider
 from ...core.utils import log_exceptions
+
+if TYPE_CHECKING:
+    from ....hawkobject import HawkObject
+    from ....objectid import ObjectId
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -87,20 +90,14 @@ class FSLModel(ModelBase):
     def version(self) -> int:
         return self._version
 
-    def preprocess(
-        self, request: ObjectProvider
-    ) -> Tuple[ObjectProvider, Sequence[float]]:
-        try:
-            assert isinstance(request.content, bytes)
-            image = Image.open(io.BytesIO(request.content))
+    def preprocess(self, obj: HawkObject) -> Sequence[float]:
+        assert obj.media_type.startswith("image/")
 
-            if image.mode != "RGB":
-                image = image.convert("RGB")
-            embed = self.get_embed(image)
-        except Exception as e:
-            raise (e)
+        image = Image.open(io.BytesIO(obj.content))
+        if image.mode != "RGB":
+            image = image.convert("RGB")
 
-        return request, embed
+        return self.get_embed(image)
 
     def serialize(self) -> bytes:
         if self._model is None:
@@ -163,15 +160,17 @@ class FSLModel(ModelBase):
             requests = []
             next_infer = time.time() + timeout
 
-    def infer(self, requests: Sequence[ObjectProvider]) -> Iterable[ResultProvider]:
+    def infer(self, requests: Sequence[ObjectId]) -> Iterable[ResultProvider]:
         if not self._running or self._model is None:
             return []
 
         output = []
         for i in range(0, len(requests), self._batch_size):
             batch = []
-            for request in requests[i : i + self._batch_size]:
-                batch.append(self.preprocess(request))
+            for object_id in requests[i : i + self._batch_size]:
+                obj = self.context.retriever.get_ml_data(object_id)
+                assert obj is not None
+                batch.append((object_id, self.preprocess(obj)))
             results = self._process_batch(batch)
             for result in results:
                 output.append(result)
@@ -179,7 +178,7 @@ class FSLModel(ModelBase):
         return output
 
     def _process_batch(
-        self, batch: List[Tuple[ObjectProvider, torch.Tensor]]
+        self, batch: List[Tuple[ObjectId, torch.Tensor]]
     ) -> Iterable[ResultProvider]:
         if self._model is None:
             if len(batch) > 0:
@@ -196,7 +195,7 @@ class FSLModel(ModelBase):
                 label = POSITIVE_CLASS
                 score = predictions[i]
                 if self._mode == "oracle":
-                    if batch[i][0].id._groundtruth() == NEGATIVE_CLASS:
+                    if batch[i][0]._groundtruth() == NEGATIVE_CLASS:
                         label = NEGATIVE_CLASS
                         score = 0.0
                     else:

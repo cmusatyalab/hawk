@@ -19,13 +19,12 @@ from PIL import Image
 from ...classes import NEGATIVE_CLASS, ClassLabel, ClassName
 from ...objectid import ObjectId
 from ...proto.messages_pb2 import NetworkDataset
-from ..core.attribute_provider import HawkAttributeProvider
-from ..core.object_provider import ObjectProvider
 from ..stats import collect_metrics_total
 from .retriever import Retriever
+from .retriever_mixins import LegacyRetrieverMixin
 
 
-class NetworkRetriever(Retriever):
+class NetworkRetriever(Retriever, LegacyRetrieverMixin):
     def __init__(self, mission_id: str, dataset: NetworkDataset, host_name: str):
         globally_constant_rate = dataset.dataBalanceMode == "globally_constant"
         super().__init__(
@@ -170,16 +169,7 @@ class NetworkRetriever(Retriever):
                 class_name = NEGATIVE_CLASS
 
             object_id = ObjectId(f"/{class_name}/collection/id/{path}")
-            attributes = self.set_tile_attributes(object_id, class_name)
-
-            self.put_objects(
-                ObjectProvider(
-                    object_id,
-                    content,
-                    HawkAttributeProvider(attributes, Path(path), self._resize),
-                    class_name,
-                )
-            )
+            self.put_objectid(object_id)
 
             ## XXX The following logic/sleep loop should probably move into
             ## the Retriever base class to avoid unnecessary code duplication.
