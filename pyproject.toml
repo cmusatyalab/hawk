@@ -157,7 +157,6 @@ module = [
     "logzero.*",
     "matplotlib.*",
     "multiprocessing_logging.*",
-    "skimage.*",
     "sklearn.*",
     "streamlit_label_kit",
     "websockets.*",

@@ -438,10 +438,13 @@ class DNNClassifierModelRadar(ModelBase):
         threshold = 4.56 * 1.46  # Global median of negatives mult by constant factor
         binary_img = source_img.max(axis=2).transpose() > threshold
         binary_img[binary_img != 0] = 1
-        labeled_binary_img = label(binary_img, connectivity=2)
-        regions = regionprops(labeled_binary_img)
 
         # skimage.measure seems to be untyped
+        labeled_binary_img = label(
+            binary_img, connectivity=2
+        )  # type: ignore[no-untyped-call]
+        regions = regionprops(labeled_binary_img)  # type: ignore[no-untyped-call]
+
         class _RegionProperties:
             area: float
             bbox: tuple[int, int, int, int]
