@@ -2,13 +2,15 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import errno
 import os
 import threading
 import time
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Iterable, Sequence
 
 import numpy as np
 from logzero import logger
@@ -58,7 +60,7 @@ class Model(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_results(self) -> Optional[ResultProvider]:
+    def get_results(self) -> ResultProvider | None:
         pass
 
     @abstractmethod
@@ -77,7 +79,7 @@ class Model(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def train_examples(self) -> Dict[str, int]:
+    def train_examples(self) -> dict[str, int]:
         pass
 
     @property
@@ -89,7 +91,7 @@ class Model(metaclass=ABCMeta):
 class ModelBase(Model):
     def __init__(
         self,
-        args: Dict[str, Any],
+        args: dict[str, Any],
         model_path: Path,
         context: ModelContext,
     ):
@@ -104,7 +106,7 @@ class ModelBase(Model):
 
         self._version = int(args.get("version", 0))
         self._mode = str(args.get("mode", "hawk"))
-        self._train_examples: Dict[str, int] = args.get(
+        self._train_examples: dict[str, int] = args.get(
             "train_examples", {"1": 0, "0": 0}
         )
         self._train_time = int(args.get("train_time", 0))
@@ -121,7 +123,7 @@ class ModelBase(Model):
         return self._mode
 
     @property
-    def train_examples(self) -> Dict[str, int]:
+    def train_examples(self) -> dict[str, int]:
         return self._train_examples
 
     @property
@@ -151,7 +153,7 @@ class ModelBase(Model):
         return self.request_count
 
     @log_exceptions
-    def get_results(self) -> Optional[ResultProvider]:
+    def get_results(self) -> ResultProvider | None:
         if self.context is None:
             return None
         return self.result_queue.get()
@@ -167,8 +169,8 @@ class ModelBase(Model):
     @staticmethod
     def calculate_performance(
         version: int,
-        target_list: List[int],
-        pred_list: List[Sequence[float]],
+        target_list: list[int],
+        pred_list: list[Sequence[float]],
         is_probability: bool = True,
     ) -> TestResults:
         raise AssertionError(

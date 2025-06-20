@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import io
 import queue
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Sequence, Tuple, cast
+from typing import TYPE_CHECKING, Any, Iterable, Sequence, cast
 
 import numpy as np
 import torch
@@ -35,7 +37,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 class FSLModel(ModelBase):
     def __init__(
         self,
-        args: Dict[str, Any],
+        args: dict[str, Any],
         model_path: Path,
         version: int,
         mode: str,
@@ -178,7 +180,7 @@ class FSLModel(ModelBase):
         return output
 
     def _process_batch(
-        self, batch: List[Tuple[ObjectId, torch.Tensor]]
+        self, batch: list[tuple[ObjectId, torch.Tensor]]
     ) -> Iterable[ResultProvider]:
         if self._model is None:
             if len(batch) > 0:

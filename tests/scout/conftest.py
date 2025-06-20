@@ -3,24 +3,40 @@
 
 from __future__ import annotations
 
-from io import BytesIO
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 from PIL import Image
 
+from hawk.hawkobject import HawkObject
+from hawk.objectid import ObjectId
 from hawk.scout.context.model_trainer_context import ModelContext
-from hawk.scout.core.attribute_provider import AttributeProvider
-from hawk.scout.core.object_provider import ObjectProvider
+from hawk.scout.retrieval.retriever import Retriever
 
 if TYPE_CHECKING:
     from hawk.scout.core.hawk_stub import HawkStub
+    from hawk.scout.core.result_provider import BoundingBox
 
 
 REFERENCE_IMAGE = Path(__file__).parent.parent.joinpath(
     "assets", "grace_hopper_517x606.jpg"
 )
+
+
+def test_hawkobject() -> HawkObject:
+    return HawkObject(content=REFERENCE_IMAGE.read_bytes(), media_type="image/jpeg")
+
+
+class TestRetriever(Retriever):
+    def get_ml_data(self, object_id: ObjectId) -> HawkObject:
+        return test_hawkobject()
+
+    def get_oracle_data(self, object_id: ObjectId) -> list[HawkObject]:
+        return [test_hawkobject()]
+
+    def get_groundtruth(self, object_id: ObjectId) -> list[BoundingBox]:
+        return []
 
 
 class TestContext(ModelContext):
@@ -37,7 +53,7 @@ class TestContext(ModelContext):
         return 0
 
     @property
-    def model_dir(self) -> int:
+    def model_dir(self) -> Path:
         return Path.cwd()
 
     def stop_model(self) -> None:
@@ -47,34 +63,21 @@ class TestContext(ModelContext):
         return False
 
 
-class TestAttributes(AttributeProvider):
-    def get_image(self) -> Image.Image:
-        return Image.open(REFERENCE_IMAGE).convert("RGB")
-
-    def get_thumbnail_size(self) -> int:
-        return 0
-
-    def get(self) -> dict[str, bytes]:
-        return dict()
-
-    def add(self, attribute: dict[str, bytes]) -> None:
-        pass
+@pytest.fixture
+def objectid() -> ObjectId:
+    return ObjectId("/negative/collection/id/test-objectid")
 
 
 @pytest.fixture
-def testcontext():
-    return TestContext()
+def testretriever() -> TestRetriever:
+    return TestRetriever(mission_id="test-mission")
 
 
 @pytest.fixture
-def objectprovider(reference_image):
-    attrs = TestAttributes()
-    with BytesIO() as tmpfile:
-        reference_image.save(tmpfile, format="JPEG", quality=85)
-        content = tmpfile.getvalue()
-    return ObjectProvider(obj_id="test", content=content, attributes=attrs)
+def testcontext(testretriever: TestRetriever) -> TestContext:
+    return TestContext(retriever=testretriever)
 
 
 @pytest.fixture
-def reference_image():
+def reference_image() -> Image.Image:
     return Image.open(REFERENCE_IMAGE).convert("RGB")

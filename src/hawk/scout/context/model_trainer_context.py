@@ -5,10 +5,13 @@
 
 """Abstract class for model context"""
 
+from __future__ import annotations
+
 import multiprocessing as mp
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Tuple
+from typing import TYPE_CHECKING, Any
 
+from ..retrieval.retriever import Retriever
 from .context_base import ContextBase
 
 if TYPE_CHECKING:
@@ -16,7 +19,6 @@ if TYPE_CHECKING:
 
     from ...objectid import ObjectId
     from ..core.result_provider import ResultProvider
-    from ..retrieval.retriever import Retriever
 
 
 class ModelContext(ContextBase):
@@ -25,7 +27,7 @@ class ModelContext(ContextBase):
 
     def __init__(self, retriever: Retriever) -> None:
         super().__init__()
-        self.model_input_queue: mp.Queue[Tuple[ObjectId, Any]] = mp.Queue()
+        self.model_input_queue: mp.Queue[tuple[ObjectId, Any]] = mp.Queue()
         self.model_output_queue: mp.Queue[ResultProvider] = mp.Queue()
         self.retriever = retriever
 

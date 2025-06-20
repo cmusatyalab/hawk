@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import gc
 import io
 import multiprocessing as mp
@@ -9,18 +11,7 @@ import os
 import queue
 import time
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Sequence, cast
 
 import numpy.typing as npt
 import torch
@@ -49,7 +40,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 class YOLOModel(ModelBase):
     def __init__(
         self,
-        args: Dict[str, Any],
+        args: dict[str, Any],
         model_path: Path,
         version: int,
         mode: str,
@@ -87,7 +78,7 @@ class YOLOModel(ModelBase):
 
         model = self.load_model(model_path)
         self._device = torch.device("cuda")
-        self._model: Optional[torch.nn.Module] = model.to(self._device)
+        self._model: torch.nn.Module | None = model.to(self._device)
         self._model.eval()
         self._running = True
 
@@ -130,7 +121,7 @@ class YOLOModel(ModelBase):
 
     def get_predictions(
         self, inputs: torch.Tensor
-    ) -> Tuple[List[float], List[npt.NDArray]]:
+    ) -> tuple[list[float], list[npt.NDArray]]:
         assert self._model is not None
         with torch.no_grad():
             output = self._model(inputs, detection=True).pred
@@ -216,7 +207,7 @@ class YOLOModel(ModelBase):
         return self.infer_dir(test_path, calculate_performance)
 
     def _process_batch(
-        self, batch: Sequence[Tuple[ObjectId, torch.Tensor]]
+        self, batch: Sequence[tuple[ObjectId, torch.Tensor]]
     ) -> Iterable[ResultProvider]:
         if self._model is None:
             if len(batch) > 0:

@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import gc
 import io
 import multiprocessing as mp
@@ -9,18 +11,7 @@ import os
 import queue
 import time
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Sequence, cast
 
 import torch
 import torchvision.transforms as transforms
@@ -30,10 +21,10 @@ from sklearn.metrics import average_precision_score
 from torch.utils.data import DataLoader
 from torchvision import datasets
 
+from ....classes import NEGATIVE_CLASS
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
-from ...core.object_provider import ObjectProvider
 from ...core.result_provider import BoundingBox, ResultProvider
 from ...core.utils import log_exceptions
 
@@ -48,7 +39,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 class YOLOModelRadar(ModelBase):
     def __init__(
         self,
-        args: Dict[str, Any],
+        args: dict[str, Any],
         model_path: Path,
         version: int,
         mode: str,
@@ -86,7 +77,7 @@ class YOLOModelRadar(ModelBase):
 
         model = self.load_model(model_path)
         self._device = torch.device("cuda")
-        self._model: Optional[torch.nn.Module] = model.to(self._device)
+        self._model: torch.nn.Module | None = model.to(self._device)
         self._model.eval()
         self._running = True
 
@@ -127,7 +118,7 @@ class YOLOModelRadar(ModelBase):
         )
         return model
 
-    def get_predictions(self, inputs: torch.Tensor) -> List[float]:
+    def get_predictions(self, inputs: torch.Tensor) -> list[float]:
         assert self._model is not None
         with torch.no_grad():
             output = self._model(inputs, detection=True).pred
@@ -215,7 +206,7 @@ class YOLOModelRadar(ModelBase):
         return self.infer_dir(test_path, calculate_performance)
 
     def _process_batch(
-        self, batch: Sequence[Tuple[ObjectProvider, torch.Tensor]]
+        self, batch: Sequence[tuple[ObjectId, torch.Tensor]]
     ) -> Iterable[ResultProvider]:
         if self._model is None:
             if len(batch) > 0:
@@ -234,7 +225,7 @@ class YOLOModelRadar(ModelBase):
             for i in range(len(batch)):
                 score = predictions[i]
                 if self._mode == "oracle":
-                    score = 0.0 if batch[i][0].id.startswith("/negative/") else 1.0
+                    score = 0.0 if batch[i][0]._groundtruth() == NEGATIVE_CLASS else 1.0
                 scores = [1.0 - score, score]
                 bboxes: list[BoundingBox] = [
                     {"class_name": label, "confidence": score}

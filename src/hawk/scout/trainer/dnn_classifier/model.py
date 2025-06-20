@@ -2,12 +2,14 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import io
 import multiprocessing as mp
 import queue
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Sequence
 
 import torch
 from logzero import logger
@@ -34,7 +36,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 class DNNClassifierModel(ModelBase):
     def __init__(
         self,
-        args: Dict[str, Any],
+        args: dict[str, Any],
         model_path: Path,
         version: int,
         mode: str,
@@ -173,7 +175,7 @@ class DNNClassifierModel(ModelBase):
     def infer_dir(
         self,
         directory: Path,
-        callback_fn: Callable[[int, List[int], List[Sequence[float]]], TestResults],
+        callback_fn: Callable[[int, list[int], list[Sequence[float]]], TestResults],
     ) -> TestResults:
         dataset = datasets.ImageFolder(str(directory), transform=self._preprocess)
         data_loader = DataLoader(
@@ -183,8 +185,8 @@ class DNNClassifierModel(ModelBase):
             num_workers=mp.cpu_count(),
         )
 
-        targets: List[int] = []
-        predictions: List[Sequence[float]] = []
+        targets: list[int] = []
+        predictions: list[Sequence[float]] = []
         with torch.no_grad():
             for inputs, target in data_loader:
                 prediction = self.get_predictions(inputs)
@@ -199,7 +201,7 @@ class DNNClassifierModel(ModelBase):
     def infer_path(
         self,
         test_file: Path,
-        callback_fn: Callable[[int, List[int], List[Sequence[float]]], TestResults],
+        callback_fn: Callable[[int, list[int], list[Sequence[float]]], TestResults],
     ) -> TestResults:
         image_list = []
         label_list = []
@@ -220,8 +222,8 @@ class DNNClassifierModel(ModelBase):
             num_workers=mp.cpu_count(),
         )
 
-        targets: List[int] = []
-        predictions: List[Sequence[float]] = []
+        targets: list[int] = []
+        predictions: list[Sequence[float]] = []
         with torch.no_grad():
             for inputs, target in data_loader:
                 prediction = self.get_predictions(inputs)
@@ -248,7 +250,7 @@ class DNNClassifierModel(ModelBase):
             raise Exception(f"ERROR: {test_path} does not exist")
 
     def _process_batch(
-        self, batch: List[Tuple[ObjectId, torch.Tensor]]
+        self, batch: list[tuple[ObjectId, torch.Tensor]]
     ) -> Iterable[ResultProvider]:
         assert self.context is not None
         if self._model is None:
