@@ -33,26 +33,29 @@ class ThumbnailImageMixin(RetrieverBase):
             raise ValueError("Generic get_oracle_data only works for images")
 
         with BytesIO(ml_object.content) as f:
-            image = Image.open(f)
+            image = Image.open(f).convert("RGB")
 
-        image = image.convert("RGB")
+            # Image operations are delayed as long as possible, so we actually
+            # have to keep the file handle open because we may not actually
+            # load the image until after crop and resize have been specified
+            # and we're trying to save the new image.
 
-        # crop to centered square
-        if image.size[0] != image.size[1]:
-            short_edge = min(image.size)
-            left = (image.size[0] - short_edge) // 2
-            top = (image.size[1] - short_edge) // 2
-            right = left + short_edge
-            bottom = top + short_edge
-            image = image.crop((left, top, right, bottom))
+            # crop to centered square
+            if image.size[0] != image.size[1]:
+                short_edge = min(image.size)
+                left = (image.size[0] - short_edge) // 2
+                top = (image.size[1] - short_edge) // 2
+                right = left + short_edge
+                bottom = top + short_edge
+                image = image.crop((left, top, right, bottom))
 
-        # resize to THUMBNAIL_SIZE
-        # image.thumbnail(THUMBNAIL_SIZE)
-        image = image.resize(THUMBNAIL_SIZE)
+            # resize to THUMBNAIL_SIZE
+            # image.thumbnail(THUMBNAIL_SIZE)
+            image = image.resize(THUMBNAIL_SIZE)
 
-        with BytesIO() as tmpfile:
-            image.save(tmpfile, format="JPEG", quality=85)
-            content = tmpfile.getvalue()
+            with BytesIO() as tmpfile:
+                image.save(tmpfile, format="JPEG", quality=85)
+                content = tmpfile.getvalue()
 
         return [HawkObject(content=content, media_type="image/jpeg")]
 

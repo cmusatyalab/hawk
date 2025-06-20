@@ -560,7 +560,7 @@ class Mission(DataManagerContext, ModelContext):
                 tile = result.to_protobuf(self.retriever, self.scout_index)
                 pipe.send(tile.SerializeToString())
         except Exception as e:
-            logger.error(e)
+            logger.exception(e)
             self.stop()
             # raise e
 
