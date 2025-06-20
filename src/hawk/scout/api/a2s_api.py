@@ -551,17 +551,17 @@ class A2SAPI:
         # data_dir = mission.data_dir
         model_dir = mission.model_dir
 
-        mission_archive = io.BytesIO()
-        with zipfile.ZipFile(
-            mission_archive, "w", compression=zipfile.ZIP_DEFLATED
-        ) as zf:
-            for dirname, _subdirs, files in os.walk(model_dir):
-                zf.write(dirname)
-                for filename in files:
-                    zf.write(os.path.join(dirname, filename))
+        with io.BytesIO() as mission_archive:
+            with zipfile.ZipFile(
+                mission_archive, "w", compression=zipfile.ZIP_DEFLATED
+            ) as zf:
+                for dirname, _subdirs, files in os.walk(model_dir):
+                    zf.write(dirname)
+                    for filename in files:
+                        zf.write(os.path.join(dirname, filename))
 
-        logger.info("[IMPORT] FINISHED Archiving Mission models")
-        return mission_archive.getbuffer()
+            logger.info("[IMPORT] FINISHED Archiving Mission models")
+            return mission_archive.getvalue()
 
     def _get_retrain_policy(
         self, retrain_policy: RetrainPolicyConfig, model_dir: Path

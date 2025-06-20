@@ -1,6 +1,11 @@
+// SPDX-FileCopyrightText: 2022-2025 Carnegie Mellon University
+// SPDX-License-Identifier: GPL-2.0-only
+
 syntax = "proto3";
 
 option java_multiple_files = true;
+
+import "common.proto";
 
 package edu.cmu.cs.hawk.api;
 
@@ -217,50 +222,30 @@ message TopReexaminationStrategyConfig {
 message FullReexaminationStrategyConfig {
 }
 
-message _HawkObject {
-  bytes content = 1;
-  string media_type = 2;
-}
-
 message SendTile {
-  string _objectId = 1;
+  ObjectId object_id = 1;
   int32 scoutIndex = 2;
   int32 version = 3;
-  repeated _HawkObject oracle_data = 4;
-  repeated _BoundingBox inferenced = 5;
-  repeated _BoundingBox groundtruth = 6;
+  repeated HawkObject oracle_data = 4;
+  repeated Detection inferenced = 5;
+  repeated Detection groundtruth = 6;
   bytes feature_vector = 7;
   bool novel_sample = 8;
 }
 
 // send labels for an object back from home to scout
 message SendLabel {
-  string _objectId = 1;
+  ObjectId object_id = 1;
   int32 scoutIndex = 2;
-  repeated _BoundingBox boundingBoxes = 3;
+  repeated Detection labels = 3;
 }
 
 // propagate (positive) labels and other associated data to other scouts
 message LabeledTile {
-  string _objectId = 1;
-  _HawkObject obj = 2;
-  _HawkObject feature_vector = 3;
-  repeated _BoundingBox boundingBoxes = 4;
-}
-
-// classification and confidence score for a region of the image
-// x,y,w,h are coordinates relative to the size of the image, with x and y
-// being the center of the region.
-// The whole image would be represented as [x=0.5, y=0.5, w=1.0, h=1.0].
-// Classification only describes the whole image, detection may have one or
-// more smaller regions. A negative sample has no associated bounding boxes.
-message _BoundingBox {
-  float x = 1;
-  float y = 2;
-  float w = 3;
-  float h = 4;
-  string class_name = 5;
-  float confidence = 6;
+  ObjectId object_id = 1;
+  HawkObject obj = 2;
+  HawkObject feature_vector = 3;
+  repeated Detection labels = 4;
 }
 
 message PerScoutSCMLOptions {

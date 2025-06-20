@@ -20,7 +20,8 @@ from ..classes import class_name_to_str
 from ..hawkobject import HawkObject
 from ..objectid import ObjectId
 from ..ports import H2C_PORT, S2H_PORT
-from ..proto.messages_pb2 import SendLabel, SendTile, _BoundingBox
+from ..proto import common_pb2
+from ..proto.messages_pb2 import SendLabel, SendTile
 from .label_utils import Detection, LabelSample
 from .stats import (
     HAWK_LABELED_QUEUE_LENGTH,
@@ -52,7 +53,7 @@ class UnlabeledResult(LabelSample):
         request = SendTile()
         request.ParseFromString(msg)
 
-        objectId = ObjectId(request._objectId)
+        objectId = ObjectId.from_protobuf(request.object_id)
 
         # scout thinks it might have found some positives
         # filter out negatives (and 0 confidence scores)
@@ -60,7 +61,12 @@ class UnlabeledResult(LabelSample):
         detections = list(
             Detection.merge_detections(
                 Detection.from_boundingbox(
-                    bbox.x, bbox.y, bbox.w, bbox.h, bbox.class_name, bbox.confidence
+                    bbox.coords.center_x,
+                    bbox.coords.center_y,
+                    bbox.coords.width,
+                    bbox.coords.height,
+                    bbox.class_name,
+                    bbox.confidence,
                 )
                 for bbox in request.inferenced
                 if bbox.confidence and bbox.class_name not in ["", "neg", "negative"]
@@ -69,7 +75,12 @@ class UnlabeledResult(LabelSample):
         groundtruth = list(
             Detection.merge_detections(
                 Detection.from_boundingbox(
-                    bbox.x, bbox.y, bbox.w, bbox.h, bbox.class_name, bbox.confidence
+                    bbox.coords.center_x,
+                    bbox.coords.center_y,
+                    bbox.coords.width,
+                    bbox.coords.height,
+                    bbox.class_name,
+                    bbox.confidence,
                 )
                 for bbox in request.groundtruth
                 if bbox.confidence and bbox.class_name not in ["", "neg", "negative"]
@@ -139,14 +150,13 @@ class HomeToScoutWorker:
 
     def put(self, result: LabelSample) -> None:
         """Queue a label from any thread which will be sent to the scout."""
-        bboxes = [
-            _BoundingBox(
-                x=bbox.x,
-                y=bbox.y,
-                w=bbox.w,
-                h=bbox.h,
+        labels = [
+            common_pb2.Detection(
                 class_name=class_name_to_str(class_name),
                 confidence=1.0,
+                coords=common_pb2.Region(
+                    center_x=bbox.x, center_y=bbox.y, width=bbox.w, height=bbox.h
+                ),
             )
             for bbox in result.detections
             for class_name in bbox.scores
@@ -154,9 +164,9 @@ class HomeToScoutWorker:
 
         assert result.objectId is not None
         msg = SendLabel(
-            _objectId=result.objectId.serialize_oid(),
+            object_id=result.objectId.to_protobuf(),
             scoutIndex=result.scoutIndex,
-            boundingBoxes=bboxes,
+            labels=labels,
         ).SerializeToString()
 
         # update statistic first to avoid negative queue lengths when

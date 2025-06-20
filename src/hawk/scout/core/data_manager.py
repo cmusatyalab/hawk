@@ -88,7 +88,7 @@ class DataManager:
         # just return (ignore)
         if (
             isinstance(self._context.retriever, NetworkRetriever)
-            and not tile.boundingBoxes
+            and not tile.labels
             and net
         ):
             if (
@@ -106,24 +106,24 @@ class DataManager:
             ## puts labels in the labels queue for future clustering.
             self.store_feature_vector(tile)
 
-        if tile.boundingBoxes:
+        if tile.labels:
             self._total_positives += 1
         # logger.info(f"Original tile name: {tile.obj.objectId}")
         # logger.info(f" NEW TOTAL POSITIVES: {self._total_positives}\n\n")
-        if not self._radar_crop or not tile.boundingBoxes:
+        if not self._radar_crop or not tile.labels:
             self._store_labeled_examples([tile], None)
             # logger.info("Stored negative examples...")
         else:
             with io.BytesIO(tile.obj.content) as fp:
                 np_arr = np.load(fp)
             crop_list = []
-            for box in tile.boundingBoxes:
+            for box in tile.labels:
                 # crop each
                 x, y = (
-                    int(np.round(box.x * 63)),
-                    int(np.round(box.y * 255)),
-                    # int(np.round(box.w * 63)),
-                    # int(np.round(box.h * 255)),
+                    int(np.round(box.coords.center_x * 63)),
+                    int(np.round(box.coords.center_y * 255)),
+                    # int(np.round(box.coords.width * 63)),
+                    # int(np.round(box.coords.height * 255)),
                 )
                 # predetermined crop dimensions derived from mean + 1 stdev
                 # across all object instances of raddet dataset.
@@ -151,9 +151,8 @@ class DataManager:
                 obj = HawkObject(content=crop_arr_bytes, media_type="x-array/numpy")
 
                 crop_tile = LabeledTile(
-                    _objectId="",
                     obj=obj.to_protobuf(),
-                    boundingBoxes=[box],
+                    labels=[box],
                 )
                 crop_list.append(crop_tile)
             self._store_labeled_examples(crop_list, None)
@@ -162,12 +161,12 @@ class DataManager:
 
     def distribute_label(self, label: SendLabel) -> None:
         scout_index = label.scoutIndex
-        if label.boundingBoxes:
+        if label.labels:
             self._positives += 1
         else:
             self._negatives += 1
 
-        object_id = ObjectId(label._objectId)
+        object_id = ObjectId.from_protobuf(label.object_id)
         if scout_index != self._context.scout_index:
             # This code should not run as not using coordinator, all labels
             # initially return to generating scout.
@@ -195,9 +194,9 @@ class DataManager:
 
         # Save labeled tile
         labeled_tile = LabeledTile(
-            _objectId=object_id.serialize_oid(),
+            object_id=object_id.to_protobuf(),
             obj=obj.to_protobuf(),
-            boundingBoxes=label.boundingBoxes,
+            labels=label.labels,
         )
         if self._context.novel_class_discovery:
             fv = self.read_feature_vector(object_id)
@@ -217,7 +216,7 @@ class DataManager:
         # to other scouts.
         # All active and idle scouts should recieve pos and neg samples.
         # Active should ignore neg. samples.
-        if not label.boundingBoxes and not isinstance(
+        if not label.labels and not isinstance(
             self._context.retriever, NetworkRetriever
         ):
             return
@@ -302,8 +301,8 @@ class DataManager:
                         with open(label_path, "wb") as f:
                             f.write(label_content)
 
-                        # Do we want to parse label_content and properly count all
-                        # bounding boxes?
+                        # Do we want to parse label_content and properly count
+                        # all labels?
                         self.class_counts.update({POSITIVE_CLASS: 1})
                     else:
                         # add single sample to respective class
@@ -373,16 +372,16 @@ class DataManager:
                     example_file = get_example_key(obj.content)
                 self._remove_old_paths(example_file, old_dirs)
 
-                if not example.boundingBoxes:
+                if not example.labels:
                     # negative sample
                     label: ClassLabel | None = ClassLabel(0)
                     counts = {NEGATIVE_CLASS: 1}
                 elif (
-                    example.boundingBoxes[0].w == 1.0
-                    and example.boundingBoxes[0].h == 1.0
+                    example.labels[0].coords.width == 1.0
+                    and example.labels[0].coords.height == 1.0
                 ):
                     # classification
-                    class_name = ClassName(example.boundingBoxes[0].class_name)
+                    class_name = ClassName(example.labels[0].class_name)
                     label = self._class_to_label(class_name)
                     counts = {class_name: 1}
                 else:
@@ -391,7 +390,7 @@ class DataManager:
                     counts = {POSITIVE_CLASS: 1}
                     # Alternatively if we want to count individual detections...
                     # counts = Counter(
-                    #     ClassName(bbox.class_name) for bbox in example.boundingBoxes
+                    #     ClassName(bbox.class_name) for bbox in example.labels
                     # )
 
                 self.class_counts.update(counts)
@@ -420,13 +419,16 @@ class DataManager:
                     )
                     label_path.parent.mkdir(parents=True, exist_ok=True)
                     with label_path.open("w") as f:
-                        for bbox in example.boundingBoxes:
+                        for bbox in example.labels:
                             class_name = ClassName(bbox.class_name)
                             class_label = self._class_to_label(class_name)
 
                             # -1 because yolo counts positive classes starting from 0
                             index = class_label_to_int(class_label) - 1
-                            f.write(f"{index} {bbox.x} {bbox.y} {bbox.w} {bbox.h}\n")
+                            f.write(
+                                f"{index} {bbox.coords.center_x} {bbox.coords.center_y}"
+                                f" {bbox.coords.width} {bbox.coords.height}\n"
+                            )
                 else:
                     ignore_file = self._staging_dir / IGNORE_FILE[0]
                     with ignore_file.open("a+") as f:
@@ -560,22 +562,25 @@ class DataManager:
         return DatasetSplit.Name(example_set).lower()
 
     def store_feature_vector(self, tile: LabeledTile) -> None:
-        objectId = ObjectId(tile._objectId)
+        # radar crops don't have object_id (and probably no feature vector)
+        if not tile.HasField("object_id"):
+            return
+
+        object_id = ObjectId.from_protobuf(tile.object_id)
         feature_vector = HawkObject.from_protobuf(tile.feature_vector)
 
-        labels = tile.boundingBoxes
-        if labels:
-            class_name = ClassName(labels[0].class_name)
+        if tile.labels:
+            class_name = ClassName(tile.labels[0].class_name)
             label_dir = str(self._class_to_label(class_name))  ## get the label
         else:
             label_dir = "0"
 
-        feature_vector_path = objectId.file_name(
+        feature_vector_path = object_id.file_name(
             self._context._feature_vector_dir / label_dir, ".pt"
         )
         feature_vector_path.parent.mkdir(parents=True, exist_ok=True)
 
-        temp_file_path = objectId.file_name(
+        temp_file_path = object_id.file_name(
             self._context._feature_vector_dir / "temp", ".pt"
         )
         if not temp_file_path.exists():

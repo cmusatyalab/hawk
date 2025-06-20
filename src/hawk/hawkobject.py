@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .proto.messages_pb2 import _HawkObject as pb2_HawkObject
+from .proto import common_pb2
 
 # Is there a better way to do this?
 # This breaks down for audio/video formats because there are several containers
@@ -88,13 +88,13 @@ class HawkObject:
         return cls(content, media_type)
 
     @classmethod
-    def from_protobuf(cls, msg: bytes | pb2_HawkObject) -> HawkObject:
+    def from_protobuf(cls, msg: bytes | common_pb2.HawkObject) -> HawkObject:
         """Parses a HawkObject from a protobuf message.
 
         raises MediaTypeError if the media type is unknown.
         """
         if isinstance(msg, bytes):
-            obj = pb2_HawkObject()
+            obj = common_pb2.HawkObject()
             obj.ParseFromString(msg)
         else:
             obj = msg
@@ -134,9 +134,9 @@ class HawkObject:
         object_path.write_bytes(self.content)
         return object_path
 
-    def to_protobuf(self) -> pb2_HawkObject:
+    def to_protobuf(self) -> common_pb2.HawkObject:
         """Returns a protobuf representation of the HawkObject."""
-        return pb2_HawkObject(
+        return common_pb2.HawkObject(
             content=self.content,
             media_type=self.media_type,
         )

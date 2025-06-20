@@ -7,7 +7,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, TypedDict
 
 from ...classes import class_name_to_str
-from ...proto.messages_pb2 import SendTile, _BoundingBox
+from ...proto import common_pb2
+from ...proto.messages_pb2 import SendTile
 
 if TYPE_CHECKING:
     from ...classes import ClassName
@@ -24,14 +25,16 @@ class BoundingBox(TypedDict, total=False):
     confidence: float
 
 
-def bbox_to_protobuf(bbox: BoundingBox) -> _BoundingBox:
-    return _BoundingBox(
-        x=bbox.get("x", 0.5),
-        y=bbox.get("y", 0.5),
-        w=bbox.get("w", 1.0),
-        h=bbox.get("h", 1.0),
+def bbox_to_protobuf(bbox: BoundingBox) -> common_pb2.Detection:
+    return common_pb2.Detection(
         class_name=class_name_to_str(bbox["class_name"]),
         confidence=bbox["confidence"],
+        coords=common_pb2.Region(
+            center_x=bbox.get("x", 0.5),
+            center_y=bbox.get("y", 0.5),
+            width=bbox.get("w", 1.0),
+            height=bbox.get("h", 1.0),
+        ),
     )
 
 
@@ -59,7 +62,7 @@ class ResultProvider:
         groundtruth = retriever.get_groundtruth(self.id)
 
         return SendTile(
-            _objectId=self.id.serialize_oid(),
+            object_id=self.id.to_protobuf(),
             scoutIndex=scout_index,
             version=self.model_version,
             feature_vector=self.feature_vector,

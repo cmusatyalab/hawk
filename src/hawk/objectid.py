@@ -13,6 +13,7 @@ from functools import cached_property
 from pathlib import Path
 
 from .classes import NEGATIVE_CLASS, ClassName
+from .proto import common_pb2
 from .rusty import unwrap, unwrap_or
 
 # Namespace identifier for UUIDs derived from Hawk ObjectIDs
@@ -61,6 +62,20 @@ class ObjectId:
         something special with the ObjectId (git grep serialize_oid).
         """
         return self.oid
+
+    @classmethod
+    def from_protobuf(cls, msg: bytes | common_pb2.ObjectId) -> ObjectId:
+        """Parses an ObjectId from a protobuf message."""
+        if isinstance(msg, bytes):
+            obj = common_pb2.ObjectId()
+            obj.ParseFromString(msg)
+        else:
+            obj = msg
+        return cls(obj.oid)
+
+    def to_protobuf(self) -> common_pb2.ObjectId:
+        """Returns a protobuf representation of the ObjectId."""
+        return common_pb2.ObjectId(oid=self.oid)
 
     # compat functions
     def file_name(
