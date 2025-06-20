@@ -98,7 +98,7 @@ class UnlabeledResult(LabelSample):
 
             logger.info(f"SAVED {image_file} for {result.objectId}")
 
-        if request.HasField("feature_vector"):
+        if request.feature_vector:
             fv_path = result.content(mission_dir / "feature_vectors", ".pt")
             feature_vector = HawkObject.from_protobuf(request.feature_vector)
             feature_vector.to_file(fv_path, mkdirs=True)
