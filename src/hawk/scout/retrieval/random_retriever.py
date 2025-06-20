@@ -28,6 +28,7 @@ class RandomRetriever(Retriever, LegacyRetrieverMixin):
         self._resize = dataset.resizeTile
         logger.info("In RANDOM RETRIEVER INIT...")
         logger.info(f"Resize tile: {self._resize}")
+        assert not self._resize, "resize not implemented"
 
         index_file = Path(self._dataset.dataPath)
         self._data_root = index_file.parent.parent
@@ -69,7 +70,7 @@ class RandomRetriever(Retriever, LegacyRetrieverMixin):
 
             for tile in tiles:
                 parts = tile.split()
-                image_path = Path(parts[0])
+                image_path = Path(parts[0]).resolve().relative_to(self._data_root)
                 try:
                     class_label = ClassLabel(int(parts[1]))
                     class_name = self._class_id_to_name(class_label)
