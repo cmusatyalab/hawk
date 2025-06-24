@@ -2,32 +2,43 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List
+from typing import Iterator
 
 from logzero import logger
 
 from ...classes import ClassLabel
 from ...objectid import ObjectId
-from ...proto.messages_pb2 import FileDataset
 from ..stats import collect_metrics_total
-from .retriever import Retriever
+from .retriever import Retriever, RetrieverConfig
 from .retriever_mixins import LegacyRetrieverMixin
 
 
-class TileRetriever(Retriever, LegacyRetrieverMixin):
-    def __init__(self, mission_id: str, dataset: FileDataset):
-        super().__init__(mission_id)
-        self.network = False
-        self._dataset = dataset
-        self._timeout = dataset.timeout
-        self._resize = dataset.resizeTile
-        index_file = Path(self._dataset.dataPath)
-        self.img_tile_map: Dict[str, List[str]] = defaultdict(list)
+class TileRetrieverConfig(RetrieverConfig):
+    index_path: Path  # file that contains the index
+    timeout: float = 20.0  # seconds per frame (batch of tiles)
 
+
+class TileRetriever(Retriever, LegacyRetrieverMixin):
+    config_class = TileRetrieverConfig
+    config: TileRetrieverConfig
+
+    def __init__(self, config: TileRetrieverConfig) -> None:
+        super().__init__(config)
+
+        index_file = (self.config.data_root / self.config.index_path).resolve()
+
+        # make sure index_file is inside the configured data_root.
+        # Path.relative_to raises ValueError when it is not a subtree.
+        index_file.relative_to(self.config.data_root)
+
+        self.img_tile_map: dict[str, list[str]] = defaultdict(list)
         self.images = []
+
         contents = index_file.read_text().splitlines()
         for line in contents:
             # line = "<path> <label>"
@@ -38,18 +49,14 @@ class TileRetriever(Retriever, LegacyRetrieverMixin):
             self.img_tile_map[key].append(line)
 
         self.total_tiles = len(contents)
-
         self.total_images.set(len(self.images))
         self.total_objects.set(self.total_tiles)
 
-    def stream_objects(self) -> None:
-        super().stream_objects()
+    def get_next_objectid(self) -> Iterator[ObjectId]:
         assert self._context is not None
 
         for key in self.images:
             time_start = time.time()
-            if self._stop_event.is_set():
-                break
 
             self.retrieved_images.inc()
             self._context.log(f"RETRIEVE: File {key}")
@@ -59,15 +66,17 @@ class TileRetriever(Retriever, LegacyRetrieverMixin):
             logger.info(f"Retrieved Image:{key} Tiles:{len(tiles)} @ {delta_t}")
 
             for tile in tiles:
-                image_path, label = tile.split()
+                file_path, label = tile.split()
+                image_path = (
+                    Path(file_path).resolve().relative_to(self.config.data_root)
+                )
                 class_label = ClassLabel(int(label))
                 class_name = self._class_id_to_name(class_label)
 
-                object_id = ObjectId(f"/{class_name}/collection/id/{image_path}")
-                self.put_objectid(object_id)
+                yield ObjectId(f"/{class_name}/collection/id/{image_path}")
 
             retrieved_tiles = collect_metrics_total(self.retrieved_objects)
             logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
             time_passed = time.time() - time_start
-            if time_passed < self._timeout:
-                time.sleep(self._timeout - time_passed)
+            if time_passed < self.config.timeout:
+                time.sleep(self.config.timeout - time_passed)

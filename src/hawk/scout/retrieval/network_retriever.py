@@ -2,88 +2,56 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import io
-import math
-import queue
-import sys
 import threading
 import time
-from collections import defaultdict
-from pathlib import Path
+from typing import Iterator
 
-import numpy as np
 import zmq
 from logzero import logger
-from PIL import Image
 
-from ...classes import NEGATIVE_CLASS, ClassLabel, ClassName
 from ...objectid import ObjectId
-from ...proto.messages_pb2 import NetworkDataset
 from ..stats import collect_metrics_total
-from .retriever import Retriever
-from .retriever_mixins import LegacyRetrieverMixin
+from .random_retriever import RandomRetriever, RandomRetrieverConfig
 
 
-class NetworkRetriever(Retriever, LegacyRetrieverMixin):
-    def __init__(self, mission_id: str, dataset: NetworkDataset, host_name: str):
-        globally_constant_rate = dataset.dataBalanceMode == "globally_constant"
-        super().__init__(
-            mission_id,
-            tiles_per_interval=dataset.numTiles,
-            globally_constant_rate=globally_constant_rate,
-        )
-        self.this_host_name = host_name.split(":")[0]
-        self._dataset = dataset
-        self._network_server_host = dataset.dataServerAddr  ## pulled from home config
-        self._network_server_port = dataset.dataServerPort  ## pulled from home config
+class NetworkRetrieverConfig(RandomRetrieverConfig):
+    server_host: str
+    server_port: int
+    balance_mode: str
+
+
+class NetworkRetriever(RandomRetriever):
+    config_class = NetworkRetrieverConfig
+    config: NetworkRetrieverConfig
+
+    def __init__(self, config: NetworkRetrieverConfig) -> None:
+        super().__init__(config)
+
+        # avoid double counting by only allowing server to report how many
+        # samples have been processed. (fix this when we launch the server thread)
+        self.total_objects.set(0)
+
+        self.globally_constant = self.config.balance_mode == "globally_constant"
+
         # True unless local scout deploy conditions prevent
         self.scml_active_condition = True
-        self.data_rate_balance = dataset.dataBalanceMode
 
-        self._timeout = dataset.timeout  ## from home config default 20
-        self._resize = dataset.resizeTile
         logger.info("In NETWORK RETRIEVER INIT...")
-
-        index_file = Path(self._dataset.dataPath)
-        self._data_root = index_file.parent.parent
-        self.contents = index_file.read_text().splitlines()
-        self.total_tiles = len(self.contents)
-        ## for network retriever, will update total_tiles to equal tiles
-        ## processes as clients unaware of total tiles per scout a priori
-
-        key_len = math.ceil(self.total_tiles / self.tiles_per_interval)
-
-        keys = np.arange(key_len)
-        per_frame = np.array_split(self.contents, key_len)
-
-        self.img_tile_map = defaultdict(list)
-        for i, tiles_per_frame in enumerate(per_frame):
-            k = keys[i]
-            for content in tiles_per_frame:
-                self.img_tile_map[k].append(content)
-
-        # random.shuffle(keys)
-        self.images = keys
-
-        self.total_images.set(len(self.images))
-        if self._network_server_host == self.this_host_name:
-            self.total_objects.set(self.total_tiles)
-        else:
-            self.total_objects.set(0)
-        ## allow only serve to report how many samples have been processed.
-
         self.request_counter_by_scout: dict[int, int] = {}
         self.sample_count = 0
 
     def _run_threads(self) -> None:
-        if self._network_server_host == self.this_host_name:
+        assert self._context is not None
+        scout_index = self._context.scout_index
+        scout = self._context.scouts[scout_index]
+
+        if self.config.server_host != scout.hostname:
             logger.info("Starting server thread in retriever...")
             threading.Thread(target=self.server, name="network_server").start()
         else:
             super()._run_threads()
 
-    def stream_objects(self) -> None:
-        super().stream_objects()
+    def get_next_objectid(self) -> Iterator[ObjectId]:
         assert self._context is not None
 
         # network retriever remains idle until we get the network connection
@@ -93,7 +61,7 @@ class NetworkRetriever(Retriever, LegacyRetrieverMixin):
         context = zmq.Context()
         client_socket = context.socket(zmq.REQ)
         client_socket.connect(
-            f"tcp://{self._network_server_host}:{self._network_server_port}"
+            f"tcp://{self.config.server_host}:{self.config.server_port}"
         )  ## setup socket
 
         ## next will need to manage some flags for when network sample
@@ -156,93 +124,67 @@ class NetworkRetriever(Retriever, LegacyRetrieverMixin):
             client_socket.send_multipart(msg)
 
             ### receive and process
-            content, label_, path_ = client_socket.recv_multipart()
-            label, path = label_.decode(), path_.decode()
+            oid = client_socket.recv_multipart()[0]
+            yield ObjectId(oid.decode())
 
-            # normalize labels from int/str to ClassName
-            try:
-                class_label = ClassLabel(int(label))
-                class_name = self._class_id_to_name(class_label)
-            except ValueError:
-                class_name = ClassName(sys.intern(label))
-            except IndexError:
-                class_name = NEGATIVE_CLASS
-
-            object_id = ObjectId(f"/{class_name}/collection/id/{path}")
-            self.put_objectid(object_id)
-
-            ## XXX The following logic/sleep loop should probably move into
-            ## the Retriever base class to avoid unnecessary code duplication.
-            if not self.globally_constant_rate:
-                num_tiles = self.tiles_per_interval
-            elif self.active_scout_ratio == 0.0:
-                num_tiles = self.sample_count  # avoid divide by 0, just sleep
-            else:  # adjust local retrieval rate to compensate for lost scouts
-                num_tiles = int(self.tiles_per_interval / self.active_scout_ratio)
-
-            if self.sample_count % num_tiles == 0:
+            if self.sample_count % self.config.tiles_per_frame == 0:
                 retrieved_tiles = collect_metrics_total(self.retrieved_objects)
                 logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
-                logger.info(
-                    f"Num tiles, {num_tiles}, "
-                    f"tiles per interval: {self.tiles_per_interval}, "
-                    f"active scout ratio: {self.active_scout_ratio}"
-                )
+
+                # It does not matter if we're globally or locally constant.
+                # If it was global, we should be throttled enough in the RPC
+                # that we never have to spend extra time sleeping here.
                 time_passed = time.time() - time_start
-                if time_passed < self._timeout:
+                if time_passed < self.config.timeout:
                     logger.info(f"About to sleep at: {time.time()}")
-                    time.sleep(self._timeout - time_passed)
+                    time.sleep(self.config.timeout - time_passed)
                 time_start = time.time()
-            ## may need to adjust this timeout of 20 to accomodate higher
+
+            ## may need to adjust this timeout of 20 to accommodate higher
             ## retrieval rates.
 
     def server(self) -> None:
+        self.total_objects.set(self.total_tiles)
         self.current_deployment_mode = "Server"
-        served_samples = 0
         context = zmq.Context()
         socket = context.socket(zmq.REP)
-        socket.bind(f"tcp://0.0.0.0:{self._network_server_port}")  ## setup socket
+        socket.bind(f"tcp://0.0.0.0:{self.config.server_port}")  ## setup socket
         logger.info("Server socket ready...")
-        sample_queue: queue.Queue[tuple[Path, str]] = queue.Queue()
-        for line in self.contents:
-            path, label = line.split()
-            sample_queue.put((Path(path), label))
         logger.info(
-            f"Server retriever queue ready..., Total samples = {len(self.contents)}"
+            f"Server retriever queue ready..., Total samples = {self.total_tiles}"
         )
         try:
-            while True:
+            time_start = time.time()
+            for ntiles, object_id in enumerate(super().get_next_objectid(), 1):
+
                 ## nothing particularly interesting about the request as of right now.
                 msg_parts = socket.recv_multipart()
                 scout_index, request_number = (int(part.decode()) for part in msg_parts)
+
                 ## update request counter by scout index
                 ## synchronizes counters with each client scout
                 self.request_counter_by_scout[scout_index] = request_number
 
                 ### response
-                sample_path, sample_label = sample_queue.get()
+                socket.send_multipart([object_id.serialize_oid()])
 
-                if sample_path.suffix == ".npy":
-                    content = np.load(sample_path)
-                else:
-                    tmpfile = io.BytesIO()
-                    image = Image.open(sample_path).convert("RGB")
-                    image.save(tmpfile, format="JPEG", quality=85)
-                    content = tmpfile.getvalue()
+                if ntiles % self.config.tiles_per_frame != 0:
+                    continue
 
-                socket.send_multipart(
-                    [
-                        content,
-                        sample_label.encode(),
-                        str(sample_path).encode(),
-                    ]
+                # we've sent a frame worth of oids, check if we need to slow down.
+                logger.info(
+                    f"Server has served {ntiles} / {self.total_tiles} samples..."
                 )
-                served_samples += 1
-                if served_samples % 200 == 0:
-                    logger.info(
-                        f"Server has served {served_samples} / "
-                        f"{len(self.contents)} samples..."
-                    )
+
+                if not self.globally_constant:
+                    continue
+
+                # using a globally constant rate? we sleep at the server!
+                time_passed = time.time() - time_start
+                if time_passed < self.config.timeout:
+                    logger.info(f"About to sleep at: {time.time()}")
+                    time.sleep(self.config.timeout - time_passed)
+                time_start = time.time()
 
         except Exception as e:
             logger.exception()

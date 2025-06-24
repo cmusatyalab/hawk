@@ -27,12 +27,10 @@ from ..proto.messages_pb2 import (
     AbsolutePolicyConfig,
     ChangeDeploymentStatus,
     Dataset,
-    FileDataset,
     MissionResults,
     MissionStats,
     ModelArchive,
     ModelConfig,
-    NetworkDataset,
     PercentagePolicyConfig,
     PerScoutSCMLOptions,
     ReexaminationStrategyConfig,
@@ -40,11 +38,11 @@ from ..proto.messages_pb2 import (
     SampleIntervalPolicyConfig,
     ScoutConfiguration,
     SelectiveConfig,
-    Streaming_Video,
     TokenConfig,
     TopKConfig,
     TrainConfig,
 )
+from ..scout.retrieval.loader import load_retriever
 from .stats import (
     HAWK_LABELED_CLASSES,
     HAWK_LABELED_OBJECTS,
@@ -224,9 +222,8 @@ class Admin:
         dataset_config = config["dataset"]
         dataset_type = dataset_config["type"]
         self.dataset_type = dataset_type
-        if dataset_type == "video":
-            video_file_list = dataset_config["video_list"]
-        logger.info("Index {}".format(dataset_config["index_path"]))
+        if "index_path" in dataset_config:
+            logger.info(f"Index {dataset_config['index_path']}")
         timeout = dataset_config.get("timeout", 20)
         self.class_list = dataset_config.get("class_list", ["positive"])
         logger.info(f"Class list: {self.class_list}")
@@ -235,61 +232,82 @@ class Admin:
         for index, _scout in enumerate(self.scouts):
             if dataset_type == "tile":
                 dataset = Dataset(
-                    tile=FileDataset(
-                        dataPath=dataset_config["index_path"],
-                        timeout=timeout,
-                    )
+                    retriever="tile",
+                    config=dict(
+                        index_path=dataset_config["index_path"],
+                        timeout=str(timeout),
+                    ),
                 )
             elif dataset_type == "frame":
                 dataset = Dataset(
-                    frame=FileDataset(
-                        dataPath=dataset_config["index_path"],
-                        tileSize=dataset_config["tile_size"],
-                        timeout=timeout,
-                    )
+                    retriever="frame",
+                    config=dict(
+                        index_path=dataset_config["index_path"],
+                        tile_size=str(dataset_config.get("tile_size", 256)),
+                        timeout=str(timeout),
+                    ),
                 )
-
             elif dataset_type == "network":
                 network_config = dataset_config["network"]
                 balance_mode = dataset_config.get(
                     "data_rate_balance", "locally_constant"
                 )
                 dataset = Dataset(
-                    network=NetworkDataset(
-                        dataPath=dataset_config["index_path"],
-                        numTiles=int(dataset_config.get("tiles_per_frame", 200)),
-                        timeout=timeout,
-                        dataServerAddr=network_config["server_address"],
-                        dataServerPort=int(network_config["server_port"]),
-                        dataBalanceMode=balance_mode,
-                    )
+                    retriever="network",
+                    config=dict(
+                        index_path=dataset_config["index_path"],
+                        tiles_per_frame=str(dataset_config.get("tiles_per_frame", 200)),
+                        timeout=str(timeout),
+                        server_host=network_config["server_address"],
+                        server_port=network_config["server_port"],
+                        balance_mode=balance_mode,
+                    ),
                 )
-
             elif dataset_type == "random" or dataset_type == "cookie":
                 dataset = Dataset(
-                    random=FileDataset(
-                        dataPath=dataset_config["index_path"],
-                        numTiles=int(dataset_config.get("tiles_per_frame", 200)),
-                        resizeTile=bool(dataset_config.get("resize_tile", False)),
-                        timeout=timeout,
-                    )
+                    retriever="random",
+                    config=dict(
+                        index_path=dataset_config["index_path"],
+                        tiles_per_frame=str(dataset_config.get("tiles_per_frame", 200)),
+                        resize_tile=(
+                            "true" if dataset_config.get("resize_tile") else "false"
+                        ),
+                        tile_size=str(dataset_config.get("tile_size", 256)),
+                        timeout=str(timeout),
+                    ),
                 )
-
             elif dataset_type == "video":
+                video_file_list = dataset_config["video_list"]
                 dataset = Dataset(
-                    video=Streaming_Video(
+                    retriever="video",
+                    config=dict(
                         video_path=video_file_list[index],
-                        sampling_rate_fps=1,
-                        width=4000,
-                        height=3000,
-                        tile_width=250,
-                        tile_height=250,
-                        # timeout=timeout,
-                    )
+                        sampling_rate_fps="1",
+                        width="4000",
+                        height="3000",
+                        tile_size="250",
+                        timeout=str(timeout),
+                    ),
                 )
             else:
-                errmsg = f"Unknown dataset {dataset_type}"
-                raise NotImplementedError(errmsg)
+                dataset = Dataset(retriever=dataset_type, config=dataset_config)
+
+            try:
+                # Try to validate @home, but we may not be able to load the
+                # retriever (missing module/dependencies) and we won't know
+                # what the admin configured 'data_root' is on the scout. And
+                # this also makes sure that dataset.config doesn't try to
+                # override data_root.
+                retriever = load_retriever(dataset.retriever)
+                retriever.validate_config(
+                    dict(dataset.config, mission_id="", data_root="/")
+                )
+            except ImportError:
+                logger.info("Import error, deferring retriever validation to scout.")
+            except Exception as e:
+                errmsg = f"Failed to validate retriever config: {e}"
+                raise NotImplementedError(errmsg) from e
+
             datasets[index] = dataset
 
         # reexamination
@@ -387,9 +405,6 @@ class Admin:
             scout: PerScoutSCMLOptions(scout_dict={}) for scout in self.scouts
         }
 
-        ## To send periodically to every scout for purposes of retrieval rate
-        self.num_active_scouts = 0
-
         if deployment_options:
             self.scml = True
             default_deploy_scout = deployment_options.get("default_deploy_scout", [])
@@ -438,11 +453,6 @@ class Admin:
                     self.scout_deployment_status[scout] = "Idle"
                 else:
                     self.scout_deployment_status[scout] = "Active"
-                    if (
-                        dataset_type == "network"
-                        and network_config["server_address"] != scout
-                    ):
-                        self.num_active_scouts += 1
         else:
             (
                 default_start_time,
@@ -467,11 +477,6 @@ class Admin:
                 self.scout_deployment_status[scout] = "Idle"
             else:
                 self.scout_deployment_status[scout] = "Active"
-                if (
-                    dataset_type == "network"
-                    and network_config["server_address"] != scout
-                ):
-                    self.num_active_scouts += 1
 
         ## subclass and novel class discovery
         self.novel_class_discovery = config.get("novel_class_discovery", False)
@@ -620,23 +625,9 @@ class Admin:
         dead_scouts = []
         while not self.stop_event.is_set():
             new_dead_scouts = 0
-            ## send the current number of active scouts and get the current
-            ## deployment statuses from all scouts
-            if self.dataset_type == "network":
-                active_scout_ratio = self.num_active_scouts / (
-                    len(self.scout_stubs) - 1
-                )
-            else:
-                active_scout_ratio = self.num_active_scouts / len(self.scout_stubs)
-            logger.info(
-                f"Ratio: {active_scout_ratio}, active: {self.num_active_scouts}, "
-                f"total: {len(self.scout_stubs) - 1}"
-            )
+            ## get the current deployment statuses from all scouts
             for stub in self.scout_stubs.values():
-                msg = [
-                    b"a2s_sync_deploy_status",
-                    str(active_scout_ratio).encode("utf-8"),
-                ]
+                msg = [b"a2s_sync_deploy_status"]
                 stub.send_multipart(msg)
             for stub in self.scout_stubs.values():
                 response = stub.recv()
@@ -666,7 +657,6 @@ class Admin:
             ]
             logger.info(f"Active scouts: {active_scouts}")
             logger.info(f"Idle scouts: {idle_scouts}")
-            self.num_active_scouts = len(active_scouts)
 
             ## Check whether scout has died and how many idle scouts to deploy,
             ## according to configurations
@@ -684,11 +674,7 @@ class Admin:
                     activating_scout = idle_scouts.pop(
                         random.randint(0, len(idle_scouts) - 1)
                     )  ## pick a random idle scout to deploy
-                    self.num_active_scouts += 1
-                    active_scout_ratio = self.num_active_scouts / len(self.scout_stubs)
-                    data = ChangeDeploymentStatus(
-                        ActiveStatus=True, ActiveScoutRatio=active_scout_ratio
-                    )
+                    data = ChangeDeploymentStatus(ActiveStatus=True)
                     msg = [b"a2s_change_deploy_status", data.SerializeToString()]
                     self.stub_socket[activating_scout].send_multipart(msg)
                     self.stub_socket[activating_scout].recv()

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 Carnegie Mellon University
+# SPDX-FileCopyrightText: 2022-2025 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -6,41 +6,49 @@ import copy
 import os
 import time
 from pathlib import Path
-from typing import Iterable, cast
+from typing import Iterator, cast
 
 import cv2
 import numpy as np
 import numpy.typing as npt
 from logzero import logger
 
-from ...classes import NEGATIVE_CLASS
 from ...objectid import ObjectId
-from ...proto.messages_pb2 import FileDataset
 from ..stats import collect_metrics_total
-from .retriever import Retriever
+from .retriever import Retriever, RetrieverConfig
 from .retriever_mixins import LegacyRetrieverMixin
 
 
+class FrameRetrieverConfig(RetrieverConfig):
+    index_path: Path  # file that contains the index
+    timeout: float = 20.0  # seconds per frame (batch of tiles)
+    tile_size: int = 256  # desired tile size
+
+
 class FrameRetriever(Retriever, LegacyRetrieverMixin):
-    def __init__(self, mission_id: str, dataset: FileDataset):
-        super().__init__(mission_id)
-        self.network = False
-        self._dataset = dataset
-        self._timeout = dataset.timeout
-        self._resize = dataset.resizeTile
-        index_file = Path(self._dataset.dataPath)
-        self.tilesize = 256 if self._dataset.tileSize == 0 else self._dataset.tileSize
-        self.overlap = 100 if 0.5 * self.tilesize > 100 else 0
+    config_class = FrameRetrieverConfig
+    config: FrameRetrieverConfig
+
+    def __init__(self, config: FrameRetrieverConfig) -> None:
+        super().__init__(config)
+
+        index_file = (self.config.data_root / self.config.index_path).resolve()
+
+        # make sure index_file is inside the configured data_root.
+        # Path.relative_to raises ValueError when it is not a subtree.
+        index_file.relative_to(self.config.data_root)
+
+        self.overlap = 100 if 0.5 * self.config.tile_size > 100 else 0
         self.padding = True
-        self.slide = self.tilesize - self.overlap
+        self.slide = self.config.tile_size - self.overlap
 
-        self.images = [Path(line) for line in index_file.read_text().splitlines()]
-
+        self.images = index_file.read_text().splitlines()
         self.total_tiles = len(self.images)
+
         self.total_images.set(self.total_tiles)
         self.total_objects.set(self.total_tiles)
 
-    def save_tile(
+    def _save_tile(
         self,
         img: npt.NDArray[np.uint8],
         imagename: Path,
@@ -49,19 +57,23 @@ class FrameRetriever(Retriever, LegacyRetrieverMixin):
         up: int,
     ) -> Path:
         subimg = copy.deepcopy(
-            img[up : (up + self.tilesize), left : (left + self.tilesize)]
+            img[
+                up : (up + self.config.tile_size), left : (left + self.config.tile_size)
+            ]
         )
         outpath = imagename.parent.joinpath(subimgname)
         if self.padding:
             h, w, c = np.shape(subimg)
-            outimg = np.zeros((self.tilesize, self.tilesize, c), dtype=np.uint8)
+            outimg = np.zeros(
+                (self.config.tile_size, self.config.tile_size, c), dtype=np.uint8
+            )
             outimg[0:h, 0:w, :] = subimg
         else:
             outimg = subimg
         cv2.imwrite(os.fspath(outpath), outimg)
         return outpath
 
-    def split_frame(self, frame: Path) -> Iterable[Path]:
+    def _split_frame(self, frame: Path) -> Iterator[Path]:
         image = cast(npt.NDArray[np.uint8], cv2.imread(str(frame)))
 
         width = np.shape(image)[1]
@@ -69,50 +81,51 @@ class FrameRetriever(Retriever, LegacyRetrieverMixin):
 
         left, up = 0, 0
         while left < width:
-            if left + self.tilesize >= width:
-                left = max(width - self.tilesize, 0)
+            if left + self.config.tile_size >= width:
+                left = max(width - self.config.tile_size, 0)
             up = 0
             while up < height:
-                if up + self.tilesize >= height:
-                    up = max(height - self.tilesize, 0)
-                # right = min(left + self.tilesize, width - 1)
-                # down = min(up + self.tilesize, height - 1)
+                if up + self.config.tile_size >= height:
+                    up = max(height - self.config.tile_size, 0)
+                # right = min(left + self.config.tile_size, width - 1)
+                # down = min(up + self.config.tile_size, height - 1)
                 subimgname = f"{frame.stem}__{left}___{up}{frame.suffix}"
-                yield self.save_tile(image, frame, subimgname, left, up)
+                yield self._save_tile(image, frame, subimgname, left, up)
 
-                if up + self.tilesize >= height:
+                if up + self.config.tile_size >= height:
                     break
                 up += self.slide
 
-            if left + self.tilesize >= width:
+            if left + self.config.tile_size >= width:
                 break
             left += self.slide
 
-    def stream_objects(self) -> None:
-        super().stream_objects()
+    def get_next_objectid(self) -> Iterator[ObjectId]:
         assert self._context is not None
-
         for key in self.images:
             time_start = time.time()
-            if self._stop_event.is_set():
-                break
+
+            image_path = self.config.data_root.joinpath(key).resolve()
+            image_path.relative_to(self.config.data_root)
+
+            self._context.log(f"RETRIEVE: File {image_path}")
+            tiles = list(self._split_frame(image_path))
 
             self.retrieved_images.inc()
 
-            self._context.log(f"RETRIEVE: File {key}")
-            tiles = list(self.split_frame(key))
             elapsed = time.time() - self._start_time
             logger.info(f"Retrieved Image:{key} Tiles:{len(tiles)} @ {elapsed}")
 
             # bump total_objects to account for the tiles in this frame
             self.total_objects.inc(len(tiles) - 1)
 
-            for image_path in tiles:
-                object_id = ObjectId(f"/{NEGATIVE_CLASS}/collection/id/{image_path}")
-                self.put_objectid(object_id)
+            for tile_path in tiles:
+                rel_path = tile_path.relative_to(self.config.data_root)
+                object_id = ObjectId(f"/negative/collection/id/{rel_path}")
+                yield object_id
 
             retrieved_tiles = collect_metrics_total(self.retrieved_objects)
             logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
             time_passed = time.time() - time_start
-            if time_passed < self._timeout:
-                time.sleep(self._timeout - time_passed)
+            if time_passed < self.config.timeout:
+                time.sleep(self.config.timeout - time_passed)

@@ -6,34 +6,41 @@ import copy
 import multiprocessing as mp
 import time
 from pathlib import Path
-from typing import Iterable, Tuple
+from typing import Iterator, Tuple
 
 import cv2
 import numpy as np
 import numpy.typing as npt
 from logzero import logger
 
-from ...classes import NEGATIVE_CLASS
 from ...objectid import ObjectId
-from ...proto.messages_pb2 import Streaming_Video
 from ..stats import collect_metrics_total
-from .retriever import Retriever
+from .retriever import Retriever, RetrieverConfig
 from .retriever_mixins import LegacyRetrieverMixin
 from .video_parser import produce_video_frames
 
 
+class VideoRetrieverConfig(RetrieverConfig):
+    video_path: Path
+    sampling_rate_fps: int = 1
+    width: int = 4000
+    height: int = 3000
+    tile_size: int = 250
+    timeout: float = 20.0
+
+
 class VideoRetriever(Retriever, LegacyRetrieverMixin):
-    def __init__(self, mission_id: str, dataset: Streaming_Video):
-        super().__init__(mission_id)
-        self.network = False
-        self._dataset = dataset
-        self.timeout = 20
+    config_class = VideoRetrieverConfig
+    config: VideoRetrieverConfig
+
+    def __init__(self, config: VideoRetrieverConfig) -> None:
+        super().__init__(config)
+
         self._start_time = time.time()
         self.padding = True
-        self.tilesize = 250
-        self.overlap = 100 if 0.5 * self.tilesize > 100 else 0
+        self.overlap = 100 if 0.5 * self.config.tile_size > 100 else 0
         self.slide = 250
-        self.video_file_path = dataset.video_path
+        self.video_file_path = self.config.video_path
         self.frame_producer_queue: mp.Queue[Tuple[str, npt.NDArray[np.uint8]]] = (
             mp.Queue(20)
         )
@@ -45,16 +52,11 @@ class VideoRetriever(Retriever, LegacyRetrieverMixin):
         )
         p.start()
         # then create new process and start producer function.
-        self.tile_width = self._dataset.tile_width
-        self.tile_height = self._dataset.tile_height
-        self.video_sampling_rate = self._dataset.sampling_rate_fps
-        self.frame_width = self._dataset.width
-        self.frame_height = self._dataset.height
 
         self.temp_image_dir = Path("/srv/diamond/video_stream_temp_image_dir")
         # self.temp_image_dir.mkdir(exist_ok=True)
 
-        # create temp directory on scout to store carved tiles
+        # create temp directories on scout to store frames and tiles
         self.temp_tile_dir = Path("/srv/diamond/video_stream_temp_tile_dir")
         self.temp_tile_dir.mkdir(exist_ok=True)
 
@@ -66,49 +68,50 @@ class VideoRetriever(Retriever, LegacyRetrieverMixin):
         # number of tiles per image x total expected images in video
         self.total_tiles = 192 * 600
 
-    def save_tile(
+    def _save_tile(
         self, img: npt.NDArray[np.uint8], subimgname: str, left: int, up: int
     ) -> Path:
         subimg = copy.deepcopy(
-            img[up : (up + self.tilesize), left : (left + self.tilesize)]
+            img[
+                up : (up + self.config.tile_size), left : (left + self.config.tile_size)
+            ]
         )
 
-        basename = self.video_file_path.split("/")[-1].split(".")[0]
-        outdir = self.temp_tile_dir.joinpath(f"{basename}{subimgname}.jpeg")
+        tile_name = self.config.video_path.with_suffix(f"{subimgname}.jpeg").name
+        tile_path = self.temp_tile_dir.joinpath(tile_name)
 
         h, w, c = np.shape(subimg)
-        outimg = cv2.resize(subimg, (256, 256))
+        outimg = cv2.resize(subimg, (self.config.tile_size, self.config.tile_size))
         logger.info("About to write tile...")
         try:
-            cv2.imwrite(str(outdir), outimg)
+            cv2.imwrite(str(tile_path), outimg)
         except Exception as e:
             logger.info(e)
-        return outdir
+        return tile_path
 
-    def split_frame(
+    def _split_frame(
         self, frame_name: str, frame: npt.NDArray[np.uint8]
-    ) -> Iterable[Path]:
+    ) -> Iterator[Path]:
         logger.info(self.frame_producer_queue.qsize())
         # frame = cv2.imread(os.path.join(self.temp_image_dir, frame_name))
-        basename = self.video_file_path.split("/")[-1].split(".")[0]
+        basename = self.video_file_path.stem
         outbasename = frame_name.split(".")[0] + "_"
-        width = 4000
-        height = 3000
-        num_tile_rows = int(height / self.tilesize)
-        num_tile_cols = int(width / self.tilesize)
+        num_tile_rows = int(self.config.height / self.config.tile_size)
+        num_tile_cols = int(self.config.width / self.config.tile_size)
         for row in range(num_tile_rows):
             for col in range(num_tile_cols):
-                subimgname = f"{outbasename}{col * self.tilesize}_{row * self.tilesize}"
+                tile_size = self.config.tile_size
+                subimgname = f"{outbasename}{col * tile_size}_{row * tile_size}"
                 # tile = self.save_tile(
-                #     frame, subimgname, col*self.tilesize, row*self.tilesize
+                #     frame, subimgname, col*tile_size, row*tile_size
                 # )
                 tile = frame[
-                    row * self.tilesize : (row * self.tilesize + self.tilesize),
-                    col * self.tilesize : (col * self.tilesize + self.tilesize),
+                    row * tile_size : (row * tile_size + tile_size),
+                    col * tile_size : (col * tile_size + tile_size),
                 ]
                 # tile = copy.deepcopy(
-                #     frame[row * self.tilesize: (row * self.tilesize + self.tilesize),
-                #           col * self.tilesize: (col * self.tilesize + self.tilesize)]
+                #     frame[row * tile_size: (row * tile_size + tile_size),
+                #           col * tile_size: (col * tile_size + tile_size)]
                 # )
 
                 outdir = self.temp_tile_dir.joinpath(f"{basename}{subimgname}.jpeg")
@@ -117,30 +120,27 @@ class VideoRetriever(Retriever, LegacyRetrieverMixin):
                 cv2.imwrite(str(outdir), resized_tile)
                 yield outdir
 
-    def stream_objects(self) -> None:
-        # wait for mission context to be added
-        super().stream_objects()
+    def get_next_objectid(self) -> Iterator[ObjectId]:
         assert self._context is not None
 
-        self._start_time = time.time()
         logger.info(self.video_file_path)
         frame_count = 1
         num_retrieved_images = 0
         # for frame_name in os.listdir(self.temp_image_dir):
 
-        while not self._stop_event.is_set():
+        while True:
             logger.info("Waiting for frame from queue...")
             frame_name, frame = self.frame_producer_queue.get()
+
             logger.info("Preparing to tile: ")
-            if self._stop_event.is_set():
-                logger.info("Stop event is set...")
-                break
 
             self.total_images.inc()
             self.retrieved_images.inc()
             frame_count += 1
             num_retrieved_images += 1
-            tiles = list(self.split_frame(frame_name, frame))
+
+            tiles = list(self._split_frame(frame_name, frame))
+
             self.total_objects.inc(len(tiles))
 
             delta_t = time.time() - self._start_time
@@ -149,15 +149,17 @@ class VideoRetriever(Retriever, LegacyRetrieverMixin):
                 f"Tiles:{len(tiles)} @ {delta_t}"
             )
             for tile_path in tiles:
-                object_id = ObjectId(f"/{NEGATIVE_CLASS}/collection/id/{tile_path}")
-                self.put_objectid(object_id)
-            time.sleep(8)
+                rel_path = tile_path.resolve().relative_to(self.config.data_root)
+                yield ObjectId(f"/negative/collection/id/{rel_path}")
 
             retrieved_tiles = collect_metrics_total(self.retrieved_objects)
             logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
+
+            time.sleep(8)
             # time_passed = time.time() - self._start_time
             # if time_passed < self.timeout:
             #  time.sleep(self.timeout - time_passed)
 
         self._context.log(f"RETRIEVE: File # {num_retrieved_images}")
-        # shutil.rmtree(self.temp_tile_dir)
+
+    # shutil.rmtree(self.temp_tile_dir)

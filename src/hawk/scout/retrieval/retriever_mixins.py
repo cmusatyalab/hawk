@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 from io import BytesIO
-from pathlib import Path
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -17,11 +16,11 @@ from ...hawkobject import HawkObject
 from ...objectid import ObjectId
 from ...rusty import unwrap
 from ..core.result_provider import BoundingBox
-from .retriever import RetrieverBase
+from .retriever import ImageRetrieverConfig, RetrieverBase
 
 matplotlib.use("agg")
 
-THUMBNAIL_SIZE = (256, 256)
+THUMBNAIL_SIZE = 256
 
 
 class ThumbnailImageMixin(RetrieverBase):
@@ -29,8 +28,11 @@ class ThumbnailImageMixin(RetrieverBase):
 
     def get_oracle_data(self, object_id: ObjectId) -> list[HawkObject]:
         ml_object = self.get_ml_data(object_id)
-        if ml_object is None or not ml_object.media_type.startswith("image/"):
-            raise ValueError("Generic get_oracle_data only works for images")
+        return [self._crop_and_resize(ml_object, THUMBNAIL_SIZE)]
+
+    def _crop_and_resize(self, ml_object: HawkObject, size: int) -> HawkObject:
+        if not ml_object.media_type.startswith("image/"):
+            raise ValueError("resizing only works for images")
 
         with BytesIO(ml_object.content) as f:
             image = Image.open(f).convert("RGB")
@@ -38,7 +40,7 @@ class ThumbnailImageMixin(RetrieverBase):
             # Image operations are delayed as long as possible, so we actually
             # have to keep the file handle open because we may not actually
             # load the image until after crop and resize have been specified
-            # and we're trying to save the new image.
+            # and we're trying to save the final image.
 
             # crop to centered square
             if image.size[0] != image.size[1]:
@@ -49,41 +51,41 @@ class ThumbnailImageMixin(RetrieverBase):
                 bottom = top + short_edge
                 image = image.crop((left, top, right, bottom))
 
-            # resize to THUMBNAIL_SIZE
-            # image.thumbnail(THUMBNAIL_SIZE)
-            image = image.resize(THUMBNAIL_SIZE)
+            # resize to 'size x size'
+            # image.thumbnail((size, size))
+            if image.size[0] != size:
+                image = image.resize((size, size))
 
+            # either way, convert to compressed jpeg
             with BytesIO() as tmpfile:
                 image.save(tmpfile, format="JPEG", quality=85)
                 content = tmpfile.getvalue()
 
-        return [HawkObject(content=content, media_type="image/jpeg")]
+        return HawkObject(content=content, media_type="image/jpeg")
 
 
 class LegacyRetrieverMixin(ThumbnailImageMixin):
     """Get tile and groundtruth based on the legacy ObjectId format."""
 
-    def __init__(self) -> None:
-        super().__init__()
-
-        # TODO: we probably should be more restrictive about where images
-        # are allowed to be retrieved from.
-        # Random retriever sets this to the parent of the INDEXES directory.
-        self._data_root = Path("/")
-
-    def get_ml_data(self, object_id: ObjectId) -> HawkObject | None:
+    def get_ml_data(self, object_id: ObjectId) -> HawkObject:
         """Return ML ready tile for inferencing or training."""
         try:
-            object_path = unwrap(object_id._file_path(self._data_root))
-            return HawkObject.from_file(object_path)
-        except (AssertionError, FileNotFoundError):
-            logger.error(f"Unable to read {object_id}")
-            return None
+            object_path = unwrap(object_id._file_path(self.config.data_root))
+            ml_object = HawkObject.from_file(object_path)
+        except (AssertionError, FileNotFoundError) as e:
+            msg = f"Unable to read {object_id}"
+            logger.error(msg)
+            raise FileNotFoundError(msg) from e
+
+        if isinstance(self.config, ImageRetrieverConfig) and self.config.resize_tile:
+            return self._crop_and_resize(ml_object, self.config.tile_size)
+
+        return ml_object
 
     def get_groundtruth(self, object_id: ObjectId) -> list[BoundingBox]:
         """Return groundtruth for logging, statistics and scriptlabeler."""
-        # only handles classification groundtruth as it assumes it is stashed
-        # in the object id.
+        # only handles classification groundtruth as it assumes the class is
+        # stashed in the object id.
         class_name = object_id._groundtruth()
         if class_name is None:
             return []
@@ -98,16 +100,10 @@ class LegacyRetrieverMixin(ThumbnailImageMixin):
 class LegacyRadarMixin(LegacyRetrieverMixin):
     """Derive Oracle data for a radar dataset."""
 
-    def __init__(self) -> None:
-        super().__init__()
-
-        # This probably should be configurable
-        self._data_root = Path("/srv/diamond/RADAR_DETECTION")
-
     def get_oracle_data(self, object_id: ObjectId) -> list[HawkObject]:
         """Create a Range-Doppler heatmap from radar data."""
         try:
-            object_path = unwrap(object_id._file_path(self._data_root))
+            object_path = unwrap(object_id._file_path(self.config.data_root))
             assert object_path.suffix in (".npy", ".npz")
             data = np.load(object_path, allow_pickle=True)
         except (AssertionError, FileNotFoundError):

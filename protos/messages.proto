@@ -129,44 +129,9 @@ message SampleIntervalPolicyConfig {
 }
 
 message Dataset {
-  oneof value {
-    FileDataset frame = 1; // ultra high-def images
-    FileDataset random = 2; // random sampling
-    FileDataset tile = 3; // tile sampling
-    FileDataset scope = 4; // scopecookie
-    Streaming_Video video = 5; // ingest video stream
-    NetworkDataset network = 6;
-  }
+  string retriever = 1;
+  map<string, string> config = 2;
 }
-
-message FileDataset {
-  string dataPath = 1; // path to index file or directory on scout
-  int32 tileSize = 2;
-  int32 numTiles = 3; // optional param for random sampling
-  int32 timeout = 4; // optional param for random sampling
-  bool resizeTile = 5;
-}
-
-message NetworkDataset {
-  string dataPath = 1;
-  int32 tileSize = 2;
-  int32 numTiles = 3;
-  int32 timeout = 4;
-  bool resizeTile = 5;
-  string dataServerAddr = 6; // host address of data server
-  int32 dataServerPort = 7; // port of data server
-  string dataBalanceMode = 8; // 'locally_constant' or 'globally_constant'
-}
-
-message Streaming_Video {
-  int32 width = 1; // full frame width
-  int32 height = 2; // full frame height
-  int32 sampling_rate_fps = 3; // desired frame inference rate
-  string video_path = 4; // full path to video
-  int32 tile_height = 5;
-  int32 tile_width = 6;
-   }
-
 
 message SelectiveConfig {
   oneof value {
@@ -254,5 +219,4 @@ message PerScoutSCMLOptions {
 
 message ChangeDeploymentStatus {
   bool ActiveStatus = 1;
-  float ActiveScoutRatio = 2;
 }

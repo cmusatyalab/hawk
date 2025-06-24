@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterator
 
 import pytest
 from PIL import Image
@@ -12,7 +12,7 @@ from PIL import Image
 from hawk.hawkobject import HawkObject
 from hawk.objectid import ObjectId
 from hawk.scout.context.model_trainer_context import ModelContext
-from hawk.scout.retrieval.retriever import Retriever
+from hawk.scout.retrieval.retriever import Retriever, RetrieverConfig
 
 if TYPE_CHECKING:
     from hawk.scout.core.hawk_stub import HawkStub
@@ -29,6 +29,11 @@ def test_hawkobject() -> HawkObject:
 
 
 class TestRetriever(Retriever):
+    config_class = RetrieverConfig
+
+    def get_next_objectid(self) -> Iterator[ObjectId]:
+        yield ObjectId(oid="test_oid")
+
     def get_ml_data(self, object_id: ObjectId) -> HawkObject:
         return test_hawkobject()
 
@@ -70,7 +75,7 @@ def objectid() -> ObjectId:
 
 @pytest.fixture
 def testretriever() -> TestRetriever:
-    return TestRetriever(mission_id="test-mission")
+    return TestRetriever.from_config({"mission_id": "test-mission"})
 
 
 @pytest.fixture

@@ -110,18 +110,18 @@ class HawkObject:
         """Return file suffix for the object based on it's media type."""
         return MEDIA_TYPES[self.media_type][0]
 
-    def file_path(self, path: Path, index: int | None = None) -> Path:
+    def file_path(self, path: str | Path, index: int | None = None) -> Path:
         """Update a path to the object file to use a proper file-type based
         suffix and optionally a sequence number in case there are multiple
         derived artifacts."""
         if not index:
-            return path.with_suffix(self.suffix)
-        return path.with_suffix(f".{index}.{self.suffix}")
+            return Path(path).with_suffix(self.suffix)
+        return Path(path).with_suffix(f".{index}.{self.suffix}")
 
     ## Exporters
 
     def to_file(
-        self, path: Path, index: int | None = None, *, mkdirs: bool = False
+        self, path: str | Path, index: int | None = None, *, mkdirs: bool = False
     ) -> Path:
         """Write the object to a file. Return path to the new file.
 

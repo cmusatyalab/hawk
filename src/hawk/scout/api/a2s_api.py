@@ -48,12 +48,8 @@ from ..retrain.model_policy import ModelPolicy
 from ..retrain.percentage_policy import PercentagePolicy
 from ..retrain.retrain_policy_base import RetrainPolicyBase
 from ..retrain.sampleInterval_policy import SampleIntervalPolicy
-from ..retrieval.frame_retriever import FrameRetriever
-from ..retrieval.network_retriever import NetworkRetriever
-from ..retrieval.random_retriever import RandomRetriever
+from ..retrieval.loader import load_retriever
 from ..retrieval.retriever import Retriever
-from ..retrieval.tile_retriever import TileRetriever
-from ..retrieval.video_retriever import VideoRetriever
 from ..selection.diversity_selector import DiversitySelector
 from ..selection.selector_base import Selector
 from ..selection.threshold_selector import ThresholdSelector
@@ -166,14 +162,10 @@ class A2SAPI:
     def _a2s_sync_deploy_status(self, msg: bytes) -> str:
         retriever = self._manager.get_mission().retriever
 
-        retriever.active_scout_ratio = float(msg.decode())
-
         return retriever.current_deployment_mode
 
     def _a2s_change_deploy_status(self, msg: ChangeDeploymentStatus) -> None:
         retriever = self._manager.get_mission().retriever
-
-        retriever.active_scout_ratio = msg.ActiveScoutRatio
 
         if msg.ActiveStatus:
             retriever.scml_active_mode = True
@@ -262,7 +254,7 @@ class A2SAPI:
         this_host = request.scouts[request.scoutIndex]
         scouts = [HawkStub(scout, this_host) for scout in request.scouts]
 
-        retriever = self._get_retriever(request.missionId, request.dataset, this_host)
+        retriever = self._get_retriever(request.missionId, request.dataset)
 
         retrain_policy = self._get_retrain_policy(request.retrainPolicy, model_dir)
         if request.retrainPolicy.HasField("sample"):
@@ -655,19 +647,10 @@ class A2SAPI:
         )
         raise NotImplementedError(msg)
 
-    def _get_retriever(
-        self, mission_id: str, dataset: Dataset, this_host: str
-    ) -> Retriever:
-        if dataset.HasField("tile"):
-            return TileRetriever(mission_id, dataset.tile)
-        elif dataset.HasField("frame"):
-            return FrameRetriever(mission_id, dataset.frame)
-        elif dataset.HasField("random"):
-            return RandomRetriever(mission_id, dataset.random)
-        elif dataset.HasField("video"):
-            return VideoRetriever(mission_id, dataset.video)
-        elif dataset.HasField("network"):
-            return NetworkRetriever(mission_id, dataset.network, this_host)
-
-        msg = f"unknown dataset: {json_format.MessageToJson(dataset)}"
-        raise NotImplementedError(msg)
+    def _get_retriever(self, mission_id: str, dataset: Dataset) -> Retriever:
+        try:
+            retriever = load_retriever(dataset.retriever)
+            return retriever.from_config(dict(dataset.config, mission_id=mission_id))
+        except Exception as e:
+            msg = f"Failed to load retriever {dataset.retriever}: {e}"
+            raise NotImplementedError(msg) from e

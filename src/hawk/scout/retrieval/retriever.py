@@ -8,9 +8,18 @@ import queue
 import sys
 import threading
 import time
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, ClassVar, Iterator
+
+from pydantic import Field
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
+from typing_extensions import Self
 
 from ...classes import (
     NEGATIVE_CLASS,
@@ -44,64 +53,100 @@ class RetrieverStats:
     retrieved_tiles: int = 0
 
 
-class RetrieverBase(metaclass=ABCMeta):
-    @abstractmethod
-    def start(self) -> None:
-        pass
+class EnvOverrideConfig(BaseSettings):
+    # reorder initialization order so that environment vars (admin configured)
+    # override init settings (user provided).
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            env_settings,
+            dotenv_settings,
+            file_secret_settings,
+            init_settings,
+        )
+
+
+class RetrieverConfig(EnvOverrideConfig):
+    """Base config class for Retrievers."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="hawk_retriever_",
+        env_file="hawk.env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    # should be set by the admin to restrict which filesystem subtree can be
+    # accessed, i.e.
+    #   export HAWK_RETRIEVER_DATA_ROOT=/path/to/data
+    data_root: Path = Field(default_factory=Path.cwd, validate_default=False)
+
+    # uniquely identifies the current mission, used for logging/stats/etc.
+    mission_id: str
+
+
+class ImageRetrieverConfig(RetrieverConfig):
+    """Common config class for image retrievers.
+
+    Used when a retriever returns images from get_ml_data, and the user may
+    request images to be cropped and/or resized before inferencing.
+    """
+
+    resize_tile: bool = False
+    tile_size: int = 256
+
+
+class RetrieverBase(ABC):
+    config_class: ClassVar[type[RetrieverConfig]]
+    config: RetrieverConfig
 
     @abstractmethod
-    def stop(self) -> None:
-        pass
+    def get_next_objectid(self) -> Iterator[ObjectId]:
+        """Iterator yielding object ids."""
 
     @abstractmethod
-    def put_objectid(self, object_id: ObjectId) -> None:
-        pass
-
-    @abstractmethod
-    def get_objectid(self, timeout: float | None = None) -> ObjectId | None:
-        pass
-
-    @abstractmethod
-    def get_stats(self) -> RetrieverStats:
-        pass
-
-    @abstractmethod
-    def get_ml_batch(
-        self, batch_size: int, timeout: float | None = None
-    ) -> tuple[list[ObjectId], list[HawkObject]]:
-        """Get a batch of ML ready items."""
-        pass
-
-    @abstractmethod
-    def get_ml_data(self, object_id: ObjectId) -> HawkObject | None:
+    def get_ml_data(self, object_id: ObjectId) -> HawkObject:
         """Get ML ready tile for inferencing or training.
 
-        returns None if the object_id is not found.
+        raise FileNotFoundError if the object_id is not found.
         """
-        pass
 
     @abstractmethod
     def get_oracle_data(self, object_id: ObjectId) -> list[HawkObject]:
         """Get Oracle ready data to for labeling at home.
 
-        raises FileNotFoundError if the object_id is not found.
-        raises ValueError if we failed to create oracle ready data.
+        raise FileNotFoundError if the object_id is not found.
+        raise ValueError if we fail to create oracle ready data.
         """
-        pass
 
     @abstractmethod
     def get_groundtruth(self, object_id: ObjectId) -> list[BoundingBox]:
-        """Get groundtruth for logging, statistics and scriptlabeler."""
-        pass
+        """Get groundtruth for logging, statistics and script labeler."""
 
 
 class Retriever(RetrieverBase):
-    def __init__(
-        self,
-        mission_id: str,
-        tiles_per_interval: int = 200,
-        globally_constant_rate: bool = False,
-    ) -> None:
+    ## Validators and constructors
+
+    @classmethod
+    def validate_config(cls, config: dict[str, Any]) -> RetrieverConfig:
+        return cls.config_class.model_validate(
+            {k: v for k, v in config.items() if not k.startswith("_")}
+        )
+
+    @classmethod
+    def from_config(cls, config: dict[str, Any]) -> Self:
+        return cls(cls.validate_config(config))
+
+    def __init__(self, config: RetrieverConfig) -> None:
+        self.config = config
+
         self._context: DataManagerContext | None = None
         self._context_event = threading.Event()
         self._start_event = threading.Event()
@@ -112,36 +157,34 @@ class Retriever(RetrieverBase):
         self.server_id = get_server_ids()[0]
         self.total_tiles = 0
 
-        # TODO: we probably should be more restrictive about where images
-        # are allowed to be retrieved from.
-        # Random retriever sets this to the parent of the INDEXES directory.
-        self._data_root = Path("/")
-
-        # These parameters control the rate at which tiles are retrieved and
-        # inferenced at the scout. If we want to achieve a globally constant
-        # rate during a SCML scenario, we periodically update the active scout
-        # ratio and only process `tiles_per_interval / active_scout_ratio`
-        # tiles at a time so that when scouts are added or lost, the remaining
-        # scouts adjust their processing rate to compensate.
-        # Currently only used by network_retriever
-        self.tiles_per_interval: int = tiles_per_interval
-        self.active_scout_ratio: float = 1.0
-        self.globally_constant_rate: bool = globally_constant_rate
-
         self.current_deployment_mode = "Idle"
         self.scml_active_mode: bool | None = None
 
-        self.total_images = HAWK_RETRIEVER_TOTAL_IMAGES.labels(mission=mission_id)
-        self.total_objects = HAWK_RETRIEVER_TOTAL_OBJECTS.labels(mission=mission_id)
+        self.total_images = HAWK_RETRIEVER_TOTAL_IMAGES.labels(
+            mission=self.config.mission_id
+        )
+        self.total_objects = HAWK_RETRIEVER_TOTAL_OBJECTS.labels(
+            mission=self.config.mission_id
+        )
         self.retrieved_images = HAWK_RETRIEVER_RETRIEVED_IMAGES.labels(
-            mission=mission_id
+            mission=self.config.mission_id
         )
         self.retrieved_objects = HAWK_RETRIEVER_RETRIEVED_OBJECTS.labels(
-            mission=mission_id
+            mission=self.config.mission_id
         )
-        self.failed_objects = HAWK_RETRIEVER_FAILED_OBJECTS.labels(mission=mission_id)
-        self.dropped_objects = HAWK_RETRIEVER_DROPPED_OBJECTS.labels(mission=mission_id)
-        self.queue_length = HAWK_RETRIEVER_QUEUE_LENGTH.labels(mission=mission_id)
+        self.failed_objects = HAWK_RETRIEVER_FAILED_OBJECTS.labels(
+            mission=self.config.mission_id
+        )
+        self.dropped_objects = HAWK_RETRIEVER_DROPPED_OBJECTS.labels(
+            mission=self.config.mission_id
+        )
+        self.queue_length = HAWK_RETRIEVER_QUEUE_LENGTH.labels(
+            mission=self.config.mission_id
+        )
+
+    def add_context(self, context: DataManagerContext) -> None:
+        self._context = context
+        self._context_event.set()
 
     def start(self) -> None:
         with self._command_lock:
@@ -150,28 +193,25 @@ class Retriever(RetrieverBase):
         self._start_event.set()
         self._run_threads()
 
-    def _run_threads(self) -> None:
-        """start default thread for all retrievers and network clients
-        can be overridden in derived classes such as the network_retriever."""
-        threading.Thread(target=self.stream_objects, name="stream").start()
-
     def stop(self) -> None:
         self._stop_event.set()
 
-    def add_context(self, context: DataManagerContext) -> None:
-        self._context = context
-        self._context_event.set()
+    def _run_threads(self) -> None:
+        """start default thread for all retrievers and network clients
+        can be overridden in derived classes such as the network_retriever."""
+        threading.Thread(target=self._stream_objects, name="stream").start()
 
-    def stream_objects(self) -> None:
+    def _stream_objects(self) -> None:
         # wait for mission context to be added
         while self._context is None:
             self._context_event.wait()
         self._start_time = time.time()
         self.current_deployment_mode = "Active"
 
-    def server(self) -> None:
-        ## placeholder for server in network retriever
-        pass
+        for object_id in self.get_next_objectid():
+            if self._stop_event.is_set():
+                break
+            self.put_objectid(object_id)
 
     def put_objectid(self, result_object: ObjectId, dup: bool = False) -> None:
         if not dup:
