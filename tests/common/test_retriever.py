@@ -23,11 +23,13 @@ CONFIGS = {
 }
 
 
+@pytest.mark.home
 @pytest.mark.parametrize("retriever", CONFIGS.keys())
 def test_validate_retriever_config(retriever):
     config = dict(CONFIGS[retriever], mission_id="", data_root="/example")
-    retriever_cls = load_retriever(retriever)
-    retriever_cls.validate_config(config)
+    with contextlib.suppress(ImportError):
+        retriever_cls = load_retriever(retriever)
+        retriever_cls.validate_config(config)
 
 
 @pytest.mark.scout

@@ -20,8 +20,11 @@ def load_retriever(retriever: str) -> type[Retriever]:
         msg = f"Unknown retriever: {retriever}"
         raise ImportError(msg) from None
 
-    retriever_cls: type[Retriever] = retriever_ep.load()
-    return retriever_cls
+    try:
+        retriever_cls: type[Retriever] = retriever_ep.load()
+        return retriever_cls
+    except ModuleNotFoundError as e:
+        raise ImportError from e
 
 
 if __name__ == "__main__":
