@@ -105,7 +105,7 @@ parser.add_argument(
     help="number of total epochs to run",
 )
 parser.add_argument(
-    "--warmup-epochs", default=5, type=int, help="intial number of epochs for warmup"
+    "--warmup-epochs", default=5, type=int, help="initial number of epochs for warmup"
 )
 parser.add_argument(
     "--start-epoch",

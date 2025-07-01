@@ -4,7 +4,7 @@
 - `hawk_scout` exposes its metrics endpoint on http://0.0.0.0:6103/metrics
   (actually it uses the configured --a2s-port + 3)
 
-The metrics endpoints are publically accessible and can be monitored remotely,
+The metrics endpoints are publicly accessible and can be monitored remotely,
 which is needed to access both the remote scouts and the home endpoint from the
 Prometheus docker container because the container is using a private network
 and as such cannot access services bound to localhost.

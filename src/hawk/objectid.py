@@ -39,7 +39,7 @@ class ObjectId:
     def shortid(self) -> uuid.UUID:
         """Return (cached) UUID representing the ObjectId's value."""
         # we likely use this often enough to always compute it in __post_init__
-        # but a cached property makes initialization and inheritence easier.
+        # but a cached property makes initialization and inheritance easier.
         return uuid.uuid5(HAWK_OBJECTID_NAMESPACE, self.oid)
 
     def __eq__(self, other: object) -> bool:
@@ -96,7 +96,7 @@ class ObjectId:
         retrievers (f.i. it breaks for video_retriever).
 
         Also this information should not be encoded in the objectid itself,
-        extracing this information should be a retriever specific function.
+        extracting this information should be a retriever specific function.
 
         We must always avoid referencing the ground truth data and make sure it
         is only used for debugging and mission evaluation purposes only.

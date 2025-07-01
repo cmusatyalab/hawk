@@ -41,7 +41,7 @@ train_strategy:
     unfreeze_layers: '3'
     batch-size: '64'
     online_epochs: "15"
-  initial_model_path: /home/eric/School_Bus_Hawk/src/bus_model_21Sep.pth # path to intial model on home
+  initial_model_path: /home/eric/School_Bus_Hawk/src/bus_model_21Sep.pth # path to initial model on home
   bootstrap_path: /home/eric/School_Bus_Hawk/src/bus_bootstrap_video.zip # path to compressed bootstrap zipfile @ home (0/* and 1/*)
 selector:
   type: token # type of selective transmission

@@ -39,7 +39,7 @@ class DataManagerContext(ContextBase):
 
     @abstractmethod
     def check_initial_model(self) -> bool:
-        """Checks if intital model weights available in config phase"""
+        """Checks if initial model weights available in config phase"""
         pass
 
     @abstractmethod

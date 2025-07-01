@@ -206,6 +206,12 @@ markers = [
     "scout: components that run on the scout (deselect with '-m \"not scout\"')",
 ]
 
+[tool.typos.default.extend-words]
+booststrap = "bootstrap"
+DOTA = "DOTA"  # name of a dataset we use
+missino = "mission"
+thr = "thr"  # abbreviation of threshold
+
 [tool.uv.sources]
 torch = { index = "torch-cu11" }
 torchvision = { index = "torch-cu11" }

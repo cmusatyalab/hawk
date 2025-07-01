@@ -155,7 +155,7 @@ class DNNClassifierModelRadar(ModelBase):
             """Inception v3
             Be careful, expects (299,299) sized images and has auxiliary output
             """
-            # Handle the auxilary net
+            # Handle the auxiliary net
             num_ftrs = model_ft.AuxLogits.fc.in_features
             model_ft.AuxLogits.fc = torch.nn.Linear(num_ftrs, num_classes)
             # Handle the primary net
@@ -421,7 +421,7 @@ class DNNClassifierModelRadar(ModelBase):
             predictions_per_sample = np.array(
                 predictions_tiles[crops[0] : crops[0] + len(crops)]
             )
-            # across all patches for a given sample we combine the scores as folllows
+            # across all patches for a given sample we combine the scores as follows
             # to make sure negative results don't diminish positive detections.
             # collect highest confidence scores for all positive classes
             # take lowest confidence for negative class

@@ -32,7 +32,7 @@ train_strategy:
     unfreeze_layers: '3'
     batch-size: '64'
     online_epochs: "15"
-  initial_model_path: /home/esturzin/Hawk_admin_data/src/initial_model_12Aug.pth # path to intial model on home
+  initial_model_path: /home/esturzin/Hawk_admin_data/src/initial_model_12Aug.pth # path to initial model on home
   #bootstrap_path: /home/esturzin/Hawk_admin_data/src/Resized_Runs/Resized_bootstrap.zip # path to compressed bootstrap zipfile @ home (0/* and 1/*)
 selector:
   type: topk # type of selective transmission

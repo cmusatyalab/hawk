@@ -210,7 +210,7 @@ class SelectorBase(Selector):
 
             # Deploy countermeasure if sample is TP or FP
 
-            # Decrement number of countermeausures if TP or FP
+            # Decrement number of countermeasures if TP or FP
 
         # if self.items_processed % 10 == 0:
         #     logger.info(f"Total items processed: {self.items_processed}")

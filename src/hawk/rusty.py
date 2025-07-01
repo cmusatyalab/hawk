@@ -9,7 +9,7 @@ python compared to what we support. This is a much simplified version.
 
 There are also "rsult", "rustkit", "explicitor", and "rusty-utils", which are
 more comprehensive, as they allow wrapping possible exceptions into a Result
-type so that he original exceptions are not lost and can be explictly handled.
+type so that he original exceptions are not lost and can be explicitly handled.
 """
 
 from __future__ import annotations

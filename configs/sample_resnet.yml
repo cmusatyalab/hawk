@@ -25,7 +25,7 @@ retrain_policy:
   threshold: 0.33 # percentage of increment
 train_strategy:
   type: dnn_classifier # type of model training
-  initial_model_path: /home/model0.pth # path to intial model on home
+  initial_model_path: /home/model0.pth # path to initial model on home
   bootstrap_path: /home/bootstrap.zip # path to compressed bootstrap zipfile @ home (0/* and 1/*)
   args:
     mode: hawk # hawk / oracale/ notional

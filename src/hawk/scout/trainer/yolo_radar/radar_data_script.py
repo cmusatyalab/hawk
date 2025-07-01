@@ -34,8 +34,8 @@ from tqdm import tqdm
 
 ORIGINAL_IMAGES_DIR = None  # Set this
 ORIGINAL_LABELS_DIR = None  # Set this
-DESINTATION_IMAGES_DIR = None
-DESINTATION_LABELS_DIR = None
+DESTINATION_IMAGES_DIR = None
+DESTINATION_LABELS_DIR = None
 DESTINATION_CANVAS_DIR = None
 label_files = glob.glob(os.path.join(ORIGINAL_LABELS_DIR, "*.pickle"))
 RAD_files = glob.glob(os.path.join(ORIGINAL_IMAGES_DIR, "*.npy"))
@@ -62,7 +62,7 @@ def visualize(RAD, RD_path):
     fig, axes = drawer.prepareFigure(2, figsize=(7, 5))
 
     tile_name = RD_path.split("/")[-1].split(".")[0]
-    new_label_name = DESINTATION_LABELS_DIR + tile_name + ".txt"
+    new_label_name = DESTINATION_LABELS_DIR + tile_name + ".txt"
     gt_instances = loader.readRadarInstances(new_label_name)
     classes = list(range(6))
     colors = loader.randomColors(classes)
@@ -360,12 +360,12 @@ for label_file in tqdm(sorted(label_files)):
         new_RAD_file_name = (
             label_base.split(".")[0] + "_" + obj + "_" + str(class_count[obj]) + ".npy"
         )
-        total_new_file_name = os.path.join(DESINTATION_IMAGES_DIR, new_RAD_file_name)
+        total_new_file_name = os.path.join(DESTINATION_IMAGES_DIR, new_RAD_file_name)
 
         new_label_name = (
             label_base.split(".")[0] + "_" + obj + "_" + str(class_count[obj]) + ".txt"
         )
-        total_new_label_file_name = os.path.join(DESINTATION_LABELS_DIR, new_label_name)
+        total_new_label_file_name = os.path.join(DESTINATION_LABELS_DIR, new_label_name)
         label_line = " ".join(
             [
                 str(class_labels[obj]),

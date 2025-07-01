@@ -92,8 +92,8 @@ Parameters in mission statistics
 | auc| double | Model AUC|
 | modelMetrics| ModelMetrics |Model metrics|
 | bestThreshold| double |threshold at max F1 score|
-| precisions| repeated | Precision at varing thresholds|
-| recalls| repeated |Recall at varing thresholds |
+| precisions| repeated | Precision at varying thresholds|
+| recalls| repeated |Recall at varying thresholds |
 | version | int32 |Model version|
 
 ### **MissionResults**

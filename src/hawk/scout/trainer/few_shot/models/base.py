@@ -26,7 +26,7 @@ class FewShotModel(nn.Module):
             from ..networks.WRN28 import Wide_ResNet
 
             # we set the dropout=0.5 directly here, it may achieve better
-            # results by tunning the dropout
+            # results by tuning the dropout
             self.encoder = Wide_ResNet(28, 10, 0.5)
         else:
             raise ValueError("")

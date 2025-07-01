@@ -25,7 +25,7 @@ train_strategy:
   args:
     arch: resnet50
     mode: hawk
-  initial_model_path: /path/on/home/model0.pth # path to intial model on home
+  initial_model_path: /path/on/home/model0.pth # path to initial model on home
   bootstrap_path: /path/on/home/bootstrap.zip # path to compressed bootstrap zipfile @ home (0/* and 1/*)
 selector:
   type: topk # type of selective transmission

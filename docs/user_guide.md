@@ -32,7 +32,7 @@ video feed. Each scout receives [configuration message](messages.md#ScoutConfigu
 The configuration message specifies the type of training, selective and
 retraining strategies to be used for the mission. It also contains the weight of initial
 DNN model or labeled images needed to train the initial model. The mission is started
-upon receiving [start request](a2s_api.md#admin_start_mission) fom home.
+upon receiving [start request](a2s_api.md#admin_start_mission) from home.
 
 Once the mission starts, the model in scout processes the input data and a subset of tiles
 are chosen by the selective strategy for transmission. These
@@ -41,7 +41,7 @@ tiles are transmitted to home using ZeroMQ. After labeling, home sends back
 positive and is not present in the coordinator, indicated by
 parentIndex, the coordinator requests the tile content from the parent scout.
 The coordinator then sends the [labeled tile](messages.md#LabeledTile) along with its
-content to other scouts. Ony positives are shared between scouts, if the
+content to other scouts. Only positives are shared between scouts, if the
 tile is negative, then the label is only forwarded to the parent scout.
 
 Scouts train a new model when sufficient positive labels are attained as
@@ -104,7 +104,7 @@ by FireQos.
 
 Once the scout is launched, the connectivity between scouts and home degrades
 and in extreme cases it may be a few kilobits per second. This is emulated by
-contricting the network bandwidth using FireQos. At such low bandwidth and high
+constricting the network bandwidth using FireQos. At such low bandwidth and high
 latency network conditions, we may no receive reply in time.  For this reason we
 use a publisher-subscriber message pattern between home and scouts for sending
 tiles and labels. The tiles selected are published by the scouts. At home, the
@@ -136,12 +136,12 @@ configuration file from home is send to the admin, which constructs the
 transmitted to the scouts via <i>a2s_configure_scout</i> call. When a scout
 receives the configuration message, it initializes all modules needed for the
 mission which includes training, processing, selective transmission, and so on.
-The configuration message also includes the initial boostrapping examples or the
-intial trained model. The admin waits to receive reply from all the
+The configuration message also includes the initial bootstrapping examples or the
+initial trained model. The admin waits to receive reply from all the
 participating scouts. On receiving response from all the participating scouts,
 the admin calls <i>a2s_start_mission</i> to begin the mission.  The model
 processing the incoming tiles and the selective module selects a small subset
-for transmission. These tiles are publised by the scouts using
+for transmission. These tiles are published by the scouts using
 <i>s2h_send_tiles</i> method.  The inbound process receives these tiles along
 with their meta-data and saves them in "images" and "meta" directory
 respectively. The labels from the annotator are saved in the "labels" directory.

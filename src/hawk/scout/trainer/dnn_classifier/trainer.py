@@ -82,7 +82,7 @@ class DNNClassifierTrainer(ModelTrainerBase):
         trainpath = self.context.model_path(new_version, template="train-{}.txt")
 
         # labels = [subdir.name for subdir in self._train_dir.iterdir()]
-        ## refence class manager here to determine labels
+        ## reference class manager here to determine labels
         num_classes = len(self.context.class_list)
         labels = [str(label) for label in range(num_classes)]
         logger.info(f"List of labels in trainer: {labels}")

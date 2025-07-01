@@ -93,6 +93,6 @@ class HTTPRetriever(Retriever):
     def get_groundtruth(self, object_id: ObjectId) -> list[BoundingBox]:
         oid = object_id.serialize_oid()
         r = httpx.get(f"/get_groundtruth/{oid}").raise_for_status()
-        # ...decode json reponse to list of boundingboxes/detections...
+        # ...decode json response to list of boundingboxes/detections...
         logger.debug(f"/get_groundtruth/{oid} elapsed: {r.elapsed.total_seconds()}")
         return []

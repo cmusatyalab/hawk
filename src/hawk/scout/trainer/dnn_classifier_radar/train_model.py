@@ -83,7 +83,7 @@ parser.add_argument(
     help="number of total epochs to run",
 )
 parser.add_argument(
-    "--warmup-epochs", default=5, type=int, help="intial number of epochs for warmup"
+    "--warmup-epochs", default=5, type=int, help="initial number of epochs for warmup"
 )
 parser.add_argument(
     "--start-epoch",
@@ -527,7 +527,7 @@ def initialize_model(
     num_ftrs = model_ft.fc.in_features
     model_ft.fc = nn.Linear(
         num_ftrs, 5
-    )  # only for training the binay model from 5 to 2 classes.
+    )  # only for training the binary model from 5 to 2 classes.
     if base_path is not None:
         radar_checkpoint = torch.load(base_path)
         model_ft.load_state_dict(radar_checkpoint["state_dict"])
@@ -575,7 +575,7 @@ def initialize_model(
         Be careful, expects (299,299) sized images and has auxiliary output
         """
         set_parameter_requires_grad(model_ft, unfreeze)
-        # Handle the auxilary net
+        # Handle the auxiliary net
         num_ftrs = model_ft.AuxLogits.fc.in_features
         model_ft.AuxLogits.fc = nn.Linear(num_ftrs, num_classes)
         # Handle the primary net

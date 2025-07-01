@@ -214,7 +214,7 @@ class DataManager:
 
         # if sample is a negative and not using network retriever, don't send
         # to other scouts.
-        # All active and idle scouts should recieve pos and neg samples.
+        # All active and idle scouts should receive pos and neg samples.
         # Active should ignore neg. samples.
         if not label.labels and not isinstance(
             self._context.retriever, NetworkRetriever

@@ -14,7 +14,7 @@ from matplotlib.patches import Ellipse, Polygon, Rectangle
 from skimage.measure import find_contours
 #import helper as helper
 
-################ opencv realted drawing  ################
+################ opencv related drawing  ################
 def RandomColors(N, bright=True): 
     """ Define colors for all categories. """
     brightness = 1.0 if bright else 0.7

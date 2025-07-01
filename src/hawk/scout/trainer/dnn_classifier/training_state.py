@@ -260,7 +260,7 @@ def patch_final_layer(model: torch.nn.Module, arch: str, num_classes: int) -> No
         """Inception v3
         Be careful, expects (299,299) sized images and has auxiliary output
         """
-        # Handle the auxilary net
+        # Handle the auxiliary net
         num_ftrs = model.AuxLogits.fc.in_features
         model.AuxLogits.fc = torch.nn.Linear(num_ftrs, num_classes)
         # Handle the primary net

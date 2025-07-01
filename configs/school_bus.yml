@@ -32,7 +32,7 @@ train_strategy:
     unfreeze_layers: '3'
     batch-size: '64'
     online_epochs: "15"
-  initial_model_path: /home/esturzin/Image_Transformations/src/first_bus_model.pth # path to intial model on home
+  initial_model_path: /home/esturzin/Image_Transformations/src/first_bus_model.pth # path to initial model on home
   bootstrap_path: /home/esturzin/Image_Transformations/src/bus_bootstrap2.zip # path to compressed bootstrap zipfile @ home (0/* and 1/*)
 selector:
   type: topk # type of selective transmission

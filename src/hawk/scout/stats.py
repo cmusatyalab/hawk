@@ -87,7 +87,7 @@ HAWK_INFERENCED_OBJECTS = Histogram(
 )
 
 # Theoretically there is also idle state, but since we won't have a mission
-# label we probably won't actually ever see it. Similarily configuring is
+# label we probably won't actually ever see it. Similarly configuring is
 # probably going to be so brief that it will never really show up.
 
 HAWK_SELECTOR_SKIPPED_OBJECTS = Counter(
