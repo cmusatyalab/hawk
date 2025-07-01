@@ -68,6 +68,9 @@ av = { version = "12.0.0", optional = true }
 einops = { version = "^0.8.0", optional = true }
 movinet-pytorch = { git = "https://github.com/Atze00/MoViNet-pytorch.git", branch = "main", optional = true } # <-- Changed to "movinet-pytorch"
 
+# for http retriever
+httpx = {version = "^0.28.1", optional = true}
+
 [[tool.poetry.source]]
 name = "torch-cu11"
 url = "https://download.pytorch.org/whl/cu118"
@@ -101,6 +104,9 @@ activity = [
     "einops",
     "movinet-pytorch",
 ]
+http = [
+    "httpx",
+]
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
@@ -130,6 +136,7 @@ hawk_script_labeler = "hawk.home.script_labeler:main"
 
 [tool.poetry.plugins."cmuhawk.retrievers"]
 frame = "hawk.scout.retrieval.frame_retriever:FrameRetriever"
+http = "hawk.scout.retrieval.http_retriever:HTTPRetriever"
 k600 = "hawk.scout.retrieval.kinetics600.kinetics_600_retriever:K600Retriever"
 network = "hawk.scout.retrieval.network_retriever:NetworkRetriever"
 random = "hawk.scout.retrieval.random_retriever:RandomRetriever"
