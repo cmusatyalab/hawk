@@ -3,18 +3,20 @@
 
 from __future__ import annotations
 
+import io
 import random
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
 
+import torch
 from pandas import DataFrame
-from torch import Tensor
 
 from ....classes import POSITIVE_CLASS
+from ....hawkobject import HawkObject
 from ....objectid import ObjectId
 from ...core.result_provider import BoundingBox
-from ..retriever_ifc import RetrieverIfc
+from ..retriever import Retriever, RetrieverConfig
 from .kinetics_ds import KineticsDs
 from .video_utils import create_gif_from_video_tensor_bytes
 
@@ -39,35 +41,30 @@ class K600_ObjectId(ObjectId):
         return int(self.oid)
 
 
-class K600Retriever(RetrieverIfc):
-    def __init__(
-        self,
-        root: str,
-        frames_per_clip: int,
-        frame_rate: int,
-        positive_class_idx: int = 0,
-    ):
-        self.frame_rate: int = frame_rate
-        self.frames_per_clip: int = frames_per_clip
-        self.root: str = root
-        self.positive_class_idx: int = positive_class_idx
+class K600RetrieverConfig(RetrieverConfig):
+    root: Path
+    frames_per_clip: int
+    frame_rate: int
+    positive_class_idx: int = 0
 
-        def label_transform(
-            y: int, positive_class_idx: int = positive_class_idx
-        ) -> int:
-            return 1 if y == positive_class_idx else 0
+
+class K600Retriever(Retriever):
+    config_class = K600RetrieverConfig
+    config: K600RetrieverConfig
+
+    def __init__(self, config: K600RetrieverConfig) -> None:
+        super().__init__(config)
 
         self.ds = KineticsDs(
-            root=root,
+            root=self.config.root,
             video_clips_pkl_name="train.pkl",
-            frames_per_clip=frames_per_clip,
-            step_between_clips=frames_per_clip,
+            frames_per_clip=self.config.frames_per_clip,
+            step_between_clips=self.config.frames_per_clip,
             split="train",
-            frame_rate=frame_rate,
-            label_transform=label_transform,
+            frame_rate=self.config.frame_rate,
         )
 
-    def object_ids_stream(self) -> Iterator[K600_ObjectId]:
+    def get_next_objectid(self) -> Iterator[K600_ObjectId]:
         ## Generator - note that the videos order would be random
         ## and different at for each generator returned from this method.
         num_videos = len(self.ds)
@@ -75,24 +72,27 @@ class K600Retriever(RetrieverIfc):
         random.shuffle(video_indexes)
         yield from video_indexes
 
-    def get_ml_ready_data(self, object_id: ObjectId) -> tuple[Tensor, str]:
+    def get_ml_data(self, object_id: ObjectId) -> HawkObject:
         index = K600_ObjectId.from_oid(object_id).index
-        video, _ = self.ds[index]
-        return video, "x-tensor/pytorch"
+        video = self.ds[index]
+        with io.BytesIO() as f:
+            torch.save(video, f)
+            content = f.getvalue()
+        return HawkObject(content=content, media_type="x-tensor/pytorch")
 
-    def get_oracle_ready_data(self, object_id: ObjectId) -> list[tuple[bytes, str]]:
+    def get_oracle_data(self, object_id: ObjectId) -> list[HawkObject]:
         index = K600_ObjectId.from_oid(object_id).index
-        video, _ = self.ds[index]
+        video = self.ds[index]
         gif = create_gif_from_video_tensor_bytes(video)
-        return [(gif, "image/gif")]
+        return [HawkObject(content=gif, media_type="image/gif")]
 
-    def get_ground_truth_label(self, object_id: ObjectId) -> int:
+    def is_groundtruth_positive(self, object_id: ObjectId) -> bool:
         index = K600_ObjectId.from_oid(object_id).index
-        return self.ds.get_label(index)
+        label = self.ds.get_label(index)
+        return label == self.config.positive_class_idx
 
-    def get_ground_truth(self, object_id: ObjectId) -> list[BoundingBox]:
-        label = self.get_ground_truth_label(object_id)
-        if not label:
+    def get_groundtruth(self, object_id: ObjectId) -> list[BoundingBox]:
+        if not self.is_groundtruth_positive(object_id):
             return []
         return [
             BoundingBox(
@@ -106,20 +106,22 @@ class K600Retriever(RetrieverIfc):
     def generate_index_files(self, num_scouts: int, path: str) -> list[DataFrame]:
         assert num_scouts > 0
         shard_size = len(self) // num_scouts
-        id_stream = self.object_ids_stream()
+        id_stream = self.get_next_objectid()
         res: list[DataFrame] = []
         for _shard_id in range(num_scouts - 1):
             scout_index: dict[int, int] = dict()  # video_id.index -> label
             for _ in range(shard_size):
                 video_id = next(id_stream)
-                scout_index[video_id.index] = self.get_ground_truth_label(video_id)
+                scout_index[video_id.index] = int(
+                    self.is_groundtruth_positive(video_id)
+                )
                 assert scout_index[video_id.index] in {0, 1}
             res.append(
                 DataFrame.from_dict(scout_index, orient="index", columns=["label"])
             )
         scout_index = dict()
         for video_id in id_stream:
-            scout_index[video_id.index] = self.get_ground_truth_label(video_id)
+            scout_index[video_id.index] = int(self.is_groundtruth_positive(video_id))
             assert scout_index[video_id.index] in {0, 1}
         res.append(DataFrame.from_dict(scout_index, orient="index", columns=["label"]))
         output_path = Path(path)
@@ -130,20 +132,22 @@ class K600Retriever(RetrieverIfc):
 
 
 if __name__ == "__main__":
-    k600_retriever = K600Retriever(
-        root="/home/gil/data/k600",
-        frames_per_clip=30,
-        frame_rate=5,
-        positive_class_idx=0,
+    k600_retriever = K600Retriever.from_config(
+        dict(
+            root="/home/gil/data/k600",
+            frames_per_clip=30,
+            frame_rate=5,
+            positive_class_idx=0,
+        )
     )
     k600_retriever.generate_index_files(num_scouts=1, path="./")
-    id_stream = k600_retriever.object_ids_stream()
+    id_stream = k600_retriever.get_next_objectid()
     video_id = next(id_stream)
-    video, ml_media_type = k600_retriever.get_ml_ready_data(video_id)
-    gif, oracle_media_type = k600_retriever.get_oracle_ready_data(video_id)[0]
-    assert ml_media_type == "x-tensor/pytorch"
-    assert oracle_media_type == "image/gif"
-    with open("in_memory_output.gif", "wb") as f:
-        f.write(gif)
-    label = k600_retriever.get_ground_truth_label(video_id)
+    ml_data = k600_retriever.get_ml_data(video_id)
+    oracle_data = k600_retriever.get_oracle_data(video_id)[0]
+    assert ml_data.media_type == "x-tensor/pytorch"
+    assert oracle_data.media_type == "image/gif"
+    oracle_data.to_file("in_memory_output")
+
+    label = int(k600_retriever.is_groundtruth_positive(video_id))
     print(f"label: {label}, id: {video_id}")

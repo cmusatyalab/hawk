@@ -6,7 +6,7 @@ from __future__ import annotations
 from torch import Tensor, nn
 
 
-class BackboneEncoder(nn.Module):
+class BackboneEncoder(nn.Module):  # type: ignore[misc]
 
     def __init__(self, embed_dim: int):
         super().__init__()

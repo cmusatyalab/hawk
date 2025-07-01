@@ -130,6 +130,7 @@ hawk_script_labeler = "hawk.home.script_labeler:main"
 
 [tool.poetry.plugins."cmuhawk.retrievers"]
 frame = "hawk.scout.retrieval.frame_retriever:FrameRetriever"
+k600 = "hawk.scout.retrieval.kinetics600.kinetics_600_retriever:K600Retriever"
 network = "hawk.scout.retrieval.network_retriever:NetworkRetriever"
 random = "hawk.scout.retrieval.random_retriever:RandomRetriever"
 tile = "hawk.scout.retrieval.tile_retriever:TileRetriever"
@@ -167,6 +168,7 @@ module = [
     "fabric.*",
     "logzero.*",
     "matplotlib.*",
+    "movinets.*",
     "multiprocessing_logging.*",
     "sklearn.*",
     "streamlit_label_kit",

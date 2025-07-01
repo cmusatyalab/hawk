@@ -45,7 +45,7 @@ def posemb_sincos_1d(tokens: torch.Tensor, temperature: int = 10000) -> torch.Te
     return pe.type(dtype)
 
 
-class FeedForward(nn.Module):
+class FeedForward(nn.Module):  # type: ignore[misc]
     def __init__(self, dim: int, hidden_dim: int):
         super().__init__()
         self.net = nn.Sequential(
@@ -59,7 +59,7 @@ class FeedForward(nn.Module):
         return self.net(x)
 
 
-class Attention(nn.Module):
+class Attention(nn.Module):  # type: ignore[misc]
     def __init__(self, dim: int, heads: int, dim_head: int):
         super().__init__()
         inner_dim = dim_head * heads
@@ -87,7 +87,7 @@ class Attention(nn.Module):
         return self.to_out(out)
 
 
-class Transformer(nn.Module):
+class Transformer(nn.Module):  # type: ignore[misc]
     def __init__(self, dim: int, depth: int, heads: int, dim_head: int, mlp_dim: int):
         super().__init__()
         self.norm = nn.LayerNorm(dim)
@@ -109,7 +109,7 @@ class Transformer(nn.Module):
         return self.norm(x)
 
 
-class SimpleViT(nn.Module):
+class SimpleViT(nn.Module):  # type: ignore[misc]
     def __init__(
         self,
         *,

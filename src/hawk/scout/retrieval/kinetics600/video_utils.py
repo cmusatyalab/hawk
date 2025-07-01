@@ -8,14 +8,14 @@ import os
 import pickle
 from typing import Any
 
-import imageio.v2 as imageio
 import numpy as np
 import torch
+from PIL import Image
 from torchvision.datasets.folder import find_classes, make_dataset
 from torchvision.datasets.video_utils import VideoClips
 
 
-class StoreMetadataVideoClips(VideoClips):
+class StoreMetadataVideoClips(VideoClips):  # type: ignore[misc]
     def __init__(
         self,
         metadata_path: str,
@@ -100,24 +100,24 @@ def create_gif_from_video_tensor_bytes(video: torch.Tensor, fps: int = 10) -> by
         )
 
     # Convert PyTorch tensor to NumPy array
-    # Permute dimensions from (T, C, H, W) to (T, H, W, C) for imageio
+    # Permute dimensions from (T, C, H, W) to (T, H, W, C)
     frames_np = video.permute(0, 2, 3, 1).cpu().numpy()
 
     # Ensure data type is uint8 (unsigned 8-bit integer) and values are clamped
     frames_np = np.clip(frames_np, 0, 255).astype(np.uint8)
 
-    # Use io.BytesIO as the in-memory file
-    byte_stream = io.BytesIO()
-
-    try:
-        # Pass the BytesIO object as the 'uri' to mimsave
-        imageio.mimsave(byte_stream, frames_np, format="GIF", fps=fps)
-        # Get the binary data from the BytesIO object
-        gif_bytes = byte_stream.getvalue()
-        return gif_bytes
-    except Exception as e:
-        print(f"Error creating GIF in memory: {e}")
-        raise  # Re-raise the exception after printing
+    # Save as animated gif with Pillow, use io.BytesIO as the in-memory file
+    imgs = [Image.fromarray(img) for img in frames_np]
+    with io.BytesIO() as byte_stream:
+        imgs[0].save(
+            byte_stream,
+            save_all=True,
+            append_images=imgs[1:],
+            duration=1000 // fps,
+            loop=1,
+        )
+        content = byte_stream.getvalue()
+    return content
 
 
 # --- Example Usage ---

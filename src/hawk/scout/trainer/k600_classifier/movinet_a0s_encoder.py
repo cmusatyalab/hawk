@@ -13,7 +13,7 @@ from torch import Tensor, nn
 from .backbone_encoder import BackboneEncoder
 
 
-class MoViNet_(MoViNet):
+class MoViNet_(MoViNet):  # type: ignore[misc]
     def __init__(
         self,
         embed_dim: int,

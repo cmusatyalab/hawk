@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import io
 from typing import Any, TypeVar
 
 import torch
@@ -14,7 +15,7 @@ from .temporal_encoder import SimpleViT, TransformerParams
 Encoder = TypeVar("Encoder", bound=BackboneEncoder)
 
 
-class ActionRecognitionModel(nn.Module):
+class ActionRecognitionModel(nn.Module):  # type: ignore[misc]
     def __init__(
         self,
         encoder: Encoder,
@@ -73,7 +74,7 @@ class ActionRecognitionModel(nn.Module):
 
     @staticmethod
     def load(
-        model_path: str, backbone_encoder: BackboneEncoder, patch=None
+        model_path: str, backbone_encoder: BackboneEncoder, patch: Any | None = None
     ) -> tuple[ActionRecognitionModel, int]:
         import os
 
@@ -155,16 +156,22 @@ if __name__ == "__main__":
     )
     model.eval()
 
-    k600_retriever = K600Retriever(
-        root="/home/gil/data/k600",
-        frames_per_clip=50,
-        frame_rate=5,
-        positive_class_idx=0,
+    k600_retriever = K600Retriever.from_config(
+        dict(
+            root="/home/gil/data/k600",
+            frames_per_clip=50,
+            frame_rate=5,
+            positive_class_idx=0,
+        )
     )
-    id_stream = k600_retriever.object_ids_stream()
+    id_stream = k600_retriever.get_next_objectid()
     video_id = next(id_stream)
-    video, id = k600_retriever.get_ml_ready_data(video_id)
+    video = k600_retriever.get_ml_data(video_id)
+
+    with io.BytesIO(video.content) as f:
+        video_content = torch.load(f)
+
     with torch.no_grad():
-        X = transform(video).unsqueeze(dim=0)
+        X = transform(video_content).unsqueeze(dim=0)
         logits, _ = model(X)
     print(f"logits={logits.squeeze()}")
