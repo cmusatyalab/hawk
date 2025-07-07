@@ -240,7 +240,7 @@ class Admin:
         self.dataset_type = dataset_type
         if "index_path" in dataset_config:
             logger.info(f"Index {dataset_config['index_path']}")
-        timeout = dataset_config.get("timeout", 20)
+        timeout = dataset_config.get("timeout", 20.0)
         self.class_list = dataset_config.get("class_list", ["positive"])
         logger.info(f"Class list: {self.class_list}")
 
@@ -298,15 +298,14 @@ class Admin:
                     retriever="video",
                     config=dict(
                         video_path=video_file_list[index],
-                        sampling_rate_fps="1",
-                        width="4000",
-                        height="3000",
-                        tile_size="250",
                         timeout=str(timeout),
                     ),
                 )
             else:
-                dataset = Dataset(retriever=dataset_type, config=dataset_config)
+                dataset = Dataset(
+                    retriever=dataset_type,
+                    config={k: json.dumps(v) for k, v in dataset_config.items()},
+                )
 
             try:
                 # Try to validate @home, but we may not be able to load the
