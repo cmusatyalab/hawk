@@ -5,17 +5,20 @@ from __future__ import annotations
 
 import io
 import random
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
 
 import torch
+from logzero import logger
 from pandas import DataFrame
 
 from ....classes import POSITIVE_CLASS
 from ....hawkobject import HawkObject
 from ....objectid import ObjectId
 from ...core.result_provider import BoundingBox
+from ...stats import collect_metrics_total
 from ..retriever import Retriever, RetrieverConfig
 from .kinetics_ds import KineticsDs
 from .video_utils import create_gif_from_video_tensor_bytes
@@ -46,6 +49,7 @@ class K600RetrieverConfig(RetrieverConfig):
     frames_per_clip: int
     frame_rate: int
     positive_class_idx: int = 0
+    timeout: float = 2.0
 
 
 class K600Retriever(Retriever):
@@ -64,13 +68,31 @@ class K600Retriever(Retriever):
             frame_rate=self.config.frame_rate,
         )
 
-    def get_next_objectid(self) -> Iterator[K600_ObjectId]:
+    def _get_next_objectid(self) -> Iterator[K600_ObjectId]:
         ## Generator - note that the videos order would be random
         ## and different at for each generator returned from this method.
         num_videos = len(self.ds)
         video_indexes = [K600_ObjectId.from_idx(n) for n in range(num_videos)]
         random.shuffle(video_indexes)
         yield from video_indexes
+
+    def get_next_objectid(self) -> Iterator[K600_ObjectId]:
+        for object_id in self._get_next_objectid():
+            time_start = time.time()
+
+            self.retrieved_images.inc()
+
+            elapsed = time.time() - self._start_time
+            logger.info(f"Retrieved video: {object_id} @ {elapsed}")
+
+            yield object_id
+
+            retrieved_tiles = collect_metrics_total(self.retrieved_objects)
+            logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
+
+            time_passed = time.time() - time_start
+            if time_passed < self.config.timeout:
+                time.sleep(self.config.timeout - time_passed)
 
     def get_ml_data(self, object_id: ObjectId) -> HawkObject:
         index = K600_ObjectId.from_oid(object_id).index
