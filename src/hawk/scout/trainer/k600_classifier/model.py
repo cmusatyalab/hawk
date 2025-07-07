@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Sequence
 
 import torch
 from logzero import logger
-from PIL import Image, ImageFile
 from torch import Tensor
 from torch.utils.data import DataLoader
 from torchvision import datasets
@@ -35,7 +34,6 @@ if TYPE_CHECKING:
     from ....objectid import ObjectId
 
 torch.multiprocessing.set_sharing_strategy("file_system")
-ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 class ActivityClassifierModel(ModelBase):
@@ -47,7 +45,7 @@ class ActivityClassifierModel(ModelBase):
         mode: str,
         context: ModelContext,
     ):
-        logger.info(f"Loading DNN Model from {model_path}")
+        logger.info(f"Loading Action Recognition Model from {model_path}")
         assert model_path.is_file()
 
         embed_dim = int(args["embed_dim"])
@@ -71,10 +69,7 @@ class ActivityClassifierModel(ModelBase):
             T=T,
             stride=T,
         )
-        # args["input_size"] = int(args.get("input_size", 224))
-        # args["test_batch_size"] = args.get("test_batch_size", 64)
         args["version"] = version
-        # args["arch"] = args.get("arch", "resnet50")
         # args["train_examples"] = args.get("train_examples", {"1": 0, "0": 0})
         args["mode"] = mode
         self.args = args
@@ -82,9 +77,7 @@ class ActivityClassifierModel(ModelBase):
         super().__init__(self.args, model_path, context)
         assert self.context is not None
 
-        # self._arch = args["arch"]
         # self._train_examples = args["train_examples"]
-        # self._batch_size = args["test_batch_size"]
 
         self._batch_size: int = 1
         self._model = model
@@ -114,21 +107,18 @@ class ActivityClassifierModel(ModelBase):
         return self._preprocess(tensor)
 
     def serialize(self) -> bytes:
-        if self._model is None:
-            return b""
-
-        content = io.BytesIO()
-        torch.save(
-            {
-                "state_dict": self._model.state_dict(),
-            },
-            content,
-        )
-        return content.getvalue()
+        with io.BytesIO() as content:
+            torch.save(
+                {
+                    "state_dict": self._model.state_dict(),
+                },
+                content,
+            )
+            return content.getvalue()
 
     def load_model(self, model_path: Path) -> torch.nn.Module:
         assert self.context is not None
-        model, preprocess, _ = TrainingState.load_for_inference(model_path, self._arch)
+        model, preprocess, _ = TrainingState.load_for_inference(model_path)
         return model, preprocess
 
     def get_predictions(self, inputs: torch.Tensor) -> Sequence[Sequence[float]]:
@@ -192,7 +182,7 @@ class ActivityClassifierModel(ModelBase):
             # logger.info(f"Request queue size: {self.request_queue.qsize()}")
 
     def infer(self, requests: Sequence[ObjectId]) -> Iterable[ResultProvider]:
-        if not self._running or self._model is None:
+        if not self._running:
             return
 
         for i in range(0, len(requests), self._batch_size):
@@ -340,7 +330,6 @@ class ActivityClassifierModel(ModelBase):
         logger.info(f"Stopping model of version {self.version}")
         with self._model_lock:
             self._running = False
-            self._model = None
 
     def forward_hook(
         self, module: torch.nn.Module, input: torch.Tensor, output: torch.Tensor

@@ -16,7 +16,6 @@ from torchvision.transforms.v2 import Transform
 class CheckpointState(TypedDict):
     """Representation of the state written to a checkpoint file.
 
-    arch is the name of the torchvision model.
     weights is the name of the model specific weights (IMAGENET1K_V1 or _V2).
     num_classes is the number of classes in the dataset.
     epoch is the epoch the model was trained to.
@@ -28,7 +27,6 @@ class CheckpointState(TypedDict):
     weights=IMAGENET1K_V1 and num_classes=2.
     """
 
-    arch: str
     weights: str
     num_classes: int
     epoch: int
@@ -39,7 +37,6 @@ class CheckpointState(TypedDict):
 
 @dataclass
 class TrainingState:
-    arch: str
     weights: str
     num_classes: int
     torch_model: torch.nn.Module
@@ -51,7 +48,6 @@ class TrainingState:
     def save_checkpoint(self, checkpoint_path: Path) -> None:
         """Save the training state to a checkpoint file."""
         checkpoint_state: CheckpointState = {
-            "arch": self.arch,
             "weights": self.weights,
             "num_classes": self.num_classes,
             "epoch": self.epoch,
@@ -62,9 +58,7 @@ class TrainingState:
         torch.save(checkpoint_state, checkpoint_path)
 
     @staticmethod
-    def _load_checkpoint_state(
-        checkpoint_path: Path, bootstrap_arch: str
-    ) -> CheckpointState:
+    def _load_checkpoint_state(checkpoint_path: Path) -> CheckpointState:
         """Load the training state from a checkpoint file."""
         if checkpoint_path is None or not checkpoint_path.is_file():
             raise ValueError(f"Checkpoint {checkpoint_path} does not exist")
@@ -72,7 +66,6 @@ class TrainingState:
         checkpoint_state: CheckpointState = torch.load(checkpoint_path)
 
         # stay backward compatible with older bootstrap models.
-        checkpoint_state.setdefault("arch", bootstrap_arch)
         checkpoint_state.setdefault("num_classes", 2)
         checkpoint_state.setdefault("weights", "IMAGENET1K_V1")
         return checkpoint_state
@@ -82,14 +75,13 @@ class TrainingState:
         cls, checkpoint: CheckpointState
     ) -> tuple[torch.nn.Module, Transform, int]:
         """Create or load a model based on the parameters in the checkpoint state."""
-        arch = checkpoint["arch"]
         bootstrap_weights = checkpoint["weights"]
-        weights = get_model_weights(arch).__members__[bootstrap_weights]
+        weights = get_model_weights().__members__[bootstrap_weights]
 
-        torch_model = get_model(arch, weights=weights)
+        torch_model = get_model(weights=weights)
 
         num_classes = checkpoint["num_classes"]
-        patch_final_layer(torch_model, arch, num_classes)
+        patch_final_layer(torch_model, num_classes)
 
         if checkpoint["state_dict"]:
             torch_model.load_state_dict(checkpoint["state_dict"])
@@ -99,10 +91,10 @@ class TrainingState:
 
     @classmethod
     def load_for_inference(
-        cls, checkpoint_path: Path, bootstrap_arch: str
+        cls, checkpoint_path: Path
     ) -> tuple[torch.nn.Module, Transform, int]:
         """Load a torch model for inference from a checkpoint file."""
-        checkpoint = cls._load_checkpoint_state(checkpoint_path, bootstrap_arch)
+        checkpoint = cls._load_checkpoint_state(checkpoint_path)
         return cls._load_model_from_checkpoint(checkpoint)
 
     @classmethod
@@ -110,7 +102,6 @@ class TrainingState:
         cls,
         checkpoint_path: Path | None,
         # model settings
-        bootstrap_arch: str,
         bootstrap_weights: str,
         num_classes: int,
         num_unfreeze: int,
@@ -123,15 +114,14 @@ class TrainingState:
     ) -> TrainingState:
         """Create a model and training state based on a checkpoint file.
         If the checkpoint file does not exist, we initialize a new state based
-        on the specified bootstrap_arch/bootstrap_weights/num_classes parameters.
+        on the specified bootstrap_weights/num_classes parameters.
         """
         try:
             if checkpoint_path is None:
                 raise ValueError
-            checkpoint = cls._load_checkpoint_state(checkpoint_path, bootstrap_arch)
+            checkpoint = cls._load_checkpoint_state(checkpoint_path)
         except ValueError:
             checkpoint = {
-                "arch": bootstrap_arch,
                 "weights": bootstrap_weights,
                 "num_classes": num_classes,
                 "epoch": 0,
@@ -139,12 +129,11 @@ class TrainingState:
                 "optimizer": {},
                 "scheduler": {},
             }
-        arch = checkpoint["arch"]
         torch_model, preprocess, epoch = cls._load_model_from_checkpoint(checkpoint)
 
         replace_final_layer = checkpoint["num_classes"] != num_classes
         if replace_final_layer:
-            patch_final_layer(torch_model, arch, num_classes)
+            patch_final_layer(torch_model, num_classes)
 
         freeze_layers(torch_model, num_unfreeze)
         torch_model = to_gpu(torch_model)
@@ -175,7 +164,6 @@ class TrainingState:
             scheduler.load_state_dict(checkpoint["scheduler"])
 
         return cls(
-            arch=arch,
             weights=checkpoint["weights"],
             num_classes=num_classes,
             torch_model=torch_model,
@@ -188,7 +176,7 @@ class TrainingState:
     @property
     def input_size(self) -> int:
         """Return the input size of the model."""
-        return 224 if "inception" not in self.arch else 299
+        return 224
 
     @property
     def is_resumed(self) -> bool:
@@ -200,7 +188,7 @@ class TrainingState:
         if checkpoint_path is None or not checkpoint_path.is_file():
             return
 
-        checkpoint = self._load_checkpoint_state(checkpoint_path, self.arch)
+        checkpoint = self._load_checkpoint_state(checkpoint_path)
 
         self.torch_model.load_state_dict(checkpoint["state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer"])
@@ -211,9 +199,8 @@ class TrainingState:
         if checkpoint_path is None or not checkpoint_path.is_file() or alpha == 0.0:
             return
 
-        checkpoint = self._load_checkpoint_state(checkpoint_path, self.arch)
+        checkpoint = self._load_checkpoint_state(checkpoint_path)
 
-        assert checkpoint["arch"] == self.arch
         if checkpoint["num_classes"] != self.num_classes:
             return
 
@@ -227,53 +214,10 @@ class TrainingState:
         self.torch_model.load_state_dict(cur_model)
 
 
-def patch_final_layer(model: torch.nn.Module, arch: str, num_classes: int) -> None:
+def patch_final_layer(model: torch.nn.Module, num_classes: int) -> None:
     """Patch the final layer of the model for the specified number of classes."""
-    if "resnet" in arch:
-        """Resnet"""
-        num_ftrs = model.fc.in_features
-        model.fc = torch.nn.Linear(num_ftrs, num_classes)
-
-    elif "alexnet" in arch:
-        """Alexnet"""
-        num_ftrs = model.classifier[6].in_features
-        model.classifier[6] = torch.nn.Linear(num_ftrs, num_classes)
-
-    elif "vgg" in arch:
-        """VGG11_bn"""
-        num_ftrs = model.classifier[6].in_features
-        model.classifier[6] = torch.nn.Linear(num_ftrs, num_classes)
-
-    elif "squeezenet" in arch:
-        """Squeezenet"""
-        model.classifier[1] = torch.nn.Conv2d(
-            512, num_classes, kernel_size=(1, 1), stride=(1, 1)
-        )
-        model.num_classes = num_classes
-
-    elif "densenet" in arch:
-        """Densenet"""
-        num_ftrs = model.classifier.in_features
-        model.classifier = torch.nn.Linear(num_ftrs, num_classes)
-
-    elif "inception" in arch:
-        """Inception v3
-        Be careful, expects (299,299) sized images and has auxiliary output
-        """
-        # Handle the auxiliary net
-        num_ftrs = model.AuxLogits.fc.in_features
-        model.AuxLogits.fc = torch.nn.Linear(num_ftrs, num_classes)
-        # Handle the primary net
-        num_ftrs = model.fc.in_features
-        model.fc = torch.nn.Linear(num_ftrs, num_classes)
-
-    elif "efficientnet" in arch:
-        num_ftrs = model.classifier[1].in_features
-        model.classifier[1] = torch.nn.Linear(num_ftrs, num_classes)
-
-    else:
-        msg = f"Invalid model name {arch}"
-        raise ValueError(msg)
+    num_ftrs = model.fc.in_features
+    model.fc = torch.nn.Linear(num_ftrs, num_classes)
 
 
 def freeze_layers(torch_model: torch.nn.Module, unfreeze: int = -1) -> None:
