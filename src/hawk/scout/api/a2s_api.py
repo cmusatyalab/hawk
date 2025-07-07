@@ -67,6 +67,7 @@ from ..stats import (
 from ..trainer.dnn_classifier.trainer import DNNClassifierTrainer
 from ..trainer.dnn_classifier_radar.trainer import DNNClassifierTrainerRadar
 from ..trainer.fsl.trainer import FSLTrainer
+from ..trainer.k600_classifier.trainer import ActivityTrainer
 from ..trainer.yolo.trainer import YOLOTrainer
 from ..trainer.yolo_radar.trainer import YOLOTrainerRadar
 
@@ -310,6 +311,9 @@ class A2SAPI:
         elif model.HasField("dnn_classifier"):
             config = model.dnn_classifier
             trainer = DNNClassifierTrainer(mission, dict(config.args))
+        elif model.HasField("activity_classifier"):
+            config = model.activity_classifier
+            trainer = ActivityTrainer(mission, dict(config.args))
         elif model.HasField("yolo"):
             config = model.yolo
             trainer = YOLOTrainer(mission, dict(config.args))

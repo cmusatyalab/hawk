@@ -77,7 +77,7 @@ class ScriptLabeler:
         config: MissionConfig,
         mission_dir: Path,
     ) -> ScriptLabeler:
-        label_time = 0.0
+        label_time = 2.0
 
         selector = config.get("selector", {})
         if selector.get("type") == "token":

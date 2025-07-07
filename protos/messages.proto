@@ -89,6 +89,7 @@ message TrainConfig {
     ModelConfig fsl = 3;
     ModelConfig dnn_classifier_radar = 4;
     ModelConfig yolo_radar = 5;
+    ModelConfig activity_classifier = 6;
   }
 }
 

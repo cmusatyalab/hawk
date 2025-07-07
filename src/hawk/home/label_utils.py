@@ -302,7 +302,7 @@ class LabelSample:
             object_id=map_(self.objectId, lambda o: o.serialize_oid()),
             scout_index=self.scoutIndex,
             model_version=self.model_version,
-            image_path=str(self.content(image_dir, ".jpg")),
+            image_path=str(self.content(image_dir, ".gif")),
             class_name=class_name_to_str(NEGATIVE_CLASS),
             confidence=1.0,
             bbox_x=0.5,
