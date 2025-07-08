@@ -37,7 +37,9 @@ class SubClassClustering:
             if not new_entry.detections:  ## skip if not a positive
                 continue
             self.entry_list.append(new_entry)
-            fv_path = new_entry.content(self.mission_dir / "feature_vectors", ".pt")
+            fv_path = new_entry.content(
+                self.mission_dir / "feature_vectors", suffix=".pt"
+            )
             new_vector = torch.load(fv_path).unsqueeze(0)
             self.feature_vector_list.append(fv_path)
             if self.feature_vector_stack is None:  ## initialize feature vector stack

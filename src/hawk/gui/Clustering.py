@@ -35,14 +35,14 @@ column = columns(display_columns)
 
 @st.dialog("Image Viewer", width="large")
 def image_zoom_popup(mission: Mission, sample: LabelSample) -> None:
-    image = sample.content(mission.mission_dir / "novel", ".jpg")
+    image = sample.content(mission.mission_dir / "novel", index=0)
     st.image(str(image), use_container_width=True)
     if st.button("Ok"):
         st.rerun()
 
 
 def display_cluster(mission: Mission, sample: LabelSample) -> None:
-    image = sample.content(mission.mission_dir / "novel", ".jpg")
+    image = sample.content(mission.mission_dir / "novel", index=0)
     st.image(str(image))
 
     if st.button("View", key=f"{sample.index}_view"):

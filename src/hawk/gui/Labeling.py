@@ -209,8 +209,12 @@ def classification_pulldown(
 
 @st.dialog("Image Viewer", width="large")
 def image_classifier_popup(mission: Mission, sample: LabelSample) -> None:
-    image = mission.image_path(sample)
-    st.image(str(image), use_container_width=True)
+    images = [
+        str(mission.image_path(sample, index=index))
+        for index in range(len(sample.oracle_items))
+    ]
+
+    st.image(images, use_container_width=True)
 
     # with st.expander("See more"):
     #     st.image(str(image))
@@ -221,7 +225,7 @@ def image_classifier_popup(mission: Mission, sample: LabelSample) -> None:
 
 
 def classification_ui(mission: Mission, sample: LabelSample) -> None:
-    image = mission.image_path(sample)
+    image = mission.image_path(sample, index=0)
     st.image(str(image))
 
     col1, col2 = st.columns([1, 3])
@@ -236,7 +240,7 @@ def classification_ui(mission: Mission, sample: LabelSample) -> None:
 
 @st.dialog("Annotation Editor", width="large")
 def annotation_editor_popup(mission: Mission, sample: LabelSample) -> None:
-    image = mission.image_path(sample)
+    image = mission.image_path(sample, index=0)
     out = st_detection(
         image_path=str(image),
         label_list=class_list.positive,
@@ -252,8 +256,15 @@ def annotation_editor_popup(mission: Mission, sample: LabelSample) -> None:
         key=f"{sample.index}_editor",
         **st.session_state.editstate,
     )
-    # with st.expander("See more"):
-    #     st.image(str(image))
+
+    if len(sample.oracle_items):
+        with st.expander("See more"):
+            images = [
+                str(mission.image_path(sample, index=index))
+                for index in range(1, len(sample.oracle_items))
+            ]
+            st.image(images)
+
     if st.button("Ok"):
         if out is not None and out["key"] != 0:
             st.session_state.saves[sample.index] = [
@@ -276,7 +287,7 @@ def detection_ui(mission: Mission, sample: LabelSample) -> None:
     labelkit_args = sample.to_labelkit_args(class_list)
 
     # draw image with bounding boxes
-    image = mission.image_path(sample)
+    image = mission.image_path(sample, index=0)
     st_detection(
         image_path=str(image),
         label_list=class_list.positive,
@@ -328,7 +339,7 @@ def display_radar_images(mission: Mission, column: Iterator[DeltaGenerator]) -> 
             base = unwrap(result.objectId._file_path()).stem
             stereo_base = base.split("_", 1)[0]
 
-            image = mission.image_path(result)
+            image = mission.image_path(result, index=0)
             stereo_image = Path(
                 "/media/eric/Drive2/RADAR_DETECTION/train/stereo_left/",
                 f"{stereo_base}_left.jpg",

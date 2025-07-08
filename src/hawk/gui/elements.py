@@ -103,8 +103,8 @@ class Mission(MissionData):
     def description(self) -> str:
         return str(self.config.get("description", ""))
 
-    def image_path(self, sample: LabelSample) -> Path:
-        return sample.content(self.mission_dir / "images", ".gif")
+    def image_path(self, sample: LabelSample, index: int) -> Path:
+        return sample.content(self.mission_dir / "images", index=index)
 
     @property
     def stats_file(self) -> Path:

@@ -25,6 +25,7 @@ from ..classes import (
     class_label_to_int,
     class_name_to_str,
 )
+from ..hawkobject import MEDIA_TYPES
 from ..objectid import ObjectId
 from ..rusty import map_
 from .utils import tailf
@@ -223,6 +224,7 @@ class LabelSample:
     scoutIndex: int  # index of originating scout
     model_version: int = -1  # version of the model used to generate the sample
     queued: float = field(default_factory=time.time)
+    oracle_items: list[str] = field(default_factory=list)
     detections: list[Detection] = field(default_factory=list)
     groundtruth: list[Detection] = field(default_factory=list)
     novel_sample: bool = False
@@ -236,6 +238,10 @@ class LabelSample:
             assert image_name is not None
         self._image_name = image_name
         self.index = line
+
+        # backward compatibility
+        if not self.oracle_items:
+            self.oracle_items = ["image/jpeg"]
 
     @classmethod
     def from_dict(cls, obj: dict[str, Any], line: int = -1) -> LabelSample:
@@ -302,7 +308,7 @@ class LabelSample:
             object_id=map_(self.objectId, lambda o: o.serialize_oid()),
             scout_index=self.scoutIndex,
             model_version=self.model_version,
-            image_path=str(self.content(image_dir, ".gif")),
+            image_path=str(self.content(image_dir, index=0)),
             class_name=class_name_to_str(NEGATIVE_CLASS),
             confidence=1.0,
             bbox_x=0.5,
@@ -357,8 +363,14 @@ class LabelSample:
             else 0.0
         )
 
-    def content(self, directory: Path, suffix: str | None = None) -> Path:
+    def content(
+        self, directory: Path, index: int | None = None, suffix: str | None = None
+    ) -> Path:
         path = directory / self._image_name
+        if index is not None:
+            media_type = self.oracle_items[index]
+            suffix = MEDIA_TYPES[media_type][0]
+
         return path.with_suffix(suffix) if suffix is not None else path
 
 

@@ -90,11 +90,14 @@ class UnlabeledResult(LabelSample):
         # logger.debug(f"Received sample, inferenced scores {detections}")
         score = max(detection.max_score for detection in detections)
 
+        oracle_media_types = [obj.media_type for obj in request.oracle_data]
+
         result = cls(
             objectId=objectId,
             scoutIndex=request.scoutIndex,
             model_version=request.version,
             score=score,
+            oracle_items=oracle_media_types,
             detections=detections,
             groundtruth=groundtruth,
             novel_sample=request.novel_sample,
@@ -104,13 +107,13 @@ class UnlabeledResult(LabelSample):
             data = HawkObject.from_protobuf(_data)
 
             image_dir = "images" if not request.novel_sample else "novel"
-            image_path = result.content(mission_dir / image_dir, ".bin")
+            image_path = result.content(mission_dir / image_dir, index=index)
             image_file = data.to_file(image_path, index=index, mkdirs=True)
 
             logger.info(f"SAVED {image_file} for {result.objectId}")
 
         if request.feature_vector:
-            fv_path = result.content(mission_dir / "feature_vectors", ".pt")
+            fv_path = result.content(mission_dir / "feature_vectors", suffix=".pt")
             feature_vector = HawkObject.from_protobuf(request.feature_vector)
             feature_vector.to_file(fv_path, mkdirs=True)
 
