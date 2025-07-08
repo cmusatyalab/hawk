@@ -38,7 +38,7 @@ description = "High-performance image processing functions for deep learning and
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"scout\""
+markers = "extra == \"scout\" and python_version >= \"3.9\""
 files = [
     {file = "albucore-0.0.23-py3-none-any.whl", hash = "sha256:99274ac0c15a1a7d9a726df9d54d5ab70d9d0c189e2a935399dba3d4bafad415"},
     {file = "albucore-0.0.23.tar.gz", hash = "sha256:57823982b954913b84a9e2cf71058c4577b02397a62c41885be2d9b295efa8ab"},
@@ -86,7 +86,7 @@ description = "Fast, flexible, and advanced augmentation library for deep learni
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"scout\""
+markers = "extra == \"scout\" and python_version >= \"3.9\""
 files = [
     {file = "albumentations-1.4.24-py3-none-any.whl", hash = "sha256:2f639257a11e681071f4f7d10f6a6d874ae705bcce52746874cd8d7e317a16d7"},
     {file = "albumentations-1.4.24.tar.gz", hash = "sha256:cc8874cb0abccc9117aefacbe385c354ac824fa142f46a6c0896d65cec5f8a6d"},
@@ -139,7 +139,7 @@ description = "Vega-Altair: A declarative statistical visualization library for 
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
+markers = "python_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
 files = [
     {file = "altair-5.5.0-py3-none-any.whl", hash = "sha256:91a310b926508d560fe0148d02a194f38b824122641ef528113d029fcd129f8c"},
     {file = "altair-5.5.0.tar.gz", hash = "sha256:d960ebe6178c56de3855a68c47b516be38640b73fb3b5111c2a9ca90546dd73d"},
@@ -204,7 +204,7 @@ description = "High level compatibility layer for multiple asynchronous event lo
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"http\""
+markers = "extra == \"http\" and python_version >= \"3.9\""
 files = [
     {file = "anyio-4.9.0-py3-none-any.whl", hash = "sha256:9f76d541cad6e36af7beb62e978876f3b41e3e04f2c1fbf0884604c0a9c4d93c"},
     {file = "anyio-4.9.0.tar.gz", hash = "sha256:673c0c244e15788651a4ff38710fea9675823028a6f08a5eda409e0c9840a028"},
@@ -441,7 +441,7 @@ description = "Fast, simple object-to-object and broadcast signaling"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
+markers = "python_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
 files = [
     {file = "blinker-1.9.0-py3-none-any.whl", hash = "sha256:ba0efaa9080b619ff2f3459d1d500c57bddea4a6b424b60a91141db6fd2f08bc"},
     {file = "blinker-1.9.0.tar.gz", hash = "sha256:b4ce2265a7abece45e7cc896e98dbebe6cead56bcf805a3d23136d145f5445bf"},
@@ -454,7 +454,7 @@ description = "Extensible memoizing collections and decorators"
 optional = true
 python-versions = ">=3.7"
 groups = ["main"]
-markers = "python_version == \"3.8\" and (extra == \"home\" or extra == \"scout\") or python_full_version != \"3.9.7\" and extra == \"home\""
+markers = "python_version == \"3.8\" and (extra == \"home\" or extra == \"scout\") or python_version != \"3.9.7\" and extra == \"home\""
 files = [
     {file = "cachetools-5.5.2-py3-none-any.whl", hash = "sha256:d26a22bcc62eb95c3beabd9f1ee5e820d3d2704fe2967cbe350e20c8ffcd3f0a"},
     {file = "cachetools-5.5.2.tar.gz", hash = "sha256:1a661caa9175d26759571b2e19580f9d6393969e5dfca11fdb1f947a23e640d4"},
@@ -523,7 +523,7 @@ description = "Python package for providing Mozilla's CA Bundle."
 optional = true
 python-versions = ">=3.6"
 groups = ["main"]
-markers = "python_version == \"3.8\" and (extra == \"home\" or extra == \"scout\" or extra == \"http\") or (python_full_version != \"3.9.7\" and extra == \"home\" or extra == \"http\") and python_version >= \"3.9\""
+markers = "python_version == \"3.8\" and (extra == \"home\" or extra == \"scout\" or extra == \"http\") or (python_version != \"3.9.7\" and extra == \"home\" or extra == \"http\") and python_version >= \"3.9\""
 files = [
     {file = "certifi-2025.4.26-py3-none-any.whl", hash = "sha256:30350364dfe371162649852c63336a15c70c6510c2ad5015b21c2345311805f3"},
     {file = "certifi-2025.4.26.tar.gz", hash = "sha256:0a816057ea3cdefcef70270d2c515e4506bbc954f417fa5ade2021213bb8f0c6"},
@@ -629,7 +629,7 @@ description = "The Real First Universal Charset Detector. Open, modern and activ
 optional = true
 python-versions = ">=3.7"
 groups = ["main"]
-markers = "python_version == \"3.8\" and (extra == \"home\" or extra == \"scout\") or python_full_version != \"3.9.7\" and extra == \"home\""
+markers = "python_version == \"3.8\" and (extra == \"home\" or extra == \"scout\") or python_version != \"3.9.7\" and extra == \"home\""
 files = [
     {file = "charset_normalizer-3.4.2-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:7c48ed483eb946e6c04ccbe02c6b4d1d48e51944b6db70f697e089c193404941"},
     {file = "charset_normalizer-3.4.2-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:b2d318c11350e10662026ad0eb71bb51c7812fc8590825304ae0bdd4ac283acd"},
@@ -732,7 +732,7 @@ description = "Composable command line interface toolkit"
 optional = true
 python-versions = ">=3.7"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\" and python_version < \"3.10\""
+markers = "python_version < \"3.10\" and extra == \"home\""
 files = [
     {file = "click-8.1.8-py3-none-any.whl", hash = "sha256:63c132bbbed01578a06712a2d1f497bb62d9c1c0d329b7903a866228027263b2"},
     {file = "click-8.1.8.tar.gz", hash = "sha256:ed53c9d8990d83c2a27deae68e4ee337473f6330c040a31d4225c9574d16096a"},
@@ -868,7 +868,7 @@ description = "Python library for calculating contours of 2D quadrilateral grids
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "(python_full_version != \"3.9.7\" or extra == \"scout\") and (extra == \"home\" or extra == \"scout\") and python_version == \"3.9\""
+markers = "python_version == \"3.9\" and (extra == \"home\" or extra == \"scout\")"
 files = [
     {file = "contourpy-1.3.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:880ea32e5c774634f9fcd46504bf9f080a41ad855f4fef54f5380f5133d343c7"},
     {file = "contourpy-1.3.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:76c905ef940a4474a6289c71d53122a4f77766eef23c03cd57016ce19d0f7b42"},
@@ -1122,7 +1122,7 @@ files = [
     {file = "cryptography-45.0.4-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:bbc505d1dc469ac12a0a064214879eac6294038d6b24ae9f71faae1448a9608d"},
     {file = "cryptography-45.0.4.tar.gz", hash = "sha256:7405ade85c83c37682c8fe65554759800a4a8c54b2d96e0f8ad114d31b808d57"},
 ]
-markers = {main = "(python_version == \"3.8\" or python_version >= \"3.10\") and extra == \"home\"", dev = "python_version == \"3.8\" or python_version >= \"3.10\""}
+markers = {main = "(python_version == \"3.8\" or python_version >= \"3.10\") and extra == \"home\"", dev = "python_version >= \"3.10\" or python_version == \"3.8\""}
 
 [package.dependencies]
 cffi = {version = ">=1.14", markers = "platform_python_implementation != \"PyPy\""}
@@ -1144,7 +1144,7 @@ description = "Composable style cycles"
 optional = true
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "(python_full_version != \"3.9.7\" or extra == \"scout\") and (extra == \"home\" or extra == \"scout\")"
+markers = "(python_version != \"3.9.7\" or extra == \"scout\") and (extra == \"home\" or extra == \"scout\")"
 files = [
     {file = "cycler-0.12.1-py3-none-any.whl", hash = "sha256:85cef7cff222d8644161529808465972e51340599459b8ac3ccbac5a854e0d30"},
     {file = "cycler-0.12.1.tar.gz", hash = "sha256:88bb128f02ba341da8ef447245a9e138fae777f6a23943da4540077d3601eb1c"},
@@ -1329,7 +1329,7 @@ description = "Python supercharged for fastai development"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"scout\""
+markers = "extra == \"scout\" and python_version >= \"3.9\""
 files = [
     {file = "fastcore-1.8.2-py3-none-any.whl", hash = "sha256:8e66134d9acc411ffdddde64e080e46814e24011c6368b5c9d50165ee8140e8b"},
     {file = "fastcore-1.8.2.tar.gz", hash = "sha256:8d50abd09b4d484589488dab7d78594d681de3466a84d2d1beb8b6db0d0c00b7"},
@@ -1370,7 +1370,7 @@ files = [
     {file = "filelock-3.18.0-py3-none-any.whl", hash = "sha256:c401f4f8377c4464e6db25fff06205fd89bdd83b65eb0488ed1b160f780e21de"},
     {file = "filelock-3.18.0.tar.gz", hash = "sha256:adbc88eabb99d2fec8c9c1b229b171f18afa655400173ddc653d5d01501fb9f2"},
 ]
-markers = {main = "python_version >= \"3.9\" and extra == \"scout\"", dev = "python_version >= \"3.9\""}
+markers = {main = "extra == \"scout\" and python_version >= \"3.9\"", dev = "python_version >= \"3.9\""}
 
 [package.extras]
 docs = ["furo (>=2024.8.6)", "sphinx (>=8.1.3)", "sphinx-autodoc-typehints (>=3)"]
@@ -1459,7 +1459,7 @@ description = "Tools to manipulate font files"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "(python_full_version != \"3.9.7\" and extra == \"home\" or extra == \"scout\") and python_version >= \"3.9\""
+markers = "(python_version != \"3.9.7\" and extra == \"home\" or extra == \"scout\") and python_version >= \"3.9\""
 files = [
     {file = "fonttools-4.58.4-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:834542f13fee7625ad753b2db035edb674b07522fcbdd0ed9e9a9e2a1034467f"},
     {file = "fonttools-4.58.4-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:2e6c61ce330142525296170cd65666e46121fc0d44383cbbcfa39cf8f58383df"},
@@ -1567,7 +1567,7 @@ description = "File-system specification"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"scout\""
+markers = "extra == \"scout\" and python_version >= \"3.9\""
 files = [
     {file = "fsspec-2025.5.1-py3-none-any.whl", hash = "sha256:24d3a2e663d5fc735ab256263c4075f374a174c3410c0b25e5bd1970bceaa462"},
     {file = "fsspec-2025.5.1.tar.gz", hash = "sha256:2e55e47a540b91843b755e83ded97c6e897fa0942b11490113f09e9c443c2475"},
@@ -1633,7 +1633,7 @@ description = "Git Object Database"
 optional = true
 python-versions = ">=3.7"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\""
+markers = "python_version != \"3.9.7\" and extra == \"home\""
 files = [
     {file = "gitdb-4.0.12-py3-none-any.whl", hash = "sha256:67073e15955400952c6565cc3e707c554a4eea2e428946f7a4c162fab9bd9bcf"},
     {file = "gitdb-4.0.12.tar.gz", hash = "sha256:5ef71f855d191a3326fcfbc0d5da835f26b13fbcba60c32c21091c349ffdb571"},
@@ -1649,7 +1649,7 @@ description = "GitPython is a Python library used to interact with Git repositor
 optional = true
 python-versions = ">=3.7"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\""
+markers = "python_version != \"3.9.7\" and extra == \"home\""
 files = [
     {file = "GitPython-3.1.44-py3-none-any.whl", hash = "sha256:9e0e10cda9bed1ee64bc9a6de50e7e38a9c9943241cd7f585f6df3ed28011110"},
     {file = "gitpython-3.1.44.tar.gz", hash = "sha256:c87e30b26253bf5418b01b0660f818967f3c503193838337fe5e573331249269"},
@@ -1839,7 +1839,7 @@ files = [
     {file = "grpcio-1.73.0-cp39-cp39-win_amd64.whl", hash = "sha256:6228f7eb6d9f785f38b589d49957fca5df3d5b5349e77d2d89b14e390165344c"},
     {file = "grpcio-1.73.0.tar.gz", hash = "sha256:3af4c30918a7f0d39de500d11255f8d9da4f30e94a2033e70fe2a720e184bd8e"},
 ]
-markers = {main = "python_version >= \"3.9\" and extra == \"scout\"", dev = "python_version >= \"3.9\""}
+markers = {main = "extra == \"scout\" and python_version >= \"3.9\"", dev = "python_version >= \"3.9\""}
 
 [package.extras]
 protobuf = ["grpcio-tools (>=1.73.0)"]
@@ -2015,7 +2015,7 @@ description = "Internationalized Domain Names in Applications (IDNA)"
 optional = true
 python-versions = ">=3.6"
 groups = ["main"]
-markers = "python_version == \"3.8\" and (extra == \"home\" or extra == \"scout\" or extra == \"http\") or (python_full_version != \"3.9.7\" and extra == \"home\" or extra == \"http\") and python_version >= \"3.9\""
+markers = "python_version == \"3.8\" and (extra == \"home\" or extra == \"scout\" or extra == \"http\") or (python_version != \"3.9.7\" and extra == \"home\" or extra == \"http\") and python_version >= \"3.9\""
 files = [
     {file = "idna-3.10-py3-none-any.whl", hash = "sha256:946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3"},
     {file = "idna-3.10.tar.gz", hash = "sha256:12f65c9b470abda6dc35cf8e63cc574b1c52b11df2c86030af0ac09b01b13ea9"},
@@ -2066,7 +2066,7 @@ description = "Library for reading and writing a wide range of image, video, sci
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"scout\""
+markers = "extra == \"scout\" and python_version >= \"3.9\""
 files = [
     {file = "imageio-2.37.0-py3-none-any.whl", hash = "sha256:11efa15b87bc7871b61590326b2d635439acc321cf7f8ce996f812543ce10eed"},
     {file = "imageio-2.37.0.tar.gz", hash = "sha256:71b57b3669666272c818497aebba2b4c5f20d5b37c81720e5e1a56d59c492996"},
@@ -2435,7 +2435,7 @@ description = "A very fast and expressive template engine."
 optional = true
 python-versions = ">=3.7"
 groups = ["main"]
-markers = "(python_full_version != \"3.9.7\" or extra == \"scout\") and (extra == \"home\" or extra == \"scout\")"
+markers = "(python_version != \"3.9.7\" or extra == \"scout\") and (extra == \"home\" or extra == \"scout\")"
 files = [
     {file = "jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"},
     {file = "jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d"},
@@ -2467,7 +2467,7 @@ description = "Lightweight pipelining with Python functions"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"scout\""
+markers = "extra == \"scout\" and python_version >= \"3.9\""
 files = [
     {file = "joblib-1.5.1-py3-none-any.whl", hash = "sha256:4719a31f054c7d766948dcd83e9613686b27114f190f717cec7eaa2084f8a74a"},
     {file = "joblib-1.5.1.tar.gz", hash = "sha256:f4f86e351f39fe3d0d32a9f2c3d8af1ee4cec285aafcb27003dda5205576b444"},
@@ -2505,7 +2505,7 @@ description = "An implementation of JSON Schema validation for Python"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
+markers = "python_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
 files = [
     {file = "jsonschema-4.24.0-py3-none-any.whl", hash = "sha256:a462455f19f5faf404a7902952b6f0e3ce868f3ee09a359b05eca6673bd8412d"},
     {file = "jsonschema-4.24.0.tar.gz", hash = "sha256:0b4e8069eb12aedfa881333004bccaec24ecef5a8a6a4b6df142b2cc9599d196"},
@@ -2545,7 +2545,7 @@ description = "The JSON Schema meta-schemas and vocabularies, exposed as a Regis
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
+markers = "python_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
 files = [
     {file = "jsonschema_specifications-2025.4.1-py3-none-any.whl", hash = "sha256:4653bffbd6584f7de83a67e0d620ef16900b390ddc7939d56684d6c81e33f1af"},
     {file = "jsonschema_specifications-2025.4.1.tar.gz", hash = "sha256:630159c9f4dbea161a6a2205c3011cc4f18ff381b189fff48bb39b9bf26ae608"},
@@ -2561,7 +2561,7 @@ description = "A fast implementation of the Cassowary constraint solver"
 optional = true
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "(python_full_version != \"3.9.7\" or extra == \"scout\") and (extra == \"home\" or extra == \"scout\") and python_version < \"3.10\""
+markers = "python_version < \"3.10\" and (extra == \"home\" or extra == \"scout\")"
 files = [
     {file = "kiwisolver-1.4.7-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:8a9c83f75223d5e48b0bc9cb1bf2776cf01563e00ade8775ffe13b0b6e1af3a6"},
     {file = "kiwisolver-1.4.7-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:58370b1ffbd35407444d57057b57da5d6549d2d854fa30249771775c63b5fe17"},
@@ -2875,7 +2875,7 @@ description = "Python implementation of John Gruber's Markdown."
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"scout\""
+markers = "extra == \"scout\" and python_version >= \"3.9\""
 files = [
     {file = "markdown-3.8-py3-none-any.whl", hash = "sha256:794a929b79c5af141ef5ab0f2f642d0f7b1872981250230e72682346f7cc90dc"},
     {file = "markdown-3.8.tar.gz", hash = "sha256:7df81e63f0df5c4b24b7d156eb81e4690595239b7d70937d0409f1b0de319c6f"},
@@ -2992,7 +2992,7 @@ description = "Safely add untrusted strings to HTML/XML markup."
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "(python_full_version != \"3.9.7\" and extra == \"home\" or extra == \"scout\") and python_version >= \"3.9\""
+markers = "(python_version != \"3.9.7\" and extra == \"home\" or extra == \"scout\") and python_version >= \"3.9\""
 files = [
     {file = "MarkupSafe-3.0.2-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:7e94c425039cde14257288fd61dcfb01963e658efbc0ff54f5306b06054700f8"},
     {file = "MarkupSafe-3.0.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:9e2d922824181480953426608b81967de705c3cef4d1af983af849d7bd619158"},
@@ -3134,7 +3134,7 @@ description = "Python plotting package"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "(python_full_version != \"3.9.7\" or extra == \"scout\") and (extra == \"home\" or extra == \"scout\") and python_version == \"3.9\""
+markers = "python_version == \"3.9\" and (extra == \"home\" or extra == \"scout\")"
 files = [
     {file = "matplotlib-3.9.4-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:c5fdd7abfb706dfa8d307af64a87f1a862879ec3cd8d0ec8637458f0885b9c50"},
     {file = "matplotlib-3.9.4-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:d89bc4e85e40a71d1477780366c27fb7c6494d293e1617788986f74e2a03d7ff"},
@@ -3486,7 +3486,7 @@ description = "Extremely lightweight compatibility layer between dataframe libra
 optional = true
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\""
+markers = "python_version != \"3.9.7\" and extra == \"home\""
 files = [
     {file = "narwhals-1.42.1-py3-none-any.whl", hash = "sha256:7a270d44b94ccdb277a799ae890c42e8504c537c1849f195eb14717c6184977a"},
     {file = "narwhals-1.42.1.tar.gz", hash = "sha256:50a5635b11aeda98cf9c37e839fd34b0a24159f59a4dfae930290ad698320494"},
@@ -3917,7 +3917,7 @@ files = [
     {file = "packaging-24.2-py3-none-any.whl", hash = "sha256:09abb1bccd265c01f4a3aa3f7a7db064b36514d2cba19a2f694fe6150451a759"},
     {file = "packaging-24.2.tar.gz", hash = "sha256:c228a6dc5e932d346bc5739379109d49e8853dd8223571c7c5b55260edc0b97f"},
 ]
-markers = {main = "(python_full_version != \"3.9.7\" or extra == \"scout\") and (extra == \"home\" or extra == \"scout\")"}
+markers = {main = "(python_version != \"3.9.7\" or extra == \"scout\") and (extra == \"home\" or extra == \"scout\")"}
 
 [[package]]
 name = "pandas"
@@ -3926,7 +3926,7 @@ description = "Powerful data structures for data analysis, time series, and stat
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "python_version == \"3.8\" and extra == \"home\""
+markers = "python_version == \"3.8\""
 files = [
     {file = "pandas-2.0.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:e4c7c9f27a4185304c7caf96dc7d91bc60bc162221152de697c98eb0b2648dd8"},
     {file = "pandas-2.0.3-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:f167beed68918d62bffb6ec64f2e1d8a7d297a038f86d4aed056b9493fca407f"},
@@ -3991,7 +3991,7 @@ description = "Powerful data structures for data analysis, time series, and stat
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"home\""
+markers = "python_version >= \"3.9\""
 files = [
     {file = "pandas-2.3.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:625466edd01d43b75b1883a64d859168e4556261a5035b32f9d743b67ef44634"},
     {file = "pandas-2.3.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:a6872d695c896f00df46b71648eea332279ef4077a409e2fe94220208b6bb675"},
@@ -4446,7 +4446,7 @@ description = "Wraps the portalocker recipe for easy usage"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"scout\""
+markers = "extra == \"scout\" and python_version >= \"3.9\""
 files = [
     {file = "portalocker-3.2.0-py3-none-any.whl", hash = "sha256:3cdc5f565312224bc570c49337bd21428bba0ef363bbcf58b9ef4a9f11779968"},
     {file = "portalocker-3.2.0.tar.gz", hash = "sha256:1f3002956a54a8c3730586c5c77bf18fae4149e07eaf1c29fc3faf4d5a3f89ac"},
@@ -4653,7 +4653,7 @@ description = "Python library for Apache Arrow"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
+markers = "python_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
 files = [
     {file = "pyarrow-20.0.0-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:c7dd06fd7d7b410ca5dc839cc9d485d2bc4ae5240851bcd45d85105cc90a47d7"},
     {file = "pyarrow-20.0.0-cp310-cp310-macosx_12_0_x86_64.whl", hash = "sha256:d5382de8dc34c943249b01c19110783d0d64b207167c728461add1ecc2db88e4"},
@@ -5083,7 +5083,7 @@ description = "Widget for deck.gl maps"
 optional = true
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\""
+markers = "python_version != \"3.9.7\" and extra == \"home\""
 files = [
     {file = "pydeck-0.9.1-py2.py3-none-any.whl", hash = "sha256:b3f75ba0d273fc917094fa61224f3f6076ca8752b93d46faf3bcfd9f9d59b038"},
     {file = "pydeck-0.9.1.tar.gz", hash = "sha256:f74475ae637951d63f2ee58326757f8d4f9cd9f2a457cf42950715003e2cb605"},
@@ -5164,7 +5164,7 @@ description = "pyparsing module - Classes and methods to define and execute pars
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "(python_full_version != \"3.9.7\" and extra == \"home\" or extra == \"scout\") and python_version >= \"3.9\""
+markers = "(python_version != \"3.9.7\" and extra == \"home\" or extra == \"scout\") and python_version >= \"3.9\""
 files = [
     {file = "pyparsing-3.2.3-py3-none-any.whl", hash = "sha256:a749938e02d6fd0b59b356ca504a24982314bb090c383e3cf201c95ef7e2bfcf"},
     {file = "pyparsing-3.2.3.tar.gz", hash = "sha256:b9c13f1ab8b3b542f72e28f634bad4de758ab3ce4546e4301970ad6fa77c38be"},
@@ -5224,7 +5224,6 @@ description = "Extensions to the standard Python datetime module"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 groups = ["main"]
-markers = "extra == \"home\" or extra == \"scout\""
 files = [
     {file = "python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3"},
     {file = "python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427"},
@@ -5272,7 +5271,6 @@ description = "World timezone definitions, modern and historical"
 optional = false
 python-versions = "*"
 groups = ["main"]
-markers = "extra == \"home\""
 files = [
     {file = "pytz-2025.2-py2.py3-none-any.whl", hash = "sha256:5ddf76296dd8c44c26eb8f4b6f35488f3ccbf6fbbd7adee0b7262d43f0ec2f00"},
     {file = "pytz-2025.2.tar.gz", hash = "sha256:360b9e3dbb49a209c21ad61809c7fb453643e048b38924c765813546746e81c3"},
@@ -5527,7 +5525,7 @@ description = "JSON Referencing + Python"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
+markers = "python_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
 files = [
     {file = "referencing-0.36.2-py3-none-any.whl", hash = "sha256:e8699adbbf8b5c7de96d8ffa0eb5c158b3beafce084968e2ea8bb08c6794dcd0"},
     {file = "referencing-0.36.2.tar.gz", hash = "sha256:df2e89862cd09deabbdba16944cc3f10feb6b3e6f18e902f7cc25609a34775aa"},
@@ -5545,7 +5543,7 @@ description = "Python HTTP for Humans."
 optional = true
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "python_version == \"3.8\" and (extra == \"home\" or extra == \"scout\") or python_full_version != \"3.9.7\" and extra == \"home\""
+markers = "python_version == \"3.8\" and (extra == \"home\" or extra == \"scout\") or python_version != \"3.9.7\" and extra == \"home\""
 files = [
     {file = "requests-2.32.4-py3-none-any.whl", hash = "sha256:27babd3cda2a6d50b30443204ee89830707d396671944c998b5975b031ac2b2c"},
     {file = "requests-2.32.4.tar.gz", hash = "sha256:27d0316682c8a29834d3264820024b62a36942083d52caf2f14c0591336d3422"},
@@ -5723,7 +5721,7 @@ description = "Python bindings to Rust's persistent data structures (rpds)"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
+markers = "python_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
 files = [
     {file = "rpds_py-0.25.1-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:f4ad628b5174d5315761b67f212774a32f5bad5e61396d38108bd801c0a8f5d9"},
     {file = "rpds_py-0.25.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:8c742af695f7525e559c16f1562cf2323db0e3f0fbdcabdf6865b095256b2d40"},
@@ -6351,7 +6349,7 @@ files = [
     {file = "setuptools-80.9.0-py3-none-any.whl", hash = "sha256:062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922"},
     {file = "setuptools-80.9.0.tar.gz", hash = "sha256:f36b47402ecde768dbfafc46e8e4207b4360c654f1f3bb84475f0a28628fb19c"},
 ]
-markers = {main = "python_version >= \"3.9\" and extra == \"scout\"", dev = "python_version >= \"3.9\""}
+markers = {main = "extra == \"scout\" and python_version >= \"3.9\"", dev = "python_version >= \"3.9\""}
 
 [package.extras]
 check = ["pytest-checkdocs (>=2.4)", "pytest-ruff (>=0.2.1) ; sys_platform != \"cygwin\"", "ruff (>=0.8.0) ; sys_platform != \"cygwin\""]
@@ -6369,7 +6367,7 @@ description = "Portable mixed-precision BLAS-like vector math library for x86 an
 optional = true
 python-versions = "*"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"scout\""
+markers = "extra == \"scout\" and python_version >= \"3.9\""
 files = [
     {file = "simsimd-6.4.9-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:d45df3dc53da6614d8776252048c9adf8a5cad4d60eb0b40057a15e62c161376"},
     {file = "simsimd-6.4.9-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:bc21497555d95640c12e32cec30fa9d8d66f8712710852f97303e397ab3ceba5"},
@@ -6476,7 +6474,6 @@ description = "Python 2 and 3 compatibility utilities"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 groups = ["main"]
-markers = "extra == \"home\" or extra == \"scout\""
 files = [
     {file = "six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"},
     {file = "six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81"},
@@ -6489,7 +6486,7 @@ description = "A pure Python implementation of a sliding window memory map manag
 optional = true
 python-versions = ">=3.7"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\""
+markers = "python_version != \"3.9.7\" and extra == \"home\""
 files = [
     {file = "smmap-5.0.2-py3-none-any.whl", hash = "sha256:b30115f0def7d7531d22a0fb6502488d879e75b260a9db4d0819cfb25403af5e"},
     {file = "smmap-5.0.2.tar.gz", hash = "sha256:26ea65a03958fa0c8a1c7e8c7a58fdc77221b8910f6be2131affade476898ad5"},
@@ -6573,7 +6570,7 @@ description = "A faster way to build and share data apps"
 optional = true
 python-versions = "!=3.9.7,>=3.9"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
+markers = "python_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
 files = [
     {file = "streamlit-1.45.1-py3-none-any.whl", hash = "sha256:9ab6951585e9444672dd650850f81767b01bba5d87c8dac9bc2e1c859d6cc254"},
     {file = "streamlit-1.45.1.tar.gz", hash = "sha256:e37d56c0af5240dbc240976880e81366689c290a559376417246f9b3f51b4217"},
@@ -6609,7 +6606,7 @@ description = "Streamlit components for general labeling"
 optional = true
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\""
+markers = "python_version != \"3.9.7\" and extra == \"home\""
 files = [
     {file = "streamlit_label_kit-0.1.3-py3-none-any.whl", hash = "sha256:9b70575968eea1c4dadc4bfc25a074e76232a0f164ca85949b989e4d643b4396"},
     {file = "streamlit_label_kit-0.1.3.tar.gz", hash = "sha256:573231f52c2700dad0d1c96559f7a9ab0825614e0a1e2a18f98ab55e3cee9e69"},
@@ -6628,7 +6625,7 @@ description = "SIMD-accelerated string search, sort, hashes, fingerprints, & edi
 optional = true
 python-versions = "*"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"scout\""
+markers = "extra == \"scout\" and python_version >= \"3.9\""
 files = [
     {file = "stringzilla-3.12.5-cp310-cp310-macosx_10_11_universal2.whl", hash = "sha256:309a5596deefadc8b06d372c26ec7e220dacb0c59cf7ad7e7879da403b55ab72"},
     {file = "stringzilla-3.12.5-cp310-cp310-macosx_10_11_x86_64.whl", hash = "sha256:58a120a94b8345799a2984a51f2ca5d8259fc98e470ca9d44c07b2f9a6718125"},
@@ -6788,7 +6785,7 @@ description = "Computer algebra system (CAS) in Python"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"scout\""
+markers = "extra == \"scout\" and python_version >= \"3.9\""
 files = [
     {file = "sympy-1.14.0-py3-none-any.whl", hash = "sha256:e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5"},
     {file = "sympy-1.14.0.tar.gz", hash = "sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517"},
@@ -6840,7 +6837,7 @@ description = "Retry code until it succeeds"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
+markers = "python_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
 files = [
     {file = "tenacity-9.1.2-py3-none-any.whl", hash = "sha256:f77bf36710d8b73a50b2dd155c97b870017ad21afe6ab300326b0371b3b05138"},
     {file = "tenacity-9.1.2.tar.gz", hash = "sha256:1169d376c297e7de388d18b4481760d478b0e99a777cad3a9c86e556f4b697cb"},
@@ -6883,7 +6880,7 @@ description = "TensorBoard lets you watch Tensors Flow"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"scout\""
+markers = "extra == \"scout\" and python_version >= \"3.9\""
 files = [
     {file = "tensorboard-2.19.0-py3-none-any.whl", hash = "sha256:5e71b98663a641a7ce8a6e70b0be8e1a4c0c45d48760b076383ac4755c35b9a0"},
 ]
@@ -6937,7 +6934,7 @@ description = "ANSI color formatting for output in terminal"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"scout\""
+markers = "extra == \"scout\" and python_version >= \"3.9\""
 files = [
     {file = "termcolor-3.1.0-py3-none-any.whl", hash = "sha256:591dd26b5c2ce03b9e43f391264626557873ce1d379019786f99b0c2bee140aa"},
     {file = "termcolor-3.1.0.tar.gz", hash = "sha256:6a6dd7fbee581909eeec6a756cff1d7f7c376063b14e4a298dc4980309e55970"},
@@ -6966,7 +6963,7 @@ description = "threadpoolctl"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"scout\""
+markers = "extra == \"scout\" and python_version >= \"3.9\""
 files = [
     {file = "threadpoolctl-3.6.0-py3-none-any.whl", hash = "sha256:43a0b8fd5a2928500110039e43a5eed8480b918967083ea48dc3ab9f13c4a7fb"},
     {file = "threadpoolctl-3.6.0.tar.gz", hash = "sha256:8ab8b4aa3491d812b623328249fab5302a68d2d71745c8a4c719a2fcaba9f44e"},
@@ -7070,7 +7067,7 @@ description = "Python Library for Tom's Obvious, Minimal Language"
 optional = true
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\""
+markers = "python_version != \"3.9.7\" and extra == \"home\""
 files = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
     {file = "toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f"},
@@ -7231,7 +7228,7 @@ description = "Tornado is a Python web framework and asynchronous networking lib
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
+markers = "python_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\""
 files = [
     {file = "tornado-6.5.1-cp39-abi3-macosx_10_9_universal2.whl", hash = "sha256:d50065ba7fd11d3bd41bcad0825227cc9a95154bad83239357094c36708001f7"},
     {file = "tornado-6.5.1-cp39-abi3-macosx_10_9_x86_64.whl", hash = "sha256:9e9ca370f717997cb85606d074b0e5b247282cf5e2e1611568b8821afe0342d6"},
@@ -7558,7 +7555,6 @@ description = "Provider of IANA time zone data"
 optional = false
 python-versions = ">=2"
 groups = ["main"]
-markers = "extra == \"home\""
 files = [
     {file = "tzdata-2025.2-py2.py3-none-any.whl", hash = "sha256:1a403fada01ff9221ca8044d701868fa132215d84beb92242d9acd2147f667a8"},
     {file = "tzdata-2025.2.tar.gz", hash = "sha256:b60a638fcc0daffadf82fe0f57e53d06bdec2f36c4df66280ae79bce6bd6f2b9"},
@@ -7594,7 +7590,7 @@ files = [
     {file = "urllib3-2.4.0-py3-none-any.whl", hash = "sha256:4e16665048960a0900c702d4a66415956a584919c03361cac9f1df5c5dd7e813"},
     {file = "urllib3-2.4.0.tar.gz", hash = "sha256:414bc6535b787febd7567804cc015fee39daab8ad86268f1310a9250697de466"},
 ]
-markers = {main = "python_full_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\"", dev = "python_version >= \"3.9\""}
+markers = {main = "python_version != \"3.9.7\" and extra == \"home\" and python_version >= \"3.9\"", dev = "python_version >= \"3.9\""}
 
 [package.extras]
 brotli = ["brotli (>=1.0.9) ; platform_python_implementation == \"CPython\"", "brotlicffi (>=0.8.0) ; platform_python_implementation != \"CPython\""]
@@ -7707,7 +7703,7 @@ description = "Filesystem events monitoring"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_full_version != \"3.9.7\" and extra == \"home\" and platform_system != \"Darwin\" and python_version >= \"3.9\""
+markers = "python_version != \"3.9.7\" and extra == \"home\" and platform_system != \"Darwin\" and python_version >= \"3.9\""
 files = [
     {file = "watchdog-6.0.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:d1cdb490583ebd691c012b3d6dae011000fe42edb7a82ece80965b42abd61f26"},
     {file = "watchdog-6.0.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:bc64ab3bdb6a04d69d4023b29422170b74681784ffb9463ed4870cf2f3e66112"},
@@ -7783,7 +7779,7 @@ description = "The comprehensive WSGI web application library."
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "python_version >= \"3.9\" and extra == \"scout\""
+markers = "extra == \"scout\" and python_version >= \"3.9\""
 files = [
     {file = "werkzeug-3.1.3-py3-none-any.whl", hash = "sha256:54b78bf3716d19a65be4fceccc0d1d7b89e608834989dfae50ea87564639213e"},
     {file = "werkzeug-3.1.3.tar.gz", hash = "sha256:60723ce945c19328679790e3282cc758aa4a6040e4bb330f53d30fa546d44746"},
@@ -7961,11 +7957,11 @@ test = ["big-O", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more_it
 type = ["pytest-mypy"]
 
 [extras]
-home = ["decorator", "fabric", "pandas", "pillow", "python-dateutil", "streamlit", "streamlit-label-kit"]
+home = ["decorator", "fabric", "pillow", "python-dateutil", "streamlit", "streamlit-label-kit"]
 http = ["httpx"]
 scout = ["albumentations", "av", "einops", "lovely-tensors", "matplotlib", "movinet-pytorch", "multiprocessing-logging", "opencv-python-headless", "scikit-image", "scikit-learn", "tensorboard", "torch", "torchvision"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = "^3.8"
-content-hash = "0ec09467e71c76e140f49d8b728b6171d5ac0997b3b4ba553de87b9ed81989a8"
+python-versions = ">=3.8,<3.13"
+content-hash = "a7f32f27975a1958bdaee652d08b8f35a6d98e733ec0548ebde925f4d7dd9938"

@@ -1,8 +1,8 @@
-# SPDX-FileCopyrightText: 2024 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
+# SPDX-FileCopyrightText: 2024-2025 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
 # SPDX-License-Identifier: GPL-2.0-only
 
 ARG PYTHON_VERSION=3.10 \
-    POETRY_VERSION=1.8.3
+    POETRY_VERSION=2.1.3
 
 FROM python:${PYTHON_VERSION} AS builder
 
@@ -18,8 +18,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN python3 -m venv venv \
- && pip install --no-cache-dir poetry==${POETRY_VERSION} \
- && poetry config warnings.export false
+ && pip install --no-cache-dir -U pip \
+ && pip install --no-cache-dir poetry==${POETRY_VERSION} poetry-plugin-export
 #&& venv/bin/poetry self add poetry-plugin-export
 
 COPY LICENSE README.md pyproject.toml poetry.lock ./

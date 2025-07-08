@@ -1,117 +1,122 @@
-[tool.poetry]
+[project]
 name = "cmuhawk"
 version = "0.1.0"
 description = "Hawk: Low-Bandwidth Remote Sensing of Rare Events"
-authors = [
-    "Carnegie Mellon University <satya+group@cs.cmu.edu>",
-    "Shilpa George <shilpag@andrew.cmu.edu>",
-    "Eric Sturzinger <esturzin@andrew.cmu.edu>",
-    "Jan Harkes <jaharkes@cs.cmu.edu>",
-]
-license = "GPL-2.0-only"
 readme = "README.md"
+requires-python = ">=3.8,<3.13"
+license = { text="GPL-2.0-only" }
+authors = [
+    { name="Carnegie Mellon University", email="<satya+group@cs.cmu.edu>" },
+    { name="Shilpa George", email="<shilpag@andrew.cmu.edu>" },
+    { name="Eric Sturzinger", email="<esturzin@andrew.cmu.edu>" },
+    { name="Jan Harkes", email="<jaharkes@cs.cmu.edu>" }
+]
+
+dependencies = [
+    "cattrs >= 23.1.0",
+    "importlib-metadata (>=8.5,<9.0)",
+    "importlib-resources (>=6.4,<7.0)",
+    "logzero (>=1.5.0,<2.0.0)",
+    "numpy (>=1.24.4,<2.0.0) ; python_version < '3.9'",
+    "numpy (>=1.26.4,<2.0.0) ; python_version >= '3.9'",
+    "pandas (>=2.0,<3.0)",
+    "prometheus-client (>=0.20.0,<0.21.0)",
+    "protobuf >= 4.24.0",
+    "pydantic (>=2.10,<3.0)",
+    "pydantic-settings (>=2.8,<3.0)",
+    "pyyaml (>=6.0,<7.0)",
+    "pyzmq >= 23.2.1",
+    "tqdm (>=4.66.1,<5.0.0)",
+    "typing-extensions (>=4.9.0,<5.0.0)",
+]
+
+[project.optional-dependencies]
+home = [
+    # decorator seems to be a missing fabric dependency...
+    "decorator (>=5.1.1,<6.0.0)",
+    "fabric (>=3.0.1,<4.0.0)",
+    "pillow (>=10.4.0,<11.0.0)",
+    "python-dateutil (>=2.8.1,<3.0.0)",
+    "streamlit (>=1.40.1,<2.0.0) ; python_version != '3.9.7'",
+    "streamlit-label-kit (>=0.1.2,<0.2.0) ; python_version != '3.9.7'"
+]
+
+scout = [
+    "albumentations (>=1.3.1,<2.0.0)",
+    "lovely-tensors (>=0.1.15,<0.2.0)",
+    "matplotlib (>=3.6,<4.0)",
+    "multiprocessing-logging (>=0.2.6,<0.3.0)",
+    "opencv-python-headless (>=4.7.0.72,<5.0.0.0)",
+    "scikit-image >= 0.21",
+    "scikit-learn (>=1.3.0,<2.0.0)",
+    "tensorboard (>=2.1.1,<3.0.0)",
+
+    # Here we can try and compare different pytorch releases, after changing
+    # this run `poetry lock ; poetry install -E home -E scout --sync`
+    # "torch (>=1.13,<2.0)",
+    # "torchvision (>=0.14,<0.15)",
+    # "torch (>=2.0,<2.1)",
+    # "torchvision (>=0.15<0.16)",
+    # "torch (>=2.1,<2.2)",
+    # "torchvision (>=0.16,<0.17)",
+    "torch (>=2.2,<3.0)",
+    "torchvision (>=0.17,<0.18)",
+
+    # for activity recognition
+    "av == 12.0.0",
+    "einops ~= 0.8.0",
+    # "movinet-pytorch @ git+https://github.com/Atze00/MoViNet-pytorch.git@main",
+    # pre-built wheel for the above git repo at https://storage.cmusatyalab.org/wheels
+    "movinet-pytorch == 0.2.2",
+]
+
+# under development, to be added to scout
+# for http retriever
+http = [
+    "httpx (>=0.28.1,<0.29.0)"
+]
+
+[project.urls]
+repository = "https://github.com/cmusatyalab/hawk"
+"Bug Tracker" = "https://github.com/cmusatyalab/hawk/issues"
+
+[project.scripts]
+hawk_deploy = "hawk.deploy.__main__:main"
+hawk_gui = "hawk.gui.__main__:main"
+hawk_home = "hawk.home.home_main:main"
+hawk_scout = "hawk.scout.server_main:main"
+hawk_script_labeler = "hawk.home.script_labeler:main"
+
+[project.entry-points."cmuhawk.retrievers"]
+frame = "hawk.scout.retrieval.frame_retriever:FrameRetriever"
+http = "hawk.scout.retrieval.http_retriever:HTTPRetriever"
+k600 = "hawk.scout.retrieval.kinetics600.kinetics_600_retriever:K600Retriever"
+network = "hawk.scout.retrieval.network_retriever:NetworkRetriever"
+radar = "hawk.scout.retrieval.radar_retriever:RadarRetriever"
+random = "hawk.scout.retrieval.random_retriever:RandomRetriever"
+tile = "hawk.scout.retrieval.tile_retriever:TileRetriever"
+video = "hawk.scout.retrieval.video_retriever:VideoRetriever"
+
+[tool.poetry]
 packages = [
-    { include = "hawk", from = "src" },
+    { include = "hawk", from = "src" }
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8"
-cattrs = ">=23.1.0"
-importlib-metadata = "^8.5"
-importlib-resources = "^6.4"
-logzero = "^1.5.0"
-numpy = [
-    { version = "^1.24.4", python = "<3.9" },
-    { version = "^1.26.4", python = "^3.9" },
-]
-pandas = "^2.0"
-prometheus-client = "^0.20.0"
-protobuf = ">=4.24.0"
-pydantic = "^2.10"
-pydantic-settings = "^2.8"
-pyyaml = "^6.0"
-pyzmq = ">=23.2.1"
-tqdm = "^4.66.1"
-typing-extensions = "^4.9.0"
-
-# home
-# decorator seems to be a missing fabric dependency...
-decorator = { version = "^5.1.1", optional = true }
-fabric = { version = "^3.0.1", optional = true }
-pillow = { version = "^10.4.0", optional = true }
-python-dateutil = { version = "^2.8.1", optional = true }
-streamlit = {version = "^1.40.1", optional = true, python = "!=3.9.7"}
-streamlit-label-kit = {version = "^0.1.2", optional = true, python = "!=3.9.7"}
-
-# scout
-albumentations = { version = "^1.3.1", optional = true }
-lovely-tensors = { version = "^0.1.15", optional = true }
-matplotlib = { version = "^3.6", optional = true }
-multiprocessing-logging = { version = "^0.2.6", optional = true }
-opencv-python-headless = { version = "^4.7.0.72", optional = true }
-scikit-image = { version = ">=0.21", optional = true }
-scikit-learn = { version = "^1.3.0", optional = true }
-tensorboard = { version = "^2.1.1", optional = true }
-
-# Here we can try and compare different pytorch releases, after changing
-# this run `poetry lock ; poetry install -E home -E scout --sync`
-#torch = { version = "^1.13", optional = true }
-#torchvision = { version = "^0.14", optional = true }
-#torch = { version = "2.0.0", optional = true }
-#torchvision = { version = "^0.15", optional = true }
-#torch = { version = "^2.1", optional = true, source = "torch-cu11" }
-#torchvision = { version = "^0.16", optional = true, source = "torch-cu11" }
-torch = { version = "^2.2", optional = true, source = "torch-cu11" }
-torchvision = { version = "^0.17", optional = true, source = "torch-cu11" }
-
-# for activity recognition
-av = { version = "12.0.0", optional = true }
-einops = { version = "^0.8.0", optional = true }
-# movinet-pytorch = { git = "https://github.com/Atze00/MoViNet-pytorch.git", branch = "main", optional = true }
-movinet-pytorch = { version = "0.2.2", optional = true, source = "hawk-extra" }
-
-# for http retriever
-httpx = {version = "^0.28.1", optional = true}
-
-[[tool.poetry.source]]
-name = "torch-cu11"
-url = "https://download.pytorch.org/whl/cu118"
-priority = "explicit"
+movinet-pytorch = { source = "hawk-extra" }
+# for torch >= 2.1
+torch = { source = "torch-cu11" }
+torchvision = { source = "torch-cu11" }
 
 [[tool.poetry.source]]
 name = "hawk-extra"
 url = "https://storage.cmusatyalab.org/wheels"
 priority = "explicit"
 
-[tool.poetry.extras]
-home = [
-    "decorator",
-    "fabric",
-    "pandas",
-    "pillow",
-    "python-dateutil",
-    "streamlit",
-    "streamlit-label-kit",
-]
-scout = [
-    "albumentations",
-    "av",
-    "einops",
-    "lovely-tensors",
-    "matplotlib",
-    "movinet-pytorch",
-    "multiprocessing-logging",
-    "opencv-python-headless",
-    "scikit-image",
-    "scikit-learn",
-    "tensorboard",
-    "torch",
-    "torchvision",
-]
-# under development, to be added to scout
-http = [
-    "httpx",
-]
+[[tool.poetry.source]]
+name = "torch-cu11"
+url = "https://download.pytorch.org/whl/cu118"
+priority = "explicit"
 
 [tool.poetry.group.dev.dependencies]
 grpcio-tools = "^1.48.2,<1.73.0"
@@ -130,23 +135,6 @@ types-protobuf = ">=4.24.0.2"
 types-pyyaml = "^6.0.12.10"
 types-requests = "^2.31.0.6"
 types-tqdm = "^4.66.0.2"
-
-[tool.poetry.scripts]
-hawk_deploy = "hawk.deploy.__main__:main"
-hawk_gui = "hawk.gui.__main__:main"
-hawk_home = "hawk.home.home_main:main"
-hawk_scout = "hawk.scout.server_main:main"
-hawk_script_labeler = "hawk.home.script_labeler:main"
-
-[tool.poetry.plugins."cmuhawk.retrievers"]
-frame = "hawk.scout.retrieval.frame_retriever:FrameRetriever"
-http = "hawk.scout.retrieval.http_retriever:HTTPRetriever"
-k600 = "hawk.scout.retrieval.kinetics600.kinetics_600_retriever:K600Retriever"
-network = "hawk.scout.retrieval.network_retriever:NetworkRetriever"
-radar = "hawk.scout.retrieval.radar_retriever:RadarRetriever"
-random = "hawk.scout.retrieval.random_retriever:RandomRetriever"
-tile = "hawk.scout.retrieval.tile_retriever:TileRetriever"
-video = "hawk.scout.retrieval.video_retriever:VideoRetriever"
 
 [tool.mypy]
 strict = true
@@ -224,20 +212,20 @@ missino = "mission"
 thr = "thr"  # abbreviation of threshold
 
 [tool.uv.sources]
+movinet-pytorch = { index = "hawk-extra" }
 torch = { index = "torch-cu11" }
 torchvision = { index = "torch-cu11" }
-movinet-pytorch = { index = "hawk-extra" }
-
-[[tool.uv.index]]
-name = "torch-cu11"
-url = "https://download.pytorch.org/whl/cu118"
-explicit = true
 
 [[tool.uv.index]]
 name = "hawk-extra"
 url = "https://storage.cmusatyalab.org/wheels"
 explicit = true
 
+[[tool.uv.index]]
+name = "torch-cu11"
+url = "https://download.pytorch.org/whl/cu118"
+explicit = true
+
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
