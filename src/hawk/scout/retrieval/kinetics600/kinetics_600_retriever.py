@@ -25,7 +25,7 @@ from .video_utils import create_gif_from_video_tensor_bytes
 
 
 class K600RetrieverConfig(RetrieverConfig):
-    root: Path
+    index_path: Path
     frames_per_clip: int
     frame_rate: int
     positive_class_idx: int = 0
@@ -60,7 +60,7 @@ class K600Retriever(Retriever):
         super().__init__(config)
 
         self.ds = KineticsDs(
-            root=self.config.root,
+            root=self.config.index_path.parent,
             video_clips_pkl_name="train.pkl",
             frames_per_clip=self.config.frames_per_clip,
             step_between_clips=self.config.frames_per_clip,
@@ -156,7 +156,7 @@ class K600Retriever(Retriever):
 if __name__ == "__main__":
     k600_retriever = K600Retriever.from_config(
         dict(
-            root="/home/gil/data/k600",
+            index_path="/home/gil/data/k600",
             frames_per_clip=30,
             frame_rate=5,
             positive_class_idx=0,

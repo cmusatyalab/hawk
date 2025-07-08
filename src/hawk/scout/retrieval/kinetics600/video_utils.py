@@ -115,6 +115,7 @@ def create_gif_from_video_tensor_bytes(video: torch.Tensor, fps: int = 10) -> by
             append_images=imgs[1:],
             duration=1000 // fps,
             loop=1,
+            format='gif'
         )
         content = byte_stream.getvalue()
     return content

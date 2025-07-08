@@ -82,7 +82,8 @@ class ObjectId:
         self, parent: Path | None = None, file_ext: str | None = None
     ) -> Path:
         if file_ext is None:
-            file_ext = unwrap(self._file_path()).suffix
+            # file_ext = unwrap(self._file_path()).suffix
+            file_ext = '.bin'
 
         path = Path(str(self.shortid)).with_suffix(file_ext)
         return parent.joinpath(path) if parent is not None else path

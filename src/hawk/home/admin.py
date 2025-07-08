@@ -304,7 +304,7 @@ class Admin:
             else:
                 dataset = Dataset(
                     retriever=dataset_type,
-                    config={k: json.dumps(v) for k, v in dataset_config.items()},
+                    config={k: str(v) for k, v in dataset_config.items()},
                 )
 
             try:
