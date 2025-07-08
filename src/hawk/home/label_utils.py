@@ -274,6 +274,7 @@ class LabelSample:
                 scoutIndex=self.scoutIndex,
                 model_version=self.model_version,
                 queued=self.queued,
+                oracle_items=self.oracle_items,
                 detections=[
                     detection.to_dict(class_list) for detection in self.detections
                 ],
