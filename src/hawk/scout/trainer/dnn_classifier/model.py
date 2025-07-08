@@ -18,6 +18,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 
 from ....classes import class_label_to_int
+from ....objectid import LegacyObjectId
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
@@ -280,7 +281,8 @@ class DNNClassifierModel(ModelBase):
                 if self._mode == "oracle":
                     num_classes = len(self.context.class_list)
 
-                    class_name = result_object._groundtruth()
+                    legacy_id = LegacyObjectId.from_objectid(result_object)
+                    class_name = legacy_id.groundtruth
                     class_label = self.context.class_list.index(class_name)
 
                     score = [0.0] * num_classes

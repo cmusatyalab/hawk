@@ -12,14 +12,13 @@ from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
 
-from .classes import NEGATIVE_CLASS, ClassName
+from .classes import ClassName
 from .proto import common_pb2
-from .rusty import unwrap_or
 
 # Namespace identifier for UUIDs derived from Hawk ObjectIDs
 HAWK_OBJECTID_NAMESPACE = uuid.uuid5(uuid.NAMESPACE_DNS, "hawk.elijah.cs.cmu.edu")
 
-# Regex to match a Hawk ObjectID
+# Regex to match a Hawk Legacy ObjectID
 OID_RE = r"^/(?P<gt>.*)/collection/id/(?P<path>.*)$"
 
 
@@ -81,27 +80,23 @@ class ObjectId:
         path = Path(str(self.shortid)).with_suffix(file_ext)
         return parent.joinpath(path) if parent is not None else path
 
-    # compat functions
-    def _groundtruth(self) -> ClassName:
-        """Extract groundtruth from an objectid.
 
-        This is somewhat compatible with how this information was extracted
-        from the old string based objectids, so it is useful for backward
-        compatibility, but OTOH it only works properly for a subset of
-        retrievers (f.i. it breaks for video_retriever).
+@dataclass(frozen=True)
+class LegacyObjectId(ObjectId):
+    object_path: Path
+    groundtruth: ClassName
 
-        Also this information should not be encoded in the objectid itself,
-        extracting this information should be a retriever specific function.
+    @classmethod
+    def from_objectid(cls, object_id: ObjectId) -> LegacyObjectId:
+        oid = object_id.serialize_oid()
+        m = re.match(OID_RE, oid)
+        assert m is not None, "unable to parse object id"
 
-        We must always avoid referencing the ground truth data and make sure it
-        is only used for debugging and mission evaluation purposes only.
-        """
-        m = re.match(OID_RE, self.oid)
-        if m is None:
-            return NEGATIVE_CLASS
-        return ClassName(sys.intern(m.group("gt")))
+        object_path = Path(m.group("path"))
+        groundtruth = ClassName(sys.intern(m.group("gt")))
+        return cls(oid=oid, object_path=object_path, groundtruth=groundtruth)
 
-    def _file_path(self, data_root: Path | None = None) -> Path | None:
+    def file_path(self, data_root: Path | None = None) -> Path | None:
         """Extract a file path/name from an objectid.
 
         This is somewhat compatible with how this information was extracted
@@ -112,61 +107,14 @@ class ObjectId:
         Not convinced that anyone, aside from the retrievers, should really
         know or have access to this information to begin with.
         """
-        m = re.match(OID_RE, self.oid)
-        if m is None:
-            return None
-
-        path = m.group("path")
         if data_root is None:
-            return Path(path)
+            return self.object_path
 
-        full_path = data_root.joinpath(path)
+        full_path = data_root.joinpath(self.object_path).resolve()
         if data_root not in full_path.parents:
             return None
 
         return full_path
-
-
-@dataclass(frozen=True)
-class ExampleObjectId(ObjectId):
-    """Example 'retriever specific' objectid class.
-
-    This would be used internally by a retriever if it needs to, for some
-    reason, interpret the content of the object id value.
-    """
-
-    DATA_DIR: Path = Path("/datadir")
-
-    @classmethod
-    def from_objectid(cls, oid: ObjectId) -> ExampleObjectId:
-        """Validate the object id is valid in the context of this retriever."""
-        raw_oid = oid.serialize_oid()
-        if not raw_oid.startswith("example:"):
-            # KeyError because objectid is badly formatted.
-            # Maybe this could/should be part of the object-specific constructor.
-            msg = "Invalid ObjectID for ExampleRetriever"
-            raise KeyError(msg)
-
-        # we've validated the oid is the right format, so we can instantiate
-        specific_oid = cls(raw_oid)
-
-        path = specific_oid._file_path()
-        if cls.DATA_DIR not in path.parents or not path.exists():
-            # ValueError because object referenced by objectid does not exist.
-            # This would only only be relevant when we get a request for the
-            # ML-ready or Oracle-ready data.
-            msg = "Invalid ObjectID for ExampleRetriever"
-            raise ValueError(msg)
-
-        return specific_oid
-
-    def _file_path(self, data_root: Path | None = None) -> Path:
-        """Return the path to the on-disk copy of the object.
-
-        This assumes our object ids are `example:path/in/data_dir/object.ext`
-        """
-        data_root = unwrap_or(data_root, self.DATA_DIR)
-        return data_root.joinpath(self.oid[8:]).resolve()
 
 
 if __name__ == "__main__":

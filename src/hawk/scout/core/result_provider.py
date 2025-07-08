@@ -6,7 +6,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, TypedDict
 
-from ...classes import class_name_to_str
+from ...classes import NEGATIVE_CLASS, class_name_to_str
+from ...objectid import LegacyObjectId
 from ...proto import common_pb2
 from ...proto.messages_pb2 import SendTile
 
@@ -53,7 +54,11 @@ class ResultProvider:
         self.model_version = model_version
         self.feature_vector = feature_vector
 
-        self.gt = object_id._groundtruth()
+        try:
+            legacy_id = LegacyObjectId.from_objectid(object_id)
+            self.gt = legacy_id.groundtruth
+        except AssertionError:
+            self.gt = NEGATIVE_CLASS
 
     def to_protobuf(
         self, retriever: Retriever, scout_index: int, *, novel_sample: bool = False

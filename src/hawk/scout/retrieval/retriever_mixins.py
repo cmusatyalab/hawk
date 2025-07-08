@@ -13,7 +13,7 @@ from logzero import logger
 from PIL import Image
 
 from ...hawkobject import HawkObject
-from ...objectid import ObjectId
+from ...objectid import LegacyObjectId, ObjectId
 from ...rusty import unwrap
 from ..core.result_provider import BoundingBox
 from .retriever import ImageRetrieverConfig, RetrieverBase
@@ -70,7 +70,8 @@ class LegacyRetrieverMixin(ThumbnailImageMixin):
     def get_ml_data(self, object_id: ObjectId) -> HawkObject:
         """Return ML ready tile for inferencing or training."""
         try:
-            object_path = unwrap(object_id._file_path(self.config.data_root))
+            legacy_id = LegacyObjectId.from_objectid(object_id)
+            object_path = unwrap(legacy_id.file_path(self.config.data_root))
             ml_object = HawkObject.from_file(object_path)
         except (AssertionError, FileNotFoundError) as e:
             msg = f"Unable to read {object_id}"
@@ -86,7 +87,8 @@ class LegacyRetrieverMixin(ThumbnailImageMixin):
         """Return groundtruth for logging, statistics and scriptlabeler."""
         # only handles classification groundtruth as it assumes the class is
         # stashed in the object id.
-        class_name = object_id._groundtruth()
+        legacy_id = LegacyObjectId.from_objectid(object_id)
+        class_name = legacy_id.groundtruth
         if class_name is None:
             return []
 
@@ -103,7 +105,8 @@ class LegacyRadarMixin(LegacyRetrieverMixin):
     def get_oracle_data(self, object_id: ObjectId) -> list[HawkObject]:
         """Create a Range-Doppler heatmap from radar data."""
         try:
-            object_path = unwrap(object_id._file_path(self.config.data_root))
+            legacy_id = LegacyObjectId.from_objectid(object_id)
+            object_path = unwrap(legacy_id.file_path(self.config.data_root))
             assert object_path.suffix in (".npy", ".npz")
             data = np.load(object_path, allow_pickle=True)
         except (AssertionError, FileNotFoundError):
