@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import sys
 import time
-from pathlib import Path
 from typing import TYPE_CHECKING, Iterator
 
 import streamlit as st
@@ -23,7 +22,6 @@ from hawk.gui.elements import (
     paginate,
 )
 from hawk.home.label_utils import Detection, LabelSample
-from hawk.rusty import unwrap
 
 if TYPE_CHECKING:
     from streamlit.delta_generator import DeltaGenerator
@@ -335,15 +333,11 @@ def display_radar_images(mission: Mission, column: Iterator[DeltaGenerator]) -> 
     results_per_page = st.session_state.rows * st.session_state.columns
     with paginate(results, results_per_page=results_per_page) as page:
         for result in page:
-            assert result.objectId is not None
-            base = unwrap(result.objectId._file_path()).stem
-            stereo_base = base.split("_", 1)[0]
-
             image = mission.image_path(result, index=0)
-            stereo_image = Path(
-                "/media/eric/Drive2/RADAR_DETECTION/train/stereo_left/",
-                f"{stereo_base}_left.jpg",
-            )  # stereo image for radar missions, if stereo image.exists(), etc.
+
+            # stereo image for radar missions, if stereo image.exists(), etc.
+            stereo_image = mission.image_path(result, index=1)
+
             with next(column):  # make a 1x2 container?
                 col1, col2 = st.columns(2)
                 with col1:
