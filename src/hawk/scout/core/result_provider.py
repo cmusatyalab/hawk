@@ -61,10 +61,19 @@ class ResultProvider:
             self.gt = NEGATIVE_CLASS
 
     def to_protobuf(
-        self, retriever: Retriever, scout_index: int, *, novel_sample: bool = False
+        self,
+        retriever: Retriever,
+        scout_index: int,
+        *,
+        novel_sample: bool = False,
+        oracle_mode: bool = False,
     ) -> SendTile:
         oracle_data = retriever.get_oracle_data(self.id)
         groundtruth = retriever.get_groundtruth(self.id)
+
+        # replaced inferenced results with groundtruth if we are running in
+        # "oracle_mode"
+        inferenced = self.bboxes if not oracle_mode else groundtruth
 
         return SendTile(
             object_id=self.id.to_protobuf(),
@@ -72,7 +81,7 @@ class ResultProvider:
             version=self.model_version,
             feature_vector=self.feature_vector,
             oracle_data=[obj.to_protobuf() for obj in oracle_data],
-            inferenced=[bbox_to_protobuf(bbox) for bbox in self.bboxes],
+            inferenced=[bbox_to_protobuf(bbox) for bbox in inferenced],
             groundtruth=[bbox_to_protobuf(bbox) for bbox in groundtruth],
             novel_sample=novel_sample,
         )

@@ -18,8 +18,7 @@ from PIL import Image, ImageFile
 from sklearn.metrics.pairwise import cosine_similarity
 from torchvision import models
 
-from ....classes import NEGATIVE_CLASS, POSITIVE_CLASS
-from ....objectid import LegacyObjectId
+from ....classes import POSITIVE_CLASS
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
@@ -197,14 +196,6 @@ class FSLModel(ModelBase):
             for i in range(len(batch)):
                 label = POSITIVE_CLASS
                 score = predictions[i]
-                if self._mode == "oracle":
-                    object_id = batch[i][0]
-                    legacy_id = LegacyObjectId.from_objectid(object_id)
-                    if legacy_id.groundtruth == NEGATIVE_CLASS:
-                        label = NEGATIVE_CLASS
-                        score = 0.0
-                    else:
-                        score = 1.0
                 bboxes: list[BoundingBox] = [{"class_name": label, "confidence": score}]
                 yield ResultProvider(batch[i][0], score, bboxes, self.version)
 

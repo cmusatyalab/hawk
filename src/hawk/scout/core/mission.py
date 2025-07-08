@@ -557,7 +557,15 @@ class Mission(DataManagerContext, ModelContext):
                 if result is None:
                     break
 
-                tile = result.to_protobuf(self.retriever, self.scout_index)
+                # If we are running in oracle mode, we replace inferenced
+                # results with groundtruth data we obtain from the retriever.
+                # Maybe this should be moved to a home related configuration
+                # instead of training/inferencing model configuration.
+                oracle_mode = self._model is not None and self._model.mode == "oracle"
+
+                tile = result.to_protobuf(
+                    self.retriever, self.scout_index, oracle_mode=oracle_mode
+                )
                 pipe.send(tile.SerializeToString())
         except Exception as e:
             logger.exception(e)

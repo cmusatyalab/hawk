@@ -21,7 +21,6 @@ from sklearn.metrics import average_precision_score
 from torch.utils.data import DataLoader
 from torchvision import datasets
 
-from ....classes import NEGATIVE_CLASS
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
@@ -224,8 +223,6 @@ class YOLOModelRadar(ModelBase):
             del tensors
             for i in range(len(batch)):
                 score = predictions[i]
-                if self._mode == "oracle":
-                    score = 0.0 if batch[i][0]._groundtruth() == NEGATIVE_CLASS else 1.0
                 scores = [1.0 - score, score]
                 bboxes: list[BoundingBox] = [
                     {"class_name": label, "confidence": score}

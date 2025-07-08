@@ -227,8 +227,6 @@ class YOLOModel(ModelBase):
             for i in range(len(batch)):
                 score = prediction_scores[i]
                 detections_per_sample = detections[i]
-                # if self._mode == "oracle":
-                #    score = 0 if batch[i][0].id.startswith("/negative/") else 1
 
                 bboxes: list[BoundingBox] = [
                     {

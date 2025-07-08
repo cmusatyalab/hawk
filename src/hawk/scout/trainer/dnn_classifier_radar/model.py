@@ -21,8 +21,6 @@ from skimage.measure import label, regionprops
 from torch.utils.data import DataLoader
 from torchvision import datasets, models
 
-from ....classes import class_label_to_int
-from ....objectid import LegacyObjectId
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
@@ -331,15 +329,6 @@ class DNNClassifierModelRadar(ModelBase):
             for i in range(len(batch)):
                 score = predictions[i]
                 result_object = batch[i][0]
-                if self._mode == "oracle":
-                    num_classes = len(self.context.class_list)
-
-                    legacy_id = LegacyObjectId.from_objectid(result_object)
-                    class_name = legacy_id.groundtruth
-                    class_label = self.context.class_list.index(class_name)
-
-                    score = [0.0] * num_classes
-                    score[class_label_to_int(class_label)] = 1.0
 
                 # if pick_patches is true we should include x y w h
                 # this doesn't work because boxes is a list[list[tuple[..]]]?
