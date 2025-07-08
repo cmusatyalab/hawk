@@ -156,7 +156,7 @@ class K600Retriever(Retriever):
 if __name__ == "__main__":
     k600_retriever = K600Retriever.from_config(
         dict(
-            index_path="/home/gil/data/k600",
+            index_path="/home/gil/data/k600/index.csv",
             frames_per_clip=30,
             frame_rate=5,
             positive_class_idx=0,
