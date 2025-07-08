@@ -24,6 +24,14 @@ from .kinetics_ds import KineticsDs
 from .video_utils import create_gif_from_video_tensor_bytes
 
 
+class K600RetrieverConfig(RetrieverConfig):
+    root: Path
+    frames_per_clip: int
+    frame_rate: int
+    positive_class_idx: int = 0
+    timeout: float = 2.0
+
+
 # Local class to wrap direct accesses to the index stored in ObjectId
 @dataclass(frozen=True)
 class K600_ObjectId(ObjectId):
@@ -42,14 +50,6 @@ class K600_ObjectId(ObjectId):
     @property
     def index(self) -> int:
         return int(self.oid)
-
-
-class K600RetrieverConfig(RetrieverConfig):
-    root: Path
-    frames_per_clip: int
-    frame_rate: int
-    positive_class_idx: int = 0
-    timeout: float = 2.0
 
 
 class K600Retriever(Retriever):

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 from importlib_metadata import entry_points
@@ -31,6 +32,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
+    parser.add_argument("--schema", action="store_true")
     parser.add_argument("retriever")
     parser.add_argument("config", nargs="*", metavar="config=value")
     args = parser.parse_args()
@@ -39,8 +41,13 @@ if __name__ == "__main__":
 
     try:
         retriever_cls = load_retriever(args.retriever)
-        retriever_config = retriever_cls.validate_config(config)
-        print(f"{retriever_config!r}")
+
+        if args.schema:
+            schema = retriever_cls.config_class.model_json_schema()
+            print(json.dumps(schema, indent=4))
+        else:
+            retriever_config = retriever_cls.validate_config(config)
+            print(f"{retriever_config!r}")
     except ImportError:
         print(f'Unknown retriever: "{args.retriever}"')
     except ValidationError as e:
