@@ -14,7 +14,7 @@ from pathlib import Path
 
 from .classes import NEGATIVE_CLASS, ClassName
 from .proto import common_pb2
-from .rusty import unwrap, unwrap_or
+from .rusty import unwrap_or
 
 # Namespace identifier for UUIDs derived from Hawk ObjectIDs
 HAWK_OBJECTID_NAMESPACE = uuid.uuid5(uuid.NAMESPACE_DNS, "hawk.elijah.cs.cmu.edu")
@@ -77,17 +77,11 @@ class ObjectId:
         """Returns a protobuf representation of the ObjectId."""
         return common_pb2.ObjectId(oid=self.oid)
 
-    # compat functions
-    def file_name(
-        self, parent: Path | None = None, file_ext: str | None = None
-    ) -> Path:
-        if file_ext is None:
-            # file_ext = unwrap(self._file_path()).suffix
-            file_ext = '.bin'
-
+    def file_name(self, parent: Path | None = None, file_ext: str = ".bin") -> Path:
         path = Path(str(self.shortid)).with_suffix(file_ext)
         return parent.joinpath(path) if parent is not None else path
 
+    # compat functions
     def _groundtruth(self) -> ClassName:
         """Extract groundtruth from an objectid.
 
