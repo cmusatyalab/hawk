@@ -64,7 +64,8 @@ def archive_mission_state(mission: Mission) -> None:
             + mission.extra_config_files
             + [
                 "bootstrap",
-                "hawk_home.log" "logs",
+                "hawk_home.log",
+                "logs",
                 "traces",
                 "unlabeled.jsonl",
                 "labeled.jsonl",
