@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import io
-import os
 import threading
 import zipfile
 from collections import defaultdict
@@ -56,7 +55,6 @@ class DataManager:
         self._example_counts: dict[str, int] = defaultdict(int)
         self._validate = self._context.check_create_test()
         logger.info(f"self . validate is {self._validate}")
-        self._is_npy = False
 
         logger.info(f"Class list: {self._context.class_list}")
         self.class_counts = ClassCounter(self._context.class_list)
@@ -143,6 +141,8 @@ class DataManager:
                     ((pad_left, pad_right), (pad_top, pad_bottom), (0, 0)),
                     mode="constant",
                 )
+
+                crop_arr_padded = crop_arr_padded.reshape((64, 256, 3))
 
                 with io.BytesIO() as tmp:
                     np.save(tmp, crop_arr_padded)
@@ -251,12 +251,8 @@ class DataManager:
                     label = parent_name
 
                     content = zf.read(filename)
-                    # logger.info(f"FILE NAME: {filename}")
-                    if filename.split(".")[-1] == "npy":
-                        example_file = get_example_key(content, extension=".npy")
-                        self._is_npy = True
-                    else:
-                        example_file = get_example_key(content)
+                    example_file = get_example_key(content, Path(filename).suffix)
+
                     if self._validate and (
                         self._get_example_count(DatasetSplit.TEST, label)
                         * TRAIN_TO_TEST_RATIO
@@ -266,40 +262,26 @@ class DataManager:
                     else:
                         example_set = DatasetSplit.TRAIN
 
-                    example_dir = os.path.join(
-                        self._examples_dir,
-                        DatasetSplit.Name(example_set).lower(),
-                        label,
-                    )
+                    dataset_name = DatasetSplit.Name(example_set).lower()
+                    example_dir = self._examples_dir / dataset_name / label
 
-                    if not os.path.exists(example_dir):
-                        os.makedirs(example_dir, exist_ok=True)
-
-                    example_path = os.path.join(example_dir, example_file)
-                    with open(example_path, "wb") as f:
-                        f.write(content)
+                    example_dir.mkdir(parents=True, exist_ok=True)
+                    example_dir.joinpath(example_file).write_bytes(content)
 
                     self._increment_example_count(example_set, label, 1)
 
-                    # check if labels folder exists
-                    label_filename = os.path.join(
-                        "labels", basename.split(".")[0] + ".txt"
-                    )
+                    # check if labels file exists
+                    label_filename = str(Path("labels", basename).with_suffix(".txt"))
                     if label_filename in example_files:
-                        logger.info(f"label_file {label_filename} ")
                         label_content = zf.read(label_filename)
-                        label_dir = os.path.join(
-                            self._examples_dir,
-                            DatasetSplit.Name(example_set).lower(),
-                            "labels",
-                        )
-                        if not os.path.exists(label_dir):
-                            os.makedirs(label_dir, exist_ok=True)
-                        label_path = os.path.join(
-                            label_dir, example_file.split(".")[0] + ".txt"
-                        )
-                        with open(label_path, "wb") as f:
-                            f.write(label_content)
+
+                        logger.info(f"label_file {label_filename}")
+
+                        label_dir = self._examples_dir / dataset_name / "labels"
+                        label_dir.mkdir(parents=True, exist_ok=True)
+
+                        label_path = (label_dir / example_file).with_suffix(".txt")
+                        label_path.write_bytes(label_content)
 
                         # Do we want to parse label_content and properly count
                         # all labels?
@@ -365,11 +347,8 @@ class DataManager:
                         old_dirs.append(lbl)
 
             for example in examples:
-                obj = example.obj
-                if self._is_npy:
-                    example_file = get_example_key(obj.content, extension=".npy")
-                else:
-                    example_file = get_example_key(obj.content)
+                obj = HawkObject.from_protobuf(example.obj)
+                example_file = get_example_key(obj.content, obj.suffix)
                 self._remove_old_paths(example_file, old_dirs)
 
                 if not example.labels:
@@ -405,18 +384,11 @@ class DataManager:
                 if label is not None:
                     # 0 or 1 or ...
                     example_path = example_subdir / str(label) / example_file
-                    example_path.parent.mkdir(parents=True, exist_ok=True)
-                    if self._radar_crop:
-                        with io.BytesIO(obj.content) as fp:
-                            arr = np.load(fp)
-                        arr = arr.reshape((64, 256, 3))
-                        np.save(example_path, arr)
-                    else:
-                        example_path.write_bytes(obj.content)
+                    obj.to_file(example_path, mkdirs=True)
 
-                    label_path = (example_subdir / "labels" / example_file).with_suffix(
-                        ".txt"
-                    )
+                    label_path = example_subdir.joinpath(
+                        "labels", example_file
+                    ).with_suffix(".txt")
                     label_path.parent.mkdir(parents=True, exist_ok=True)
                     with label_path.open("w") as f:
                         for bbox in example.labels:
@@ -432,7 +404,7 @@ class DataManager:
                 else:
                     ignore_file = self._staging_dir / IGNORE_FILE[0]
                     with ignore_file.open("a+") as f:
-                        f.write(example_file + "\n")
+                        f.write(f"{example_file}\n")
 
                 if callback is not None:
                     callback(example)
@@ -548,9 +520,11 @@ class DataManager:
         self._example_counts[f"{DatasetSplit.Name(example_set)}_{label}"] += delta
 
     @staticmethod
-    def _remove_old_paths(example_file: str, old_dirs: list[Path]) -> Path | None:
+    def _remove_old_paths(
+        example_file: Path | str, old_dirs: list[Path]
+    ) -> Path | None:
         for old_path in old_dirs:
-            old_example_path = old_path / example_file
+            old_example_path = old_path / Path(example_file)
             if old_example_path.exists():
                 old_example_path.unlink()
                 return old_example_path

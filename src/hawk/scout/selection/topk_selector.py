@@ -149,7 +149,7 @@ class TopKSelector(SelectorBase):
             if example_obj is None:
                 continue
 
-            example_file = get_example_key(example_obj.content)
+            example_file = get_example_key(example_obj.content, example_obj.suffix)
             example_path = example_obj.to_file(negative_path / example_file)
             with self._insert_lock:
                 self.easy_negatives[self.version].append(example_path)

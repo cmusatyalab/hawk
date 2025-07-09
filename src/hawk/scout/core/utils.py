@@ -199,10 +199,8 @@ def get_server_ids() -> list[str]:
     return list(names)
 
 
-def get_example_key(content: bytes, extension: str = ".jpg") -> str:
-    return (
-        hashlib.sha1(content).hexdigest() + extension
-    )  # Will need to modify this in order to save the .npy file to scout dir
+def get_example_key(content: bytes, suffix: str) -> Path:
+    return Path(hashlib.sha1(content).hexdigest()).with_suffix(suffix)
 
 
 def get_weights(targets: list[int], num_classes: int = 2) -> list[float]:
