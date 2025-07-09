@@ -7,7 +7,6 @@ from torch import Tensor, nn
 
 
 class BackboneEncoder(nn.Module):  # type: ignore[misc]
-
     def __init__(self, embed_dim: int):
         super().__init__()
         self._embed_dim: int = embed_dim

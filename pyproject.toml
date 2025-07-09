@@ -108,9 +108,7 @@ http = [
 ]
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.3.0"
 grpcio-tools = "^1.48.2,<1.73.0"
-isort = "^5.12.0"
 mypy = "^1.2.0"
 mypy-protobuf = "^1.20"
 pandas-stubs = "^2.0"
@@ -142,24 +140,6 @@ radar = "hawk.scout.retrieval.radar_retriever:RadarRetriever"
 random = "hawk.scout.retrieval.random_retriever:RandomRetriever"
 tile = "hawk.scout.retrieval.tile_retriever:TileRetriever"
 video = "hawk.scout.retrieval.video_retriever:VideoRetriever"
-
-[tool.black]
-target-version = ["py38"]
-extend-exclude = '''
-(
-  ^/src/hawk/scout/trainer/yolo.*/yolov5.*/ # exclude yolov5 code
-| .*_pb2.pyi?                               # exclude protobuf stubs
-)
-'''
-
-[tool.isort]
-py_version = 38
-profile = "black"
-skip_glob = [
-    "src/hawk/proto/*",
-    "src/hawk/scout/trainer/yolo/yolov5/*",
-    "src/hawk/scout/trainer/yolo_radar/yolov5_radar/*",
-]
 
 [tool.mypy]
 strict = true
@@ -205,6 +185,30 @@ markers = [
     "home: components that run on home (deselect with '-m \"not home\"')",
     "scout: components that run on the scout (deselect with '-m \"not scout\"')",
 ]
+
+[tool.ruff]
+target-version = "py38"
+exclude = [
+    "*_pb2.py",
+    "src/hawk/scout/trainer/few_shot/*/*",
+    "src/hawk/scout/trainer/yolo/yolov5/*",
+    "src/hawk/scout/trainer/yolo_radar/yolov5_radar/*",
+]
+include = ["pyproject.toml", "src/**/*.py", "scripts/**/*.py", "tests/**/*.py"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "F",   # Pyflakes
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "I",   # isort
+]
+
+[tool.ruff.lint.flake8-copyright]
+min-file-size = 1
+notice-rgx = '(?i)(Copyright|SPDX-FileCopyrightText:)\s+((?:\(C\)|©)\s+)?\d{4}(-\d{4})*'
 
 [tool.typos.default.extend-words]
 booststrap = "bootstrap"

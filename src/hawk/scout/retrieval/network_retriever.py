@@ -156,7 +156,6 @@ class NetworkRetriever(RandomRetriever):
         try:
             time_start = time.time()
             for ntiles, object_id in enumerate(super().get_next_objectid(), 1):
-
                 ## nothing particularly interesting about the request as of right now.
                 msg_parts = socket.recv_multipart()
                 scout_index, request_number = (int(part.decode()) for part in msg_parts)

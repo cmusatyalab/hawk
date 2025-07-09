@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Carnegie Mellon University
+# SPDX-FileCopyrightText: 2023-2025 Carnegie Mellon University
 # SPDX-License-Identifier: 0BSD
 
 exclude: '^(.*_pb2.pyi?|src/hawk/scout/trainer/yolo.*/yolov5.*/.*)$'
@@ -19,45 +19,12 @@ repos:
       - id: end-of-file-fixer
       - id: trailing-whitespace
 
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.19.1
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.2
     hooks:
-      - id: pyupgrade
-        name: Modernize python code
-        args: ["--py38-plus"]
-
-  - repo: https://github.com/asottile/yesqa
-    rev: v1.5.0
-    hooks:
-      - id: yesqa
-        additional_dependencies: &flake_deps
-          - flake8-bugbear
-
-  - repo: https://github.com/PyCQA/isort
-    rev: 6.0.1
-    hooks:
-      - id: isort
-        name: Reorder python imports with isort
-
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
-    hooks:
-      - id: black
-        name: Format python code with black
-        language_version: python3
-
-  - repo: https://github.com/asottile/blacken-docs
-    rev: 1.19.1
-    hooks:
-      - id: blacken-docs
-        name: Format python code in documentation
-
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.1.2
-    hooks:
-      - id: flake8
-        name: Lint python code with flake8
-        additional_dependencies: *flake_deps
+      - id: ruff-check
+        args: [ --fix ]
+      - id: ruff-format
 
   - repo: https://github.com/crate-ci/typos
     rev: v1.33.1

@@ -167,7 +167,7 @@ class ActivityClassifierModel(ModelBase):
             # logger.info(f"\nFeeding {len(requests)} to inference...\n")
             results = self._process_batch(requests)
             logger.info(
-                f"Process batch took {time.time()-start_infer}s for {len(requests)}"
+                f"Process batch took {time.time() - start_infer}s for {len(requests)}"
             )
             for result in results:
                 self.result_count += 1

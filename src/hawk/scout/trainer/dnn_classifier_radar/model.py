@@ -201,7 +201,7 @@ class DNNClassifierModelRadar(ModelBase):
             start_infer = time.time()
             results = self._process_batch(requests)
             logger.info(
-                f"Process batch took {time.time()-start_infer}s for {len(requests)}"
+                f"Process batch took {time.time() - start_infer}s for {len(requests)}"
             )
             for result in results:
                 self.result_count += 1
@@ -441,9 +441,7 @@ class DNNClassifierModelRadar(ModelBase):
         binary_img[binary_img != 0] = 1
 
         # skimage.measure seems to be untyped
-        labeled_binary_img = label(
-            binary_img, connectivity=2
-        )  # type: ignore[no-untyped-call]
+        labeled_binary_img = label(binary_img, connectivity=2)  # type: ignore[no-untyped-call]
         regions = regionprops(labeled_binary_img)  # type: ignore[no-untyped-call]
 
         class _RegionProperties:

@@ -12,7 +12,6 @@ from torchvision.datasets import Kinetics
 
 
 class KineticsDs(Kinetics):  # type: ignore[misc]
-
     def __init__(
         self,
         root: Path,

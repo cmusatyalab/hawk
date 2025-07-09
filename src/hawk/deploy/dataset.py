@@ -124,7 +124,6 @@ def shuffle_and_generate_index_files(
             : int(len(hidden_samples) * (1 - float(hidden_class_start)))
         ]
         for hidden_sample in hidden_sample_set:
-
             ## pick random scout and random index
 
             scout = random.randint(0, len(hosts) - 1)

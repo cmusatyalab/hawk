@@ -46,7 +46,6 @@ class ActivityTrainer(ModelTrainerBase):
     def load_model(
         self, path: Optional[Path] = None, content: bytes = b"", version: int = -1
     ) -> ActivityClassifierModel:
-
         new_version = self.get_new_version()
 
         if path is None or not path.is_file():

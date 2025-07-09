@@ -4,6 +4,7 @@
 
 
 """Abstract class for data manager context"""
+
 from __future__ import annotations
 
 from abc import abstractmethod

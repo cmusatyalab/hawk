@@ -340,9 +340,9 @@ with st.expander("Mission Parameters"):
         train_args = train_config["args"]
 
         def change_train_strategy_mode() -> None:
-            st.session_state.mission_config["train_strategy"]["args"][
-                "mode"
-            ] = st.session_state.train_strategy_mode
+            st.session_state.mission_config["train_strategy"]["args"]["mode"] = (
+                st.session_state.train_strategy_mode
+            )
 
         st.session_state.train_strategy_mode = train_args["mode"]
         col3.selectbox(

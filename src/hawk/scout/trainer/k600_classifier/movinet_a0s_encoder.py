@@ -48,7 +48,6 @@ class MoViNet_(MoViNet):  # type: ignore[misc]
 
 
 class MovinetEncoder(BackboneEncoder):
-
     def __init__(self, embed_dim: int):
         super().__init__(embed_dim=embed_dim)
         self._encoder = MoViNet_(

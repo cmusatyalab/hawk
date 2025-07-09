@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Carnegie Mellon University
+# SPDX-FileCopyrightText: 2023-2025 Carnegie Mellon University
 # SPDX-License-Identifier: 0BSD
 
 [tool.poe.tasks.build]
@@ -17,18 +17,18 @@ ignore_fail = "return_non_zero"
 [tool.poe.tasks.protoc]
 help = "Regenerate protocol buffer files"
 sequence = [
-    { cmd = """
+"""
 python -m grpc_tools.protoc -I protos
         --python_out=src/hawk/proto
         --mypy_out=src/hawk/proto
         common.proto messages.proto
-""" },
-    { cmd = """
+""", """
 sed -i -e 's/import common_pb2 as/from . import common_pb2 as/'
        -e 's/from common_pb2 import/from .common_pb2 import/'
         src/hawk/proto/*_pb2.py src/hawk/proto/*_pb2.pyi
-""" }
+"""
 ]
+default_item_type = "cmd"
 
 [tool.poe.tasks.resolve]
 help = "Resolve conflicts on generated code (poetry.lock, *_pb2.py)"

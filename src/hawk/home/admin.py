@@ -506,13 +506,13 @@ class Admin:
             bootstrap_zip = b""
 
         # bandwidthFunc
-        bandwidth_config = config["bandwidth"]
-        logger.info(f"BW config: {bandwidth_config}")
-        assert len(self.scouts) == len(
-            bandwidth_config
-        ), f"Length Bandwidth {len(bandwidth_config)} does not match {len(self.scouts)}"
+        bw_config = config["bandwidth"]
+        logger.info(f"BW config: {bw_config}")
+        assert len(self.scouts) == len(bw_config), (
+            f"Length Bandwidth {len(bw_config)} does not match {len(self.scouts)}"
+        )
         bandwidth_func = {}
-        for i, _b in enumerate(bandwidth_config):
+        for i, _b in enumerate(bw_config):
             bandwidth_func[int(i)] = str(_b)
 
         train_validate = train_config.get("validate", True)
