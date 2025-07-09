@@ -3,7 +3,7 @@
 
 [tool.poe.tasks.build]
 help = "Build sdist and wheel"
-cmd = "poetry build"
+cmd = "uv build"
 
 [tool.poe.tasks.check]
 help = "Manually run pre-commit jobs"
@@ -31,11 +31,11 @@ sed -i -e 's/import common_pb2 as/from . import common_pb2 as/'
 default_item_type = "cmd"
 
 [tool.poe.tasks.resolve]
-help = "Resolve conflicts on generated code (poetry.lock, *_pb2.py)"
+help = "Resolve conflicts on generated code (uv.lock, *_pb2.py)"
 sequence = [
     # make sure pyproject.toml and messages.proto are merged
     { cmd = "git diff --check pyproject.toml protos/messages.proto" },
-    { cmd = "poetry lock" },
+    { cmd = "uv lock" },
     { ref = "protoc" },
-    { cmd = "git add poetry.lock src/hawk/proto/*_pb2.py*" },
+    { cmd = "git add uv.lock src/hawk/proto/*_pb2.py*" },
 ]

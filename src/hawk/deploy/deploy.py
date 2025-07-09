@@ -80,15 +80,7 @@ def deploy(
 ) -> int:
     with _connect(config) as c:
         # make sure venv exists
-        cmd = shlex.join(
-            [
-                "python3",
-                "-m",
-                "venv",
-                "hawk-venv",
-            ]
-        )
-        c.run(cmd, hide="both", echo=True)
+        c.run("uv venv --python 3.10", hide="both", echo=True)
 
         # update pip?
         cmd = shlex.join(
@@ -109,44 +101,51 @@ def deploy(
         _stop_hawk_scout(c, config)
 
         # uninstall
-        try:
+        if dist_requirements is not None:
+            c.put(dist_requirements, "requirements-scout.txt")
             cmd = shlex.join(
                 [
-                    "hawk-venv/bin/python",
-                    "-m",
+                    "uv",
                     "pip",
-                    "uninstall",
-                    "--yes",
-                    dist_wheel.name,
+                    "sync",
+                    "--index",
+                    "https://storage.cmusatyalab.org/wheels",
+                    "--index",
+                    "https://download.pytorch.org/whl/cu118",
+                    "requirements-scout.txt",
                 ]
             )
-            c.run(cmd, hide="both", echo=True)
-        except (GroupException, UnexpectedExit):
-            pass
+            c.run(cmd, hide="out", echo=True, warn=True)
+        else:
+            try:
+                cmd = shlex.join(
+                    [
+                        "uv",
+                        "pip",
+                        "uninstall",
+                        dist_wheel.name,
+                    ]
+                )
+                c.run(cmd, hide="both", echo=True)
+            except (GroupException, UnexpectedExit):
+                pass
 
         # reinstall
         pip_install = [
-            "hawk-venv/bin/python",
-            "-m",
+            "uv",
             "pip",
             "install",
-            "--extra-index-url",
+            "--index",
             "https://storage.cmusatyalab.org/wheels",
-            "--extra-index-url",
+            "--index",
             "https://download.pytorch.org/whl/cu118",
         ]
-        if dist_requirements is not None:
-            c.put(dist_requirements, "requirements-scout.txt")
-            pip_install.append("--constraint=requirements-scout.txt")
-
         for extra_wheel in Path("wheels").glob("*.whl"):
             c.put(extra_wheel, extra_wheel.name)
             pip_install.append(f"./{extra_wheel.name}")
+        pip_install.append(f"./{dist_wheel.name}")
 
-        # pip_install.append(f"cmuhawk[scout] @ file://@HOME@/{dist_wheel.name}")
-        pip_install.append(f"./{dist_wheel.name}[scout]")
-
-        cmd = shlex.join(pip_install).replace("@HOME@", "'$HOME'")
+        cmd = shlex.join(pip_install)
         c.run(cmd, hide="out", echo=True, warn=True)
 
         _start_hawk_scout(c, config)

@@ -18,36 +18,31 @@ def project_root() -> Path:
     raise Exception(msg)
 
 
-def poetry_build() -> Path:
+def build() -> Path:
     root = project_root()
 
-    subprocess.run(
-        [
-            "poetry",
-            "build",
-            "--format=wheel",
-            "--no-ansi",
-        ],
-        check=True,
-    )
+    subprocess.run(["uv", "build", "--wheel"], check=True)
 
-    result = subprocess.run(["poetry", "version"], capture_output=True, text=True)
+    result = subprocess.run(["uv", "version"], capture_output=True, text=True)
     project, version = result.stdout.strip().split()
 
     return root / "dist" / f"{project}-{version}-py3-none-any.whl"
 
 
-def poetry_export_requirements() -> Path:
+def export_requirements() -> Path:
     requirements_txt = project_root() / "dist" / "requirements-scout.txt"
     subprocess.run(
         [
-            "poetry",
+            "uv",
             "export",
-            "--format=requirements.txt",
-            "--only=main",
-            "--extras=scout",
-            "--without-hashes",
-            "--output",
+            "--format",
+            "requirements.txt",
+            "--no-dev",
+            "--no-hashes",
+            "--no-annotate",
+            "--extra",
+            "scout",
+            "-o",
             str(requirements_txt),
         ],
         check=True,
@@ -57,12 +52,12 @@ def poetry_export_requirements() -> Path:
 
 def builder() -> tuple[Path, Path]:
     """build Hawk wheel and requirements files"""
-    dist_wheel = poetry_build()
+    dist_wheel = build()
     if not dist_wheel.exists():
         msg = f"Could not find {dist_wheel}"
         raise BuildError(msg)
 
-    dist_requirements = poetry_export_requirements()
+    dist_requirements = export_requirements()
     if not dist_requirements.exists():
         msg = f"Could not find {dist_requirements}"
         raise BuildError(msg)
@@ -71,5 +66,5 @@ def builder() -> tuple[Path, Path]:
 
 
 if __name__ == "__main__":
-    print(poetry_build())
-    print(poetry_export_requirements())
+    print(build())
+    print(export_requirements())

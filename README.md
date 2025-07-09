@@ -1,6 +1,5 @@
 <!--
 SPDX-FileCopyrightText: 2022 Carnegie Mellon University <satya-group@lists.andrew.cmu.edu>
-
 SPDX-License-Identifier: GPL-2.0-only
 -->
 
@@ -84,14 +83,14 @@ where the labels are either 1 or 0 (pos or neg).  If using the DOTA dataset, all
 The user can specify the index file (dataset: index_path) that will be generated from running `hawk_deploy split` below.
 Run the following cmd to split the dataset across participating scouts
 ```bash
-poetry run hawk_deploy split configs/dota_sample_config.yml
+uv run hawk_deploy split configs/dota_sample_config.yml
 ```
 After running this script, the list of all samples from the stream file  will be approximately evenly split across the number of scouts defined in the config file.  These new per-scout index files will be stored on each respective scout at the location specified by dataset: index_path in the config file.
 
 ### Step 4. Start Hawk Mission from Home
 
 ```bash
-poetry run hawk_home configs/config.yml
+uv run hawk_home configs/config.yml
 ```
 The configuration file will need to be modified to include the actual host name of the scout and will need to include the index file path location on the scout (see step 3).  If the mission successfully runs, you should see the scout retrieving and inferencing batches of images and periodically reporting scores of positives.
 
@@ -103,7 +102,7 @@ Hawk UI is developed using [Streamlit](https://streamlit.io) and has been tested
 ### Step 1. Setting up Environment
 
 ```bash
-poetry install --extras home
+uv sync --extra home
 ```
 
 ### Step 2. Create a directory to hold Mission templates and Mission logs
@@ -128,7 +127,7 @@ Then you can start the GUI in the same terminal session so it will be able to
 access the scouts over ssh.
 
 ```bash
-poetry run hawk_gui ~/hawk-missions
+uv run hawk_gui ~/hawk-missions
 ```
 
 ### Step 4. Connect with a browser

@@ -2,5 +2,5 @@
 !LICENSE
 !README.md
 !pyproject.toml
-!poetry.lock
 !src/
+!uv.lock

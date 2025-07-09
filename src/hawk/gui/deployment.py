@@ -13,7 +13,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from hawk.deploy.build import poetry_build, poetry_export_requirements
+from hawk.deploy.build import build, export_requirements
 from hawk.deploy.deploy import (
     check_deployment,
     deploy,
@@ -45,13 +45,13 @@ def deploy_scouts(deploy_config: DeployConfig) -> bool:
 
     with st.status("Deploying scouts", expanded=True) as status:
         st.text("Building Hawk wheel...")
-        dist_wheel = poetry_build()
+        dist_wheel = build()
         if not dist_wheel.exists():
             status.update(label="Building Hawk wheel failed", state="error")
             st.stop()
 
         st.text("Exporting requirements.txt...")
-        dist_requirements = poetry_export_requirements()
+        dist_requirements = export_requirements()
         if not dist_requirements.exists():
             status.update(label="Exporting requirement.txt failed", state="error")
             st.stop()
