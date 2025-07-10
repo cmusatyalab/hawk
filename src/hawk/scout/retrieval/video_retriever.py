@@ -14,7 +14,6 @@ import numpy.typing as npt
 from logzero import logger
 
 from ...objectid import ObjectId
-from ..stats import collect_metrics_total
 from .retriever import Retriever, RetrieverConfig
 from .retriever_mixins import LegacyRetrieverMixin
 from .video_parser import produce_video_frames
@@ -26,7 +25,7 @@ class VideoRetrieverConfig(RetrieverConfig):
     width: int = 4000
     height: int = 3000
     tile_size: int = 250
-    timeout: float = 20.0
+    timeout: float = 8.0
 
 
 class VideoRetriever(Retriever, LegacyRetrieverMixin):
@@ -120,7 +119,7 @@ class VideoRetriever(Retriever, LegacyRetrieverMixin):
                 cv2.imwrite(str(outdir), resized_tile)
                 yield outdir
 
-    def get_next_objectid(self) -> Iterator[ObjectId]:
+    def get_next_objectid(self) -> Iterator[ObjectId | None]:
         assert self._context is not None
 
         logger.info(self.video_file_path)
@@ -135,7 +134,6 @@ class VideoRetriever(Retriever, LegacyRetrieverMixin):
             logger.info("Preparing to tile: ")
 
             self.total_images.inc()
-            self.retrieved_images.inc()
             frame_count += 1
             num_retrieved_images += 1
 
@@ -152,13 +150,7 @@ class VideoRetriever(Retriever, LegacyRetrieverMixin):
                 rel_path = tile_path.resolve().relative_to(self.config.data_root)
                 yield ObjectId(f"/negative/collection/id/{rel_path}")
 
-            retrieved_tiles = collect_metrics_total(self.retrieved_objects)
-            logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
-
-            time.sleep(8)
-            # time_passed = time.time() - self._start_time
-            # if time_passed < self.timeout:
-            #  time.sleep(self.timeout - time_passed)
+            yield None
 
         self._context.log(f"RETRIEVE: File # {num_retrieved_images}")
 

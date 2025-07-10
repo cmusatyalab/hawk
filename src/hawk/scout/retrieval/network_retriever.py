@@ -10,7 +10,6 @@ import zmq
 from logzero import logger
 
 from ...objectid import ObjectId
-from ..stats import collect_metrics_total
 from .random_retriever import RandomRetriever, RandomRetrieverConfig
 
 
@@ -51,7 +50,7 @@ class NetworkRetriever(RandomRetriever):
         else:
             super()._run_threads()
 
-    def get_next_objectid(self) -> Iterator[ObjectId]:
+    def get_next_objectid(self) -> Iterator[ObjectId | None]:
         assert self._context is not None
 
         # network retriever remains idle until we get the network connection
@@ -68,15 +67,13 @@ class NetworkRetriever(RandomRetriever):
         ## retrieval stop and starts, otherwise the net retriever should
         ## continuously send requests to the server.
         scout_index = str(self._context.scout_index).encode()
-        time_start = time.time()
-        mission_time_start = time.time()
         logger.info(f"SCML options from mission: {self._context.scml_deploy_options}")
         while True:
             ## if sent deployment order from home or preset conditions are reached.
             if self.scml_active_mode is not None:
                 active = self.scml_active_mode
             else:
-                mission_time = time.time() - mission_time_start
+                mission_time = time.time() - self._start_time
                 model_version = self._context.model_version
                 scml_deploy_options = self._context.scml_deploy_options
 
@@ -109,7 +106,7 @@ class NetworkRetriever(RandomRetriever):
             if not active:
                 logger.info(
                     "Too early to start retrieving or in idle mode... "
-                    f"{time.time() - mission_time_start}"
+                    f"{time.time() - self._start_time}"
                 )
                 time.sleep(5)
                 continue
@@ -128,20 +125,10 @@ class NetworkRetriever(RandomRetriever):
             yield ObjectId(oid.decode())
 
             if self.sample_count % self.config.tiles_per_frame == 0:
-                retrieved_tiles = collect_metrics_total(self.retrieved_objects)
-                logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
-
                 # It does not matter if we're globally or locally constant.
                 # If it was global, we should be throttled enough in the RPC
                 # that we never have to spend extra time sleeping here.
-                time_passed = time.time() - time_start
-                if time_passed < self.config.timeout:
-                    logger.info(f"About to sleep at: {time.time()}")
-                    time.sleep(self.config.timeout - time_passed)
-                time_start = time.time()
-
-            ## may need to adjust this timeout of 20 to accommodate higher
-            ## retrieval rates.
+                yield None
 
     def server(self) -> None:
         self.total_objects.set(self.total_tiles)
@@ -156,6 +143,9 @@ class NetworkRetriever(RandomRetriever):
         try:
             time_start = time.time()
             for ntiles, object_id in enumerate(super().get_next_objectid(), 1):
+                if object_id is None:
+                    continue
+
                 ## nothing particularly interesting about the request as of right now.
                 msg_parts = socket.recv_multipart()
                 scout_index, request_number = (int(part.decode()) for part in msg_parts)

@@ -18,7 +18,6 @@ from ....classes import POSITIVE_CLASS
 from ....hawkobject import HawkObject
 from ....objectid import ObjectId
 from ...core.result_provider import BoundingBox
-from ...stats import collect_metrics_total
 from ..retriever import Retriever, RetrieverConfig
 from .kinetics_ds import KineticsDs
 from .video_utils import create_gif_from_video_tensor_bytes
@@ -76,23 +75,12 @@ class K600Retriever(Retriever):
         random.shuffle(video_indexes)
         yield from video_indexes
 
-    def get_next_objectid(self) -> Iterator[K600_ObjectId]:
+    def get_next_objectid(self) -> Iterator[K600_ObjectId | None]:
         for object_id in self._get_next_objectid():
-            time_start = time.time()
-
-            self.retrieved_images.inc()
-
             elapsed = time.time() - self._start_time
             logger.info(f"Retrieved video: {object_id} @ {elapsed}")
-
             yield object_id
-
-            retrieved_tiles = collect_metrics_total(self.retrieved_objects)
-            logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
-
-            time_passed = time.time() - time_start
-            if time_passed < self.config.timeout:
-                time.sleep(self.config.timeout - time_passed)
+            yield None
 
     def get_ml_data(self, object_id: ObjectId) -> HawkObject:
         index = K600_ObjectId.from_oid(object_id).index
@@ -128,7 +116,7 @@ class K600Retriever(Retriever):
     def generate_index_files(self, num_scouts: int, path: str) -> list[DataFrame]:
         assert num_scouts > 0
         shard_size = len(self) // num_scouts
-        id_stream = self.get_next_objectid()
+        id_stream = self._get_next_objectid()
         res: list[DataFrame] = []
         for _shard_id in range(num_scouts - 1):
             scout_index: dict[int, int] = dict()  # video_id.index -> label
@@ -163,7 +151,7 @@ if __name__ == "__main__":
         )
     )
     k600_retriever.generate_index_files(num_scouts=1, path="./")
-    id_stream = k600_retriever.get_next_objectid()
+    id_stream = k600_retriever._get_next_objectid()
     video_id = next(id_stream)
     ml_data = k600_retriever.get_ml_data(video_id)
     oracle_data = k600_retriever.get_oracle_data(video_id)[0]

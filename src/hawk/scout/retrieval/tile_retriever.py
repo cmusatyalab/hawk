@@ -13,14 +13,12 @@ from logzero import logger
 
 from ...classes import ClassLabel
 from ...objectid import ObjectId
-from ..stats import collect_metrics_total
 from .retriever import Retriever, RetrieverConfig
 from .retriever_mixins import LegacyRetrieverMixin
 
 
 class TileRetrieverConfig(RetrieverConfig):
     index_path: Path  # file that contains the index
-    timeout: float = 20.0  # seconds per frame (batch of tiles)
 
 
 class TileRetriever(Retriever, LegacyRetrieverMixin):
@@ -52,13 +50,10 @@ class TileRetriever(Retriever, LegacyRetrieverMixin):
         self.total_images.set(len(self.images))
         self.total_objects.set(self.total_tiles)
 
-    def get_next_objectid(self) -> Iterator[ObjectId]:
+    def get_next_objectid(self) -> Iterator[ObjectId | None]:
         assert self._context is not None
 
         for key in self.images:
-            time_start = time.time()
-
-            self.retrieved_images.inc()
             self._context.log(f"RETRIEVE: File {key}")
 
             tiles = self.img_tile_map[key]
@@ -75,8 +70,4 @@ class TileRetriever(Retriever, LegacyRetrieverMixin):
 
                 yield ObjectId(f"/{class_name}/collection/id/{image_path}")
 
-            retrieved_tiles = collect_metrics_total(self.retrieved_objects)
-            logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
-            time_passed = time.time() - time_start
-            if time_passed < self.config.timeout:
-                time.sleep(self.config.timeout - time_passed)
+            yield None

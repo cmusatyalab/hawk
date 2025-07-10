@@ -484,9 +484,9 @@ class Mission(DataManagerContext, ModelContext):
                         f"(new version {self._model.version} available)"
                     )
                     ## make sure to put this back in retriever put object
-                    self.retriever.put_objectid(object_id, dup=True)
+                    self.retriever.put_objectid(object_id)
                     logger.info(
-                        "\n\nATTENTION --- PUTTING OBJECT BACK  IN RETRIEVER QUEUE\n\n"
+                        "\n\nATTENTION --- PUTTING OBJECT BACK IN RETRIEVER QUEUE\n\n"
                     )
                     return
 

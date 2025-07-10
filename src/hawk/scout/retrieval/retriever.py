@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar, Iterator
 
+from logzero import logger
 from pydantic import Field
 from pydantic_settings import (
     BaseSettings,
@@ -91,6 +92,8 @@ class RetrieverConfig(EnvOverrideConfig):
     # uniquely identifies the current mission, used for logging/stats/etc.
     mission_id: str
 
+    timeout: float = 20.0
+
 
 class ImageRetrieverConfig(RetrieverConfig):
     """Common config class for image retrievers.
@@ -108,7 +111,7 @@ class RetrieverBase(ABC):
     config: RetrieverConfig
 
     @abstractmethod
-    def get_next_objectid(self) -> Iterator[ObjectId]:
+    def get_next_objectid(self) -> Iterator[ObjectId | None]:
         """Iterator yielding object ids."""
 
     @abstractmethod
@@ -151,8 +154,6 @@ class Retriever(RetrieverBase):
         self._context_event = threading.Event()
         self._start_event = threading.Event()
         self._stop_event = threading.Event()
-        self._command_lock = threading.RLock()
-        self._start_time = time.time()
         self.result_queue: queue.Queue[ObjectId] = queue.Queue()
         self.server_id = get_server_ids()[0]
         self.total_tiles = 0
@@ -187,9 +188,6 @@ class Retriever(RetrieverBase):
         self._context_event.set()
 
     def start(self) -> None:
-        with self._command_lock:
-            self._start_time = time.time()
-
         self._start_event.set()
         self._run_threads()
 
@@ -205,17 +203,38 @@ class Retriever(RetrieverBase):
         # wait for mission context to be added
         while self._context is None:
             self._context_event.wait()
-        self._start_time = time.time()
         self.current_deployment_mode = "Active"
 
-        for object_id in self.get_next_objectid():
+        self._start_time = time.time()
+        image_next = self._start_time + self.config.timeout
+
+        images = 0
+        for count, object_id in enumerate(self.get_next_objectid()):
             if self._stop_event.is_set():
                 break
-            self.put_objectid(object_id)
 
-    def put_objectid(self, result_object: ObjectId, dup: bool = False) -> None:
-        if not dup:
-            self.retrieved_objects.inc()
+            if object_id is not None:
+                self.retrieved_objects.inc()
+                self.put_objectid(object_id)
+
+            else:
+                self.retrieved_images.inc()
+                images += 1
+
+                time_now = time.time()
+                elapsed_total = time_now - self._start_time
+
+                logger.info(
+                    f"Retrieved Image: {images} @ {elapsed_total}"
+                    f"{count - images} / {self.total_tiles} RETRIEVED"
+                )
+
+                remaining = image_next - time_now
+                if remaining > 0:
+                    time.sleep(remaining)
+                image_next = time.time() + self.config.timeout
+
+    def put_objectid(self, result_object: ObjectId) -> None:
         try:
             self.queue_length.inc()
             self.result_queue.put_nowait(result_object)

@@ -5,22 +5,17 @@
 from __future__ import annotations
 
 import math
-import time
 from pathlib import Path
 from typing import Iterator
 
-from logzero import logger
-
 from ...classes import NEGATIVE_CLASS, ClassLabel, ClassName
 from ...objectid import ObjectId
-from ..stats import collect_metrics_total
 from .retriever import ImageRetrieverConfig, Retriever
 from .retriever_mixins import LegacyRetrieverMixin
 
 
 class RandomRetrieverConfig(ImageRetrieverConfig):
     index_path: Path  # file that contains the index
-    timeout: float = 20.0  # seconds per image (batch of tiles)
     tiles_per_frame: int = 200  # tiles per image
 
 
@@ -51,15 +46,8 @@ class RandomRetriever(Retriever, LegacyRetrieverMixin):
         self.total_images.set(num_frames)
         self.total_objects.set(self.total_tiles)
 
-    def get_next_objectid(self) -> Iterator[ObjectId]:
+    def get_next_objectid(self) -> Iterator[ObjectId | None]:
         for frame in self.images:
-            time_start = time.time()
-
-            self.retrieved_images.inc()
-
-            elapsed = time.time() - self._start_time
-            logger.info(f"Retrieved Image: {frame} @ {elapsed}")
-
             frame_index = frame * self.config.tiles_per_frame
             for tile_offset in range(self.config.tiles_per_frame):
                 tile_index = frame_index + tile_offset
@@ -68,13 +56,8 @@ class RandomRetriever(Retriever, LegacyRetrieverMixin):
                     yield self._tile_to_objectid(tile)
                 except IndexError:
                     break
-
-            retrieved_tiles = collect_metrics_total(self.retrieved_objects)
-            logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
-
-            time_passed = time.time() - time_start
-            if time_passed < self.config.timeout:
-                time.sleep(self.config.timeout - time_passed)
+            # Indicate we've finished "tiling" an image
+            yield None
 
     def _tile_to_objectid(self, tile: str) -> ObjectId:
         file_path, groundtruth = tile.split()

@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import time
 from itertools import count
 from typing import Iterator
 
@@ -17,13 +16,11 @@ from pydantic import HttpUrl
 from ...hawkobject import HawkObject
 from ...objectid import ObjectId
 from ..core.result_provider import BoundingBox
-from ..stats import collect_metrics_total
 from .retriever import Retriever, RetrieverConfig
 
 
 class HTTPRetrieverConfig(RetrieverConfig):
     base_url: HttpUrl  # base url of the server
-    timeout: float = 20.0  # the rate at which frames (batch of tiles) are returned
     tiles_per_frame: int = 200  # tiles per image
 
 
@@ -41,8 +38,7 @@ class HTTPRetriever(Retriever):
         self.total_images.set(0)
         self.total_objects.set(0)
 
-    def get_next_objectid(self) -> Iterator[ObjectId]:
-        time_start = time.time()
+    def get_next_objectid(self) -> Iterator[ObjectId | None]:
         for ntiles in count(1):
             r = self.http.get("/get_next_oid")
             if r.status_code != httpx.codes.OK:
@@ -55,18 +51,8 @@ class HTTPRetriever(Retriever):
 
             yield ObjectId(oid)
 
-            retrieved_tiles = collect_metrics_total(self.retrieved_objects)
-            logger.info(f"{retrieved_tiles} RETRIEVED")
-
-            if ntiles % self.config.tiles_per_frame != 0:
-                continue
-
-            self.total_images.inc()
-
-            time_passed = time.time() - time_start
-            if time_passed < self.config.timeout:
-                time.sleep(self.config.timeout - time_passed)
-            time_start = time.time()
+            if ntiles % self.config.tiles_per_frame == 0:
+                yield None
 
     def get_ml_data(self, object_id: ObjectId) -> HawkObject:
         oid = object_id.serialize_oid()

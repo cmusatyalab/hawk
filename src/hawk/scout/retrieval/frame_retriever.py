@@ -4,24 +4,20 @@
 
 import copy
 import os
-import time
 from pathlib import Path
 from typing import Iterator, cast
 
 import cv2
 import numpy as np
 import numpy.typing as npt
-from logzero import logger
 
 from ...objectid import ObjectId
-from ..stats import collect_metrics_total
 from .retriever import Retriever, RetrieverConfig
 from .retriever_mixins import LegacyRetrieverMixin
 
 
 class FrameRetrieverConfig(RetrieverConfig):
     index_path: Path  # file that contains the index
-    timeout: float = 20.0  # seconds per frame (batch of tiles)
     tile_size: int = 256  # desired tile size
 
 
@@ -100,21 +96,14 @@ class FrameRetriever(Retriever, LegacyRetrieverMixin):
                 break
             left += self.slide
 
-    def get_next_objectid(self) -> Iterator[ObjectId]:
+    def get_next_objectid(self) -> Iterator[ObjectId | None]:
         assert self._context is not None
         for key in self.images:
-            time_start = time.time()
-
             image_path = self.config.data_root.joinpath(key).resolve()
             image_path.relative_to(self.config.data_root)
 
             self._context.log(f"RETRIEVE: File {image_path}")
             tiles = list(self._split_frame(image_path))
-
-            self.retrieved_images.inc()
-
-            elapsed = time.time() - self._start_time
-            logger.info(f"Retrieved Image:{key} Tiles:{len(tiles)} @ {elapsed}")
 
             # bump total_objects to account for the tiles in this frame
             self.total_objects.inc(len(tiles) - 1)
@@ -124,8 +113,4 @@ class FrameRetriever(Retriever, LegacyRetrieverMixin):
                 object_id = ObjectId(f"/negative/collection/id/{rel_path}")
                 yield object_id
 
-            retrieved_tiles = collect_metrics_total(self.retrieved_objects)
-            logger.info(f"{retrieved_tiles} / {self.total_tiles} RETRIEVED")
-            time_passed = time.time() - time_start
-            if time_passed < self.config.timeout:
-                time.sleep(self.config.timeout - time_passed)
+            yield None

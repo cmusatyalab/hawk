@@ -164,7 +164,7 @@ if __name__ == "__main__":
             positive_class_idx=0,
         )
     )
-    id_stream = k600_retriever.get_next_objectid()
+    id_stream = k600_retriever._get_next_objectid()
     video_id = next(id_stream)
     video = k600_retriever.get_ml_data(video_id)
 
