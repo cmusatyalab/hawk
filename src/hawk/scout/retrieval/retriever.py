@@ -209,7 +209,7 @@ class Retriever(RetrieverBase):
         image_next = self._start_time + self.config.timeout
 
         images = 0
-        for count, object_id in enumerate(self.get_next_objectid()):
+        for objects, object_id in enumerate(self.get_next_objectid()):
             if self._stop_event.is_set():
                 break
 
@@ -224,9 +224,10 @@ class Retriever(RetrieverBase):
                 time_now = time.time()
                 elapsed_total = time_now - self._start_time
 
+                tiles = objects - images
                 logger.info(
                     f"Retrieved Image: {images} @ {elapsed_total}"
-                    f"{count - images} / {self.total_tiles} RETRIEVED"
+                    f"{tiles} / {self.total_tiles} RETRIEVED"
                 )
 
                 remaining = image_next - time_now
