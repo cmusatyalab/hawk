@@ -255,7 +255,12 @@ class A2SAPI:
         this_host = request.scouts[request.scoutIndex]
         scouts = [HawkStub(scout, this_host) for scout in request.scouts]
 
-        retriever = self._get_retriever(request.missionId, request.dataset)
+        retriever = self._get_retriever(
+            request.missionId,
+            request.dataset,
+            N=request.scoutIndex + 1,
+            M=len(request.scouts),
+        )
 
         retrain_policy = self._get_retrain_policy(request.retrainPolicy, model_dir)
         if request.retrainPolicy.HasField("sample"):
@@ -651,10 +656,14 @@ class A2SAPI:
         )
         raise NotImplementedError(msg)
 
-    def _get_retriever(self, mission_id: str, dataset: Dataset) -> Retriever:
+    def _get_retriever(
+        self, mission_id: str, dataset: Dataset, N: int, M: int
+    ) -> Retriever:
         try:
             retriever = load_retriever(dataset.retriever)
-            return retriever.from_config(dict(dataset.config, mission_id=mission_id))
+            return retriever.from_config(
+                dict(dataset.config, mission_id=mission_id, N=N, M=M)
+            )
         except Exception as e:
             msg = f"Failed to load retriever {dataset.retriever}: {e}"
             raise NotImplementedError(msg) from e
