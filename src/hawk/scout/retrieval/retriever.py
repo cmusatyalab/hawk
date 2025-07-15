@@ -11,16 +11,11 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, ClassVar, Iterator
+from typing import Iterator
 
 from logzero import logger
 from pydantic import Field
-from pydantic_settings import (
-    BaseSettings,
-    PydanticBaseSettingsSource,
-    SettingsConfigDict,
-)
-from typing_extensions import Self
+from pydantic_settings import SettingsConfigDict
 
 from ...classes import (
     NEGATIVE_CLASS,
@@ -30,6 +25,7 @@ from ...classes import (
 )
 from ...hawkobject import HawkObject
 from ...objectid import ObjectId
+from ...plugins import HawkPlugin, HawkPluginConfig
 from ..context.data_manager_context import DataManagerContext
 from ..core.result_provider import BoundingBox
 from ..core.utils import get_server_ids
@@ -54,27 +50,7 @@ class RetrieverStats:
     retrieved_tiles: int = 0
 
 
-class EnvOverrideConfig(BaseSettings):
-    # reorder initialization order so that environment vars (admin configured)
-    # override init settings (user provided).
-    @classmethod
-    def settings_customise_sources(
-        cls,
-        settings_cls: type[BaseSettings],
-        init_settings: PydanticBaseSettingsSource,
-        env_settings: PydanticBaseSettingsSource,
-        dotenv_settings: PydanticBaseSettingsSource,
-        file_secret_settings: PydanticBaseSettingsSource,
-    ) -> tuple[PydanticBaseSettingsSource, ...]:
-        return (
-            env_settings,
-            dotenv_settings,
-            file_secret_settings,
-            init_settings,
-        )
-
-
-class RetrieverConfig(EnvOverrideConfig):
+class RetrieverConfig(HawkPluginConfig):
     """Base config class for Retrievers."""
 
     model_config = SettingsConfigDict(
@@ -106,8 +82,8 @@ class ImageRetrieverConfig(RetrieverConfig):
     tile_size: int = 256
 
 
-class RetrieverBase(ABC):
-    config_class: ClassVar[type[RetrieverConfig]]
+class RetrieverBase(HawkPlugin, ABC):
+    config_class = RetrieverConfig
     config: RetrieverConfig
 
     @abstractmethod
@@ -135,31 +111,8 @@ class RetrieverBase(ABC):
 
 
 class Retriever(RetrieverBase):
-    ## Validators and constructors
-
-    @classmethod
-    def validate_config(cls, config: dict[str, Any]) -> RetrieverConfig:
-        return cls.config_class.model_validate(
-            {k: v for k, v in config.items() if not k.startswith("_")}
-        )
-
-    @classmethod
-    def scrub_config(
-        cls, config: dict[str, Any], *, exclude: set[str] | None = None
-    ) -> dict[str, str]:
-        return {
-            k: str(v)
-            for k, v in cls.validate_config(config)
-            .model_dump(mode="json", exclude_defaults=True, exclude=exclude)
-            .items()
-        }
-
-    @classmethod
-    def from_config(cls, config: dict[str, Any]) -> Self:
-        return cls(cls.validate_config(config))
-
     def __init__(self, config: RetrieverConfig) -> None:
-        self.config = config
+        super().__init__(config)
 
         self._context: DataManagerContext | None = None
         self._context_event = threading.Event()

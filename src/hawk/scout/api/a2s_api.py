@@ -20,6 +20,7 @@ from google.protobuf import json_format
 from logzero import logger
 from PIL import Image
 
+from ...plugins import load_plugin
 from ...proto import Empty
 from ...proto.messages_pb2 import (
     ChangeDeploymentStatus,
@@ -48,7 +49,6 @@ from ..retrain.model_policy import ModelPolicy
 from ..retrain.percentage_policy import PercentagePolicy
 from ..retrain.retrain_policy_base import RetrainPolicyBase
 from ..retrain.sampleInterval_policy import SampleIntervalPolicy
-from ..retrieval.loader import load_retriever
 from ..retrieval.retriever import Retriever
 from ..selection.diversity_selector import DiversitySelector
 from ..selection.selector_base import Selector
@@ -659,11 +659,10 @@ class A2SAPI:
     def _get_retriever(
         self, mission_id: str, dataset: Dataset, N: int, M: int
     ) -> Retriever:
-        try:
-            retriever = load_retriever(dataset.retriever)
-            return retriever.from_config(
-                dict(dataset.config, mission_id=mission_id, N=N, M=M)
-            )
-        except Exception as e:
-            msg = f"Failed to load retriever {dataset.retriever}: {e}"
-            raise NotImplementedError(msg) from e
+        retriever = load_plugin(
+            "retriever",
+            dataset.retriever,
+            dict(dataset.config, mission_id=mission_id, N=N, M=M),
+        )
+        assert isinstance(retriever, Retriever)
+        return retriever

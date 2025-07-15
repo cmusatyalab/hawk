@@ -22,6 +22,7 @@ from logzero import logger
 from PIL import Image
 
 from ..mission_config import MissionConfig, load_config
+from ..plugins import validate_and_scrub_config
 from ..ports import H2A_PORT
 from ..proto.messages_pb2 import (
     AbsolutePolicyConfig,
@@ -42,7 +43,6 @@ from ..proto.messages_pb2 import (
     TopKConfig,
     TrainConfig,
 )
-from ..scout.retrieval.loader import load_retriever
 from .stats import (
     HAWK_LABELED_CLASSES,
     HAWK_LABELED_OBJECTS,
@@ -267,25 +267,12 @@ class Admin:
             if dataset_type == "cookie":
                 dataset_type = "random"
 
-            # cleanup config_dict, drop unset values and convert to strings
-            dataset_conf = {k: str(v) for k, v in config_dict.items() if v is not None}
-
-            try:
-                # Try to validate @home, we may not be able to load the
-                # retriever (missing module/dependencies) and we won't know
-                # what the admin configured 'data_root' is on the scout. The
-                # fallback is that we send everything to the scout and run
-                # validation there.
-                retriever = load_retriever(dataset_type)
-                dataset_conf = retriever.scrub_config(
-                    dict(dataset_conf, mission_id="", data_root="/"),
-                    exclude={"data_root", "mission_id"},
-                )
-            except ImportError:
-                logger.info("Import error, deferring retriever validation to scout.")
-            except Exception as e:
-                errmsg = f"Failed to validate retriever config: {e}"
-                raise NotImplementedError(errmsg) from e
+            dataset_conf = validate_and_scrub_config(
+                "retriever",
+                dataset_type,
+                config_dict,
+                inject=dict(mission_id="", data_root="/"),
+            )
 
             datasets[index] = Dataset(
                 retriever=dataset_type,
