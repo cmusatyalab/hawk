@@ -237,85 +237,49 @@ class Admin:
         # dataset
         dataset_config = config["dataset"]
         dataset_type = dataset_config["type"]
-        self.dataset_type = dataset_type
+
         if "index_path" in dataset_config:
             logger.info(f"Index {dataset_config['index_path']}")
-        timeout = dataset_config.get("timeout", 20.0)
+
         self.class_list = dataset_config.get("class_list", ["positive"])
         logger.info(f"Class list: {self.class_list}")
 
         datasets = {}
         for index, _scout in enumerate(self.scouts):
-            if dataset_type == "tile":
-                dataset = Dataset(
-                    retriever="tile",
-                    config=dict(
-                        index_path=dataset_config["index_path"],
-                        timeout=str(timeout),
-                    ),
-                )
-            elif dataset_type == "frame":
-                dataset = Dataset(
-                    retriever="frame",
-                    config=dict(
-                        index_path=dataset_config["index_path"],
-                        tile_size=str(dataset_config.get("tile_size", 256)),
-                        timeout=str(timeout),
-                    ),
-                )
-            elif dataset_type == "network":
+            if dataset_type == "network":
                 network_config = dataset_config["network"]
-                balance_mode = dataset_config.get(
-                    "data_rate_balance", "locally_constant"
-                )
-                dataset = Dataset(
-                    retriever="network",
-                    config=dict(
-                        index_path=dataset_config["index_path"],
-                        tiles_per_frame=str(dataset_config.get("tiles_per_frame", 200)),
-                        timeout=str(timeout),
-                        server_host=network_config["server_address"],
-                        server_port=network_config["server_port"],
-                        balance_mode=balance_mode,
-                    ),
-                )
-            elif dataset_type == "random" or dataset_type == "cookie":
-                dataset = Dataset(
-                    retriever="random",
-                    config=dict(
-                        index_path=dataset_config["index_path"],
-                        tiles_per_frame=str(dataset_config.get("tiles_per_frame", 200)),
-                        resize_tile=(
-                            "true" if dataset_config.get("resize_tile") else "false"
-                        ),
-                        tile_size=str(dataset_config.get("tile_size", 256)),
-                        timeout=str(timeout),
-                    ),
+                config_dict = dict(
+                    index_path=dataset_config["index_path"],
+                    server_host=network_config["server_address"],
+                    server_port=network_config["server_port"],
+                    balance_mode=dataset_config.get("data_rate_balance"),
+                    tiles_per_frame=dataset_config.get("tiles_per_frame"),
+                    timeout=dataset_config.get("timeout"),
                 )
             elif dataset_type == "video":
-                video_file_list = dataset_config["video_list"]
-                dataset = Dataset(
-                    retriever="video",
-                    config=dict(
-                        video_path=video_file_list[index],
-                        timeout=str(timeout),
-                    ),
+                config_dict = dict(
+                    video_path=dataset_config["video_list"][index],
+                    timeout=dataset_config.get("timeout"),
                 )
             else:
-                dataset = Dataset(
-                    retriever=dataset_type,
-                    config={k: str(v) for k, v in dataset_config.items()},
-                )
+                config_dict = dataset_config
+
+            if dataset_type == "cookie":
+                dataset_type = "random"
+
+            # cleanup config_dict, drop unset values and convert to strings
+            dataset_conf = {k: str(v) for k, v in config_dict.items() if v is not None}
 
             try:
-                # Try to validate @home, but we may not be able to load the
+                # Try to validate @home, we may not be able to load the
                 # retriever (missing module/dependencies) and we won't know
-                # what the admin configured 'data_root' is on the scout. And
-                # this also makes sure that dataset.config doesn't try to
-                # override data_root.
-                retriever = load_retriever(dataset.retriever)
-                retriever.validate_config(
-                    dict(dataset.config, mission_id="", data_root="/")
+                # what the admin configured 'data_root' is on the scout. The
+                # fallback is that we send everything to the scout and run
+                # validation there.
+                retriever = load_retriever(dataset_type)
+                dataset_conf = retriever.scrub_config(
+                    dict(dataset_conf, mission_id="", data_root="/"),
+                    exclude={"data_root", "mission_id"},
                 )
             except ImportError:
                 logger.info("Import error, deferring retriever validation to scout.")
@@ -323,7 +287,10 @@ class Admin:
                 errmsg = f"Failed to validate retriever config: {e}"
                 raise NotImplementedError(errmsg) from e
 
-            datasets[index] = dataset
+            datasets[index] = Dataset(
+                retriever=dataset_type,
+                config=dataset_conf,
+            )
 
         # reexamination
         reexamination_config = config["reexamination"]

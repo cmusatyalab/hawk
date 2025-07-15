@@ -144,6 +144,17 @@ class Retriever(RetrieverBase):
         )
 
     @classmethod
+    def scrub_config(
+        cls, config: dict[str, Any], *, exclude: set[str] | None = None
+    ) -> dict[str, str]:
+        return {
+            k: str(v)
+            for k, v in cls.validate_config(config)
+            .model_dump(mode="json", exclude_defaults=True, exclude=exclude)
+            .items()
+        }
+
+    @classmethod
     def from_config(cls, config: dict[str, Any]) -> Self:
         return cls(cls.validate_config(config))
 

@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
 
 from importlib_metadata import entry_points
@@ -30,6 +29,7 @@ def load_retriever(retriever: str) -> type[Retriever]:
 
 if __name__ == "__main__":
     import argparse
+    import json
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--schema", action="store_true")
