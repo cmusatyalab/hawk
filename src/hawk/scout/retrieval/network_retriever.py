@@ -1,9 +1,11 @@
 # SPDX-FileCopyrightText: 2022-2023 Carnegie Mellon University
-#
 # SPDX-License-Identifier: GPL-2.0-only
+
 from __future__ import annotations
+
 import threading
 import time
+from enum import Enum
 from typing import Iterator
 
 import zmq
@@ -13,10 +15,15 @@ from ...objectid import ObjectId
 from .random_retriever import RandomRetriever, RandomRetrieverConfig
 
 
+class BalanceMode(Enum):
+    LOCALLY_CONSTANT = "locally_constant"
+    GLOBALLY_CONSTANT = "globally_constant"
+
+
 class NetworkRetrieverConfig(RandomRetrieverConfig):
     server_host: str
     server_port: int
-    balance_mode: str
+    balance_mode: BalanceMode = BalanceMode.LOCALLY_CONSTANT
 
 
 class NetworkRetriever(RandomRetriever):
@@ -30,7 +37,9 @@ class NetworkRetriever(RandomRetriever):
         # samples have been processed. (fix this when we launch the server thread)
         self.total_objects.set(0)
 
-        self.globally_constant = self.config.balance_mode == "globally_constant"
+        self.globally_constant = (
+            self.config.balance_mode == BalanceMode.GLOBALLY_CONSTANT
+        )
 
         # True unless local scout deploy conditions prevent
         self.scml_active_condition = True
