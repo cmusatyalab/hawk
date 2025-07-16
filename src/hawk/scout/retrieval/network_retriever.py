@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-2023 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
-
+from __future__ import annotations
 import threading
 import time
 from typing import Iterator
