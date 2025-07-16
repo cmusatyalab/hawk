@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import copy
 import multiprocessing as mp
 import time
 from pathlib import Path
-from typing import Iterator, Tuple
+from typing import Iterator
 
 import cv2
 import numpy as np
@@ -40,7 +42,7 @@ class VideoRetriever(Retriever, LegacyRetrieverMixin):
         self.overlap = 100 if 0.5 * self.config.tile_size > 100 else 0
         self.slide = 250
         self.video_file_path = self.config.video_path
-        self.frame_producer_queue: mp.Queue[Tuple[str, npt.NDArray[np.uint8]]] = (
+        self.frame_producer_queue: mp.Queue[tuple[str, npt.NDArray[np.uint8]]] = (
             mp.Queue(20)
         )
         # self.video_frame_producer = VideoFrameProducer(self.video_file_path)
