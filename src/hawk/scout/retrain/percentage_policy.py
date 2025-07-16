@@ -28,7 +28,7 @@ class PercentagePolicy(RetrainPolicyBase):
         #    f"{self.new_examples} >= 1 + {self._threshold} * {self._previous_size} "
         #    f"= {self.new_examples >= (1 + self._threshold) * self._previous_size}"
         # )
-        return self.new_examples >= (1 + self._threshold) * self._previous_size
+        return self.new_examples > (1 + self._threshold) * self._previous_size
 
     def reset(self) -> None:
         self._previous_size = self.new_examples
