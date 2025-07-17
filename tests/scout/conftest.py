@@ -15,8 +15,8 @@ from hawk.scout.context.model_trainer_context import ModelContext
 from hawk.scout.retrieval.retriever import Retriever, RetrieverConfig
 
 if TYPE_CHECKING:
+    from hawk.detection import Detection
     from hawk.scout.core.hawk_stub import HawkStub
-    from hawk.scout.core.result_provider import BoundingBox
 
 
 REFERENCE_IMAGE = Path(__file__).parent.parent.joinpath(
@@ -40,7 +40,7 @@ class TestRetriever(Retriever):
     def get_oracle_data(self, object_id: ObjectId) -> list[HawkObject]:
         return [test_hawkobject()]
 
-    def get_groundtruth(self, object_id: ObjectId) -> list[BoundingBox]:
+    def get_groundtruth(self, object_id: ObjectId) -> list[Detection]:
         return []
 
 

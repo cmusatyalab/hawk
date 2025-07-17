@@ -36,7 +36,7 @@ List of protobuf messages used in Hawk RPC calls.
 *   [SendTiles](#SendTiles)
 *   [SendLabel](#SendLabels)
 *   [LabeledTile](#LabeledTile)
-*   [BoundingBox](#BoundingBox)
+*   [Detection](#Detection)
 
 * * *
 
@@ -261,20 +261,20 @@ One of:
 | ------------ |---------------| -----|
 | objectId | string | Tile identifier|
 | scoutIndex | int32 | Index of parent scout |
-| boundingBoxes | repeated BoundingBox | List of bounding boxes |
+| boundingBoxes | repeated Detection | List of bounding boxes |
 
 ### **LabeledTile**
 | Fields  | Type  | Description |
 | ------------ |---------------| -----|
 | object | HawkObject | Tile content and metadata|
-| boundingBoxes | repeated BoundingBox | List of bounding boxes |
+| boundingBoxes | repeated Detection | List of bounding boxes |
 
-### **BoundingBox**
+### **Detection**
 | Fields  | Type  | Description |
 | ------------ |---------------| -----|
-| x | float| center x of region relative to image width |
-| y | float| center y of region relative to image height |
-| w | float| region width of relative to image width (1.0 for classification) |
-| h | float| region height of relative to image height (1.0 for classification) |
+| center_x | float| center x of region relative to image width |
+| center_y | float| center y of region relative to image height |
+| width | float| region width of relative to image width (1.0 for classification) |
+| height | float| region height of relative to image height (1.0 for classification) |
 | class_name | string | Name of class |
 | confidence | float | confidence score |

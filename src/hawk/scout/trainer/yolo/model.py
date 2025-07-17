@@ -23,10 +23,11 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 
 from ....classes import ClassLabel
+from ....detection import Detection
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
-from ...core.result_provider import BoundingBox, ResultProvider
+from ...core.result_provider import ResultProvider
 from ...core.utils import log_exceptions
 
 if TYPE_CHECKING:
@@ -228,17 +229,17 @@ class YOLOModel(ModelBase):
                 score = prediction_scores[i]
                 detections_per_sample = detections[i]
 
-                bboxes: list[BoundingBox] = [
-                    {
-                        "x": float(detections_per_sample[j, 0] / 640),
-                        "y": float(detections_per_sample[j, 1] / 640),
-                        "w": float(detections_per_sample[j, 2] / 640),
-                        "h": float(detections_per_sample[j, 3] / 640),
-                        "confidence": float(detections_per_sample[j, 4]),
-                        "class_name": self.context.class_list[
+                bboxes = [
+                    Detection(
+                        class_name=self.context.class_list[
                             ClassLabel(int(detections_per_sample[j, 5]) + 1)
                         ],
-                    }
+                        confidence=float(detections_per_sample[j, 4]),
+                        center_x=float(detections_per_sample[j, 0] / 640),
+                        center_y=float(detections_per_sample[j, 1] / 640),
+                        width=float(detections_per_sample[j, 2] / 640),
+                        height=float(detections_per_sample[j, 3] / 640),
+                    )
                     for j in range(len(detections_per_sample))
                 ]
                 results.append(ResultProvider(batch[i][0], score, bboxes, self.version))

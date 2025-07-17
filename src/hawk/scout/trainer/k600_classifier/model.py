@@ -18,10 +18,11 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import transforms
 
+from ....detection import Detection
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
-from ...core.result_provider import BoundingBox, ResultProvider
+from ...core.result_provider import ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
 from .action_recognition_model import ActionRecognitionModel
 from .movinet_a0s_encoder import MovinetEncoder
@@ -298,11 +299,8 @@ class ActivityClassifierModel(ModelBase):
                 else:
                     final_fv = None
 
-                bboxes: list[BoundingBox] = [
-                    {
-                        "class_name": class_name,
-                        "confidence": float(score),
-                    }
+                bboxes = [
+                    Detection(class_name=class_name, confidence=float(score))
                     for class_name, score in zip(self.context.class_list, score)
                 ]
                 results.append(

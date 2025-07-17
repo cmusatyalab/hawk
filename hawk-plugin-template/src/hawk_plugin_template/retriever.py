@@ -10,9 +10,9 @@ from typing import Iterator
 
 from PIL import Image
 
+from hawk.detection import Detection
 from hawk.hawkobject import HawkObject
 from hawk.objectid import ObjectId
-from hawk.scout.core.result_provider import BoundingBox
 from hawk.scout.retrieval.retriever import Retriever, RetrieverConfig
 
 
@@ -68,7 +68,7 @@ class ExampleRetriever(Retriever):
                 content = buffer.getvalue()
         return [HawkObject(content=content, media_type="image/png")]
 
-    def get_groundtruth(self, objectid: ObjectId) -> list[BoundingBox]:
+    def get_groundtruth(self, objectid: ObjectId) -> list[Detection]:
         # if we have no known detections or classifications results
         # we can return an empty list here.
         return []

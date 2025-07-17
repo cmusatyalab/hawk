@@ -9,10 +9,10 @@ from io import BytesIO
 from logzero import logger
 from PIL import Image
 
+from ...detection import Detection
 from ...hawkobject import HawkObject
 from ...objectid import LegacyObjectId, ObjectId
 from ...rusty import unwrap
-from ..core.result_provider import BoundingBox
 from .retriever import ImageRetrieverConfig, RetrieverBase
 
 THUMBNAIL_SIZE = 256
@@ -78,7 +78,7 @@ class LegacyRetrieverMixin(ThumbnailImageMixin):
 
         return ml_object
 
-    def get_groundtruth(self, object_id: ObjectId) -> list[BoundingBox]:
+    def get_groundtruth(self, object_id: ObjectId) -> list[Detection]:
         """Return groundtruth for logging, statistics and scriptlabeler."""
         # only handles classification groundtruth as it assumes the class is
         # stashed in the object id.
@@ -86,9 +86,4 @@ class LegacyRetrieverMixin(ThumbnailImageMixin):
         class_name = legacy_id.groundtruth
         if class_name is None:
             return []
-
-        return [
-            BoundingBox(
-                x=0.5, y=0.5, w=1.0, h=1.0, class_name=class_name, confidence=1.0
-            )
-        ]
+        return [Detection(class_name=class_name)]

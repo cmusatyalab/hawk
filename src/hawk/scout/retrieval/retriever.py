@@ -23,11 +23,11 @@ from ...classes import (
     ClassName,
     class_label_to_int,
 )
+from ...detection import Detection
 from ...hawkobject import HawkObject
 from ...objectid import ObjectId
 from ...plugins import HawkPlugin, HawkPluginConfig
 from ..context.data_manager_context import DataManagerContext
-from ..core.result_provider import BoundingBox
 from ..core.utils import get_server_ids
 from ..stats import (
     HAWK_RETRIEVER_DROPPED_OBJECTS,
@@ -106,7 +106,7 @@ class RetrieverBase(HawkPlugin, ABC):
         """
 
     @abstractmethod
-    def get_groundtruth(self, object_id: ObjectId) -> list[BoundingBox]:
+    def get_groundtruth(self, object_id: ObjectId) -> list[Detection]:
         """Get groundtruth for logging, statistics and script labeler."""
 
 

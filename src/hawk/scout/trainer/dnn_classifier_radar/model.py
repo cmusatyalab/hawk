@@ -21,10 +21,11 @@ from skimage.measure import label, regionprops
 from torch.utils.data import DataLoader
 from torchvision import datasets, models
 
+from ....detection import Detection
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
-from ...core.result_provider import BoundingBox, ResultProvider
+from ...core.result_provider import ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
 
 if TYPE_CHECKING:
@@ -341,15 +342,15 @@ class DNNClassifierModelRadar(ModelBase):
                 # else:
                 x, y, w, h = 0.5, 0.5, 1.0, 1.0
 
-                bboxes: list[BoundingBox] = [
-                    {
-                        "x": x,
-                        "y": y,
-                        "w": w,
-                        "h": h,
-                        "class_name": class_name,
-                        "confidence": float(score),
-                    }
+                bboxes = [
+                    Detection(
+                        class_name=class_name,
+                        confidence=float(score),
+                        center_x=x,
+                        center_y=y,
+                        width=w,
+                        height=h,
+                    )
                     for class_name, score in zip(self.context.class_list, score)
                 ]
                 # score for priority queue is sum of all positive classes

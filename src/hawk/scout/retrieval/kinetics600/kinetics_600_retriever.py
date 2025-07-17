@@ -14,9 +14,9 @@ import torch
 from logzero import logger
 
 from ....classes import POSITIVE_CLASS
+from ....detection import Detection
 from ....hawkobject import HawkObject
 from ....objectid import ObjectId
-from ...core.result_provider import BoundingBox
 from ..retriever import Retriever, RetrieverConfig
 from .kinetics_ds import KineticsDs
 from .video_utils import create_gif_from_video_tensor_bytes
@@ -109,14 +109,10 @@ class K600Retriever(Retriever):
         label = self.ds.get_label(index)
         return label == self.config.positive_class_idx
 
-    def get_groundtruth(self, object_id: ObjectId) -> list[BoundingBox]:
+    def get_groundtruth(self, object_id: ObjectId) -> list[Detection]:
         if not self._is_groundtruth_positive(object_id):
             return []
-        return [
-            BoundingBox(
-                x=0.5, y=0.5, w=1.0, h=1.0, class_name=POSITIVE_CLASS, confidence=1.0
-            )
-        ]
+        return [Detection(class_name=POSITIVE_CLASS)]
 
     def __len__(self) -> int:
         return len(self.ds)

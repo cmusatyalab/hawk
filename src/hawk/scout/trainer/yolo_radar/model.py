@@ -21,10 +21,11 @@ from sklearn.metrics import average_precision_score
 from torch.utils.data import DataLoader
 from torchvision import datasets
 
+from ....detection import Detection
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
-from ...core.result_provider import BoundingBox, ResultProvider
+from ...core.result_provider import ResultProvider
 from ...core.utils import log_exceptions
 
 if TYPE_CHECKING:
@@ -224,8 +225,8 @@ class YOLOModelRadar(ModelBase):
             for i in range(len(batch)):
                 score = predictions[i]
                 scores = [1.0 - score, score]
-                bboxes: list[BoundingBox] = [
-                    {"class_name": label, "confidence": score}
+                bboxes = [
+                    Detection(class_name=label, confidence=score)
                     for label, score in zip(self.context.class_list, scores)
                 ]
                 results.append(ResultProvider(batch[i][0], score, bboxes, self.version))

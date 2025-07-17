@@ -17,10 +17,11 @@ from PIL import Image, ImageFile
 from torch.utils.data import DataLoader
 from torchvision import datasets
 
+from ....detection import Detection
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
-from ...core.result_provider import BoundingBox, ResultProvider
+from ...core.result_provider import ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
 from .training_state import TrainingState
 
@@ -276,11 +277,8 @@ class DNNClassifierModel(ModelBase):
                 else:
                     final_fv = None
 
-                bboxes: list[BoundingBox] = [
-                    {
-                        "class_name": class_name,
-                        "confidence": float(score),
-                    }
+                bboxes = [
+                    Detection(class_name=class_name, confidence=float(score))
                     for class_name, score in zip(self.context.class_list, score)
                 ]
                 results.append(

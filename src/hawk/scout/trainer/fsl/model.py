@@ -19,10 +19,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 from torchvision import models
 
 from ....classes import POSITIVE_CLASS
+from ....detection import Detection
 from ....proto.messages_pb2 import TestResults
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
-from ...core.result_provider import BoundingBox, ResultProvider
+from ...core.result_provider import ResultProvider
 from ...core.utils import log_exceptions
 
 if TYPE_CHECKING:
@@ -196,7 +197,7 @@ class FSLModel(ModelBase):
             for i in range(len(batch)):
                 label = POSITIVE_CLASS
                 score = predictions[i]
-                bboxes: list[BoundingBox] = [{"class_name": label, "confidence": score}]
+                bboxes = [Detection(class_name=label, confidence=score)]
                 yield ResultProvider(batch[i][0], score, bboxes, self.version)
 
     def evaluate_model(self, test_path: Path) -> TestResults:

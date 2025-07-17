@@ -45,7 +45,7 @@ There are 4 main functions a retriever needs to implement:
    any data you want to be transmitted to the labeling tool, such as original
    raw sensor data.
 
-- `get_groundtruth(objectid: ObjectId) -> list[BoundingBox]`
+- `get_groundtruth(objectid: ObjectId) -> list[Detection]`
 
    Returns the ground truth for a given object identifier. The ground truth is
    a list of detections, which are the bounding boxes and labels of known ground
@@ -53,7 +53,7 @@ There are 4 main functions a retriever needs to implement:
    purposes. It is also passed along to the `script_labeler` tool, which is
    used to run automated missions that assume a 'perfect' labeling.
 
-   A BoundingBox consists of a `(center_x, center_y, width, height)` coordinate
+   A Detection consists of a `(center_x, center_y, width, height)` coordinate
    tuple which is normalized to the image size along with a class label string
    and an optional confidence score. For classification tasks, the bounding box
    coordinates are be set to `(0.5, 0.5, 1.0, 1.0)` to indicate the whole image

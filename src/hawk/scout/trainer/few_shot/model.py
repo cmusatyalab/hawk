@@ -18,9 +18,11 @@ import torchvision.transforms as transforms
 from logzero import logger
 from PIL import Image, ImageFile
 
+from ....classes import POSITIVE_CLASS
+from ....detection import Detection
 from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
-from ...core.result_provider import BoundingBox, ResultProvider
+from ...core.result_provider import ResultProvider
 from ...core.utils import log_exceptions
 from .models.SnaTCHerF import SnaTCHerF
 
@@ -245,7 +247,7 @@ class FewShotModel(ModelBase):
             del tensors
             for i in range(len(batch)):
                 score = predictions[i]
-                bboxes: list[BoundingBox] = [{"confidence": score}]
+                bboxes = [Detection(class_name=POSITIVE_CLASS, confidence=score)]
                 yield ResultProvider(batch[i][0], score, bboxes, self.version)
 
     def stop(self):

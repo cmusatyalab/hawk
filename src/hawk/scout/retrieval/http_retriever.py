@@ -13,9 +13,9 @@ import httpx
 from logzero import logger
 from pydantic import HttpUrl
 
+from ...detection import Detection
 from ...hawkobject import HawkObject
 from ...objectid import ObjectId
-from ..core.result_provider import BoundingBox
 from .retriever import Retriever, RetrieverConfig
 
 
@@ -76,7 +76,7 @@ class HTTPRetriever(Retriever):
             oracle_data.append(obj)
         return oracle_data
 
-    def get_groundtruth(self, object_id: ObjectId) -> list[BoundingBox]:
+    def get_groundtruth(self, object_id: ObjectId) -> list[Detection]:
         oid = object_id.serialize_oid()
         r = httpx.get(f"/get_groundtruth/{oid}").raise_for_status()
         # ...decode json response to list of boundingboxes/detections...
