@@ -1,0 +1,30 @@
+[project]
+name = "hawk-plugin-template"
+version = "0.1.0"
+description = "Example plugin for CMU Hawk"
+readme = "README.md"
+authors = [
+    { name = "Jan Harkes", email = "jaharkes@cs.cmu.edu" }
+]
+requires-python = ">=3.8"
+dependencies = [
+    "cmuhawk",
+    "pillow>=10.4.0",
+]
+
+[project.entry-points."cmuhawk.retrievers"]
+example_retriever = "hawk_plugin_template.retriever:ExampleRetriever"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# the following specifications allow tools like Poetry and UV to install the
+# Hawk package from a local directory when developing the plugins. This
+# information is not required for building and only used for dependency
+# resolution and locking.
+[tool.poetry.dependencies]
+cmuhawk = { path = "../", develop = true }
+
+[tool.uv.sources]
+cmuhawk = { path = "../", editable = true }
