@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import shutil
 import time
 import zipfile
@@ -103,9 +104,14 @@ def clone_mission(mission: Mission) -> bool:
         # copy config files
         for file in ["mission_config.yml"] + mission.extra_config_files:
             path = mission.mission_dir / file
-            if path.exists():
+
+            # cleanup absolute paths that were written to mission/logs/hawk.yml
+            with contextlib.suppress(ValueError):
+                file = str(path.relative_to(mission.mission_dir))
+            new_path = new_mission_dir / file
+
+            if path.exists() and path != new_path:
                 st.write(f"Copying {file}...")
-                new_path = new_mission_dir / file
                 shutil.copy(path, new_path)
                 time.sleep(1)
 
