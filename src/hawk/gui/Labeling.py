@@ -12,6 +12,7 @@ import streamlit as st
 from blinker import Signal
 from streamlit_label_kit import detection as st_detection
 
+from hawk import Detection
 from hawk.classes import ClassList, ClassName, class_label_to_int
 from hawk.gui.elements import (
     Mission,
@@ -21,7 +22,7 @@ from hawk.gui.elements import (
     mission_stats,
     paginate,
 )
-from hawk.home.label_utils import Detection, LabelSample
+from hawk.home.label_utils import LabelSample
 
 if TYPE_CHECKING:
     from streamlit.delta_generator import DeltaGenerator
@@ -148,7 +149,9 @@ if new_class:
 def classification_pulldown(
     mission: Mission, result: LabelSample, key: str | None = None
 ) -> None:
-    scores = result.detections[0].scores if result.detections else {}
+    scores = {
+        detection.class_name: detection.confidence for detection in result.detections
+    }
     options = ["negative"] + [
         f"{cls} ({scores.get(cls, 0):.02f})" for cls in class_list.positive
     ]
@@ -168,9 +171,10 @@ def classification_pulldown(
 
         # if we found detections, pre-select the given option
         if detections is not None:
+            detections = Detection.sort_detections(detections)
             class_index = 0
             if detections:
-                class_name = detections[0].top_class()
+                class_name = detections[0].class_name
                 try:
                     class_label = class_list.index(class_name)
                     class_index = class_label_to_int(class_label)
@@ -195,7 +199,7 @@ def classification_pulldown(
         if classification != "negative":
             name = classification.rsplit(" ", 1)[0]
             class_name = ClassName(sys.intern(name))
-            st.session_state.saves[result.index] = [Detection(scores={class_name: 1.0})]
+            st.session_state.saves[result.index] = [Detection(class_name=class_name)]
         else:
             st.session_state.saves[result.index] = []
     elif key in st.session_state.saves:
@@ -274,7 +278,7 @@ def annotation_editor_popup(mission: Mission, sample: LabelSample) -> None:
 def detection_ui(mission: Mission, sample: LabelSample) -> None:
     assert sample.objectId is not None
     labeled_result = mission.labeled.get(sample.objectId)
-    inprogress_bboxes = st.session_state.saves.get(sample.index)
+    inprogress_bboxes: list[Detection] = st.session_state.saves.get(sample.index)
 
     # state is previously saved, in progress, or a new estimate from inference
     if labeled_result is not None:

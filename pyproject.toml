@@ -144,7 +144,7 @@ video = "hawk.scout.retrieval.video_retriever:VideoRetriever"
 
 [tool.mypy]
 strict = true
-files = ["src"]
+files = ["src", "hawk-plugin-template"]
 exclude = "^src/hawk/scout/trainer/(few_shot/|yolo.*/|yolov5.*/)"
 plugins = ["numpy.typing.mypy_plugin", "pydantic.mypy"]
 

@@ -50,20 +50,19 @@ class ScriptLabeler:
         result.detections = result.groundtruth
 
         # if there are multiple detections for the same class we count all of them
-        labels = list(
-            cls for detection in result.detections for cls in detection.scores
-        )
-        self.class_list.extend(labels)
+        counts = result.class_counts()
+        self.class_counter.update(counts)
 
-        if labels:
+        del counts[NEGATIVE_CLASS]
+        if counts:
             self.positives += 1
-            self.class_counter.update(labels)
         else:
             self.negatives += 1
-            self.class_counter.update([NEGATIVE_CLASS])
+
+        self.class_list.extend(counts.keys())
 
         logger.info(
-            f"Labeling {result.index:06} {labels} {result.objectId}, "
+            f"Labeling {result.index:06} {counts} {result.objectId}, "
             f"(Pos, Neg): ({self.class_counter.positives},"
             f" {self.class_counter.negatives})"
         )

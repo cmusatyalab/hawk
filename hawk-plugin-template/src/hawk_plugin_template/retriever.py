@@ -10,10 +10,7 @@ from typing import Iterator
 
 from PIL import Image
 
-from hawk.detection import Detection
-from hawk.hawkobject import HawkObject
-from hawk.objectid import ObjectId
-from hawk.scout.retrieval.retriever import Retriever, RetrieverConfig
+from hawk import Detection, HawkObject, ObjectId, Retriever, RetrieverConfig
 
 
 class ExampleRetrieverConfig(RetrieverConfig):

@@ -137,12 +137,11 @@ class LabelerDiskQueue:
             self.labeled_objects.observe(detections)
 
             for detection in result.detections:
-                for class_name in detection.scores:
-                    self.labeled_classes.labels(
-                        mission=self.mission_id,
-                        labeler="disk",
-                        class_name=class_name,
-                    ).inc()
+                self.labeled_classes.labels(
+                    mission=self.mission_id,
+                    labeler="disk",
+                    class_name=detection.class_name,
+                ).inc()
 
             # track time it took to apply label
             if result.queued is not None:

@@ -17,12 +17,13 @@ from logzero import logger
 from prometheus_client import Gauge, Histogram, Summary
 
 from ..classes import class_name_to_str
+from ..detection import Detection
 from ..hawkobject import HawkObject
 from ..objectid import ObjectId
 from ..ports import H2C_PORT, S2H_PORT
 from ..proto import common_pb2
 from ..proto.messages_pb2 import SendLabel, SendTile
-from .label_utils import Detection, LabelSample
+from .label_utils import LabelSample
 from .stats import (
     HAWK_LABELED_QUEUE_LENGTH,
     HAWK_UNLABELED_QUEUE_LENGTH,
@@ -55,40 +56,15 @@ class UnlabeledResult(LabelSample):
 
         objectId = ObjectId.from_protobuf(request.object_id)
 
-        # scout thinks it might have found some positives
-        # filter out negatives (and 0 confidence scores)
-        # cleanup and merge class scores for identical regions
-        detections = list(
-            Detection.merge_detections(
-                Detection.from_boundingbox(
-                    bbox.coords.center_x,
-                    bbox.coords.center_y,
-                    bbox.coords.width,
-                    bbox.coords.height,
-                    bbox.class_name,
-                    bbox.confidence,
-                )
-                for bbox in request.inferenced
-                if bbox.confidence and bbox.class_name not in ["", "neg", "negative"]
-            )
-        )
-        groundtruth = list(
-            Detection.merge_detections(
-                Detection.from_boundingbox(
-                    bbox.coords.center_x,
-                    bbox.coords.center_y,
-                    bbox.coords.width,
-                    bbox.coords.height,
-                    bbox.class_name,
-                    bbox.confidence,
-                )
-                for bbox in request.groundtruth
-                if bbox.confidence and bbox.class_name not in ["", "neg", "negative"]
-            )
-        )
+        # the scout thinks it might have found something
+        # filter out any negatives (and 0 confidence scores)
+        detections = Detection.from_protobuf_list(request.inferenced)
+        groundtruth = Detection.from_protobuf_list(request.groundtruth)
 
         # logger.debug(f"Received sample, inferenced scores {detections}")
-        score = max(detection.max_score for detection in detections)
+        score = (
+            max(detection.confidence for detection in detections) if detections else 0.0
+        )
 
         oracle_media_types = [obj.media_type for obj in request.oracle_data]
 
@@ -155,14 +131,16 @@ class HomeToScoutWorker:
         """Queue a label from any thread which will be sent to the scout."""
         labels = [
             common_pb2.Detection(
-                class_name=class_name_to_str(class_name),
+                class_name=class_name_to_str(detection.class_name),
                 confidence=1.0,
                 coords=common_pb2.Region(
-                    center_x=bbox.x, center_y=bbox.y, width=bbox.w, height=bbox.h
+                    center_x=detection.x,
+                    center_y=detection.y,
+                    width=detection.w,
+                    height=detection.h,
                 ),
             )
-            for bbox in result.detections
-            for class_name in bbox.scores
+            for detection in result.detections
         ]
 
         assert result.objectId is not None

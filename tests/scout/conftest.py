@@ -9,13 +9,12 @@ from typing import TYPE_CHECKING, Iterator
 import pytest
 from PIL import Image
 
-from hawk.hawkobject import HawkObject
-from hawk.objectid import ObjectId
+from hawk import HawkObject, ObjectId
 from hawk.scout.context.model_trainer_context import ModelContext
 from hawk.scout.retrieval.retriever import Retriever, RetrieverConfig
 
 if TYPE_CHECKING:
-    from hawk.detection import Detection
+    from hawk import Detection
     from hawk.scout.core.hawk_stub import HawkStub
 
 

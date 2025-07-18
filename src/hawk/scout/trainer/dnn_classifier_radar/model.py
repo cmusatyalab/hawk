@@ -346,10 +346,10 @@ class DNNClassifierModelRadar(ModelBase):
                     Detection(
                         class_name=class_name,
                         confidence=float(score),
-                        center_x=x,
-                        center_y=y,
-                        width=w,
-                        height=h,
+                        x=x,
+                        y=y,
+                        w=w,
+                        h=h,
                     )
                     for class_name, score in zip(self.context.class_list, score)
                 ]

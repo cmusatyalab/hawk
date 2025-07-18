@@ -28,7 +28,6 @@ from ...hawkobject import HawkObject
 from ...objectid import ObjectId
 from ...plugins import HawkPlugin, HawkPluginConfig
 from ..context.data_manager_context import DataManagerContext
-from ..core.utils import get_server_ids
 from ..stats import (
     HAWK_RETRIEVER_DROPPED_OBJECTS,
     HAWK_RETRIEVER_FAILED_OBJECTS,
@@ -119,7 +118,6 @@ class Retriever(RetrieverBase):
         self._start_event = threading.Event()
         self._stop_event = threading.Event()
         self.result_queue: queue.Queue[ObjectId] = queue.Queue()
-        self.server_id = get_server_ids()[0]
         self.total_tiles = 0
 
         self.current_deployment_mode = "Idle"

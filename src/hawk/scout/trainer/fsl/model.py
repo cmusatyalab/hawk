@@ -195,9 +195,8 @@ class FSLModel(ModelBase):
             predictions = self.get_predictions(tensors)
             del tensors
             for i in range(len(batch)):
-                label = POSITIVE_CLASS
                 score = predictions[i]
-                bboxes = [Detection(class_name=label, confidence=score)]
+                bboxes = [Detection(class_name=POSITIVE_CLASS, confidence=score)]
                 yield ResultProvider(batch[i][0], score, bboxes, self.version)
 
     def evaluate_model(self, test_path: Path) -> TestResults:
