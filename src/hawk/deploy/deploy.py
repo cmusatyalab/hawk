@@ -90,6 +90,19 @@ def deploy(
         )
         c.run(cmd, hide="both", echo=True)
 
+        # update pip?
+        cmd = shlex.join(
+            [
+                "hawk-venv/bin/python",
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                "pip",
+            ]
+        )
+        # c.run(cmd, hide="both", echo=True)
+
         # upload wheel
         c.put(dist_wheel)
 
@@ -107,11 +120,7 @@ def deploy(
                     dist_wheel.name,
                 ]
             )
-            c.run(
-                cmd,
-                hide="both",
-                echo=True,
-            )
+            c.run(cmd, hide="both", echo=True)
         except (GroupException, UnexpectedExit):
             pass
 
@@ -122,22 +131,23 @@ def deploy(
             "pip",
             "install",
             "--extra-index-url",
+            "https://storage.cmusatyalab.org/wheels",
+            "--extra-index-url",
             "https://download.pytorch.org/whl/cu118",
         ]
         if dist_requirements is not None:
             c.put(dist_requirements, "requirements-scout.txt")
             pip_install.append("--constraint=requirements-scout.txt")
 
+        for extra_wheel in Path("wheels").glob("*.whl"):
+            c.put(extra_wheel, extra_wheel.name)
+            pip_install.append(f"./{extra_wheel.name}")
+
         # pip_install.append(f"cmuhawk[scout] @ file://@HOME@/{dist_wheel.name}")
         pip_install.append(f"./{dist_wheel.name}[scout]")
 
         cmd = shlex.join(pip_install).replace("@HOME@", "'$HOME'")
-        c.run(
-            cmd,
-            hide="out",
-            echo=True,
-            warn=True,
-        )
+        c.run(cmd, hide="out", echo=True, warn=True)
 
         _start_hawk_scout(c, config)
     return 0

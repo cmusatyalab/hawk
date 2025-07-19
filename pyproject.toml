@@ -67,7 +67,8 @@ torchvision = { version = "^0.17", optional = true, source = "torch-cu11" }
 # for activity recognition
 av = { version = "12.0.0", optional = true }
 einops = { version = "^0.8.0", optional = true }
-movinet-pytorch = { git = "https://github.com/Atze00/MoViNet-pytorch.git", branch = "main", optional = true } # <-- Changed to "movinet-pytorch"
+# movinet-pytorch = { git = "https://github.com/Atze00/MoViNet-pytorch.git", branch = "main", optional = true }
+movinet-pytorch = { version = "0.2.2", optional = true, source = "hawk-extra" }
 
 # for http retriever
 httpx = {version = "^0.28.1", optional = true}
@@ -75,6 +76,11 @@ httpx = {version = "^0.28.1", optional = true}
 [[tool.poetry.source]]
 name = "torch-cu11"
 url = "https://download.pytorch.org/whl/cu118"
+priority = "explicit"
+
+[[tool.poetry.source]]
+name = "hawk-extra"
+url = "https://storage.cmusatyalab.org/wheels"
 priority = "explicit"
 
 [tool.poetry.extras]
@@ -220,10 +226,16 @@ thr = "thr"  # abbreviation of threshold
 [tool.uv.sources]
 torch = { index = "torch-cu11" }
 torchvision = { index = "torch-cu11" }
+movinet-pytorch = { index = "hawk-extra" }
 
 [[tool.uv.index]]
 name = "torch-cu11"
 url = "https://download.pytorch.org/whl/cu118"
+explicit = true
+
+[[tool.uv.index]]
+name = "hawk-extra"
+url = "https://storage.cmusatyalab.org/wheels"
 explicit = true
 
 [build-system]

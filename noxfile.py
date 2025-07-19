@@ -15,6 +15,12 @@ nox.options.default_venv_backend = "uv"
 @nox.parametrize("component", ["home", "scout"])
 def tests(session, component):
     session.install(
+        "--extra-index-url",
+        "https://storage.cmusatyalab.org/wheels",
+        "--extra-index-url",
+        "https://download.pytorch.org/whl/cu118",
+        "--index-strategy",
+        "unsafe-best-match",
         f".[{component}]",
         "pytest",
         "pytest-benchmark",
