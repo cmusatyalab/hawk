@@ -116,8 +116,8 @@ class LabelSample:
                 model_version=self.model_version,
                 queued=self.queued,
                 oracle_items=self.oracle_items,
-                detections=[dataclasses.asdict(d) for d in self.detections],
-                groundtruth=[dataclasses.asdict(gt) for gt in self.groundtruth],
+                detections=[d.to_dict() for d in self.detections],
+                groundtruth=[gt.to_dict() for gt in self.groundtruth],
                 **kwargs,
             )
         )
@@ -337,6 +337,7 @@ class MissionData:
                 for detection in result.detections:
                     if detection.confidence != 1.0:
                         skip = True
+                if skip:
+                    continue
 
-                if not skip:
-                    result.to_jsonl(fp)
+                result.to_jsonl(fp)

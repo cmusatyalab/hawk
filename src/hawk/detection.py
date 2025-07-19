@@ -12,7 +12,7 @@ from __future__ import annotations
 import itertools
 import sys
 from dataclasses import dataclass
-from typing import Iterable, Iterator, TypedDict
+from typing import Any, Iterable, Iterator, TypedDict
 
 from logzero import logger
 
@@ -109,20 +109,36 @@ class Detection:
             h=float(height),
         )
 
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {"class_name": class_name_to_str(self.class_name)}
+
+        if self.confidence != 1.0:
+            result["confidence"] = self.confidence
+
+        if self.w != 1.0 or self.h != 1.0:
+            result.update(
+                {
+                    "x": self.x,
+                    "y": self.y,
+                    "w": self.w,
+                    "h": self.h,
+                }
+            )
+
+        return result
+
     def to_protobuf(self) -> common_pb2.Detection:
         """Returns a protobuf representation of the Detection."""
         obj = common_pb2.Detection(class_name=class_name_to_str(self.class_name))
 
-        # some code is not yet handling 'missing/default' protobuf values right
-        # (looking at you LabelUtilsDetection)..
-        # if self.confidence != 1.0:
-        obj.confidence = self.confidence
+        if self.confidence != 1.0:
+            obj.confidence = self.confidence
 
-        # if self.w != 1.0 or self.h != 1.0:
-        obj.coords.center_x = self.x
-        obj.coords.center_y = self.y
-        obj.coords.width = self.w
-        obj.coords.height = self.h
+        if self.w != 1.0 or self.h != 1.0:
+            obj.coords.center_x = self.x
+            obj.coords.center_y = self.y
+            obj.coords.width = self.w
+            obj.coords.height = self.h
 
         return obj
 
