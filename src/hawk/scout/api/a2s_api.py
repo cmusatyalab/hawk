@@ -4,7 +4,6 @@
 
 """Admin to Scouts internal api calls"""
 
-import base64
 import dataclasses
 import glob
 import io
@@ -18,7 +17,6 @@ from typing import Dict
 
 from google.protobuf import json_format
 from logzero import logger
-from PIL import Image
 
 from ...plugins import load_plugin
 from ...proto import Empty
@@ -34,6 +32,7 @@ from ...proto.messages_pb2 import (
     ScoutConfiguration,
     SelectiveConfig,
     TestResults,
+    TrainConfig,
 )
 from ..core.hawk_stub import HawkStub
 from ..core.mission import Mission
@@ -64,12 +63,6 @@ from ..stats import (
     HAWK_MODEL_TRAINING,
     collect_metrics_total,
 )
-from ..trainer.dnn_classifier.trainer import DNNClassifierTrainer
-from ..trainer.dnn_classifier_radar.trainer import DNNClassifierTrainerRadar
-from ..trainer.fsl.trainer import FSLTrainer
-from ..trainer.k600_classifier.trainer import ActivityTrainer
-from ..trainer.yolo.trainer import YOLOTrainer
-from ..trainer.yolo_radar.trainer import YOLOTrainerRadar
 
 MODEL_FORMATS = ["pt", "pth"]
 
@@ -307,41 +300,9 @@ class A2SAPI:
         self._manager.set_mission(mission)
 
         # Setting up mission trainer
-        model = request.trainStrategy
-        if model.HasField("dnn_classifier_radar"):
-            config = model.dnn_classifier_radar
-            trainer: ModelTrainer = DNNClassifierTrainerRadar(
-                mission, dict(config.args)
-            )
-        elif model.HasField("dnn_classifier"):
-            config = model.dnn_classifier
-            trainer = DNNClassifierTrainer(mission, dict(config.args))
-        elif model.HasField("activity_classifier"):
-            config = model.activity_classifier
-            trainer = ActivityTrainer(mission, dict(config.args))
-        elif model.HasField("yolo"):
-            config = model.yolo
-            trainer = YOLOTrainer(mission, dict(config.args))
-        elif model.HasField("yolo_radar"):
-            config = model.yolo_radar
-            trainer = YOLOTrainerRadar(mission, dict(config.args))
-        elif model.HasField("fsl"):
-            config = model.fsl
-            support_path = config.args["support_path"]
-
-            # Saving support image
-            support_data = config.args["support_data"]
-            data = base64.b64decode(support_data.encode("utf8"))
-            image = Image.open(io.BytesIO(data))
-            image.save(support_path)
-
-            trainer = FSLTrainer(mission, dict(config.args))
-        else:
-            raise NotImplementedError(
-                f"unknown model: {json_format.MessageToJson(model)}"
-            )
-
+        trainer = self._get_trainer(request.trainStrategy, mission)
         mission.setup_trainer(trainer)
+
         logger.info(f"Create mission with id {request.missionId}")
 
         # Constricting bandwidth
@@ -666,3 +627,15 @@ class A2SAPI:
         )
         assert isinstance(retriever, Retriever)
         return retriever
+
+    def _get_trainer(
+        self, train_strategy: TrainConfig, context: Mission
+    ) -> ModelTrainer:
+        trainer = load_plugin(
+            "model",
+            train_strategy.trainer,
+            dict(train_strategy.config),
+            context=context,
+        )
+        assert isinstance(trainer, ModelTrainer)
+        return trainer

@@ -72,9 +72,8 @@ class DataManager:
         self._negatives = 0
         self.train_type = self._context.train_strategy
         # logger.info(f"Training strategy: {self.train_type}")
-        self._radar_crop = (
-            self.train_type.HasField("dnn_classifier_radar")
-            and self.train_type.dnn_classifier_radar.args["pick_patches"]
+        self._radar_crop = self.train_type.trainer == "dnn_classifier_radar" and bool(
+            self.train_type.config.get("pick_patches", False)
         )
 
     def get_example_directory(self, example_set: DatasetSplitValue) -> Path:

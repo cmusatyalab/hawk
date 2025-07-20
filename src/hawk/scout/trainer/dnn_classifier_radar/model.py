@@ -9,7 +9,7 @@ import multiprocessing as mp
 import queue
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Sequence
+from typing import TYPE_CHECKING, Callable, Iterable, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -27,6 +27,7 @@ from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.result_provider import ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
+from .config import DNNRadarModelConfig
 
 if TYPE_CHECKING:
     from ....hawkobject import HawkObject
@@ -37,45 +38,43 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 class DNNClassifierModelRadar(ModelBase):
+    config: DNNRadarModelConfig
+
     def __init__(
         self,
-        args: dict[str, Any],
+        config: DNNRadarModelConfig,
+        context: ModelContext,
         model_path: Path,
         version: int,
-        mode: str,
-        context: ModelContext,
+        *,
+        train_examples: dict[str, int] | None = None,
+        train_time: float = 0.0,
     ):
         logger.info(f"Loading DNN Model from {model_path}")
         assert model_path.is_file()
-        args["input_size"] = int(args.get("input_size", 224))
         radar_normalize = transforms.Normalize(
             mean=[0.111, 0.110, 0.111], std=[0.052, 0.050, 0.052]
         )
         test_transforms = transforms.Compose(
             [
                 transforms.Pad(padding=(80, 0), fill=0, padding_mode="constant"),
-                transforms.Resize(args["input_size"]),
+                transforms.Resize(config.input_size),
                 transforms.ToTensor(),
                 radar_normalize,
             ]
         )
 
-        args["test_batch_size"] = args.get("test_batch_size", 64)
-        args["version"] = version
-        args["arch"] = args.get("arch", "resnet50")
-        args["train_examples"] = args.get("train_examples", {"1": 0, "0": 0})
-        args["mode"] = mode
-        args["pick_patches"] = bool(int(args.get("pick_patches", "0")))
-        self.args = args
-
-        super().__init__(self.args, model_path, context)
+        super().__init__(
+            config,
+            context,
+            model_path,
+            version,
+            train_examples,
+            train_time,
+        )
         assert self.context is not None
 
-        self._arch = args["arch"]
-        self._train_examples = args["train_examples"]
         self._test_transforms = test_transforms
-        self._batch_size = int(args["test_batch_size"])
-        self.pick_patches = args["pick_patches"]
 
         self._model: torch.nn.Module = self.load_model(model_path)
         self._device = torch.device("cpu")
@@ -115,7 +114,7 @@ class DNNClassifierModelRadar(ModelBase):
         return content.getvalue()
 
     def load_model(self, model_path: Path) -> torch.nn.Module:
-        model = self.initialize_model(self._arch)
+        model = self.initialize_model(self.config.arch)
         logger.info(f"Loading new model from path..,{model_path}")
         checkpoint = torch.load(model_path)
         model.load_state_dict(checkpoint["state_dict"])
@@ -193,7 +192,7 @@ class DNNClassifierModelRadar(ModelBase):
                 request = self.request_queue.get(timeout=1)
                 requests.append(request)
 
-                if len(requests) < self._batch_size and self._running:
+                if len(requests) < self.config.test_batch_size and self._running:
                     continue
             except queue.Empty:
                 if (len(requests) == 0 or time.time() < next_infer) and self._running:
@@ -217,9 +216,9 @@ class DNNClassifierModelRadar(ModelBase):
         if not self._running or self._model is None:
             return
 
-        for i in range(0, len(requests), self._batch_size):
+        for i in range(0, len(requests), self.config.test_batch_size):
             batch = []
-            for object_id in requests[i : i + self._batch_size]:
+            for object_id in requests[i : i + self.config.test_batch_size]:
                 obj = self.context.retriever.get_ml_data(object_id)
                 assert obj is not None
                 batch.append((object_id, self.preprocess(obj)))
@@ -234,7 +233,7 @@ class DNNClassifierModelRadar(ModelBase):
         dataset = datasets.ImageFolder(str(directory), transform=self._test_transforms)
         data_loader = DataLoader(
             dataset,
-            batch_size=self._batch_size,
+            batch_size=self.config.test_batch_size,
             shuffle=False,
             num_workers=mp.cpu_count(),
         )
@@ -271,7 +270,7 @@ class DNNClassifierModelRadar(ModelBase):
         )
         data_loader = DataLoader(
             dataset,
-            batch_size=self._batch_size,
+            batch_size=self.config.test_batch_size,
             shuffle=False,
             num_workers=mp.cpu_count(),
         )
@@ -319,7 +318,7 @@ class DNNClassifierModelRadar(ModelBase):
         # if we crop and add samples to the batch here, then the batch size will be > 64
 
         with self._model_lock:
-            if self.pick_patches:
+            if self.config.pick_patches:
                 predictions, boxes = self.patch_processing(batch)
                 # logger.info(f"Num pred:{len(predictions)}, Num boxes:{len(boxes)}")
                 logger.info("Pick patches is True")
@@ -333,7 +332,7 @@ class DNNClassifierModelRadar(ModelBase):
 
                 # if pick_patches is true we should include x y w h
                 # this doesn't work because boxes is a list[list[tuple[..]]]?
-                # if self.pick_patches:
+                # if self.config.pick_patches:
                 #    l, r, t, b = boxes[i]
                 #    x = (r + l) / (2 * 63)
                 #    y = (b + t) / (2 * 255)
@@ -427,7 +426,7 @@ class DNNClassifierModelRadar(ModelBase):
         # find the set of n patches that are most likely to contain an object.
         # select a few additional patches of negative space
         # return a list of patches, perhaps do a yield
-        # in order to call this function, must check if self.args['pick_patches']
+        # in order to call this function, must check if self.config.pick_patches
         # needs to return list of floats, which are the scores for the given
         # class for each sample.
         # logger.info(f"Predictions: {predictions}, box list: {boxes_list}")

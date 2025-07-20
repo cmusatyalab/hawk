@@ -7,7 +7,7 @@ import pytest
 
 from hawk.plugins import get_plugin_entrypoint
 
-CONFIGS = {
+CONFIGS_RETRIEVER = {
     "frame": {"index_path": "/example/path/to/index"},
     #    "http": {"base_url": "http://localhost"},
     #    "k600": {"root": "/path/to/index"},
@@ -26,19 +26,20 @@ CONFIG_OVERRIDE = {"mission_id": "", "data_root": "/example"}
 
 
 @pytest.mark.home
-@pytest.mark.parametrize("retriever", CONFIGS.keys())
+@pytest.mark.parametrize("retriever", CONFIGS_RETRIEVER.keys())
 def test_validate_retriever_config(retriever):
     with contextlib.suppress(ImportError):
         plugin_cls = get_plugin_entrypoint("retriever", retriever)
         plugin_cls.scrub_config(
-            dict(CONFIGS[retriever], **CONFIG_OVERRIDE), exclude=set(CONFIG_OVERRIDE)
+            dict(CONFIGS_RETRIEVER[retriever], **CONFIG_OVERRIDE),
+            exclude=set(CONFIG_OVERRIDE),
         )
 
 
 @pytest.mark.scout
-@pytest.mark.parametrize("retriever", CONFIGS.keys())
+@pytest.mark.parametrize("retriever", CONFIGS_RETRIEVER.keys())
 def test_load_retriever_plugin(retriever):
-    config = dict(CONFIGS[retriever], **CONFIG_OVERRIDE)
+    config = dict(CONFIGS_RETRIEVER[retriever], **CONFIG_OVERRIDE)
     plugin = get_plugin_entrypoint("retriever", retriever)
     with contextlib.suppress(FileNotFoundError):
         plugin.from_config(config)

@@ -2,15 +2,16 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import glob
+# type: ignore
+
 import os
 import pickle
+from pathlib import Path
 
 import numpy as np
-import yolov5_radar.radar_util.drawer as drawer
-import yolov5_radar.radar_util.helper as helper
-import yolov5_radar.radar_util.loader as loader
 from tqdm import tqdm
+
+from .yolov5_radar.radar_util import drawer, helper, loader
 
 # steps for generating derivative dataset, with respec to size for each class.
 # 1: find mean and standard deviation for a set of instances for a given class.
@@ -32,13 +33,13 @@ from tqdm import tqdm
 # across all samples and dimensions.  Rewrite the .npy files with normalized
 # values.
 
-ORIGINAL_IMAGES_DIR = None  # Set this
-ORIGINAL_LABELS_DIR = None  # Set this
+ORIGINAL_IMAGES_DIR = Path()  # Set this
+ORIGINAL_LABELS_DIR = Path()  # Set this
 DESTINATION_IMAGES_DIR = None
 DESTINATION_LABELS_DIR = None
 DESTINATION_CANVAS_DIR = None
-label_files = glob.glob(os.path.join(ORIGINAL_LABELS_DIR, "*.pickle"))
-RAD_files = glob.glob(os.path.join(ORIGINAL_IMAGES_DIR, "*.npy"))
+label_files = Path(ORIGINAL_LABELS_DIR).glob("*.pickle")
+RAD_files = Path(ORIGINAL_IMAGES_DIR).glob("*.npy")
 az_width_mean = 51
 range_width_mean = 74
 dopp_width_mean = 51

@@ -9,7 +9,7 @@ import multiprocessing as mp
 import queue
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Sequence
+from typing import TYPE_CHECKING, Callable, Iterable, Sequence
 
 import torch
 from logzero import logger
@@ -23,6 +23,7 @@ from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.result_provider import ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
+from .config import DNNModelConfig
 from .training_state import TrainingState
 
 if TYPE_CHECKING:
@@ -34,32 +35,33 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 class DNNClassifierModel(ModelBase):
+    config: DNNModelConfig
+
     def __init__(
         self,
-        args: dict[str, Any],
+        config: DNNModelConfig,
+        context: ModelContext,
         model_path: Path,
         version: int,
-        mode: str,
-        context: ModelContext,
+        *,
+        train_examples: dict[str, int] | None = None,
+        train_time: float = 0.0,
     ):
         logger.info(f"Loading DNN Model from {model_path}")
         assert model_path.is_file()
-        args["input_size"] = int(args.get("input_size", 224))
-        args["test_batch_size"] = args.get("test_batch_size", 64)
-        args["version"] = version
-        args["arch"] = args.get("arch", "resnet50")
-        args["train_examples"] = args.get("train_examples", {"1": 0, "0": 0})
-        args["mode"] = mode
-        self.args = args
 
-        super().__init__(self.args, model_path, context)
+        super().__init__(
+            config,
+            context,
+            model_path,
+            version,
+            train_examples,
+            train_time,
+        )
         assert self.context is not None
 
-        self._arch = args["arch"]
-        self._train_examples = args["train_examples"]
-        self._batch_size = args["test_batch_size"]
-
         self._model, self._preprocess = self.load_model(model_path)
+
         self._device = torch.device("cpu")
         self._model.to(self._device)
         self._model.eval()
@@ -67,10 +69,6 @@ class DNNClassifierModel(ModelBase):
         self.extract_feature_vector = False
         if self.context.novel_class_discovery or self.context.sub_class_discovery:
             self.extract_feature_vector = True
-
-    @property
-    def version(self) -> int:
-        return self._version
 
     def preprocess(self, obj: HawkObject) -> torch.Tensor:
         assert obj.media_type.startswith("image/")
@@ -96,7 +94,9 @@ class DNNClassifierModel(ModelBase):
 
     def load_model(self, model_path: Path) -> torch.nn.Module:
         assert self.context is not None
-        model, preprocess, _ = TrainingState.load_for_inference(model_path, self._arch)
+        model, preprocess, _ = TrainingState.load_for_inference(
+            model_path, self.config.arch
+        )
         return model, preprocess
 
     def get_predictions(self, inputs: torch.Tensor) -> Sequence[Sequence[float]]:
@@ -126,7 +126,7 @@ class DNNClassifierModel(ModelBase):
                 request = self.request_queue.get(timeout=1)
                 requests.append(request)
 
-                if len(requests) < self._batch_size and self._running:
+                if len(requests) < self.config.test_batch_size and self._running:
                     # what if len(requests) is 1 and self._running is False?
                     # Inference the last sample or put back into the queue?
                     # self.request_queue.put(request)
@@ -163,9 +163,9 @@ class DNNClassifierModel(ModelBase):
         if not self._running or self._model is None:
             return
 
-        for i in range(0, len(requests), self._batch_size):
+        for i in range(0, len(requests), self.config.test_batch_size):
             batch = []
-            for object_id in requests[i : i + self._batch_size]:
+            for object_id in requests[i : i + self.config.test_batch_size]:
                 obj = self.context.retriever.get_ml_data(object_id)
                 assert obj is not None
                 batch.append((object_id, self.preprocess(obj)))
@@ -180,7 +180,7 @@ class DNNClassifierModel(ModelBase):
         dataset = datasets.ImageFolder(str(directory), transform=self._preprocess)
         data_loader = DataLoader(
             dataset,
-            batch_size=self._batch_size,
+            batch_size=self.config.test_batch_size,
             shuffle=False,
             num_workers=mp.cpu_count(),
         )
@@ -217,7 +217,7 @@ class DNNClassifierModel(ModelBase):
         )
         data_loader = DataLoader(
             dataset,
-            batch_size=self._batch_size,
+            batch_size=self.config.test_batch_size,
             shuffle=False,
             num_workers=mp.cpu_count(),
         )

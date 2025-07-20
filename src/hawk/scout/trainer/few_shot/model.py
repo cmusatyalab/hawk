@@ -3,13 +3,12 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 import io
-import os
 import queue
 import time
 import zipfile
 from argparse import Namespace
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Sequence, Tuple
+from typing import TYPE_CHECKING, Iterable, List, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -24,6 +23,7 @@ from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.result_provider import ResultProvider
 from ...core.utils import log_exceptions
+from .config import FewShotModelConfig
 from .models.SnaTCHerF import SnaTCHerF
 
 if TYPE_CHECKING:
@@ -37,13 +37,17 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 class FewShotModel(ModelBase):
+    config: FewShotModelConfig
+
     def __init__(
         self,
-        args: Dict[str, Any],
+        config: FewShotModelConfig,
+        context: ModelContext,
         model_path: Path,
         version: int,
-        mode: str,
-        context: ModelContext,
+        *,
+        train_examples: dict[str, int] | None = None,
+        train_time: float = 0.0,
     ):
         # model_path is None for few-shot
         # Hardcoding model architecture to resnet-50
@@ -64,42 +68,42 @@ class FewShotModel(ModelBase):
             ]
         )
 
-        args["version"] = version
-        args["train_examples"] = args.get("train_examples", {"1": 0, "0": 0})
-        args["mode"] = mode
-        self.args = args
+        super().__init__(
+            context,
+            config,
+            model_path,
+            version,
+            train_examples,
+            train_time,
+        )
 
-        super().__init__(self.args, model_path, context)
-
-        self._train_examples = args["train_examples"]
         self._test_transforms = test_transforms
         self._model = self.load_model(model_path)
         self._device = torch.device("cpu")
         self._model.to(self._device)
         self._model.eval()
-        self.train_data = self.args["support_data"]
+
         self.load_supports()
         self._running = True
 
-    def unzip_support(self):
-        self.train_dir = "/tmp/supports"
-        labels = set()
-        with zipfile.ZipFile(io.BytesIO(self.args["support_data"]), "r") as zf:
+    def unzip_support(self) -> None:
+        self.train_dir = Path("/tmp/supports")
+        labels: set[str] = set()
+        with io.BytesIO(self.config.support_data) as f, zipfile.ZipFile(f, "r") as zf:
             example_files = zf.namelist()
             for filename in example_files:
                 basename = Path(filename).name
                 parent_name = Path(filename).parent.name
                 label = parent_name
-                self.labels.add(label)
+                labels.add(label)
                 content = zf.read(filename)
-                path = os.path.join(self.train_dir, label, basename)
-                if not os.path.exists(Path(path).parent.name):
-                    os.makedirs(Path(path).parent.name, exist_ok=True)
-                    with open(path, "wb") as f:
-                        f.write(content)
+
+                path = self.train_dir / label / basename
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(content)
         assert len(labels) == 5, "Incompatible n_shot {len(labels)}"
 
-    def load_supports(self):
+    def load_supports(self) -> None:
         self.unzip_support()
         trainset = torchvision.datasets.ImageFolder(
             self.train_dir, transform=self._test_transforms
@@ -148,7 +152,7 @@ class FewShotModel(ModelBase):
 
         return content.getvalue()
 
-    def load_model(self, model_path: Path):
+    def load_model(self, model_path: Path) -> SnaTCHerF:
         args = Namespace(
             backbone_class="Res12", closed_way=5, gpu="0", multi_gpu=False, shot=5
         )
@@ -203,7 +207,7 @@ class FewShotModel(ModelBase):
             if len(requests) == 0:
                 continue
 
-            if len(requests) < self._batch_size and time.time() < next_infer:
+            if len(requests) < self.config.test_batch_size and time.time() < next_infer:
                 continue
 
             results = self._process_batch(requests)
@@ -219,9 +223,9 @@ class FewShotModel(ModelBase):
             return []
 
         output = []
-        for i in range(0, len(requests), self._batch_size):
+        for i in range(0, len(requests), self.config.test_batch_size):
             batch = []
-            for object_id in requests[i : i + self._batch_size]:
+            for object_id in requests[i : i + self.config.test_batch_size]:
                 obj = self.context.retriever.get_ml_data(object_id)
                 assert obj is not None
                 batch.append((object_id, self.preprocess(obj)))

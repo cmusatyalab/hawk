@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
+import base64
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Optional
 
 import torch
 import torch.optim as optim
@@ -15,7 +17,8 @@ from logzero import logger
 from torchvision import models
 
 from ...context.model_trainer_context import ModelContext
-from ...core.model_trainer import ModelTrainerBase
+from ...core.model_trainer import ModelTrainer
+from .config import FSLTrainerConfig
 from .model import FSLModel
 from .utils import TripletData, TripletLoss
 
@@ -23,28 +26,26 @@ torch.multiprocessing.set_sharing_strategy("file_system")
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-class FSLTrainer(ModelTrainerBase):
-    def __init__(self, context: ModelContext, args: Dict[str, str]):
-        super().__init__(context, args)
+class FSLTrainer(ModelTrainer):
+    config_class = FSLTrainerConfig
+    config: FSLTrainerConfig
 
-        assert "support_path" in self.args
-        assert "fsl_traindir" in self.args
+    def __init__(self, config: FSLTrainerConfig, context: ModelContext):
+        super().__init__(config, context)
 
-        self.args["test_dir"] = self.args.get("test_dir", "")
-        self.args["arch"] = self.args.get("arch", "siamese")
-        self.args["batch-size"] = int(self.args.get("batch-size", 64))
-        self.args["initial_model_epochs"] = int(
-            self.args.get("initial_model_epochs", 15)
-        )
+        # FIXME: use tmpfile
+        assert self.config.support_data is not None
+        support_data = base64.b64decode(self.config.support_data)
+        self.config.support_path.write_bytes(support_data)
+
         self.train_initial_model = False
-        self.testpath = self.args["test_dir"]
 
         logger.info(f"Model_dir {self.context.model_dir}")
 
         logger.info("FSL TRAINER CALLED")
 
     def load_model(
-        self, path: Optional[Path] = None, content: bytes = b"", version: int = -1
+        self, path: Path | None = None, content: bytes = b"", version: int = -1
     ) -> FSLModel:
         new_version = self.get_new_version()
 
@@ -56,22 +57,15 @@ class FSLTrainer(ModelTrainerBase):
         version = self.get_version()
         logger.info(f"Loading from path {path}")
         self.prev_path = path
-        return FSLModel(
-            self.args,
-            path,
-            version,
-            mode=self.args["mode"],
-            context=self.context,
-            support_path=self.args["support_path"],
-        )
+        return FSLModel(self.config, self.context, path, version)
 
     def train_model(self, train_dir: Path) -> FSLModel:
         new_version = self.get_new_version()
 
         model_savepath = self.context.model_path(new_version)
 
-        train_dataset = Path(self.args["fsl_traindir"])
-        support_path = self.args["support_path"]
+        train_dataset = self.config.fsl_traindir
+        support_path = self.config.support_path
 
         cmd = [
             sys.executable,
@@ -144,15 +138,11 @@ class FSLTrainer(ModelTrainerBase):
 
         self.prev_path = model_savepath
 
-        model_args = self.args.copy()
-        model_args["train_examples"] = {"1": 1, "0": 0}
-        model_args["train_time"] = train_time
-
         return FSLModel(
-            model_args,
+            self.config,
+            self.context,
             model_savepath,
             new_version,
-            self.args["mode"],
-            context=self.context,
-            support_path=self.args["support_path"],
+            train_examples={"1": 1, "0": 0},
+            train_time=train_time,
         )

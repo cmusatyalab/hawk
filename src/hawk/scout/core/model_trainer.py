@@ -5,18 +5,22 @@
 from __future__ import annotations
 
 import threading
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
 from zipfile import ZIP_STORED, ZipFile  # ZIP_DEFLATED
 
 import torch
 
+from ...plugins import HawkPlugin
 from ..context.model_trainer_context import ModelContext
+from .config import ModelTrainerConfig
 from .model import ModelBase
 
 
-class ModelTrainer(metaclass=ABCMeta):
+class ModelTrainerBase(HawkPlugin, ABC):
+    config_class = ModelTrainerConfig
+    config: ModelTrainerConfig
+
     @abstractmethod
     def load_model(
         self, path: Path | None = None, content: bytes = b"", version: int = -1
@@ -28,20 +32,15 @@ class ModelTrainer(metaclass=ABCMeta):
         pass
 
 
-class ModelTrainerBase(ModelTrainer):
-    def __init__(self, context: ModelContext, args: dict[str, str]):
+class ModelTrainer(ModelTrainerBase):
+    def __init__(self, config: ModelTrainerConfig, context: ModelContext):
+        super().__init__(config)
+        self.context = context
+
         torch.manual_seed(42)
         torch.cuda.manual_seed(42)
         self._latest_version = -1
         self._version_lock = threading.Lock()
-
-        self.context = context
-
-        self.args: dict[str, Any] = dict(mode="hawk")
-        self.args.update(args)
-
-    def parse_args(self) -> None:
-        raise NotImplementedError("Parse Args")
 
     def get_new_version(self) -> int:
         with self._version_lock:

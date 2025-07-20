@@ -9,7 +9,7 @@ import multiprocessing as mp
 import queue
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Sequence
+from typing import TYPE_CHECKING, Callable, Iterable, Sequence
 
 import torch
 from logzero import logger
@@ -25,6 +25,7 @@ from ...core.model import ModelBase
 from ...core.result_provider import ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
 from .action_recognition_model import ActionRecognitionModel
+from .config import ActivityModelConfig
 from .movinet_a0s_encoder import MovinetEncoder
 from .training_state import TrainingState
 
@@ -36,53 +37,46 @@ torch.multiprocessing.set_sharing_strategy("file_system")
 
 
 class ActivityClassifierModel(ModelBase):
+    config: ActivityModelConfig
+
     def __init__(
         self,
-        args: dict[str, Any],
+        config: ActivityModelConfig,
+        context: ModelContext,
         model_path: Path,
         version: int,
-        mode: str,
-        context: ModelContext,
+        *,
+        train_examples: dict[str, int] | None = None,
+        train_time: float = 0.0,
     ):
         logger.info(f"Loading Action Recognition Model from {model_path}")
         assert model_path.is_file()
-        embed_dim = int(args["embed_dim"])
+
         model, _ = ActionRecognitionModel.load(
             model_path=str(model_path),
-            backbone_encoder=MovinetEncoder(embed_dim=embed_dim),
+            backbone_encoder=MovinetEncoder(embed_dim=config.embed_dim),
         )
-        # embed_dim = int(args["embed_dim"])
-        # T = int(args["T"])
-        # depth = int(args["depth"])
-        # num_heads = int(args["num_heads"])
-        # mlp_dim = int(args["mlp_dim"])
-        # num_classes = int(args["num_classes"])
-        # head_dim = int(args["head_dim"])
+
         # transformer_params = TransformerParams(
-        #     embed_dim=embed_dim,
-        #     depth=depth,
-        #     num_heads=num_heads,
-        #     mlp_dim=mlp_dim,
-        #     num_classes=num_classes,
-        #     head_dim=head_dim,
+        #     embed_dim=config.embed_dim,
+        #     depth=config.depth,
+        #     num_heads=config.num_heads,
+        #     mlp_dim=config.mlp_dim,
+        #     num_classes=config.num_classes,
+        #     head_dim=config.head_dim,
         # )
         # model = ActionRecognitionModel(
         #     MovinetEncoder(embed_dim=transformer_params.embed_dim),
         #     transformer_params,
-        #     T=T,
-        #     stride=T,
+        #     T=config.T,
+        #     stride=config.T,
         # )
-        args["version"] = version
-        # args["train_examples"] = args.get("train_examples", {"1": 0, "0": 0})
-        args["mode"] = mode
-        self.args = args
 
-        super().__init__(self.args, model_path, context)
+        super().__init__(
+            config, context, model_path, version, train_examples, train_time
+        )
         assert self.context is not None
 
-        # self._train_examples = args["train_examples"]
-
-        self._batch_size: int = 1
         self._model = model
         transform = transforms.Compose(
             [
@@ -99,10 +93,6 @@ class ActivityClassifierModel(ModelBase):
         self.extract_feature_vector = False
         if self.context.novel_class_discovery or self.context.sub_class_discovery:
             self.extract_feature_vector = True
-
-    @property
-    def version(self) -> int:
-        return self._version
 
     def preprocess(self, obj: HawkObject) -> Tensor:
         assert obj.media_type == "x-tensor/pytorch"
@@ -151,7 +141,7 @@ class ActivityClassifierModel(ModelBase):
                 request = self.request_queue.get(timeout=1)
                 requests.append(request)
 
-                if len(requests) < self._batch_size and self._running:
+                if len(requests) < self.config.test_batch_size and self._running:
                     # what if len(requests) is 1 and self._running is False?
                     # Inference the last sample or put back into the queue?
                     # self.request_queue.put(request)
@@ -188,9 +178,9 @@ class ActivityClassifierModel(ModelBase):
         if not self._running:
             return
 
-        for i in range(0, len(requests), self._batch_size):
+        for i in range(0, len(requests), self.config.test_batch_size):
             batch = []
-            for object_id in requests[i : i + self._batch_size]:
+            for object_id in requests[i : i + self.config.test_batch_size]:
                 obj = self.context.retriever.get_ml_data(object_id)
                 assert obj is not None
                 batch.append((object_id, self.preprocess(obj)))
@@ -205,7 +195,7 @@ class ActivityClassifierModel(ModelBase):
         dataset = datasets.ImageFolder(str(directory), transform=self._preprocess)
         data_loader = DataLoader(
             dataset,
-            batch_size=self._batch_size,
+            batch_size=self.config.test_batch_size,
             shuffle=False,
             num_workers=mp.cpu_count(),
         )
@@ -242,7 +232,7 @@ class ActivityClassifierModel(ModelBase):
         )
         data_loader = DataLoader(
             dataset,
-            batch_size=self._batch_size,
+            batch_size=self.config.test_batch_size,
             shuffle=False,
             num_workers=mp.cpu_count(),
         )

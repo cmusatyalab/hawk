@@ -2,49 +2,46 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import json
+from __future__ import annotations
+
 import shlex
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Optional
 
 import torch
 from logzero import logger
 
 from ...context.model_trainer_context import ModelContext
-from ...core.model_trainer import ModelTrainerBase
+from ...core.config import ModelMode
+from ...core.model_trainer import ModelTrainer
+from .config import DNNTrainerConfig
 from .model import DNNClassifierModel
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
 
-class DNNClassifierTrainer(ModelTrainerBase):
-    def __init__(self, context: ModelContext, args: Dict[str, str]):
-        super().__init__(context, args)
+class DNNClassifierTrainer(ModelTrainer):
+    config_class = DNNTrainerConfig
+    config: DNNTrainerConfig
 
-        self.args["test_dir"] = self.args.get("test_dir", "")
-        self.args["arch"] = self.args.get("arch", "resnet50")
-        self.args["batch-size"] = int(self.args.get("batch-size", 64))
-        self.args["unfreeze"] = int(self.args.get("unfreeze_layers", 0))
-        self.args["initial_model_epochs"] = int(
-            self.args.get("initial_model_epochs", 15)
-        )
-        self.train_initial_model = False
-        self.testpath = self.args["test_dir"]
+    def __init__(self, config: DNNTrainerConfig, context: ModelContext):
+        super().__init__(config, context)
 
         logger.info(f"Model_dir {self.context.model_dir}")
 
-        if self.args["test_dir"]:
-            self.test_dir = Path(self.args["test_dir"])
-            msg = f"Test Path {self.test_dir} provided does not exist"
-            assert self.test_dir.exists(), msg
+        self.train_initial_model = False
+        self.testpath: Path | None = None
+
+        if self.config.test_dir is not None:
+            msg = f"Test Path {self.config.test_dir} provided does not exist"
+            assert self.config.test_dir.exists(), msg
 
         logger.info("DNN CLASSIFIER TRAINER CALLED")
 
     def load_model(
-        self, path: Optional[Path] = None, content: bytes = b"", version: int = -1
+        self, path: Path | None = None, content: bytes = b"", version: int = -1
     ) -> DNNClassifierModel:
         new_version = self.get_new_version()
 
@@ -56,20 +53,19 @@ class DNNClassifierTrainer(ModelTrainerBase):
         version = self.get_version()
         logger.info(f"Loading from path {path}")
         self.prev_path = path
-        return DNNClassifierModel(
-            self.args, path, version, mode=self.args["mode"], context=self.context
-        )
+        return DNNClassifierModel(self.config, self.context, path, version)
 
     def train_model(self, train_dir: Path) -> DNNClassifierModel:
         # check mode if not hawk return model
         # EXPERIMENTAL
-        if self.args["mode"] == "oracle":
+        if self.config.mode == ModelMode.ORACLE:
             return self.load_model(self.prev_path, version=0)
-        elif self.args["mode"] == "notional":
-            # notional_path = self.args['notional_model_path']
+
+        elif self.config.mode == ModelMode.NOTIONAL:
+            # notional_path = self.config.notional_model_path
             notional_path = self.prev_path
             # sleep for training time
-            time_sleep = self.args.get("notional_train_time", 0)
+            time_sleep = self.config.notional_train_time
             time_now = time.time()
             while (time.time() - time_now) < time_sleep:
                 time.sleep(1)
@@ -122,23 +118,20 @@ class DNNClassifierTrainer(ModelTrainerBase):
                     for path in val_samples[label]:
                         f.write(f"{path} {label}\n")
 
-            self.args["test_dir"] = str(valpath)
+            self.testpath = valpath
 
+        num_epochs = self.config.initial_model_epochs
         if new_version <= 0:
             self.train_initial_model = True
-            num_epochs = self.args["initial_model_epochs"]
         else:
-            online_epochs = json.loads(self.args["online_epochs"])
+            online_epochs = self.config.online_epochs
 
             if isinstance(online_epochs, list):
                 for epoch, pos in online_epochs:
-                    pos = int(pos)
-                    epoch = int(epoch)
                     if train_len["1"] >= pos:
                         num_epochs = epoch
-                        break
             else:
-                num_epochs = int(online_epochs)
+                num_epochs = online_epochs
 
         cmd = [
             sys.executable,
@@ -147,15 +140,15 @@ class DNNClassifierTrainer(ModelTrainerBase):
             "--trainpath",
             str(trainpath),
             "--arch",
-            self.args["arch"],
+            self.config.arch,
             "--savepath",
             str(model_savepath),
             "--num-unfreeze",
-            str(self.args["unfreeze"]),
+            str(self.config.unfreeze_layers),
             "--break-epoch",
             str(num_epochs),
             "--batch-size",
-            str(self.args["batch-size"]),
+            str(self.config.train_batch_size),
             "--num-classes",
             str(num_classes),
         ]
@@ -167,8 +160,8 @@ class DNNClassifierTrainer(ModelTrainerBase):
             cmd.extend(["--resume", str(self.prev_path)])
             # capture_files.append(self.prev_path)
 
-        if self.args["test_dir"]:
-            cmd.extend(["--valpath", self.args["test_dir"]])
+        if self.testpath is not None:
+            cmd.extend(["--valpath", str(self.testpath)])
             capture_files.extend([valpath, val_dir])
 
         cmd_str = shlex.join(cmd)
@@ -183,14 +176,11 @@ class DNNClassifierTrainer(ModelTrainerBase):
 
         self.prev_path = model_savepath
 
-        model_args = self.args.copy()
-        model_args["train_examples"] = train_len
-        model_args["train_time"] = train_time
-
         return DNNClassifierModel(
-            model_args,
+            self.config,
+            self.context,
             model_savepath,
             new_version,
-            self.args["mode"],
-            context=self.context,
+            train_examples=train_len,
+            train_time=train_time,
         )

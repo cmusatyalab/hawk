@@ -28,7 +28,7 @@ train_strategy:
   initial_model_path: /home/model0.pth # path to initial model on home
   bootstrap_path: /home/bootstrap.zip # path to compressed bootstrap zipfile @ home (0/* and 1/*)
   args:
-    mode: hawk # hawk / oracale/ notional
+    mode: hawk # hawk / oracle/ notional
     arch: resnet50 # DNN model architecture
     unfreeze_layers: 3
     batch-size: 64

@@ -32,6 +32,7 @@ from ..api.s2h_api import S2HPublisher
 from ..api.s2s_api import S2SServicer, s2s_receive_request
 from ..context.data_manager_context import DataManagerContext
 from ..context.model_trainer_context import ModelContext
+from ..core.config import ModelMode
 from ..retrain.retrain_policy_base import RetrainPolicyBase
 from ..retrain.sampleInterval_policy import SampleIntervalPolicy
 from ..retrieval.retriever import Retriever
@@ -561,7 +562,9 @@ class Mission(DataManagerContext, ModelContext):
                 # results with groundtruth data we obtain from the retriever.
                 # Maybe this should be moved to a home related configuration
                 # instead of training/inferencing model configuration.
-                oracle_mode = self._model is not None and self._model.mode == "oracle"
+                oracle_mode = (
+                    self._model is not None and self._model.mode == ModelMode.ORACLE
+                )
 
                 tile = result.to_protobuf(
                     self.retriever, self.scout_index, oracle_mode=oracle_mode

@@ -83,23 +83,8 @@ message ModelArchive {
 }
 
 message TrainConfig {
-  oneof value {
-    ModelConfig dnn_classifier = 1;
-    ModelConfig yolo = 2;
-    ModelConfig fsl = 3;
-    ModelConfig dnn_classifier_radar = 4;
-    ModelConfig yolo_radar = 5;
-    ModelConfig activity_classifier = 6;
-  }
-}
-
-message ModelConfig {
-  map<string, string> args = 1;
-}
-
-message YOLOConfig {
-  int32 imageSize = 1;
-  string args = 2;
+  string trainer = 1;
+  map<string, string> config = 2;
 }
 
 message RetrainPolicyConfig {

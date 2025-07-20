@@ -2,64 +2,62 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
+from __future__ import annotations
+
 import glob
-import json
 import shlex
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Optional
 
 import torch
 import yaml
 from logzero import logger
 
 from ...context.model_trainer_context import ModelContext
-from ...core.model_trainer import ModelTrainerBase
+from ...core.config import ModelMode
+from ...core.model_trainer import ModelTrainer
 from ...core.utils import log_exceptions
+from .config import YOLOTrainerConfig
 from .model import YOLOModelRadar
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
 
-class YOLOTrainerRadar(ModelTrainerBase):
-    def __init__(self, context: ModelContext, args: Dict[str, str]):
-        super().__init__(context, args)
+class YOLOTrainerRadar(ModelTrainer):
+    config_class = YOLOTrainerConfig
+    config: YOLOTrainerConfig
 
-        self.args["test_dir"] = self.args.get("test_dir", "")
-        self.args["batch-size"] = int(self.args.get("batch-size", 16))
-        self.args["image-size"] = int(self.args.get("image-size", 256))
-        self.args["initial_model_epochs"] = int(
-            self.args.get("initial_model_epochs", 30)
-        )
+    def __init__(self, config: YOLOTrainerConfig, context: ModelContext):
+        super().__init__(config, context)
+
         self.train_initial_model = False
 
         logger.info(f"Model_dir {self.context.model_dir}")
 
-        if self.args["test_dir"]:
-            self.test_dir = Path(self.args["test_dir"])
-            msg = f"Test Path {self.test_dir} provided does not exist"
-            assert self.test_dir.exists(), msg
+        if self.config.test_dir is not None:
+            msg = f"Test Path {self.config.test_dir} provided does not exist"
+            assert self.config.test_dir.exists(), msg
 
-        if self.args["mode"] == "notional":
-            assert "notional_model_path" in self.args, "Missing keyword {}".format(
-                "notional_model_path"
-            )
-            notional_model_path = Path(self.args["notional_model_path"])
-            msg = f"Notional Model Path {notional_model_path} provided does not exist"
+        if self.config.mode == ModelMode.NOTIONAL:
+            notional_model_path = self.config.notional_model_path
+            assert notional_model_path is not None, "Missing config notional_model_path"
+            msg = f"Notional Model Path {notional_model_path} does not exist"
             assert notional_model_path.exists(), msg
 
         logger.info("YOLO RADAR TRAINER CALLED")
 
     @log_exceptions
     def load_model(
-        self, path: Optional[Path] = None, content: bytes = b"", version: int = -1
+        self, path: Path | None = None, content: bytes = b"", version: int = -1
     ) -> YOLOModelRadar:
         if version == -1:
             version = self.get_new_version()
 
-        if self.args["mode"] != "oracle" and (path is None or not path.is_file()):
+        if self.config.mode != ModelMode.ORACLE and (
+            path is None or not path.is_file()
+        ):
             assert len(content)
             path = self.context.model_path(version, template="model-{}.pt")
             path.write_bytes(content)
@@ -69,25 +67,24 @@ class YOLOTrainerRadar(ModelTrainerBase):
         self.prev_path = path
         self.context.stop_model()
         logger.info(f" Trainer Loading from path {path}")
-        return YOLOModelRadar(
-            self.args, path, version, mode=self.args["mode"], context=self.context
-        )
+        return YOLOModelRadar(self.config, self.context, path, version)
 
     @log_exceptions
     def train_model(self, train_dir: Path) -> YOLOModelRadar:
         # check mode if not hawk return model
         # EXPERIMENTAL
-        if self.args["mode"] == "oracle":
+        if self.config.mode == ModelMode.ORACLE:
             return self.load_model(version=0)
-        elif self.args["mode"] == "notional":
-            notional_path = self.args["notional_model_path"]
+
+        elif self.config.mode == ModelMode.NOTIONAL:
+            notional_path = self.config.notional_model_path
             # sleep for training time
-            time_sleep = self.args.get("notional_train_time", 0)
+            time_sleep = self.config.notional_train_time
             time_now = time.time()
             while (time.time() - time_now) < time_sleep:
                 time.sleep(1)
 
-            return self.load_model(Path(notional_path), version=0)
+            return self.load_model(notional_path, version=0)
 
         new_version = self.get_new_version()
 
@@ -106,32 +103,29 @@ class YOLOTrainerRadar(ModelTrainerBase):
 
         with open(trainpath, "w") as f:
             for label in labels:
-                for path in train_samples[label]:
-                    f.write(f"{path}\n")
+                for sample in train_samples[label]:
+                    f.write(f"{sample}\n")
 
         noval = True
-        if self.args["test_dir"]:
+        if self.config.test_dir:
             noval = False
             valpath = self.context.model_path(new_version, template="val-{}.txt")
             with open(valpath, "w") as f:
-                for path in glob.glob(self.args["test_dir"] + "/*/*"):
+                for path in self.config.test_dir.glob("*/*"):
                     f.write(f"{path}\n")
 
+        num_epochs = self.config.initial_model_epochs
         if new_version <= 0:
             self.train_initial_model = True
-            num_epochs = self.args["initial_model_epochs"]
         else:
-            online_epochs = json.loads(self.args["online_epochs"])
+            online_epochs = self.config.online_epochs
 
             if isinstance(online_epochs, list):
                 for epoch, pos in online_epochs:
-                    pos = int(pos)
-                    epoch = int(epoch)
                     if train_len["1"] >= pos:
                         num_epochs = epoch
-                        break
             else:
-                num_epochs = int(online_epochs)
+                num_epochs = online_epochs
 
         data_dict = {  # need to modify this data dict
             "path": str(self.context.model_dir),
@@ -158,11 +152,11 @@ class YOLOTrainerRadar(ModelTrainerBase):
             "--epochs",
             str(num_epochs),
             "--batch-size",
-            str(self.args["batch-size"]),
+            str(self.config.train_batch_size),
             "--weights",
             str(weights),
             "--imgsz",
-            str(self.args["image-size"]),
+            str(self.config.image_size),
             "--data",
             str(data_file),
         ]
@@ -171,9 +165,9 @@ class YOLOTrainerRadar(ModelTrainerBase):
         # if not self.train_initial_model:
         #     capture_files.append(weights)
 
-        if self.args["test_dir"]:
+        if self.config.test_dir is not None:
             cmd.extend(["--noval", "False"])
-            capture_files.extend([valpath, self.args["test_dir"]])
+            capture_files.extend([valpath, self.config.test_dir])
 
         cmd_str = shlex.join(cmd)
         self.capture_trainingset(cmd_str, capture_files)
@@ -187,13 +181,12 @@ class YOLOTrainerRadar(ModelTrainerBase):
 
         self.prev_path = model_savepath
 
-        model_args = self.args.copy()
-        model_args["train_examples"] = train_len
         self.context.stop_model()
+
         return YOLOModelRadar(
-            model_args,
+            self.config,
+            self.context,
             model_savepath,
             new_version,
-            self.args["mode"],
-            context=self.context,
+            train_examples=train_len,
         )

@@ -97,6 +97,14 @@ random = "hawk.scout.retrieval.random_retriever:RandomRetriever"
 tile = "hawk.scout.retrieval.tile_retriever:TileRetriever"
 video = "hawk.scout.retrieval.video_retriever:VideoRetriever"
 
+[project.entry-points."cmuhawk.models"]
+activity = "hawk.scout.trainer.k600_classifier.trainer:ActivityTrainer"
+dnn_classifier = "hawk.scout.trainer.dnn_classifier.trainer:DNNClassifierTrainer"
+dnn_classifier_radar = "hawk.scout.trainer.dnn_classifier_radar.trainer:DNNClassifierTrainerRadar"
+fsl = "hawk.scout.trainer.fsl.trainer:FSLTrainer"
+yolo = "hawk.scout.trainer.yolo.trainer:YOLOTrainer"
+yolo_radar = "hawk.scout.trainer.yolo_radar.trainer:YOLOTrainerRadar"
+
 [tool.poetry]
 packages = [
     { include = "hawk", from = "src" }
@@ -139,7 +147,7 @@ types-tqdm = "^4.66.0.2"
 [tool.mypy]
 strict = true
 files = ["src", "hawk-plugin-template"]
-exclude = "^src/hawk/scout/trainer/(few_shot/|yolo.*/|yolov5.*/)"
+exclude = "^src/hawk/scout/trainer/(few_shot/|yolo.*/yolov5.*/)"
 plugins = ["numpy.typing.mypy_plugin", "pydantic.mypy"]
 
 [[tool.mypy.overrides]]

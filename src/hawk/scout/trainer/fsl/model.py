@@ -8,7 +8,7 @@ import io
 import queue
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Sequence, cast
+from typing import TYPE_CHECKING, Iterable, Sequence, cast
 
 import numpy as np
 import torch
@@ -25,6 +25,7 @@ from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.result_provider import ResultProvider
 from ...core.utils import log_exceptions
+from .config import FSLModelConfig
 
 if TYPE_CHECKING:
     from ....hawkobject import HawkObject
@@ -36,18 +37,20 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 class FSLModel(ModelBase):
+    config: FSLModelConfig
+
     def __init__(
         self,
-        args: dict[str, Any],
+        config: FSLModelConfig,
+        context: ModelContext,
         model_path: Path,
         version: int,
-        mode: str,
-        context: ModelContext,
-        support_path: str,
+        *,
+        train_examples: dict[str, int] | None = None,
+        train_time: float = 0.0,
     ):
         logger.info(f"Loading FSL Model from {model_path}")
         assert model_path.is_file()
-        args["input_size"] = args.get("input_size", 256)
 
         test_transforms = transforms.Compose(
             [
@@ -59,19 +62,16 @@ class FSLModel(ModelBase):
             ]
         )
 
-        args["test_batch_size"] = args.get("test_batch_size", 64)
-        args["version"] = version
-        args["arch"] = args.get("arch", "siamese")
-        args["train_examples"] = args.get("train_examples", {"1": 0, "0": 0})
-        args["mode"] = mode
+        super().__init__(
+            config,
+            context,
+            model_path,
+            version,
+            train_examples,
+            train_time,
+        )
 
-        self.args = args
-
-        super().__init__(self.args, model_path, context)
-
-        self._train_examples = args["train_examples"]
         self._test_transforms = test_transforms
-        self._batch_size = args["test_batch_size"]
 
         self._model = self.load_model(model_path)
         self._device = device
@@ -79,7 +79,7 @@ class FSLModel(ModelBase):
         self._model.eval()
         self._running = True
 
-        support = Image.open(support_path).convert("RGB")
+        support = Image.open(config.support_path).convert("RGB")
         self.support = self.get_embed(support)
 
     def get_embed(self, im: Image.Image) -> Sequence[float]:
@@ -106,16 +106,10 @@ class FSLModel(ModelBase):
         if self._model is None:
             return b""
 
-        content = io.BytesIO()
-        torch.save(
-            {
-                "state_dict": self._model.state_dict(),
-            },
-            content,
-        )
-        content.seek(0)
-
-        return content.getvalue()
+        with io.BytesIO() as f:
+            torch.save({"state_dict": self._model.state_dict()}, f)
+            content = f.getvalue()
+        return content
 
     def load_model(self, model_path: Path) -> torch.nn.Module:
         logger.info("Starting model load")
@@ -152,7 +146,7 @@ class FSLModel(ModelBase):
             if len(requests) == 0:
                 continue
 
-            if len(requests) < self._batch_size and time.time() < next_infer:
+            if len(requests) < self.config.test_batch_size and time.time() < next_infer:
                 continue
 
             results = self._process_batch(requests)
@@ -168,9 +162,9 @@ class FSLModel(ModelBase):
             return []
 
         output = []
-        for i in range(0, len(requests), self._batch_size):
+        for i in range(0, len(requests), self.config.test_batch_size):
             batch = []
-            for object_id in requests[i : i + self._batch_size]:
+            for object_id in requests[i : i + self.config.test_batch_size]:
                 obj = self.context.retriever.get_ml_data(object_id)
                 assert obj is not None
                 batch.append((object_id, self.preprocess(obj)))

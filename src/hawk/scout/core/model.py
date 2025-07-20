@@ -8,7 +8,7 @@ import errno
 import os
 import threading
 import time
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Sequence
 
@@ -22,6 +22,7 @@ from sklearn.metrics import (
 
 from ...proto.messages_pb2 import ModelMetrics, TestResults
 from ..context.model_trainer_context import ModelContext
+from .config import ModelConfig, ModelMode
 from .result_provider import ResultProvider
 from .utils import log_exceptions
 
@@ -30,7 +31,7 @@ if TYPE_CHECKING:
     from ...objectid import ObjectId
 
 
-class Model(metaclass=ABCMeta):
+class Model(ABC):
     @abstractmethod
     def infer(self, requests: Sequence[ObjectId]) -> Iterable[ResultProvider]:
         pass
@@ -74,7 +75,7 @@ class Model(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def mode(self) -> str:
+    def mode(self) -> ModelMode:
         pass
 
     @property
@@ -84,18 +85,26 @@ class Model(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def train_time(self) -> int:
+    def train_time(self) -> float:
         pass
 
 
 class ModelBase(Model):
     def __init__(
         self,
-        args: dict[str, Any],
-        model_path: Path,
+        config: ModelConfig,
         context: ModelContext,
+        model_path: Path,
+        version: int,
+        train_examples: dict[str, int] | None,
+        train_time: float,
     ):
+        if train_examples is None:
+            train_examples = {"1": 0, "0": 0}
+
+        self.config = config
         self.context = context
+
         self.request_count = 0
         self.result_count = 0
         self._model_lock = threading.Lock()
@@ -104,14 +113,11 @@ class ModelBase(Model):
         self.request_queue = self.context.model_input_queue
         self.result_queue = self.context.model_output_queue
 
-        self._version = int(args.get("version", 0))
-        self._mode = str(args.get("mode", "hawk"))
-        self._train_examples: dict[str, int] = args.get(
-            "train_examples", {"1": 0, "0": 0}
-        )
-        self._train_time = int(args.get("train_time", 0))
+        self._version = version
+        self._train_examples = train_examples
+        self._train_time = train_time
 
-        if self._mode != "oracle" and not model_path.exists():
+        if self.config.mode != ModelMode.ORACLE and not model_path.exists():
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), model_path)
 
     @property
@@ -119,15 +125,15 @@ class ModelBase(Model):
         return self._version
 
     @property
-    def mode(self) -> str:
-        return self._mode
+    def mode(self) -> ModelMode:
+        return self.config.mode
 
     @property
     def train_examples(self) -> dict[str, int]:
         return self._train_examples
 
     @property
-    def train_time(self) -> int:
+    def train_time(self) -> float:
         return self._train_time
 
     @log_exceptions
@@ -136,9 +142,6 @@ class ModelBase(Model):
 
     @log_exceptions
     def add_requests(self, object_id: ObjectId) -> None:
-        if self.context is None:
-            return
-
         obj = self.context.retriever.get_ml_data(object_id)
         if obj is None:
             logger.error(f"Model.add_requests {object_id} not found")
@@ -154,8 +157,6 @@ class ModelBase(Model):
 
     @log_exceptions
     def get_results(self) -> ResultProvider | None:
-        if self.context is None:
-            return None
         return self.result_queue.get()
 
     @log_exceptions

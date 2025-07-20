@@ -2,49 +2,42 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import json
+from __future__ import annotations
+
 import shlex
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Optional
 
 import torch
 from logzero import logger
 
 from ...context.model_trainer_context import ModelContext
-from ...core.model_trainer import ModelTrainerBase
+from ...core.config import ModelMode
+from ...core.model_trainer import ModelTrainer
+from .config import ActivityTrainerConfig
 from .model import ActivityClassifierModel
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
 
-class ActivityTrainer(ModelTrainerBase):
-    def __init__(self, context: ModelContext, args: Dict[str, str]):
-        super().__init__(context, args)
+class ActivityTrainer(ModelTrainer):
+    config_class = ActivityTrainerConfig
+    config: ActivityTrainerConfig
 
-        # self.args["test_dir"] = self.args.get("test_dir", "")
-        # self.args["arch"] = self.args.get("arch", "resnet50")
-        # self.args["batch-size"] = int(self.args.get("batch-size", 64))
-        # self.args["unfreeze"] = int(self.args.get("unfreeze_layers", 0))
-        # self.args["initial_model_epochs"] = int(
-        #     self.args.get("initial_model_epochs", 15)
-        # )
+    def __init__(self, config: ActivityTrainerConfig, context: ModelContext):
+        super().__init__(config, context)
+
         self.train_initial_model = False
-        # self.testpath = self.args["test_dir"]
+        self.testpath: Path | None = None
 
         logger.info(f"Model_dir {self.context.model_dir}")
-        #
-        # if self.args["test_dir"]:
-        #     self.test_dir = Path(self.args["test_dir"])
-        #     msg = f"Test Path {self.test_dir} provided does not exist"
-        #     assert self.test_dir.exists(), msg
 
-        logger.info("DNN CLASSIFIER TRAINER CALLED")
+        logger.info("ACTIVITY TRAINER CALLED")
 
     def load_model(
-        self, path: Optional[Path] = None, content: bytes = b"", version: int = -1
+        self, path: Path | None = None, content: bytes = b"", version: int = -1
     ) -> ActivityClassifierModel:
         new_version = self.get_new_version()
 
@@ -56,20 +49,19 @@ class ActivityTrainer(ModelTrainerBase):
         version = self.get_version()
         logger.info(f"Loading from path {path}")
         self.prev_path = path
-        return ActivityClassifierModel(
-            self.args, path, version, mode=self.args["mode"], context=self.context
-        )
+        return ActivityClassifierModel(self.config, self.context, path, version)
 
     def train_model(self, train_dir: Path) -> ActivityClassifierModel:
         # check mode if not hawk return model
         # EXPERIMENTAL
-        if self.args["mode"] == "oracle":
+        if self.config.mode == ModelMode.ORACLE:
             return self.load_model(self.prev_path, version=0)
-        elif self.args["mode"] == "notional":
-            # notional_path = self.args['notional_model_path']
+
+        elif self.config.mode == ModelMode.NOTIONAL:
+            # notional_path = self.config.notional_model_path
             notional_path = self.prev_path
             # sleep for training time
-            time_sleep = self.args.get("notional_train_time", 0)
+            time_sleep = self.config.notional_train_time
             time_now = time.time()
             while (time.time() - time_now) < time_sleep:
                 time.sleep(1)
@@ -122,23 +114,21 @@ class ActivityTrainer(ModelTrainerBase):
                     for path in val_samples[label]:
                         f.write(f"{path} {label}\n")
 
-            self.args["test_dir"] = str(valpath)
+            self.testpath = valpath
 
+        num_epochs = self.config.initial_model_epochs
         if new_version <= 0:
             self.train_initial_model = True
-            num_epochs = self.args["initial_model_epochs"]
         else:
-            online_epochs = json.loads(self.args["online_epochs"])
+            online_epochs = self.config.online_epochs
 
             if isinstance(online_epochs, list):
                 for epoch, pos in online_epochs:
-                    pos = int(pos)
-                    epoch = int(epoch)
                     if train_len["1"] >= pos:
                         num_epochs = epoch
-                        break
             else:
-                num_epochs = int(online_epochs)
+                num_epochs = online_epochs
+
         cmd = [
             sys.executable,
             "-m",
@@ -150,21 +140,21 @@ class ActivityTrainer(ModelTrainerBase):
             "--epochs",
             str(num_epochs),
             "--batch_size",
-            str(self.args["batch-size"]),
+            str(self.config.train_batch_size),
             "--embed_dim",
-            self.args["embed_dim"],
+            str(self.config.embed_dim),
             "--T",
-            self.args["T"],
+            str(self.config.T),
             "--depth",
-            self.args["depth"],
+            str(self.config.depth),
             "--num_heads",
-            self.args["num_heads"],
+            str(self.config.num_heads),
             "--mlp_dim",
-            self.args["mlp_dim"],
+            str(self.config.mlp_dim),
             "--num_classes",
-            self.args["num_classes"],
+            str(self.config.num_classes),
             "--head_dim",
-            self.args["head_dim"],
+            str(self.config.head_dim),
         ]
         capture_files = [trainpath, train_dir]
 
@@ -174,8 +164,8 @@ class ActivityTrainer(ModelTrainerBase):
             cmd.extend(["--resume", str(self.prev_path)])
             # capture_files.append(self.prev_path)
 
-        if self.args["test_dir"]:
-            cmd.extend(["--valpath", self.args["test_dir"]])
+        if self.config.test_dir is not None:
+            cmd.extend(["--valpath", str(self.config.test_dir)])
             capture_files.extend([valpath, val_dir])
 
         cmd_str = shlex.join(cmd)
@@ -190,14 +180,11 @@ class ActivityTrainer(ModelTrainerBase):
 
         self.prev_path = model_savepath
 
-        model_args = self.args.copy()
-        model_args["train_examples"] = train_len
-        model_args["train_time"] = train_time
-
         return ActivityClassifierModel(
-            model_args,
+            self.config,
+            self.context,
             model_savepath,
             new_version,
-            self.args["mode"],
-            context=self.context,
+            train_examples=train_len,
+            train_time=train_time,
         )

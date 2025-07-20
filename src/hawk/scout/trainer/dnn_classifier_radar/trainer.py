@@ -2,51 +2,48 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-import json
+from __future__ import annotations
+
 import shlex
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Optional
 
 import torch
 from logzero import logger
 
 from ...context.model_trainer_context import ModelContext
-from ...core.model_trainer import ModelTrainerBase
+from ...core.config import ModelMode
+from ...core.model_trainer import ModelTrainer
+from .config import DNNRadarTrainerConfig
 from .model import DNNClassifierModelRadar
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
 
-class DNNClassifierTrainerRadar(ModelTrainerBase):
-    def __init__(self, context: ModelContext, args: Dict[str, str]):
-        super().__init__(context, args)
+class DNNClassifierTrainerRadar(ModelTrainer):
+    config_class = DNNRadarTrainerConfig
+    config: DNNRadarTrainerConfig
 
-        self.args["test_dir"] = self.args.get("test_dir", "")
-        self.args["arch"] = self.args.get("arch", "resnet50")
-        self.args["batch-size"] = int(self.args.get("batch-size", 64))
-        self.args["unfreeze"] = int(self.args.get("unfreeze_layers", 0))
-        self.args["initial_model_epochs"] = int(
-            self.args.get("initial_model_epochs", 15)
-        )
+    def __init__(self, config: DNNRadarTrainerConfig, context: ModelContext):
+        super().__init__(config, context)
+
+        self.testpath: Path | None = None
         self.train_initial_model = False
-        self.testpath = self.args["test_dir"]
         self.base_model_path = self.context.model_dir / "base_model.pth"
         logger.info(f" base model path: {self.base_model_path}\n")
 
         logger.info(f"Model_dir {self.context.model_dir}")
 
-        if self.args["test_dir"]:
-            self.test_dir = Path(self.args["test_dir"])
-            msg = f"Test Path {self.test_dir} provided does not exist"
-            assert self.test_dir.exists(), msg
+        if self.config.test_dir is not None:
+            msg = f"Test Path {self.config.test_dir} provided does not exist"
+            assert self.config.test_dir.exists(), msg
 
         logger.info("DNN CLASSIFIER TRAINER RADAR CALLED")
 
     def load_model(
-        self, path: Optional[Path] = None, content: bytes = b"", version: int = -1
+        self, path: Path | None = None, content: bytes = b"", version: int = -1
     ) -> DNNClassifierModelRadar:
         new_version = self.get_new_version()
 
@@ -58,26 +55,25 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
         version = self.get_version()
         logger.info(f"Loading from path {path}")
         self.prev_path = path
-        return DNNClassifierModelRadar(
-            self.args, path, version, mode=self.args["mode"], context=self.context
-        )
+        return DNNClassifierModelRadar(self.config, self.context, path, version)
 
     def train_model(self, train_dir: Path) -> DNNClassifierModelRadar:
         # check mode if not hawk return model
         # EXPERIMENTAL
-        logger.info(f"TRAINING ARGS: {self.args}")
-        if self.args["mode"] == "oracle":
+        logger.info(f"TRAINING ARGS: {self.config}")
+        if self.config.mode == ModelMode.ORACLE:
             return self.load_model(self.prev_path, version=0)
-        elif self.args["mode"] == "notional":
-            # notional_path = self.args['notional_model_path']
+
+        elif self.config.mode == ModelMode.NOTIONAL:
+            # notional_path = self.config.notional_model_path
             notional_path = self.prev_path
             # sleep for training time
-            time_sleep = self.args.get("notional_train_time", 0)
+            time_sleep = self.config.notional_train_time
             time_now = time.time()
             while (time.time() - time_now) < time_sleep:
                 time.sleep(1)
 
-            return self.load_model(Path(notional_path), version=0)
+            return self.load_model(notional_path, version=0)
 
         new_version = self.get_new_version()
 
@@ -120,22 +116,20 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
                     for path in val_samples[label]:
                         f.write(f"{path} {label}\n")
 
-            self.args["test_dir"] = str(valpath)
+            self.testpath = valpath
+
+        num_epochs = self.config.initial_model_epochs
         if new_version <= 0:
             self.train_initial_model = True
-            num_epochs = self.args["initial_model_epochs"]
         else:
-            online_epochs = json.loads(self.args["online_epochs"])
+            online_epochs = self.config.online_epochs
 
             if isinstance(online_epochs, list):
                 for epoch, pos in online_epochs:
-                    pos = int(pos)
-                    epoch = int(epoch)
                     if train_len["1"] >= pos:
                         num_epochs = epoch
-                        break
             else:
-                num_epochs = int(online_epochs)
+                num_epochs = online_epochs
 
         cmd = [
             sys.executable,
@@ -144,15 +138,15 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
             "--trainpath",
             str(trainpath),
             "--arch",
-            self.args["arch"],
+            self.config.arch,
             "--savepath",
             str(model_savepath),
             "--num-unfreeze",
-            str(self.args["unfreeze"]),
+            str(self.config.unfreeze_layers),
             "--break-epoch",
             str(num_epochs),
             "--batch-size",
-            str(self.args["batch-size"]),
+            str(self.config.train_batch_size),
             "--num-classes",
             str(num_classes),
         ]
@@ -166,8 +160,8 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
             cmd.extend(["--resume", str(self.prev_path)])
             # capture_files.append(self.prev_path)
 
-        if self.args["test_dir"]:
-            cmd.extend(["--valpath", str(self.args["test_dir"])])
+        if self.testpath is not None:
+            cmd.extend(["--valpath", str(self.testpath)])
             capture_files.extend([valpath, val_dir])
 
         cmd_str = shlex.join(cmd)
@@ -182,14 +176,11 @@ class DNNClassifierTrainerRadar(ModelTrainerBase):
 
         self.prev_path = model_savepath
 
-        model_args = self.args.copy()
-        model_args["train_examples"] = train_len
-        model_args["train_time"] = train_time
-
         return DNNClassifierModelRadar(
-            model_args,
+            self.config,
+            self.context,
             model_savepath,
             new_version,
-            self.args["mode"],
-            context=self.context,
+            train_examples=train_len,
+            train_time=train_time,
         )

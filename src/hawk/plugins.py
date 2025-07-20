@@ -68,8 +68,8 @@ class HawkPlugin:
         return {k: str(v) for k, v in json_dict.items()}
 
     @classmethod
-    def from_config(cls, config: dict[str, Any]) -> Self:
-        return cls(cls.validate_config(config))
+    def from_config(cls, config: dict[str, Any], **kwargs: Any) -> Self:
+        return cls(cls.validate_config(config), **kwargs)
 
     def __init__(self, config: HawkPluginConfig) -> None:
         self.config = config
@@ -81,7 +81,7 @@ def get_plugin_entrypoint(plugin_type: str, plugin: str) -> type[HawkPlugin]:
     raise ImportError when we failed to find or import the plugin.
     """
     try:
-        # plugin type "trainer" -> group "cmuhawk.trainers", etc.
+        # plugin type "model" -> group "cmuhawk.models", etc.
         plugin_ep = entry_points(group=f"cmuhawk.{plugin_type}s")[plugin]
     except KeyError:
         msg = f"Unknown {plugin_type}: {plugin}"
@@ -94,12 +94,14 @@ def get_plugin_entrypoint(plugin_type: str, plugin: str) -> type[HawkPlugin]:
         raise ImportError from e
 
 
-def load_plugin(plugin_type: str, plugin: str, config: dict[str, Any]) -> HawkPlugin:
+def load_plugin(
+    plugin_type: str, plugin: str, config: dict[str, Any], **kwargs: Any
+) -> HawkPlugin:
     """Attempt to load and instantiate a plugin."""
 
     try:
         plugin_cls = get_plugin_entrypoint(plugin_type, plugin)
-        return plugin_cls.from_config(config)
+        return plugin_cls.from_config(config, **kwargs)
     except Exception as e:
         msg = f"Failed to load {plugin_type}.{plugin}: {e}"
         raise NotImplementedError(msg) from e

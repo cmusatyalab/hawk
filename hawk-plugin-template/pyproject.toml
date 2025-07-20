@@ -15,6 +15,9 @@ dependencies = [
 [project.entry-points."cmuhawk.retrievers"]
 example_retriever = "hawk_plugin_template.retriever:ExampleRetriever"
 
+[project.entry-points."cmuhawk.models"]
+example_model = "hawk_plugin_template.model:ExampleTrainer"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

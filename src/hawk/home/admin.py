@@ -31,7 +31,6 @@ from ..proto.messages_pb2 import (
     MissionResults,
     MissionStats,
     ModelArchive,
-    ModelConfig,
     PercentagePolicyConfig,
     PerScoutSCMLOptions,
     ReexaminationStrategyConfig,
@@ -43,6 +42,7 @@ from ..proto.messages_pb2 import (
     TopKConfig,
     TrainConfig,
 )
+from ..scout.core.config import ModelHomeConfig
 from .stats import (
     HAWK_LABELED_CLASSES,
     HAWK_LABELED_OBJECTS,
@@ -128,84 +128,37 @@ class Admin:
         train_config = config["train_strategy"]
         train_type = train_config["type"]
 
-        train_strategy = None
-        if train_type == "dnn_classifier":
-            default_args = {
-                "mode": "hawk",
-                "unfreeze_layers": "3",
-                "arch": "resnet50",
-                "online_epochs": "[[10,0],[15,100]]",
-            }
-            train_strategy = TrainConfig(
-                dnn_classifier=ModelConfig(
-                    args=train_config.get("args", default_args),
-                )
-            )
-        elif train_type == "dnn_classifier_radar":
-            default_args = {
-                "mode": "hawk",
-                "unfreeze_layers": "3",
-                "arch": "resnet50",
-                "online_epochs": "[[10,0],[15,100]]",
-            }
-            train_strategy = TrainConfig(
-                dnn_classifier_radar=ModelConfig(
-                    args=train_config.get("args", default_args),
-                )
-            )
-        elif train_type == "yolo":
-            default_args = {"mode": "hawk", "online_epochs": "[[10,0],[15,100]]"}
-            train_strategy = TrainConfig(
-                yolo=ModelConfig(
-                    args=train_config.get("args", default_args),
-                )
-            )
-        elif train_type == "yolo_radar":
-            default_args = {"mode": "hawk", "online_epochs": "[[10,0],[15,100]]"}
-            train_strategy = TrainConfig(
-                yolo_radar=ModelConfig(
-                    args=train_config.get("args", default_args),
-                )
-            )
-        elif train_type == "fsl":
+        train_config.update(train_config.get("args", {}))
+
+        if train_type == "fsl":
             support_path = train_config["example_path"]
             image = Image.open(support_path).convert("RGB")
-            tmpfile = io.BytesIO()
-            image.save(tmpfile, format="JPEG", quality=75)
-            content = tmpfile.getvalue()
-            support_data = base64.b64encode(content).decode("utf8")
-            default_args = {
-                "mode": "hawk",
-                "support_path": "/srv/diamond/dota/support.jpg",
-                "fsl_traindir": "/srv/diamond/dota/fsl_traindir",
-                "support_data": support_data,
-            }
+            with io.BytesIO() as tmpfile:
+                image.save(tmpfile, format="JPEG", quality=75)
+                content = tmpfile.getvalue()
+            train_config["support_data"] = base64.b64encode(content).decode("utf8")
 
-            train_strategy = TrainConfig(
-                fsl=ModelConfig(
-                    args=default_args,
-                    # args=train_config.get('args', default_args),
-                )
-            )
-        elif train_type == "activity_classifier":
-            default_args = {
-                "mode": "hawk",
-                "embed_dim": "480",
-                "depth": "2",
-                "num_heads": "16",
-                "mlp_dim": "1920",
-                "num_classes": "2",
-                "head_dim": "480",
-                "T": "5",
-            }
-            train_strategy = TrainConfig(
-                activity_classifier=ModelConfig(
-                    args=train_config.get("args", default_args),
-                )
-            )
-        else:
-            errmsg = f"Unknown train strategy {train_type}"
-            raise NotImplementedError(errmsg)
+        def content_from_file(file: Path | None) -> bytes | None:
+            if file is None or not file.is_file():
+                return None
+            return file.read_bytes()
+
+        def modelarchive_from_file(file: Path | None) -> ModelArchive | None:
+            model_content = content_from_file(file)
+            if not model_content:
+                return None
+            return ModelArchive(content=model_content)
+
+        # pull settings from train_config that are only used by home
+        model_home_config = ModelHomeConfig.model_validate(train_config)
+
+        bootstrap_zip = content_from_file(model_home_config.bootstrap_path) or b""
+        initial_model = modelarchive_from_file(model_home_config.initial_model_path)
+        base_model = modelarchive_from_file(model_home_config.base_model_path)
+        train_validate = model_home_config.train_validate
+
+        train_config = validate_and_scrub_config("model", train_type, train_config)
+        train_strategy = TrainConfig(trainer=train_type, config=train_config)
 
         # retrainPolicy
         retrain_config = config["retrain_policy"]
@@ -344,29 +297,6 @@ class Admin:
             errmsg = f"Unknown selector {selector_type}"
             raise NotImplementedError(errmsg)
 
-        # initialModel
-        model_path = Path(train_config.get("initial_model_path", ""))
-        model_content = model_path.read_bytes() if model_path.is_file() else b""
-
-        initial_model = None
-        if len(model_content):
-            initial_model = ModelArchive(
-                content=model_content,
-            )
-
-        # base model (e.g. used for radar as a "foundation model" for transfer learning)
-        base_model_path = Path(train_config.get("base_model_path", ""))
-        base_model_content = b""
-        if base_model_path.is_file():
-            base_model_content = base_model_path.read_bytes()
-
-        base_model = None
-        if len(base_model_content):
-            base_model = ModelArchive(
-                content=base_model_content,
-            )
-        # base_model_path = train_config.get("base_model_path", "")
-
         # SCML deployment options
         deployment_options = config.get("scml_deploy_options", "")
         self.scout_deployment_status = {}  ## Active, Idle, or Dead
@@ -451,14 +381,6 @@ class Admin:
         self.novel_class_discovery = config.get("novel_class_discovery", False)
         self.sub_class_discovery = config.get("sub_class_discovery", False)
 
-        # bootstrapZip
-        bootstrap_path = Path(train_config.get("bootstrap_path", ""))
-        if bootstrap_path.is_file():
-            bootstrap_zip = bootstrap_path.read_bytes()
-        else:
-            logger.info(f"{bootstrap_path} does not exist")
-            bootstrap_zip = b""
-
         # bandwidthFunc
         bw_config = config["bandwidth"]
         logger.info(f"BW config: {bw_config}")
@@ -468,8 +390,6 @@ class Admin:
         bandwidth_func = {}
         for i, _b in enumerate(bw_config):
             bandwidth_func[int(i)] = str(_b)
-
-        train_validate = train_config.get("validate", True)
 
         self._zmq_context = zmq.Context()
         a2s_port = config.deploy.a2s_port

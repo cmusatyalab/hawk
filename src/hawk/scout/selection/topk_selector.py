@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 from logzero import logger
 
 from ...classes import NEGATIVE_CLASS
+from ..core.config import ModelMode
 from ..core.model import Model
 from ..core.result_provider import ResultProvider
 from ..core.utils import get_example_key, log_exceptions
@@ -57,7 +58,7 @@ class TopKSelector(SelectorBase):
         self._priority_queues: ReexaminationQueueType = queue.PriorityQueue()
         self._batch_added = 0
         self._insert_lock = threading.Lock()
-        self._mode = "hawk"
+        self._mode = ModelMode.HAWK
 
         self.log_counter = [int(i / 3.0 * self._batch_size) for i in range(1, 4)]
 
@@ -70,7 +71,7 @@ class TopKSelector(SelectorBase):
             self._mission.log(
                 f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}"
             )
-            if self._mode != "oracle":
+            if self._mode != ModelMode.ORACLE:
                 self.result_queue_length.inc()
                 self.result_queue.put(result)
                 logger.info(f"[Result] Id {result.id} Score {result.score}")
@@ -90,7 +91,7 @@ class TopKSelector(SelectorBase):
             if result.gt != NEGATIVE_CLASS:
                 logger.info(f"Queueing {result.id} Score {result.score}")
 
-            if self._mode == "oracle" and int(result.score) == 1:
+            if self._mode == ModelMode.ORACLE and int(result.score) == 1:
                 self.result_queue_length.inc()
                 self.result_queue.put(result)
                 logger.info(f"[Result] Id {result.id} Score {result.score}")

@@ -11,8 +11,9 @@ import os
 import queue
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Sequence, cast
+from typing import TYPE_CHECKING, Callable, Iterable, Sequence, cast
 
+import numpy as np
 import numpy.typing as npt
 import torch
 import torchvision.transforms as transforms
@@ -29,6 +30,7 @@ from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.result_provider import ResultProvider
 from ...core.utils import log_exceptions
+from .config import YOLOModelConfig
 
 if TYPE_CHECKING:
     from ....hawkobject import HawkObject
@@ -39,22 +41,24 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 class YOLOModel(ModelBase):
+    config: YOLOModelConfig
+
     def __init__(
         self,
-        args: dict[str, Any],
+        config: YOLOModelConfig,
+        context: ModelContext,
         model_path: Path,
         version: int,
-        mode: str,
-        context: ModelContext,
+        *,
+        train_examples: dict[str, int] | None = None,
+        train_time: float = 0.0,
     ):
         logger.info(f"Loading DNN Model from {model_path}")
         assert model_path.is_file()
-        # args = dict(args)
-        args["input_size"] = args.get("input_size", 480)
         test_transforms = transforms.Compose(
             [
-                transforms.Resize(args["input_size"] + 32),
-                transforms.CenterCrop(args["input_size"]),
+                transforms.Resize(config.input_size + 32),
+                transforms.CenterCrop(config.input_size),
                 transforms.ToTensor(),
                 transforms.Normalize(
                     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
@@ -62,30 +66,26 @@ class YOLOModel(ModelBase):
             ]
         )
 
-        args["test_batch_size"] = args.get("test_batch_size", 32)
-        args["version"] = version
-        args["train_examples"] = args.get("train_examples", {"1": 0, "0": 0})
-        args["mode"] = mode
-        self.args = args
         self.yolo_repo = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "yolov5"
         )
 
-        super().__init__(self.args, model_path, context)
+        super().__init__(
+            config,
+            context,
+            model_path,
+            version,
+            train_examples,
+            train_time,
+        )
 
         self._test_transforms = test_transforms
-        self._train_examples = args["train_examples"]
-        self._batch_size = args["test_batch_size"]
 
         model = self.load_model(model_path)
         self._device = torch.device("cuda")
         self._model: torch.nn.Module | None = model.to(self._device)
         self._model.eval()
         self._running = True
-
-    @property
-    def version(self) -> int:
-        return self._version
 
     def preprocess(self, obj: HawkObject) -> torch.Tensor:
         assert obj.media_type.startswith("image/")
@@ -100,16 +100,10 @@ class YOLOModel(ModelBase):
         if self._model is None:
             return b""
 
-        content = io.BytesIO()
-        torch.save(
-            {
-                "state_dict": self._model.state_dict(),
-            },
-            content,
-        )
-        content.seek(0)
-
-        return content.getvalue()
+        with io.BytesIO() as f:
+            torch.save({"state_dict": self._model.state_dict()}, f)
+            content = f.getvalue()
+        return content
 
     def load_model(self, model_path: Path) -> torch.nn.Module:
         model = torch.hub.load(
@@ -122,7 +116,7 @@ class YOLOModel(ModelBase):
 
     def get_predictions(
         self, inputs: torch.Tensor
-    ) -> tuple[list[float], list[npt.NDArray]]:
+    ) -> tuple[list[float], list[npt.NDArray[np.float32]]]:
         assert self._model is not None
         with torch.no_grad():
             output = self._model(inputs, detection=True).pred
@@ -142,7 +136,7 @@ class YOLOModel(ModelBase):
             try:
                 request = self.request_queue.get(timeout=1)
                 requests.append(request)
-                if len(requests) < self._batch_size:
+                if len(requests) < self.config.test_batch_size:
                     continue
             except queue.Empty:
                 if len(requests) == 0 or time.time() < next_infer:
@@ -161,9 +155,9 @@ class YOLOModel(ModelBase):
             return []
 
         output = []
-        for i in range(0, len(requests), self._batch_size):
+        for i in range(0, len(requests), self.config.test_batch_size):
             batch = []
-            for object_id in requests[i : i + self._batch_size]:
+            for object_id in requests[i : i + self.config.test_batch_size]:
                 obj = self.context.retriever.get_ml_data(object_id)
                 assert obj is not None
                 batch.append((object_id, self.preprocess(obj)))
@@ -176,12 +170,12 @@ class YOLOModel(ModelBase):
     def infer_dir(
         self,
         directory: Path,
-        callback_fn: Callable[[Sequence[int], Sequence[float]], float],
+        callback_fn: Callable[[Sequence[int], list[npt.NDArray[np.float32]]], float],
     ) -> TestResults:
         dataset = datasets.ImageFolder(str(directory), transform=None)
         data_loader = DataLoader(
             dataset,
-            batch_size=self._batch_size,
+            batch_size=self.config.test_batch_size,
             shuffle=False,
             num_workers=mp.cpu_count(),
         )
@@ -190,7 +184,7 @@ class YOLOModel(ModelBase):
         predictions = []
         with torch.no_grad():
             for inputs, target in data_loader:
-                prediction = self.get_predictions(inputs)
+                _, prediction = self.get_predictions(inputs)
                 del inputs
                 for i in range(len(prediction)):
                     targets.append(target[i])
@@ -201,7 +195,7 @@ class YOLOModel(ModelBase):
 
     def evaluate_model(self, test_path: Path) -> TestResults:
         def calculate_performance(
-            y_true: Sequence[int], y_pred: Sequence[float]
+            y_true: Sequence[int], y_pred: Sequence[npt.NDArray[np.float32]]
         ) -> float:
             return cast(float, average_precision_score(y_true, y_pred, average=None))
 
@@ -235,10 +229,10 @@ class YOLOModel(ModelBase):
                             ClassLabel(int(detections_per_sample[j, 5]) + 1)
                         ],
                         confidence=float(detections_per_sample[j, 4]),
-                        center_x=float(detections_per_sample[j, 0] / 640),
-                        center_y=float(detections_per_sample[j, 1] / 640),
-                        width=float(detections_per_sample[j, 2] / 640),
-                        height=float(detections_per_sample[j, 3] / 640),
+                        x=float(detections_per_sample[j, 0] / 640),
+                        y=float(detections_per_sample[j, 1] / 640),
+                        w=float(detections_per_sample[j, 2] / 640),
+                        h=float(detections_per_sample[j, 3] / 640),
                     )
                     for j in range(len(detections_per_sample))
                 ]
