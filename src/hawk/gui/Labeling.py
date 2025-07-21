@@ -49,10 +49,7 @@ mission.resync()
 class_list = ClassList()
 class_list.extend(mission.classes)
 inprogress_classes = {
-    cls
-    for bboxes in st.session_state.saves.values()
-    for det in bboxes
-    for cls in det.scores
+    det.class_name for bboxes in st.session_state.saves.values() for det in bboxes
 }
 class_list.extend(inprogress_classes)
 
