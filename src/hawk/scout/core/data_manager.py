@@ -239,7 +239,7 @@ class DataManager:
             except ValueError:
                 return False
 
-        image_extensions = (".png", ".jpeg", ".jpg", ".npy")
+        image_extensions = (".png", ".jpeg", ".jpg", ".npy", ".pt")
 
         with zipfile.ZipFile(io.BytesIO(zip_content), "r") as zf:
             example_files = zf.namelist()
