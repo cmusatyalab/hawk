@@ -22,4 +22,9 @@ class ActivityTrainerConfig(ActivityModelConfig, ModelTrainerConfig):
     initial_model_epochs: int = 10
     online_epochs: int | list[tuple[int, int]] = 10
 
+    # override default compress level because video files are already
+    # compressed, large, and expensive to recompress
+    capture_trainingset: bool = False
+    capture_trainingset_compresslevel: int = 0
+
     notional_train_time: float = 0.0

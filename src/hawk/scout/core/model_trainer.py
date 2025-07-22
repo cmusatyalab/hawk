@@ -7,7 +7,7 @@ from __future__ import annotations
 import threading
 from abc import ABC, abstractmethod
 from pathlib import Path
-from zipfile import ZIP_STORED, ZipFile  # ZIP_DEFLATED
+from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 import torch
 
@@ -59,13 +59,23 @@ class ModelTrainer(ModelTrainerBase):
         return version
 
     def capture_trainingset(self, cmd: str, extra_files: list[Path]) -> None:
+        if not self.config.capture_trainingset:
+            return
+
         # assuming train dir is {mission_dir}/data/examples/train
         # and train.txt, val.txt and saved models are in {mission_dir}/model
         model_version = self.get_version()
         mission_dir = self.context.model_dir.parent
         archive = self.context.model_path(model_version, template="dataset-{}.zip")
 
-        with ZipFile(archive, "w", compression=ZIP_STORED, compresslevel=1) as zf:
+        compression = (
+            ZIP_DEFLATED
+            if self.config.capture_trainingset_compresslevel
+            else ZIP_STORED
+        )
+        level = self.config.capture_trainingset_compresslevel
+
+        with ZipFile(archive, "w", compression=compression, compresslevel=level) as zf:
             zf.writestr("train.sh", cmd)
             for path in extra_files:
                 if path.is_file():

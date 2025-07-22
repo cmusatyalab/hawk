@@ -28,7 +28,9 @@ class ModelConfig(HawkPluginConfig):
 
 
 class ModelTrainerConfig(ModelConfig):
-    pass
+    # set compress level to 0 for no compression
+    capture_trainingset: bool = True
+    capture_trainingset_compresslevel: int = 1
 
 
 class ModelHomeConfig(ModelTrainerConfig):
