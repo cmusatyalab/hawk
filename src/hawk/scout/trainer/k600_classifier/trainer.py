@@ -139,25 +139,32 @@ class ActivityTrainer(ModelTrainerBase):
                         break
             else:
                 num_epochs = int(online_epochs)
-
         cmd = [
             sys.executable,
             "-m",
-            "hawk.scout.trainer.dnn_classifier.train_model",
+            "hawk.scout.trainer.k600_classifier.train_model",
             "--trainpath",
             str(trainpath),
-            "--arch",
-            self.args["arch"],
             "--savepath",
             str(model_savepath),
-            "--num-unfreeze",
-            str(self.args["unfreeze"]),
-            "--break-epoch",
+            "--epochs",
             str(num_epochs),
-            "--batch-size",
+            "--batch_size",
             str(self.args["batch-size"]),
-            "--num-classes",
-            str(num_classes),
+            "--embed_dim",
+            self.args["embed_dim"],
+            "--T",
+            self.args["T"],
+            "--depth",
+            self.args["depth"],
+            "--num_heads",
+            self.args["num_heads"],
+            "--mlp_dim",
+            self.args["mlp_dim"],
+            "--num_classes",
+            self.args["num_classes"],
+            "--head_dim",
+            self.args["head_dim"]
         ]
         capture_files = [trainpath, train_dir]
 

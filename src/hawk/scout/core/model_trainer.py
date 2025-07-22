@@ -8,7 +8,7 @@ import threading
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from typing import Any
-from zipfile import ZIP_DEFLATED, ZipFile
+from zipfile import ZIP_DEFLATED, ZipFile, ZIP_STORED
 
 import torch
 
@@ -66,7 +66,7 @@ class ModelTrainerBase(ModelTrainer):
         mission_dir = self.context.model_dir.parent
         archive = self.context.model_path(model_version, template="dataset-{}.zip")
 
-        with ZipFile(archive, "w", compression=ZIP_DEFLATED, compresslevel=1) as zf:
+        with ZipFile(archive, "w", compression=ZIP_STORED, compresslevel=1) as zf:
             zf.writestr("train.sh", cmd)
             for path in extra_files:
                 if path.is_file():

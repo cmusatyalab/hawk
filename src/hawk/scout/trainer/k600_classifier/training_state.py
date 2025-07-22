@@ -75,19 +75,20 @@ class TrainingState:
         cls, checkpoint: CheckpointState
     ) -> tuple[torch.nn.Module, Transform, int]:
         """Create or load a model based on the parameters in the checkpoint state."""
-        bootstrap_weights = checkpoint["weights"]
-        weights = get_model_weights().__members__[bootstrap_weights]
-
-        torch_model = get_model(weights=weights)
-
-        num_classes = checkpoint["num_classes"]
-        patch_final_layer(torch_model, num_classes)
-
-        if checkpoint["state_dict"]:
-            torch_model.load_state_dict(checkpoint["state_dict"])
-
-        preprocess = weights.transforms()
-        return torch_model, preprocess, checkpoint["epoch"]
+        # bootstrap_weights = checkpoint["weights"]
+        # weights = get_model_weights().__members__[bootstrap_weights]
+        #
+        # torch_model = get_model(weights=weights)
+        #
+        # num_classes = checkpoint["num_classes"]
+        # patch_final_layer(torch_model, num_classes)
+        #
+        # if checkpoint["state_dict"]:
+        #     torch_model.load_state_dict(checkpoint["state_dict"])
+        #
+        # preprocess = weights.transforms()
+        # return torch_model, preprocess, checkpoint["epoch"]
+        return get_model("resnet18"), None, 0
 
     @classmethod
     def load_for_inference(
@@ -131,9 +132,9 @@ class TrainingState:
             }
         torch_model, preprocess, epoch = cls._load_model_from_checkpoint(checkpoint)
 
-        replace_final_layer = checkpoint["num_classes"] != num_classes
-        if replace_final_layer:
-            patch_final_layer(torch_model, num_classes)
+        # replace_final_layer = checkpoint["num_classes"] != num_classes
+        # if replace_final_layer:
+        #     patch_final_layer(torch_model, num_classes)
 
         freeze_layers(torch_model, num_unfreeze)
         torch_model = to_gpu(torch_model)
@@ -145,8 +146,8 @@ class TrainingState:
             momentum=momentum,
             weight_decay=weight_decay,
         )
-        if not replace_final_layer and checkpoint["optimizer"]:
-            optimizer.load_state_dict(checkpoint["optimizer"])
+        # if not replace_final_layer and checkpoint["optimizer"]:
+        #     optimizer.load_state_dict(checkpoint["optimizer"])
 
         # load scheduler
         lr_scheduler = torch.optim.lr_scheduler.StepLR(
@@ -160,8 +161,8 @@ class TrainingState:
             schedulers=[warmup_lr_scheduler, lr_scheduler],
             milestones=[warmup_epochs],
         )
-        if checkpoint["scheduler"]:
-            scheduler.load_state_dict(checkpoint["scheduler"])
+        # if checkpoint["scheduler"]:
+        #     scheduler.load_state_dict(checkpoint["scheduler"])
 
         return cls(
             weights=checkpoint["weights"],

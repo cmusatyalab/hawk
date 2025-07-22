@@ -47,28 +47,29 @@ class ActivityClassifierModel(ModelBase):
     ):
         logger.info(f"Loading Action Recognition Model from {model_path}")
         assert model_path.is_file()
-
         embed_dim = int(args["embed_dim"])
-        T = int(args["T"])
-        depth = int(args["depth"])
-        num_heads = int(args["num_heads"])
-        mlp_dim = int(args["mlp_dim"])
-        num_classes = int(args["num_classes"])
-        head_dim = int(args["head_dim"])
-        transformer_params = TransformerParams(
-            embed_dim=embed_dim,
-            depth=depth,
-            num_heads=num_heads,
-            mlp_dim=mlp_dim,
-            num_classes=num_classes,
-            head_dim=head_dim,
-        )
-        model = ActionRecognitionModel(
-            MovinetEncoder(embed_dim=transformer_params.embed_dim),
-            transformer_params,
-            T=T,
-            stride=T,
-        )
+        model, _ = ActionRecognitionModel.load(model_path=str(model_path), backbone_encoder=MovinetEncoder(embed_dim=embed_dim))
+        # embed_dim = int(args["embed_dim"])
+        # T = int(args["T"])
+        # depth = int(args["depth"])
+        # num_heads = int(args["num_heads"])
+        # mlp_dim = int(args["mlp_dim"])
+        # num_classes = int(args["num_classes"])
+        # head_dim = int(args["head_dim"])
+        # transformer_params = TransformerParams(
+        #     embed_dim=embed_dim,
+        #     depth=depth,
+        #     num_heads=num_heads,
+        #     mlp_dim=mlp_dim,
+        #     num_classes=num_classes,
+        #     head_dim=head_dim,
+        # )
+        # model = ActionRecognitionModel(
+        #     MovinetEncoder(embed_dim=transformer_params.embed_dim),
+        #     transformer_params,
+        #     T=T,
+        #     stride=T,
+        # )
         args["version"] = version
         # args["train_examples"] = args.get("train_examples", {"1": 0, "0": 0})
         args["mode"] = mode
