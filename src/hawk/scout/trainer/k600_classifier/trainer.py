@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022-2024 Carnegie Mellon University
+# SPDX-FileCopyrightText: 2022-2025 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -164,7 +164,7 @@ class ActivityTrainer(ModelTrainerBase):
             "--num_classes",
             self.args["num_classes"],
             "--head_dim",
-            self.args["head_dim"]
+            self.args["head_dim"],
         ]
         capture_files = [trainpath, train_dir]
 

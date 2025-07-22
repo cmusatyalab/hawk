@@ -6,3 +6,7 @@
 - restructure mission setup to avoid needing `assert Foo is not None` constructs
 - make sure that typing.cast instances are guaranteed to return the correct type
 - implement 'evaluate_model' for hawk.scout.trainer.{fsl,yolo}.model:Model
+
+## todo
+
+- make archiving training datasets optional (and make compression level configurable)

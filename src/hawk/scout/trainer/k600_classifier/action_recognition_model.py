@@ -79,7 +79,7 @@ class ActionRecognitionModel(nn.Module):  # type: ignore[misc]
         import os
 
         model_path_without_extension, extension = os.path.splitext(model_path)
-        if extension == ".pth":
+        if extension in [".pth", ".pt"]:
             snapshot: dict[str, Any] = torch.load(
                 model_path, map_location="cpu", pickle_module=patch
             )

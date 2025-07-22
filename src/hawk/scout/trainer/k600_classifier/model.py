@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 Carnegie Mellon University
+# SPDX-FileCopyrightText: 2022-2025 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -26,7 +26,6 @@ from ...core.result_provider import ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
 from .action_recognition_model import ActionRecognitionModel
 from .movinet_a0s_encoder import MovinetEncoder
-from .temporal_encoder import TransformerParams
 from .training_state import TrainingState
 
 if TYPE_CHECKING:
@@ -48,7 +47,10 @@ class ActivityClassifierModel(ModelBase):
         logger.info(f"Loading Action Recognition Model from {model_path}")
         assert model_path.is_file()
         embed_dim = int(args["embed_dim"])
-        model, _ = ActionRecognitionModel.load(model_path=str(model_path), backbone_encoder=MovinetEncoder(embed_dim=embed_dim))
+        model, _ = ActionRecognitionModel.load(
+            model_path=str(model_path),
+            backbone_encoder=MovinetEncoder(embed_dim=embed_dim),
+        )
         # embed_dim = int(args["embed_dim"])
         # T = int(args["T"])
         # depth = int(args["depth"])

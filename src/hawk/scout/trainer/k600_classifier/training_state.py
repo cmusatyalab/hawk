@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022-2024 Carnegie Mellon University
+# SPDX-FileCopyrightText: 2022-2025 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, TypedDict
 
 import torch
-from torchvision.models import get_model, get_model_weights
+from torchvision.models import get_model
 from torchvision.transforms.v2 import Transform
 
 

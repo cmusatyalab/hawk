@@ -8,7 +8,7 @@ import threading
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from typing import Any
-from zipfile import ZIP_DEFLATED, ZipFile, ZIP_STORED
+from zipfile import ZIP_STORED, ZipFile  # ZIP_DEFLATED
 
 import torch
 
