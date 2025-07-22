@@ -72,11 +72,6 @@ message ModelMetrics {
   double f1Score = 6;
 }
 
-message ImportModel {
-  ModelArchive model = 1;
-  string path = 2;
-}
-
 message ModelArchive {
   bytes content = 1;
   int32 version = 2;

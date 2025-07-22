@@ -23,7 +23,6 @@ from ...proto import Empty
 from ...proto.messages_pb2 import (
     ChangeDeploymentStatus,
     Dataset,
-    ImportModel,
     MissionId,
     MissionResults,
     MissionStats,
@@ -178,26 +177,6 @@ class A2SAPI:
         except Exception as e:
             reply = f"ERROR: {e}".encode()
         return reply
-
-    def a2s_new_model(self, msg: bytes) -> bytes:
-        """API call to import new model from HOME
-
-        Args:
-            request (str): serialized ImportModel message
-
-        Returns:
-            bytes: SUCCESS or ERROR message
-        """
-        try:
-            request = ImportModel()
-            request.ParseFromString(msg)
-
-            self._a2s_new_model(request)
-
-            reply = "SUCCESS"
-        except Exception as e:
-            reply = f"ERROR: {e}"
-        return reply.encode()
 
     def a2s_get_test_results(self, msg: bytes) -> bytes:
         """API call to test the model on the TEST dataset
@@ -446,21 +425,6 @@ class A2SAPI:
         if mission.enable_logfile:
             mission.log("SEARCH STATS")
         return reply
-
-    @log_exceptions
-    def _a2s_new_model(self, request: ImportModel) -> None:
-        """Function to import new model from HOME
-
-        Args:
-            request (ImportModel) ImportModel message
-        """
-        mission = self._manager.get_mission()
-        model = request.model
-        path = Path(request.path)
-        version = model.version
-        mission.import_model(path, model.content, version)
-        logger.info("[IMPORT] FINISHED Model Import")
-        mission.log("IMPORT MODEL")
 
     @log_exceptions
     def _a2s_get_test_results(self, request: str) -> MissionResults:
