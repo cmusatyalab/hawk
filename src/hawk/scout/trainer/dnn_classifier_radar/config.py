@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from ...core.config import ModelConfig, ModelTrainerConfig
 
 
@@ -20,6 +18,5 @@ class DNNRadarTrainerConfig(DNNRadarModelConfig, ModelTrainerConfig):
     unfreeze_layers: int = 3
     initial_model_epochs: int = 15
     online_epochs: int | list[tuple[int, int]] = [(10, 0), (15, 100)]
-    test_dir: Path | None = None
 
     notional_train_time: float = 0.0

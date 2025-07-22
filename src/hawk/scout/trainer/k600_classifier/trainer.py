@@ -30,7 +30,6 @@ class ActivityTrainer(ModelTrainer):
         super().__init__(config, context)
 
         self.train_initial_model = False
-        self.testpath: Path | None = None
 
         logger.info(f"Model_dir {self.context.model_dir}")
 
@@ -113,8 +112,8 @@ class ActivityTrainer(ModelTrainer):
                 for label in labels:
                     for path in val_samples[label]:
                         f.write(f"{path} {label}\n")
-
-            self.testpath = valpath
+        else:
+            valpath = None
 
         num_epochs = self.config.initial_model_epochs
         if new_version <= 0:
@@ -164,8 +163,8 @@ class ActivityTrainer(ModelTrainer):
             cmd.extend(["--resume", str(self.prev_path)])
             # capture_files.append(self.prev_path)
 
-        if self.config.test_dir is not None:
-            cmd.extend(["--valpath", str(self.config.test_dir)])
+        if valpath is not None:
+            cmd.extend(["--valpath", str(valpath)])
             capture_files.extend([valpath, val_dir])
 
         cmd_str = shlex.join(cmd)

@@ -29,16 +29,11 @@ class DNNClassifierTrainerRadar(ModelTrainer):
     def __init__(self, config: DNNRadarTrainerConfig, context: ModelContext):
         super().__init__(config, context)
 
-        self.testpath: Path | None = None
         self.train_initial_model = False
+
         self.base_model_path = self.context.model_dir / "base_model.pth"
         logger.info(f" base model path: {self.base_model_path}\n")
-
         logger.info(f"Model_dir {self.context.model_dir}")
-
-        if self.config.test_dir is not None:
-            msg = f"Test Path {self.config.test_dir} provided does not exist"
-            assert self.config.test_dir.exists(), msg
 
         logger.info("DNN CLASSIFIER TRAINER RADAR CALLED")
 
@@ -115,8 +110,8 @@ class DNNClassifierTrainerRadar(ModelTrainer):
                 for label in labels:
                     for path in val_samples[label]:
                         f.write(f"{path} {label}\n")
-
-            self.testpath = valpath
+        else:
+            valpath = None
 
         num_epochs = self.config.initial_model_epochs
         if new_version <= 0:
@@ -160,8 +155,8 @@ class DNNClassifierTrainerRadar(ModelTrainer):
             cmd.extend(["--resume", str(self.prev_path)])
             # capture_files.append(self.prev_path)
 
-        if self.testpath is not None:
-            cmd.extend(["--valpath", str(self.testpath)])
+        if valpath is not None:
+            cmd.extend(["--valpath", str(valpath)])
             capture_files.extend([valpath, val_dir])
 
         cmd_str = shlex.join(cmd)

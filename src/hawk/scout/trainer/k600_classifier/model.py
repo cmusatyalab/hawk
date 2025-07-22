@@ -57,21 +57,6 @@ class ActivityClassifierModel(ModelBase):
             backbone_encoder=MovinetEncoder(embed_dim=config.embed_dim),
         )
 
-        # transformer_params = TransformerParams(
-        #     embed_dim=config.embed_dim,
-        #     depth=config.depth,
-        #     num_heads=config.num_heads,
-        #     mlp_dim=config.mlp_dim,
-        #     num_classes=config.num_classes,
-        #     head_dim=config.head_dim,
-        # )
-        # model = ActionRecognitionModel(
-        #     MovinetEncoder(embed_dim=transformer_params.embed_dim),
-        #     transformer_params,
-        #     T=config.T,
-        #     stride=config.T,
-        # )
-
         super().__init__(
             config, context, model_path, version, train_examples, train_time
         )
