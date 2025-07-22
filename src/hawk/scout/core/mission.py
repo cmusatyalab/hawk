@@ -284,21 +284,11 @@ class Mission(DataManagerContext, ModelContext):
 
         return TestResults(version=version)
 
-    def load_model(
-        self,
-        model_path: Path,
-        content: bytes = b"",
-        model_version: int = -1,
-    ) -> Model:
-        logger.info("Loading model")
-        assert model_path.exists() or len(content)
-        assert self.trainer is not None
-        return self.trainer.load_model(model_path, content, model_version)
-
-    def import_model(
-        self, model_path: Path, content: bytes, model_version: int
-    ) -> None:
-        model = self.load_model(model_path, content, model_version)
+    def import_model(self, content: bytes) -> None:
+        if self.trainer is None:
+            logger.error("import model: Mission not set up")
+            return
+        model = self.trainer.import_model(content)
         self._set_model(model, False)
 
     def export_model(self) -> ModelArchive:
@@ -638,10 +628,9 @@ class Mission(DataManagerContext, ModelContext):
 
         if model is None and self.check_initial_model():
             logger.info("Loading initial model")
-            model = self.trainer.load_model(content=self.initial_model.content)
-            self._set_model(model, False)
-            if self.enable_logfile:
-                self.log(f"Initial Model {model.version} SET")
+            self.import_model(self.initial_model.content)
+            if self.enable_logfile and self._model is not None:
+                self.log(f"Initial Model {self._model.version} SET")
             return
 
         with self._data_manager.get_examples(

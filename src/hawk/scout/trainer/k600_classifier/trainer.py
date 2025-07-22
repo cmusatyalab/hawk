@@ -32,19 +32,7 @@ class ActivityTrainer(ModelTrainer):
 
         logger.info("ACTIVITY TRAINER CALLED")
 
-    def load_model(
-        self, path: Path | None = None, content: bytes = b"", version: int = -1
-    ) -> ActivityClassifierModel:
-        new_version = self.get_new_version()
-
-        if path is None or not path.is_file():
-            assert len(content)
-            path = self.context.model_path(new_version)
-            path.write_bytes(content)
-
-        version = self.get_version()
-        logger.info(f"Loading from path {path}")
-        self.prev_model_path = path
+    def load_model(self, path: Path, version: int) -> ActivityClassifierModel:
         return ActivityClassifierModel(self.config, self.context, path, version)
 
     def train_model(self, train_dir: Path) -> ActivityClassifierModel:

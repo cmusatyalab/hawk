@@ -34,19 +34,8 @@ class DNNClassifierTrainerRadar(ModelTrainer):
 
         logger.info("DNN CLASSIFIER TRAINER RADAR CALLED")
 
-    def load_model(
-        self, path: Path | None = None, content: bytes = b"", version: int = -1
-    ) -> DNNClassifierModelRadar:
-        new_version = self.get_new_version()
-
-        if path is None or not path.is_file():
-            assert len(content)
-            path = self.context.model_path(new_version)
-            path.write_bytes(content)
-
-        version = self.get_version()
+    def load_model(self, path: Path, version: int) -> DNNClassifierModelRadar:
         logger.info(f"Loading from path {path}")
-        self.prev_model_path = path
         return DNNClassifierModelRadar(self.config, self.context, path, version)
 
     def train_model(self, train_dir: Path) -> DNNClassifierModelRadar:

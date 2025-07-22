@@ -458,8 +458,8 @@ class A2SAPI:
         for idx, path in enumerate(model_paths):
             version = get_version(path, idx)
             logger.info(f"model {path} version {version}")
-            # create trainer and check
-            model = mission.load_model(path, model_version=version)
+            # load model and check
+            model = mission.trainer.load_model(path, version)
             result = model.evaluate_model(test_path)
             results[version] = result
 

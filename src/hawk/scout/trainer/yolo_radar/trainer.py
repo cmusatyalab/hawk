@@ -15,7 +15,6 @@ import yaml
 from logzero import logger
 
 from ...context.model_trainer_context import ModelContext
-from ...core.config import ModelMode
 from ...core.model_trainer import ModelTrainer
 from ...core.utils import log_exceptions
 from .config import YOLOTrainerConfig
@@ -39,24 +38,8 @@ class YOLOTrainerRadar(ModelTrainer):
 
         logger.info("YOLO RADAR TRAINER CALLED")
 
-    @log_exceptions
-    def load_model(
-        self, path: Path | None = None, content: bytes = b"", version: int = -1
-    ) -> YOLOModelRadar:
-        if version == -1:
-            version = self.get_new_version()
-
-        if self.config.mode != ModelMode.ORACLE and (
-            path is None or not path.is_file()
-        ):
-            assert len(content)
-            path = self.context.model_path(version, template="model-{}.pt")
-            path.write_bytes(content)
-
-        assert path is not None
-
+    def load_model(self, path: Path, version: int) -> YOLOModelRadar:
         self.context.stop_model()
-
         logger.info(f" Trainer Loading from path {path}")
         self.prev_model_path = path
         return YOLOModelRadar(self.config, self.context, path, version)

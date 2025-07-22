@@ -77,18 +77,7 @@ class ExampleTrainer(ModelTrainer):
     def __init__(self, config: ExampleTrainerConfig, context: ModelContext):
         super().__init__(config, context)
 
-    def load_model(
-        self, path: Path | None = None, content: bytes = b"", version: int = -1
-    ) -> ExampleModel:
-        new_version = self.get_new_version()
-
-        if path is None or not path.is_file():
-            assert len(content)
-            path = self.context.model_path(new_version)
-            path.write_bytes(content)
-
-        self.prev_model_path = path
-        version = self.get_version()
+    def load_model(self, path: Path, version: int) -> ExampleModel:
         return ExampleModel(self.config, self.context, path, version)
 
     def train_model(self, train_dir: Path) -> ExampleModel:

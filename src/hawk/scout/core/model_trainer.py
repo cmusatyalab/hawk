@@ -23,10 +23,7 @@ class ModelTrainerBase(HawkPlugin, ABC):
     config: ModelTrainerConfig
 
     @abstractmethod
-    def load_model(
-        self, path: Path | None = None, content: bytes = b"", version: int = -1
-    ) -> ModelBase:
-        pass
+    def load_model(self, path: Path, version: int) -> ModelBase: ...
 
     @abstractmethod
     def train_model(self, train_dir: Path) -> ModelBase: ...
@@ -54,6 +51,15 @@ class ModelTrainer(ModelTrainerBase):
         with self._version_lock:
             version = self._latest_version
         return version
+
+    def import_model(self, model: bytes) -> ModelBase:
+        version = self.get_new_version()
+
+        path = self.context.model_path(version)
+        path.write_bytes(model)
+
+        self.prev_model_path = path
+        return self.load_model(path, version)
 
     def model_trainer(self, train_dir: Path) -> ModelBase:
         if self.config.mode == ModelMode.ORACLE and self.prev_model_path is not None:

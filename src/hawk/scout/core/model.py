@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-import errno
-import os
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -114,9 +112,6 @@ class ModelBase(Model):
         self._version = version
         self._train_examples = train_examples
         self._train_time = train_time
-
-        if self.config.mode != ModelMode.ORACLE and not model_path.exists():
-            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), model_path)
 
     @property
     def version(self) -> int:

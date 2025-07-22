@@ -25,17 +25,10 @@ class FewShotTrainer(ModelTrainer):
         super().__init__(config, context)
         logger.info("FSL TRAINER CALLED")
 
-    def load_model(
-        self, path: Path | None = None, content: bytes = b"", version: int = -1
-    ) -> FewShotModel:
-        if path is None or not path.is_file():
-            assert len(content)
-            path = self.context.model_path(version)
-            path.write_bytes(content)
-
+    def load_model(self, path: Path, version: int) -> FewShotModel:
         logger.info(f"Loading from path {path}")
         return FewShotModel(self.config, self.context, path, version)
 
     def train_model(self, train_dir: Path) -> FewShotModel:
         assert self.prev_model_path is not None
-        return self.load_model(self.prev_model_path, version=0)
+        return self.load_model(self.prev_model_path, 0)
