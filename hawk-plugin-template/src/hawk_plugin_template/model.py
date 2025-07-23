@@ -69,7 +69,7 @@ class ExampleModel(ModelBase):
 
 
 class ExampleTrainer(ModelTrainer):
-    """Example trainer, just returns the same model."""
+    """Example trainer, always returns the same model."""
 
     config_class = ExampleTrainerConfig
     config: ExampleTrainerConfig
@@ -87,10 +87,10 @@ class ExampleTrainer(ModelTrainer):
             path = self.context.model_path(new_version)
             path.write_bytes(content)
 
-        self.prev_path = path
+        self.prev_model_path = path
         version = self.get_version()
         return ExampleModel(self.config, self.context, path, version)
 
     def train_model(self, train_dir: Path) -> ExampleModel:
-        new_version = self.get_new_version()
-        return self.load_model(self.prev_path, version=new_version)
+        assert self.prev_model_path is not None
+        return self.load_model(self.prev_model_path, version=0)

@@ -73,10 +73,8 @@ class Model(ABC):
     def version(self) -> int:
         pass
 
-    @property
     @abstractmethod
-    def mode(self) -> ModelMode:
-        pass
+    def is_oracle(self) -> bool: ...
 
     @property
     @abstractmethod
@@ -124,9 +122,8 @@ class ModelBase(Model):
     def version(self) -> int:
         return self._version
 
-    @property
-    def mode(self) -> ModelMode:
-        return self.config.mode
+    def is_oracle(self) -> bool:
+        return self.config.mode == ModelMode.ORACLE
 
     @property
     def train_examples(self) -> dict[str, int]:

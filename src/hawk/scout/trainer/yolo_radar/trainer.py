@@ -32,8 +32,6 @@ class YOLOTrainerRadar(ModelTrainer):
     def __init__(self, config: YOLOTrainerConfig, context: ModelContext):
         super().__init__(config, context)
 
-        self.train_initial_model = False
-
         logger.info(f"Model_dir {self.context.model_dir}")
 
         if self.config.test_dir is not None:
@@ -64,9 +62,10 @@ class YOLOTrainerRadar(ModelTrainer):
 
         assert path is not None
 
-        self.prev_path = path
         self.context.stop_model()
+
         logger.info(f" Trainer Loading from path {path}")
+        self.prev_model_path = path
         return YOLOModelRadar(self.config, self.context, path, version)
 
     @log_exceptions
@@ -115,9 +114,7 @@ class YOLOTrainerRadar(ModelTrainer):
                     f.write(f"{path}\n")
 
         num_epochs = self.config.initial_model_epochs
-        if new_version <= 0:
-            self.train_initial_model = True
-        else:
+        if new_version > 0:
             online_epochs = self.config.online_epochs
 
             if isinstance(online_epochs, list):
@@ -141,7 +138,10 @@ class YOLOTrainerRadar(ModelTrainer):
         with open(data_file, "w") as outfile:
             yaml.dump(data_dict, outfile, default_flow_style=False)
 
-        weights = Path("yolov5s.pt") if self.train_initial_model else self.prev_path
+        if new_version <= 0 or self.prev_model_path is None:
+            weights = Path("yolov5s.pt")
+        else:
+            weights = self.prev_model_path
 
         cmd = [
             sys.executable,
@@ -162,7 +162,7 @@ class YOLOTrainerRadar(ModelTrainer):
         ]
         capture_files = [data_file, trainpath, train_dir]
 
-        # if not self.train_initial_model:
+        # if new_version > 0:
         #     capture_files.append(weights)
 
         if self.config.test_dir is not None:
@@ -179,10 +179,9 @@ class YOLOTrainerRadar(ModelTrainer):
             raise FileNotFoundError
         logger.info("Training completed")
 
-        self.prev_path = model_savepath
-
         self.context.stop_model()
 
+        self.prev_model_path = model_savepath
         return YOLOModelRadar(
             self.config,
             self.context,

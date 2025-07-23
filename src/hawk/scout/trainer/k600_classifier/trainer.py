@@ -29,8 +29,6 @@ class ActivityTrainer(ModelTrainer):
     def __init__(self, config: ActivityTrainerConfig, context: ModelContext):
         super().__init__(config, context)
 
-        self.train_initial_model = False
-
         logger.info(f"Model_dir {self.context.model_dir}")
 
         logger.info("ACTIVITY TRAINER CALLED")
@@ -47,18 +45,18 @@ class ActivityTrainer(ModelTrainer):
 
         version = self.get_version()
         logger.info(f"Loading from path {path}")
-        self.prev_path = path
+        self.prev_model_path = path
         return ActivityClassifierModel(self.config, self.context, path, version)
 
     def train_model(self, train_dir: Path) -> ActivityClassifierModel:
         # check mode if not hawk return model
         # EXPERIMENTAL
         if self.config.mode == ModelMode.ORACLE:
-            return self.load_model(self.prev_path, version=0)
+            return self.load_model(self.prev_model_path, version=0)
 
         elif self.config.mode == ModelMode.NOTIONAL:
             # notional_path = self.config.notional_model_path
-            notional_path = self.prev_path
+            notional_path = self.prev_model_path
             # sleep for training time
             time_sleep = self.config.notional_train_time
             time_now = time.time()
@@ -116,9 +114,7 @@ class ActivityTrainer(ModelTrainer):
             valpath = None
 
         num_epochs = self.config.initial_model_epochs
-        if new_version <= 0:
-            self.train_initial_model = True
-        else:
+        if new_version > 0:
             online_epochs = self.config.online_epochs
 
             if isinstance(online_epochs, list):
@@ -157,11 +153,9 @@ class ActivityTrainer(ModelTrainer):
         ]
         capture_files = [trainpath, train_dir]
 
-        if self.train_initial_model:
-            self.train_initial_model = False
-        else:
-            cmd.extend(["--resume", str(self.prev_path)])
-            # capture_files.append(self.prev_path)
+        if new_version > 0 and self.prev_model_path is not None:
+            cmd.extend(["--resume", str(self.prev_model_path)])
+            # capture_files.append(self.prev_model_path)
 
         if valpath is not None:
             cmd.extend(["--valpath", str(valpath)])
@@ -177,8 +171,7 @@ class ActivityTrainer(ModelTrainer):
         # train completed time
         train_time = time.time() - self.context.start_time
 
-        self.prev_path = model_savepath
-
+        self.prev_model_path = model_savepath
         return ActivityClassifierModel(
             self.config,
             self.context,

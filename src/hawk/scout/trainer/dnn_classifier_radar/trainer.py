@@ -29,8 +29,6 @@ class DNNClassifierTrainerRadar(ModelTrainer):
     def __init__(self, config: DNNRadarTrainerConfig, context: ModelContext):
         super().__init__(config, context)
 
-        self.train_initial_model = False
-
         self.base_model_path = self.context.model_dir / "base_model.pth"
         logger.info(f" base model path: {self.base_model_path}\n")
         logger.info(f"Model_dir {self.context.model_dir}")
@@ -49,7 +47,7 @@ class DNNClassifierTrainerRadar(ModelTrainer):
 
         version = self.get_version()
         logger.info(f"Loading from path {path}")
-        self.prev_path = path
+        self.prev_model_path = path
         return DNNClassifierModelRadar(self.config, self.context, path, version)
 
     def train_model(self, train_dir: Path) -> DNNClassifierModelRadar:
@@ -57,11 +55,11 @@ class DNNClassifierTrainerRadar(ModelTrainer):
         # EXPERIMENTAL
         logger.info(f"TRAINING ARGS: {self.config}")
         if self.config.mode == ModelMode.ORACLE:
-            return self.load_model(self.prev_path, version=0)
+            return self.load_model(self.prev_model_path, version=0)
 
         elif self.config.mode == ModelMode.NOTIONAL:
             # notional_path = self.config.notional_model_path
-            notional_path = self.prev_path
+            notional_path = self.prev_model_path
             # sleep for training time
             time_sleep = self.config.notional_train_time
             time_now = time.time()
@@ -114,9 +112,7 @@ class DNNClassifierTrainerRadar(ModelTrainer):
             valpath = None
 
         num_epochs = self.config.initial_model_epochs
-        if new_version <= 0:
-            self.train_initial_model = True
-        else:
+        if new_version > 0:
             online_epochs = self.config.online_epochs
 
             if isinstance(online_epochs, list):
@@ -147,13 +143,12 @@ class DNNClassifierTrainerRadar(ModelTrainer):
         ]
         capture_files = [trainpath, train_dir]
 
-        if self.train_initial_model:
-            self.train_initial_model = False
+        if new_version <= 0 or self.prev_model_path is None:
             cmd.extend(["--base_model_path", str(self.base_model_path)])
             logger.info("EXTENDED base model path...")
         else:
-            cmd.extend(["--resume", str(self.prev_path)])
-            # capture_files.append(self.prev_path)
+            cmd.extend(["--resume", str(self.prev_model_path)])
+            # capture_files.append(self.prev_model_path)
 
         if valpath is not None:
             cmd.extend(["--valpath", str(valpath)])
@@ -169,8 +164,7 @@ class DNNClassifierTrainerRadar(ModelTrainer):
         # train completed time
         train_time = time.time() - self.context.start_time
 
-        self.prev_path = model_savepath
-
+        self.prev_model_path = model_savepath
         return DNNClassifierModelRadar(
             self.config,
             self.context,

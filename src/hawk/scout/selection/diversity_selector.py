@@ -12,7 +12,6 @@ from sklearn.cluster import DBSCAN
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-from ..core.config import ModelMode
 from ..core.result_provider import ResultProvider
 from ..core.utils import log_exceptions
 from ..reexamination.reexamination_strategy import ReexaminationStrategy
@@ -128,7 +127,7 @@ class DiversitySelector(TopKSelector):
             self._mission.log(
                 f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}"
             )
-            if self._mode != ModelMode.ORACLE:
+            if not self._is_oracle:
                 # self.result_queue_length.inc()
                 # self.result_queue.put(result)
                 results.append(result)

@@ -38,8 +38,6 @@ class FSLTrainer(ModelTrainer):
         support_data = base64.b64decode(self.config.support_data)
         self.config.support_path.write_bytes(support_data)
 
-        self.train_initial_model = False
-
         logger.info(f"Model_dir {self.context.model_dir}")
 
         logger.info("FSL TRAINER CALLED")
@@ -56,7 +54,7 @@ class FSLTrainer(ModelTrainer):
 
         version = self.get_version()
         logger.info(f"Loading from path {path}")
-        self.prev_path = path
+        self.prev_model_path = path
         return FSLModel(self.config, self.context, path, version)
 
     def train_model(self, train_dir: Path) -> FSLModel:
@@ -136,8 +134,7 @@ class FSLTrainer(ModelTrainer):
         # train completed time
         train_time = time_end - time_start
 
-        self.prev_path = model_savepath
-
+        self.prev_model_path = model_savepath
         return FSLModel(
             self.config,
             self.context,

@@ -5,7 +5,6 @@
 """Admin to Scouts internal api calls"""
 
 import dataclasses
-import glob
 import io
 import json
 import os
@@ -63,7 +62,7 @@ from ..stats import (
     collect_metrics_total,
 )
 
-MODEL_FORMATS = ["pt", "pth"]
+MODEL_FORMATS = [".pt", ".pth"]
 
 
 class A2SAPI:
@@ -441,22 +440,22 @@ class A2SAPI:
             raise Exception(f"{test_path} does not exist")
 
         mission = self._manager.get_mission()
-        model_dir = str(mission.model_dir)
-        files = sorted(glob.glob(os.path.join(model_dir, "*.*")))
-        model_paths = [x for x in files if x.split(".")[-1].lower() in MODEL_FORMATS]
-        logger.info(model_paths)
+        if mission.trainer is None:
+            raise Exception("Mission not set up")
+
+        model_paths = sorted(
+            x for x in mission.model_dir.iterdir() if x.suffix.lower() in MODEL_FORMATS
+        )
 
         def get_version(path: Path, idx: int) -> int:
-            name = path.name
             try:
-                version = int(name.split("model-")[-1].split(".")[0])
+                version = int(path.stem.split("model-")[-1])
             except Exception:
                 version = idx
             return version
 
         results: Dict[int, TestResults] = {}
-        for idx, filename in enumerate(model_paths):
-            path = Path(filename)
+        for idx, path in enumerate(model_paths):
             version = get_version(path, idx)
             logger.info(f"model {path} version {version}")
             # create trainer and check

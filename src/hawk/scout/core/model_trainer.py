@@ -42,6 +42,8 @@ class ModelTrainer(ModelTrainerBase):
         self._latest_version = -1
         self._version_lock = threading.Lock()
 
+        self.prev_model_path: Path | None = None
+
     def get_new_version(self) -> int:
         with self._version_lock:
             self._latest_version += 1

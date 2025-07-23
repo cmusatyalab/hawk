@@ -23,9 +23,6 @@ class FewShotTrainer(ModelTrainer):
 
     def __init__(self, config: FewShotTrainerConfig, context: ModelContext):
         super().__init__(config, context)
-
-        self._model_path: Path | None = None
-
         logger.info("FSL TRAINER CALLED")
 
     def load_model(
@@ -37,9 +34,8 @@ class FewShotTrainer(ModelTrainer):
             path.write_bytes(content)
 
         logger.info(f"Loading from path {path}")
-        self._model_path = path
         return FewShotModel(self.config, self.context, path, version)
 
     def train_model(self, train_dir: Path) -> FewShotModel:
-        version = self.get_new_version()
-        return self.load_model(self._model_path, version=version)
+        assert self.prev_model_path is not None
+        return self.load_model(self.prev_model_path, version=0)

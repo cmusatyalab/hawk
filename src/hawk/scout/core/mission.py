@@ -32,7 +32,6 @@ from ..api.s2h_api import S2HPublisher
 from ..api.s2s_api import S2SServicer, s2s_receive_request
 from ..context.data_manager_context import DataManagerContext
 from ..context.model_trainer_context import ModelContext
-from ..core.config import ModelMode
 from ..retrain.retrain_policy_base import RetrainPolicyBase
 from ..retrain.sampleInterval_policy import SampleIntervalPolicy
 from ..retrieval.retriever import Retriever
@@ -135,8 +134,7 @@ class Mission(DataManagerContext, ModelContext):
         self.base_model = base_model
         if self.base_model is not None:
             base_model_path = self._model_dir / "base_model.pth"
-            with open(base_model_path, "wb") as f:
-                f.write(self.base_model.content)
+            base_model_path.write_bytes(self.base_model.content)
             logger.info(f" base model path: {base_model_path}")
         self._validate = validate
         self.scml_deploy_options = scml_deploy_options
@@ -562,9 +560,7 @@ class Mission(DataManagerContext, ModelContext):
                 # results with groundtruth data we obtain from the retriever.
                 # Maybe this should be moved to a home related configuration
                 # instead of training/inferencing model configuration.
-                oracle_mode = (
-                    self._model is not None and self._model.mode == ModelMode.ORACLE
-                )
+                oracle_mode = self._model is not None and self._model.is_oracle()
 
                 tile = result.to_protobuf(
                     self.retriever, self.scout_index, oracle_mode=oracle_mode

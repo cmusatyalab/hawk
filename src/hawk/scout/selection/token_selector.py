@@ -6,7 +6,6 @@ from logzero import logger
 
 from ...classes import NEGATIVE_CLASS
 from ...proto.messages_pb2 import SendLabel
-from ..core.config import ModelMode
 from ..core.result_provider import ResultProvider
 from ..core.utils import log_exceptions
 from ..reexamination.reexamination_strategy import ReexaminationStrategy
@@ -94,7 +93,7 @@ class TokenSelector(TopKSelector):
             self.priority_queue_length.inc()
             self._priority_queues.put((-result.score, time_result, result))
 
-            if self._mode == ModelMode.ORACLE and int(result.score) == 1:
+            if self._is_oracle and int(result.score) == 1:
                 logger.info(f"[Result] Id {result.id} Score {result.score}")
 
             if self.sample_count % 200 == 0:
