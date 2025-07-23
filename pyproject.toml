@@ -98,7 +98,7 @@ tile = "hawk.scout.retrieval.tile_retriever:TileRetriever"
 video = "hawk.scout.retrieval.video_retriever:VideoRetriever"
 
 [project.entry-points."cmuhawk.models"]
-activity = "hawk.scout.trainer.k600_classifier.trainer:ActivityTrainer"
+activity_recognition = "hawk.scout.trainer.k600_classifier.trainer:ActivityTrainer"
 dnn_classifier = "hawk.scout.trainer.dnn_classifier.trainer:DNNClassifierTrainer"
 dnn_classifier_radar = "hawk.scout.trainer.dnn_classifier_radar.trainer:DNNClassifierTrainerRadar"
 fsl = "hawk.scout.trainer.fsl.trainer:FSLTrainer"
