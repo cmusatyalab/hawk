@@ -14,7 +14,6 @@ import torch
 from logzero import logger
 
 from ...context.model_trainer_context import ModelContext
-from ...core.config import ModelMode
 from ...core.model_trainer import ModelTrainer
 from .config import DNNRadarTrainerConfig
 from .model import DNNClassifierModelRadar
@@ -51,23 +50,6 @@ class DNNClassifierTrainerRadar(ModelTrainer):
         return DNNClassifierModelRadar(self.config, self.context, path, version)
 
     def train_model(self, train_dir: Path) -> DNNClassifierModelRadar:
-        # check mode if not hawk return model
-        # EXPERIMENTAL
-        logger.info(f"TRAINING ARGS: {self.config}")
-        if self.config.mode == ModelMode.ORACLE:
-            return self.load_model(self.prev_model_path, version=0)
-
-        elif self.config.mode == ModelMode.NOTIONAL:
-            # notional_path = self.config.notional_model_path
-            notional_path = self.prev_model_path
-            # sleep for training time
-            time_sleep = self.config.notional_train_time
-            time_now = time.time()
-            while (time.time() - time_now) < time_sleep:
-                time.sleep(1)
-
-            return self.load_model(notional_path, version=0)
-
         new_version = self.get_new_version()
 
         model_savepath = self.context.model_path(new_version)

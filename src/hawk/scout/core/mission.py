@@ -641,14 +641,15 @@ class Mission(DataManagerContext, ModelContext):
             model = self.trainer.load_model(content=self.initial_model.content)
             self._set_model(model, False)
             if self.enable_logfile:
-                self.log(f"{model.version} Initial Model SET")
+                self.log(f"Initial Model {model.version} SET")
             return
+
         with self._data_manager.get_examples(
             DatasetSplit.TRAIN
         ) as train_dir:  # important
             logger.info(f"Train dir {train_dir}")
             self.selector.add_easy_negatives(train_dir)
-            model = self.trainer.train_model(train_dir)
+            model = self.trainer.model_trainer(train_dir)
 
         eval_start = time.time()
         logger.info(f"Trained model in {eval_start - train_start:.3f} seconds")

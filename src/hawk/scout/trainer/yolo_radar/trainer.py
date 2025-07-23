@@ -8,7 +8,6 @@ import glob
 import shlex
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 import torch
@@ -38,12 +37,6 @@ class YOLOTrainerRadar(ModelTrainer):
             msg = f"Test Path {self.config.test_dir} provided does not exist"
             assert self.config.test_dir.exists(), msg
 
-        if self.config.mode == ModelMode.NOTIONAL:
-            notional_model_path = self.config.notional_model_path
-            assert notional_model_path is not None, "Missing config notional_model_path"
-            msg = f"Notional Model Path {notional_model_path} does not exist"
-            assert notional_model_path.exists(), msg
-
         logger.info("YOLO RADAR TRAINER CALLED")
 
     @log_exceptions
@@ -70,21 +63,6 @@ class YOLOTrainerRadar(ModelTrainer):
 
     @log_exceptions
     def train_model(self, train_dir: Path) -> YOLOModelRadar:
-        # check mode if not hawk return model
-        # EXPERIMENTAL
-        if self.config.mode == ModelMode.ORACLE:
-            return self.load_model(version=0)
-
-        elif self.config.mode == ModelMode.NOTIONAL:
-            notional_path = self.config.notional_model_path
-            # sleep for training time
-            time_sleep = self.config.notional_train_time
-            time_now = time.time()
-            while (time.time() - time_now) < time_sleep:
-                time.sleep(1)
-
-            return self.load_model(notional_path, version=0)
-
         new_version = self.get_new_version()
 
         model_savepath = self.context.model_path(new_version, template="model-{}.pt")

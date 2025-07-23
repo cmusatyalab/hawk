@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
@@ -13,7 +14,7 @@ import torch
 
 from ...plugins import HawkPlugin
 from ..context.model_trainer_context import ModelContext
-from .config import ModelTrainerConfig
+from .config import ModelMode, ModelTrainerConfig
 from .model import ModelBase
 
 
@@ -28,8 +29,7 @@ class ModelTrainerBase(HawkPlugin, ABC):
         pass
 
     @abstractmethod
-    def train_model(self, train_dir: Path) -> ModelBase:
-        pass
+    def train_model(self, train_dir: Path) -> ModelBase: ...
 
 
 class ModelTrainer(ModelTrainerBase):
@@ -55,10 +55,18 @@ class ModelTrainer(ModelTrainerBase):
             version = self._latest_version
         return version
 
-    def set_version(self, version: int) -> int:
-        with self._version_lock:
-            self._latest_version = version
-        return version
+    def model_trainer(self, train_dir: Path) -> ModelBase:
+        if self.config.mode == ModelMode.ORACLE and self.prev_model_path is not None:
+            return self.load_model(self.prev_model_path, version=0)
+
+        elif self.config.mode == ModelMode.NOTIONAL:
+            # sleep for training time
+            time.sleep(self.config.notional_train_time)
+
+            assert self.config.notional_model_path is not None
+            return self.load_model(self.config.notional_model_path, version=0)
+
+        return self.train_model(train_dir)
 
     def capture_trainingset(self, cmd: str, extra_files: list[Path]) -> None:
         if not self.config.capture_trainingset:

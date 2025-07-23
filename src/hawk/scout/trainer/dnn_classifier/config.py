@@ -16,5 +16,3 @@ class DNNTrainerConfig(DNNModelConfig, ModelTrainerConfig):
     unfreeze_layers: int = 3
     initial_model_epochs: int = 15
     online_epochs: int | list[tuple[int, int]] = [(10, 0), (15, 100)]
-
-    notional_train_time: float = 0.0

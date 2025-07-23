@@ -26,5 +26,3 @@ class ActivityTrainerConfig(ActivityModelConfig, ModelTrainerConfig):
     # compressed, large, and expensive to recompress
     capture_trainingset: bool = False
     capture_trainingset_compresslevel: int = 0
-
-    notional_train_time: float = 0.0

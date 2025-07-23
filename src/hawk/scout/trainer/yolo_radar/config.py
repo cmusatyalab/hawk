@@ -19,6 +19,3 @@ class YOLOTrainerConfig(YOLOModelConfig, ModelTrainerConfig):
     initial_model_epochs: int = 30
     online_epochs: int | list[tuple[int, int]] = [(10, 0), (15, 100)]
     test_dir: Path | None = None
-
-    notional_model_path: Path | None = None
-    notional_train_time: float = 0.0
