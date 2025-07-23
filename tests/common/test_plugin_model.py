@@ -16,7 +16,7 @@ REFERENCE_IMAGE_DATA = (
 )
 
 CONFIGS_MODEL = {
-    "activity": {},
+    "activity_recognition": {},
     "dnn_classifier": {},
     "dnn_classifier_radar": {},
     "fsl": {"support_data": base64.b64encode(REFERENCE_IMAGE_DATA).decode("utf-8")},
