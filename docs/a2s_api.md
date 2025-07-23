@@ -18,6 +18,7 @@ List of calls in Admin API:
 *   [a2s_start_mission](#a2s_start_mission)
 *   [a2s_stop_mission](#a2s_stop_mission)
 *   [a2s_get_mission_stats](#a2s_get_mission_stats)
+*   [a2s_new_model](#a2s_new_model)
 *   [a2s_get_test_results](#a2s_get_test_results)
 *   [a2s_get_post_mission_archive](#a2s_get_post_mission_archive)
 * * *
@@ -71,6 +72,19 @@ Input:
 Output:
 
 *   [MissionStats](messages.md#MissionStats)
+
+### **a2s_new_model**
+
+ Call to transfer and load model on the scout.
+ For experimental purposes.
+
+Input:
+
+*   [ModelArchive](messages.md#ModelArchive)
+
+Output:
+
+*   None
 
 ### **a2s_get_test_results**
 
