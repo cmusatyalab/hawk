@@ -10,6 +10,6 @@ from hawk.home.script_labeler import main as _script_labeler_main  # noqa: F401
 
 
 @pytest.mark.home
-def test_entrypoints_home():
-    """The real test was if we could import the various entrypoints"""
+def test_entrypoints_home() -> None:
+    """The real test was if we could import the various entrypoints."""
     assert True

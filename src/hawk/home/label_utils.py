@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Utility functions for labelers"""
+"""Utility functions for labelers."""
 
 from __future__ import annotations
 
@@ -57,7 +57,8 @@ class LabelKitArgs(TypedDict):
 @dataclass
 class LabelSample:
     """Representation of an unlabeled tile received from a scout on it's way
-    to getting labeled, or a labeled result being passed back to the scout"""
+    to getting labeled, or a labeled result being passed back to the scout.
+    """
 
     objectId: ObjectId | None  # unique object id (None if this is a new example)
     scoutIndex: int  # index of originating scout
@@ -99,7 +100,7 @@ class LabelSample:
         self,
         fp: TextIO,
         class_list: ClassList | None = None,
-        **kwargs: int | str | float,
+        **kwargs: str | float,
     ) -> None:
         if self.objectId is not None:
             kwargs["objectId"] = self.objectId.serialize_oid()
@@ -119,41 +120,43 @@ class LabelSample:
                 detections=[d.to_dict() for d in self.detections],
                 groundtruth=[gt.to_dict() for gt in self.groundtruth],
                 **kwargs,
-            )
+            ),
         )
         fp.write(f"{jsonl}\n")
 
     def to_labelkit_args(self, class_list: ClassList) -> LabelKitArgs:
         bboxes = Detection.to_labelkit(self.detections, class_list)
-        return dict(
-            bboxes=[out["bboxes"] for out in bboxes],
-            labels=[out["labels"] for out in bboxes],
-        )
+        return {
+            "bboxes": [out["bboxes"] for out in bboxes],
+            "labels": [out["labels"] for out in bboxes],
+        }
 
     def to_flat_dict(
-        self, index: int = 0, image_dir: Path | None = None
+        self,
+        index: int = 0,
+        image_dir: Path | None = None,
     ) -> Iterator[DetectionDict]:
         """Yields a list of dicts where each dict contains a single
         object/boundingbox/class/confidence detection event.
         Mostly useful when building a Pandas dataframe.
         """
         if image_dir is None:
-            image_dir = Path(".")
+            image_dir = Path()
 
-        result: DetectionDict = dict(
-            time_queued=self.queued,
-            instance=index,
-            object_id=map_(self.objectId, lambda o: o.serialize_oid()),
-            scout_index=self.scoutIndex,
-            model_version=self.model_version,
-            image_path=str(self.content(image_dir, index=0)),
-            class_name=class_name_to_str(NEGATIVE_CLASS),
-            confidence=1.0,
-            bbox_x=0.5,
-            bbox_y=0.5,
-            bbox_w=1.0,
-            bbox_h=1.0,
-        )
+        result: DetectionDict = {
+            "time_queued": self.queued,
+            "instance": index,
+            "object_id": map_(self.objectId, lambda o: o.serialize_oid()),
+            "scout_index": self.scoutIndex,
+            "model_version": self.model_version,
+            "image_path": str(self.content(image_dir, index=0)),
+            "class_name": class_name_to_str(NEGATIVE_CLASS),
+            "confidence": 1.0,
+            "bbox_x": 0.5,
+            "bbox_y": 0.5,
+            "bbox_w": 1.0,
+            "bbox_h": 1.0,
+        }
         if not self.detections:
             yield result
             return
@@ -171,7 +174,7 @@ class LabelSample:
 
     @property
     def classes(self) -> set[ClassName]:
-        return set(detection.class_name for detection in self.detections)
+        return {detection.class_name for detection in self.detections}
 
     def class_counts(self) -> Counter[ClassName]:
         count: Counter[ClassName] = Counter(
@@ -200,7 +203,10 @@ class LabelSample:
         )
 
     def content(
-        self, directory: Path, index: int | None = None, suffix: str | None = None
+        self,
+        directory: Path,
+        index: int | None = None,
+        suffix: str | None = None,
     ) -> Path:
         path = directory / self._image_name
         if index is not None:
@@ -211,10 +217,13 @@ class LabelSample:
 
 
 def index_jsonl(
-    jsonl: PathLike[str] | str, skip: int = 0, index: set[ObjectId] | None = None
+    jsonl: PathLike[str] | str,
+    skip: int = 0,
+    index: set[ObjectId] | None = None,
 ) -> tuple[set[ObjectId], int]:
     """Returns a set of all unique ids in the given jsonl file.
-    Returns both the set and the number of lines parsed."""
+    Returns both the set and the number of lines parsed.
+    """
     jsonl_path = Path(jsonl)
     if not jsonl_path.exists():
         return set(), 0
@@ -241,7 +250,7 @@ def read_jsonl(
     """Yields all entries in the given jsonl file
     exclude is a set of id values to leave out
     skip is the number of lines to skip completely before parsing lines
-    when tail is true, iterate indefinitely and block waiting for new lines
+    when tail is true, iterate indefinitely and block waiting for new lines.
     """
     if exclude is None:
         exclude = set()
@@ -297,7 +306,7 @@ class MissionData:
         self.resync_labeled()
 
         new_unlabeled = list(
-            read_jsonl(self.unlabeled_jsonl, skip=self.unlabeled_offset)
+            read_jsonl(self.unlabeled_jsonl, skip=self.unlabeled_offset),
         )
         if new_unlabeled:
             self.unlabeled.extend(new_unlabeled)
@@ -312,7 +321,9 @@ class MissionData:
         return scout_classes | local_classes
 
     def read_unlabeled(
-        self, exclude_labeled: bool = True, tail: bool = False
+        self,
+        exclude_labeled: bool = True,
+        tail: bool = False,
     ) -> Iterator[LabelSample]:
         if exclude_labeled:
             self.resync_labeled()

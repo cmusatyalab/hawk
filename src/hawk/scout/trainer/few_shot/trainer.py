@@ -4,15 +4,19 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import torch
 from logzero import logger
 
-from ...context.model_trainer_context import ModelContext
 from ...core.model_trainer import ModelTrainer
 from .config import FewShotTrainerConfig
 from .model import FewShotModel
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ...context.model_trainer_context import ModelContext
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
@@ -21,7 +25,7 @@ class FewShotTrainer(ModelTrainer):
     config_class = FewShotTrainerConfig
     config: FewShotTrainerConfig
 
-    def __init__(self, config: FewShotTrainerConfig, context: ModelContext):
+    def __init__(self, config: FewShotTrainerConfig, context: ModelContext) -> None:
         super().__init__(config, context)
         logger.info("FSL TRAINER CALLED")
 

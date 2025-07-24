@@ -8,13 +8,15 @@ import contextlib
 import shutil
 import time
 import zipfile
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 import streamlit as st
 
-from hawk.deploy_config import DeployConfig
 from hawk.gui import deployment
-from hawk.gui.elements import Mission
+
+if TYPE_CHECKING:
+    from hawk.deploy_config import DeployConfig
+    from hawk.gui.elements import Mission
 
 # Mission control commands that show up in multiple places
 _CMD_CLONE = "Clone mission"
@@ -34,7 +36,9 @@ if st.session_state.get("deployed_state") is None:
 
 @st.dialog("Are you sure?")
 def _confirm(
-    callback: Callable[[Mission], bool], mission: Mission, prompt: str
+    callback: Callable[[Mission], bool],
+    mission: Mission,
+    prompt: str,
 ) -> None:
     with st.form("Confirm", enter_to_submit=False):
         confirmed = st.form_submit_button(f"Yes, {prompt}")
@@ -53,29 +57,28 @@ def _progress(callback: Callable[[DeployConfig], bool], mission: Mission) -> Non
 
 def archive_mission_state(mission: Mission) -> None:
     """Archive mission state."""
-
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     archive_path = mission.mission_dir.joinpath(timestamp).with_suffix(".zip")
 
     with zipfile.ZipFile(
-        archive_path, mode="w", compression=zipfile.ZIP_DEFLATED
+        archive_path,
+        mode="w",
+        compression=zipfile.ZIP_DEFLATED,
     ) as archive:
-        archive_paths = (
-            ["mission_config.yml"]
-            + mission.extra_config_files
-            + [
-                "bootstrap",
-                "hawk_home.log",
-                "logs",
-                "traces",
-                "unlabeled.jsonl",
-                "labeled.jsonl",
-                "images",
-                "novel.jsonl",
-                "novel",
-                "feature_vectors",
-            ]
-        )
+        archive_paths = [
+            "mission_config.yml",
+            *mission.extra_config_files,
+            "bootstrap",
+            "hawk_home.log",
+            "logs",
+            "traces",
+            "unlabeled.jsonl",
+            "labeled.jsonl",
+            "images",
+            "novel.jsonl",
+            "novel",
+            "feature_vectors",
+        ]
         for file in archive_paths:
             path = mission.mission_dir / file
             if path.is_dir():
@@ -90,7 +93,6 @@ def archive_mission_state(mission: Mission) -> None:
 
 def clone_mission(mission: Mission) -> bool:
     """Create a new mission from an existing one."""
-
     mission_name = mission.config.get("mission-name", mission.name.lstrip("_"))
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     new_mission_name = f"{mission_name}-{timestamp}"
@@ -102,7 +104,7 @@ def clone_mission(mission: Mission) -> bool:
         st.write("Copying mission configuration...")
 
         # copy config files
-        for file in ["mission_config.yml"] + mission.extra_config_files:
+        for file in ["mission_config.yml", *mission.extra_config_files]:
             path = mission.mission_dir / file
 
             # cleanup absolute paths that were written to mission/logs/hawk.yml
@@ -116,7 +118,9 @@ def clone_mission(mission: Mission) -> bool:
                 time.sleep(1)
 
         status.update(
-            label=f"Mission {new_mission_name} created", state="complete", expanded=True
+            label=f"Mission {new_mission_name} created",
+            state="complete",
+            expanded=True,
         )
     st.session_state["mission_name"] = new_mission_name
     return True
@@ -124,7 +128,6 @@ def clone_mission(mission: Mission) -> bool:
 
 def reset_mission(mission: Mission) -> bool:
     """Archive and reset mission state (labels/images/logs)."""
-
     with st.status("Resetting Mission state...", expanded=True) as status:
         st.write("Archiving mission state...")
         archive_mission_state(mission)
@@ -150,7 +153,6 @@ def reset_mission(mission: Mission) -> bool:
 
 def delete_mission(mission: Mission) -> bool:
     """Completely destroy all state and configuration."""
-
     with st.status("Deleting Mission...", expanded=True) as status:
         st.write("Removing labeled/unlabeled data...")
         time.sleep(1)
@@ -175,7 +177,6 @@ def delete_mission(mission: Mission) -> bool:
 @st.dialog("Starting mission")
 def start_home(mission: Mission) -> None:
     """Start the mission, if all scouts are deployed."""
-
     n_deployed = len(st.session_state.get("deployed_state", []))
     n_scouts = len(mission.config.deploy.scouts)
     if n_deployed != n_scouts:
@@ -193,7 +194,6 @@ def start_home(mission: Mission) -> None:
 @st.dialog("Stopping mission")
 def stop_home(mission: Mission) -> None:
     """Stop the mission and scouts."""
-
     deployment.stop_scouts(mission.config.deploy)
 
     with st.status("Stopping Mission...", expanded=True) as status:
@@ -259,9 +259,8 @@ def mission_controls(mission: Mission) -> None:
             # if all mission.scouts_deployed:
             if n_deployed == n_scouts:
                 actions.append(_CMD_START_MISSION)
-        else:
-            if deployment.check_home(mission.mission_dir):
-                actions.append(_CMD_STOP_MISSION)
+        elif deployment.check_home(mission.mission_dir):
+            actions.append(_CMD_STOP_MISSION)
 
     if st.session_state.get("controls") is None:
         st.session_state.controls = None

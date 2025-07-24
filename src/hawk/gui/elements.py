@@ -142,14 +142,14 @@ class Mission(MissionData):
 
         if not started and not active:
             return "Not Started"
-        elif not running and active:
+        if not running and active:
             return "Starting"
-        elif running and self.get_stats().get("training", 0):
+        if running and self.get_stats().get("training", 0):
             return "Training"
-        elif running and active:
+        if running and active:
             return "Running"
-        else:  # started/running and not active:
-            return "Finished"
+        # started/running and not active:
+        return "Finished"
 
     def to_dataframe(self, labels: Iterable[LabelSample]) -> pd.DataFrame:
         image_dir = self.mission_dir / "images"
@@ -182,7 +182,7 @@ class Mission(MissionData):
     @property
     def labeled_df(self) -> pd.DataFrame:
         return self.to_dataframe(
-            self.labeled.values() or read_jsonl(self.labeled_jsonl)
+            self.labeled.values() or read_jsonl(self.labeled_jsonl),
         )
 
     @property
@@ -193,7 +193,8 @@ class Mission(MissionData):
 
         df = df.set_index(["bbox_x", "bbox_y", "bbox_w", "bbox_h"], append=True)
         labeled = labeled.set_index(
-            ["bbox_x", "bbox_y", "bbox_w", "bbox_h"], append=True
+            ["bbox_x", "bbox_y", "bbox_w", "bbox_h"],
+            append=True,
         )
         df["groundtruth"] = labeled["class_name"].astype(df["class_name"].dtype)
 
@@ -205,19 +206,20 @@ def load_mission() -> Mission:
     mission_name = st.session_state.get("mission_name")
     if mission_name is not None:
         try:
-            mission = Mission.load(mission_name)
-            return mission
+            return Mission.load(mission_name)
         except ValueError:
             del st.session_state["mission_name"]
 
     from hawk.gui.Welcome import welcome_page
 
     st.switch_page(welcome_page)
+    raise AssertionError("shouldn't get here...")
 
 
 def reset_mission_state(sender: Signal | None) -> None:
     """Reset any mission specific session_state variables when we switched to a
-    different mission"""
+    different mission.
+    """
     selected_labels = [key for key in st.session_state if isinstance(key, int)]
     for key in selected_labels:
         # del st.session_state[key]
@@ -232,22 +234,23 @@ def save_state(state: str) -> None:
     """Copy changed state from temporary to permanent key.
     Use in combination with this when a widget is defined,
         st.session_state.foo = st.session_state.get("_foo", default)
-        st.widget(..., key="foo", on_change=save_state, args=("foo",))
+        st.widget(..., key="foo", on_change=save_state, args=("foo",)).
     """
     st.session_state[f"_{state}"] = st.session_state[state]
 
 
 def columns(ncols: int) -> Iterator[DeltaGenerator]:
-    """Generator function to create infinite list of columns"""
+    """Generator function to create infinite list of columns."""
     while 1:
         yield from st.columns(ncols)
 
 
 @contextmanager
 def paginate(
-    result_list: list[LabelSample], results_per_page: int
+    result_list: list[LabelSample],
+    results_per_page: int,
 ) -> Iterator[list[LabelSample]]:
-    """Paginate a list of results"""
+    """Paginate a list of results."""
     nresults = len(result_list)
     current_page = int(st.query_params.get("page", 1))
     pages = int((nresults + results_per_page - 1) / results_per_page)
@@ -277,13 +280,15 @@ def paginate(
             chosen_page = pages
         st.query_params["page"] = str(chosen_page)
 
-    options = (
-        ["first", "prev"]
-        + list(range(1, current_page)[-5:])
-        + [current_page]
-        + list(range(current_page + 1, pages + 1)[:5])
-        + ["next", "last"]
-    )
+    options = [
+        "first",
+        "prev",
+        *list(range(1, current_page)[-5:]),
+        current_page,
+        *list(range(current_page + 1, pages + 1)[:5]),
+        "next",
+        "last",
+    ]
     st.session_state["chosen_page"] = current_page
     st.radio(
         "Navigate to page",

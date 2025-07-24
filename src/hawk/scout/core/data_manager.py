@@ -39,7 +39,7 @@ TRAIN_TO_TEST_RATIO = 4
 
 
 class DataManager:
-    def __init__(self, context: Mission):
+    def __init__(self, context: Mission) -> None:
         self._context = context
         self._staging_dir = self._context.data_dir / "examples-staging"
         self._staging_dir.mkdir(parents=True, exist_ok=True)
@@ -64,7 +64,8 @@ class DataManager:
             self.add_initial_examples(bootstrap_zip)
         self._stored_examples_event = threading.Event()
         threading.Thread(
-            target=self._promote_staging_examples, name="promote-staging-examples"
+            target=self._promote_staging_examples,
+            name="promote-staging-examples",
         ).start()
 
         self._positives = 0
@@ -73,14 +74,14 @@ class DataManager:
         self.train_type = self._context.train_strategy
         # logger.info(f"Training strategy: {self.train_type}")
         self._radar_crop = self.train_type.trainer == "dnn_classifier_radar" and bool(
-            self.train_type.config.get("pick_patches", False)
+            self.train_type.config.get("pick_patches", False),
         )
 
     def get_example_directory(self, example_set: DatasetSplitValue) -> Path:
         return self._examples_dir / self._to_dir(example_set)
 
     def store_labeled_tile(self, tile: LabeledTile, net: bool = False) -> None:
-        """Store the tile content along with labels in the scout"""
+        """Store the tile content along with labels in the scout."""
         # if network retriever, tile is from other scout, and a negative:
         # just return (ignore)
         if (
@@ -92,9 +93,8 @@ class DataManager:
                 self._context.retriever.current_deployment_mode == "Active"
             ):  ## active scouts ignore negative from other scouts.
                 return
-            else:
-                if np.random.rand() > 1 / 7:
-                    return
+            if np.random.rand() > 1 / 7:
+                return
                 # idle scout should only accept 1 out of every 7 negative
                 # samples to mimic active scouts (1 scouts worth of neg samples).
 
@@ -216,7 +216,8 @@ class DataManager:
         # All active and idle scouts should receive pos and neg samples.
         # Active should ignore neg. samples.
         if not label.labels and not isinstance(
-            self._context.retriever, NetworkRetriever
+            self._context.retriever,
+            NetworkRetriever,
         ):
             return
 
@@ -293,13 +294,13 @@ class DataManager:
         logger.info(
             f"New positives {self.class_counts.positives}, "
             f"negatives {self.class_counts.negatives}, "
-            f"by class: {self.class_counts!r}"
+            f"by class: {self.class_counts!r}",
         )
 
         # Skip training if we already have a bootstrap model
         retrain = not self._context.check_initial_model()
         logger.info(
-            f"Initial model {self._context.check_initial_model()} retrain {retrain}"
+            f"Initial model {self._context.check_initial_model()} retrain {retrain}",
         )
         self._context.new_labels_callback(self.class_counts, retrain=retrain)
 
@@ -377,7 +378,7 @@ class DataManager:
                     example_subdir = self._staging_dir / "unspecified"
                 else:
                     example_subdir = self._staging_dir / self._to_dir(
-                        DatasetSplit.TRAIN
+                        DatasetSplit.TRAIN,
                     )
 
                 if label is not None:
@@ -386,7 +387,8 @@ class DataManager:
                     obj.to_file(example_path, mkdirs=True)
 
                     label_path = example_subdir.joinpath(
-                        "labels", example_file
+                        "labels",
+                        example_file,
                     ).with_suffix(".txt")
                     label_path.parent.mkdir(parents=True, exist_ok=True)
                     with label_path.open("w") as f:
@@ -398,7 +400,7 @@ class DataManager:
                             index = class_label_to_int(class_label) - 1
                             f.write(
                                 f"{index} {bbox.coords.center_x} {bbox.coords.center_y}"
-                                f" {bbox.coords.width} {bbox.coords.height}\n"
+                                f" {bbox.coords.width} {bbox.coords.height}\n",
                             )
                 else:
                     ignore_file = self._staging_dir / IGNORE_FILE[0]
@@ -429,7 +431,8 @@ class DataManager:
                                     for line in ignore_file:
                                         for example_set in set_dirs:
                                             old_path = self._remove_old_paths(
-                                                line, set_dirs[example_set]
+                                                line,
+                                                set_dirs[example_set],
                                             )
                                             if old_path is not None:
                                                 self._increment_example_count(
@@ -441,11 +444,13 @@ class DataManager:
                                 file.name not in IGNORE_FILE
                             ):  # to exclude easy-negative directory
                                 self._promote_staging_examples_dir(
-                                    file, set_dirs, new_samples
+                                    file,
+                                    set_dirs,
+                                    new_samples,
                                 )
 
                 logger.info(
-                    f"Promoted staging examples, totals by class={self.class_counts!r}"
+                    f"Promoted staging examples, totals by class={self.class_counts!r}",
                 )
                 if not self._context._abort_event.is_set() and new_samples:
                     self._context.new_labels_callback(new_samples)
@@ -479,11 +484,14 @@ class DataManager:
             for example_file in example_files:
                 for example_set in set_dirs:
                     old_path = self._remove_old_paths(
-                        example_file.name, set_dirs[example_set]
+                        example_file.name,
+                        set_dirs[example_set],
                     )
                     if old_path is not None:
                         self._increment_example_count(
-                            example_set, old_path.parent.name, -1
+                            example_set,
+                            old_path.parent.name,
+                            -1,
                         )
 
                 if subdir.name == "test" or (
@@ -514,13 +522,17 @@ class DataManager:
         return self._example_counts[f"{DatasetSplit.Name(example_set)}_{label}"]
 
     def _increment_example_count(
-        self, example_set: DatasetSplitValue, label: str, delta: int
+        self,
+        example_set: DatasetSplitValue,
+        label: str,
+        delta: int,
     ) -> None:
         self._example_counts[f"{DatasetSplit.Name(example_set)}_{label}"] += delta
 
     @staticmethod
     def _remove_old_paths(
-        example_file: Path | str, old_dirs: list[Path]
+        example_file: Path | str,
+        old_dirs: list[Path],
     ) -> Path | None:
         for old_path in old_dirs:
             old_example_path = old_path / Path(example_file)
@@ -549,12 +561,14 @@ class DataManager:
             label_dir = "0"
 
         feature_vector_path = object_id.file_name(
-            self._context._feature_vector_dir / label_dir, ".pt"
+            self._context._feature_vector_dir / label_dir,
+            ".pt",
         )
         feature_vector_path.parent.mkdir(parents=True, exist_ok=True)
 
         temp_file_path = object_id.file_name(
-            self._context._feature_vector_dir / "temp", ".pt"
+            self._context._feature_vector_dir / "temp",
+            ".pt",
         )
         if not temp_file_path.exists():
             # save the feature vector of any labeled sample received by another scout.
@@ -573,7 +587,8 @@ class DataManager:
         """
         try:
             feature_vector_path = object_id.file_name(
-                self._context._feature_vector_dir / "temp", ".pt"
+                self._context._feature_vector_dir / "temp",
+                ".pt",
             )
             return HawkObject.from_file(feature_vector_path)
         except FileNotFoundError:

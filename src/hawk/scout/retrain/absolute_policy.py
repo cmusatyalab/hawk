@@ -2,13 +2,13 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Retrain policy based on absolute #labels increment"""
+"""Retrain policy based on absolute #labels increment."""
 
 from .retrain_policy_base import RetrainPolicyBase
 
 
 class AbsolutePolicy(RetrainPolicyBase):
-    def __init__(self, threshold: int, only_positives: bool):
+    def __init__(self, threshold: int, only_positives: bool) -> None:
         super().__init__()
         self.new_examples = 0
         self._threshold = threshold

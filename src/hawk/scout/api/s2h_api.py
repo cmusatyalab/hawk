@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Scout to Home internal api calls"""
+"""Scout to Home internal api calls."""
 
 from multiprocessing.connection import _ConnectionBase
 
@@ -15,7 +15,7 @@ from ...ports import S2H_PORT
 class S2HPublisher:
     @staticmethod
     def s2h_send_tiles(home_ip: str, result_conn: _ConnectionBase) -> None:
-        """API call to send results to HOME
+        """API call to send results to HOME.
 
         Uses ZeroMQ PUSH/PULL protocol for async result transfer
         Network is bandwidth constricted using FireQOS.
@@ -26,6 +26,7 @@ class S2HPublisher:
 
         Returns:
             str: transmits serialized SendTiles message
+
         """
         context = zmq.Context()
         socket = context.socket(zmq.PUSH)
@@ -40,4 +41,4 @@ class S2HPublisher:
                 socket.send(msg)
         except Exception as e:
             logger.exception(e)
-            raise e
+            raise

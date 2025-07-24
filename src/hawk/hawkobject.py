@@ -100,7 +100,8 @@ class HawkObject:
             obj = msg
 
         if obj.media_type not in MEDIA_TYPES:
-            raise MediaTypeError(f"Unknown media type: {obj.media_type}")
+            errmsg = f"Unknown media type: {obj.media_type}"
+            raise MediaTypeError(errmsg)
         return cls(obj.content or b"", obj.media_type or "binary/octet-stream")
 
     ## Helpers
@@ -113,7 +114,8 @@ class HawkObject:
     def file_path(self, path: str | Path, index: int | None = None) -> Path:
         """Update a path to the object file to use a proper file-type based
         suffix and optionally a sequence number in case there are multiple
-        derived artifacts."""
+        derived artifacts.
+        """
         if not index:
             return Path(path).with_suffix(self.suffix)
         return Path(path).with_suffix(f".{index}.{self.suffix}")
@@ -121,7 +123,11 @@ class HawkObject:
     ## Exporters
 
     def to_file(
-        self, path: str | Path, index: int | None = None, *, mkdirs: bool = False
+        self,
+        path: str | Path,
+        index: int | None = None,
+        *,
+        mkdirs: bool = False,
     ) -> Path:
         """Write the object to a file. Return path to the new file.
 

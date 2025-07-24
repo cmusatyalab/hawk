@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: 2023,2024 Carnegie Mellon University
 # SPDX-License-Identifier: GPL-2.0-only
+from __future__ import annotations
 
 import shlex
 from pathlib import Path
-from typing import Optional
 
 from fabric.exceptions import GroupException
 from fabric.group import ThreadingGroup
@@ -70,7 +70,7 @@ def check_deployment(config: DeployConfig) -> int:
 def deploy(
     config: DeployConfig,
     dist_wheel: Path,
-    dist_requirements: Optional[Path] = None,
+    dist_requirements: Path | None = None,
     *,
     install_uv: bool = False,
 ) -> int:

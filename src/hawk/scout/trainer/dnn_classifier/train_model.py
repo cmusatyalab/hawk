@@ -16,19 +16,19 @@ from typing import Sequence
 
 import numpy as np
 import torch
-import torch.backends.cudnn as cudnn
-import torch.nn as nn
 import torch.nn.parallel
 import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
-import torchvision.models as models
 import torchvision.transforms.v2 as transforms
 from logzero import logger
 from sklearn.metrics import (  # auc, precision_recall_curve, roc_auc_score,
     average_precision_score,
 )
 from sklearn.preprocessing import label_binarize
+from torch import nn
+from torch.backends import cudnn
+from torchvision import models
 from tqdm import tqdm
 
 from ...core.utils import ImageFromList
@@ -85,10 +85,16 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--num-classes", default=2, type=int, help="number of classes to train"
+    "--num-classes",
+    default=2,
+    type=int,
+    help="number of classes to train",
 )
 parser.add_argument(
-    "--num-unfreeze", default=0, type=int, help="number of layers to train"
+    "--num-unfreeze",
+    default=0,
+    type=int,
+    help="number of layers to train",
 )
 parser.add_argument(
     "-j",
@@ -105,7 +111,10 @@ parser.add_argument(
     help="number of total epochs to run",
 )
 parser.add_argument(
-    "--warmup-epochs", default=5, type=int, help="initial number of epochs for warmup"
+    "--warmup-epochs",
+    default=5,
+    type=int,
+    help="initial number of epochs for warmup",
 )
 parser.add_argument(
     "--start-epoch",
@@ -156,7 +165,10 @@ parser.add_argument(
     help="path to latest checkpoint (default: none)",
 )
 parser.add_argument(
-    "--seed", default=None, type=int, help="seed for initializing training. "
+    "--seed",
+    default=None,
+    type=int,
+    help="seed for initializing training. ",
 )
 parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
 parser.add_argument(
@@ -200,10 +212,9 @@ def write_scores(file_path: Path, y_pred: list[int], y_true: list[int]) -> None:
     if os.path.exists(file_path):  ## remove if already exists
         os.remove(file_path)
     with open(file_path, "w") as f:
-        for i, pred in enumerate(y_pred):
-            f.write(
-                f"{pred:0.4f} {y_true[i]}\n"
-            )  ## write all predictions and labels to each line
+        f.writelines(
+            f"{pred:0.4f} {y_true[i]}\n" for i, pred in enumerate(y_pred)
+        )  ## write all predictions and labels to each line
 
 
 def eval_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None:
@@ -217,7 +228,8 @@ def eval_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None
     # load model from checkpoint
     print(f"=> loading checkpoint state '{args.resume}'")
     torch_model, preprocess, args.start_epoch = TrainingState.load_for_inference(
-        args.resume, args.arch
+        args.resume,
+        args.arch,
     )
     if args.start_epoch:
         print(f"=> loaded checkpoint '{args.resume}'")
@@ -314,7 +326,7 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
             transforms.RandomHorizontalFlip(),
             transforms.ToDtype(torch.float32, scale=True),
             model_state.preprocess,
-        ]
+        ],
     )
     train_dataset = ImageFromList(
         train_list,
@@ -366,7 +378,7 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
 
     targets = torch.LongTensor(train_dataset.targets)
     class_sample_count = torch.tensor(
-        [(targets == t).sum() for t in torch.unique(targets, sorted=True)]
+        [(targets == t).sum() for t in torch.unique(targets, sorted=True)],
     )
     logger.info(f"Class sample count: {class_sample_count}")
     total_samples = sum(class_sample_count)
@@ -378,7 +390,8 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
 
     logger.info(f"Total samples {total_samples} Class Weight {class_weights}")
     criterion = nn.CrossEntropyLoss(
-        weight=torch.Tensor(class_weights), label_smoothing=0.1
+        weight=torch.Tensor(class_weights),
+        label_smoothing=0.1,
     ).cuda()
 
     break_epoch = (
@@ -488,12 +501,15 @@ def adjust_learning_rate(
 
 
 def calculate_performance(
-    y_true: Sequence[int], y_pred: Sequence[Sequence[float]]
+    y_true: Sequence[int],
+    y_pred: Sequence[Sequence[float]],
 ) -> float:
     if len(y_pred[0]) > 2:
         y_true_bin = label_binarize(y_true, classes=list(range(len(y_pred[0]))))
         ap_by_class: Sequence[float] = average_precision_score(
-            y_true_bin, y_pred, average=None
+            y_true_bin,
+            y_pred,
+            average=None,
         )
         ap: float = sum(ap_by_class[1:]) / len(ap_by_class[1:])
         logger.info(f" AP by class: {ap_by_class}")
@@ -567,9 +583,7 @@ def validate_model(
                 [label.item() for label in y_true],
             )
 
-    auc = calculate_performance(y_true, y_pred)
-
-    return auc
+    return calculate_performance(y_true, y_pred)
 
 
 class Summary(Enum):
@@ -580,11 +594,14 @@ class Summary(Enum):
 
 
 class AverageMeter:
-    """Computes and stores the average and current value"""
+    """Computes and stores the average and current value."""
 
     def __init__(
-        self, name: str, fmt: str = ":f", summary_type: Summary = Summary.AVERAGE
-    ):
+        self,
+        name: str,
+        fmt: str = ":f",
+        summary_type: Summary = Summary.AVERAGE,
+    ) -> None:
         self.name = name
         self.fmt = fmt
         self.summary_type = summary_type

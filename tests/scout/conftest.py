@@ -19,7 +19,8 @@ if TYPE_CHECKING:
 
 
 REFERENCE_IMAGE = Path(__file__).parent.parent.joinpath(
-    "assets", "grace_hopper_517x606.jpg"
+    "assets",
+    "grace_hopper_517x606.jpg",
 )
 
 

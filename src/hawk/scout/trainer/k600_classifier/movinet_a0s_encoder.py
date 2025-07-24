@@ -30,8 +30,7 @@ class MoViNet_(MoViNet):  # type: ignore[misc]
 
     def avg(self, X: Tensor) -> Tensor:
         avg = F.adaptive_avg_pool3d(X, (X.shape[2], 1, 1))
-        avg = avg.squeeze(dim=(3, 4))
-        return avg
+        return avg.squeeze(dim=(3, 4))
 
     def forward(self, X: Tensor) -> Tensor:
         B = X.shape[0]
@@ -48,16 +47,17 @@ class MoViNet_(MoViNet):  # type: ignore[misc]
 
 
 class MovinetEncoder(BackboneEncoder):
-    def __init__(self, embed_dim: int):
+    def __init__(self, embed_dim: int) -> None:
         super().__init__(embed_dim=embed_dim)
         self._encoder = MoViNet_(
-            embed_dim=embed_dim, cfg=_C.MODEL.MoViNetA0, causal=True, pretrained=True
+            embed_dim=embed_dim,
+            cfg=_C.MODEL.MoViNetA0,
+            causal=True,
+            pretrained=True,
         )
 
     def forward(self, X: Tensor) -> Tensor:
-        """
-        :param X: (B, N, 3, H, W)
-        """
+        """:param X: (B, N, 3, H, W)"""
         B, N, C, H, W = X.shape
         assert C == 3
         self._encoder.clean_activation_buffers()

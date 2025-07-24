@@ -69,7 +69,7 @@ class NetworkRetriever(RandomRetriever):
         context = zmq.Context()
         client_socket = context.socket(zmq.REQ)
         client_socket.connect(
-            f"tcp://{self.config.server_host}:{self.config.server_port}"
+            f"tcp://{self.config.server_host}:{self.config.server_port}",
         )  ## setup socket
 
         ## next will need to manage some flags for when network sample
@@ -115,7 +115,7 @@ class NetworkRetriever(RandomRetriever):
             if not active:
                 logger.info(
                     "Too early to start retrieving or in idle mode... "
-                    f"{time.time() - self._start_time}"
+                    f"{time.time() - self._start_time}",
                 )
                 time.sleep(5)
                 continue
@@ -147,7 +147,7 @@ class NetworkRetriever(RandomRetriever):
         socket.bind(f"tcp://0.0.0.0:{self.config.server_port}")  ## setup socket
         logger.info("Server socket ready...")
         logger.info(
-            f"Server retriever queue ready..., Total samples = {self.total_tiles}"
+            f"Server retriever queue ready..., Total samples = {self.total_tiles}",
         )
         try:
             time_start = time.time()
@@ -171,7 +171,7 @@ class NetworkRetriever(RandomRetriever):
 
                 # we've sent a frame worth of oids, check if we need to slow down.
                 logger.info(
-                    f"Server has served {ntiles} / {self.total_tiles} samples..."
+                    f"Server has served {ntiles} / {self.total_tiles} samples...",
                 )
 
                 if not self.globally_constant:
@@ -184,9 +184,9 @@ class NetworkRetriever(RandomRetriever):
                     time.sleep(self.config.timeout - time_passed)
                 time_start = time.time()
 
-        except Exception as e:
+        except Exception:
             logger.exception()
-            raise e
+            raise
 
         ## conditions for scout deployment/redeployment: certain mission time,
         ## after model X has been trained, when <= M scout are alive, 1 or more

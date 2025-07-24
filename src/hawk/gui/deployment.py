@@ -9,7 +9,7 @@ import os
 import signal
 import subprocess
 import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import streamlit as st
 
@@ -21,6 +21,9 @@ from hawk.deploy.deploy import (
     stop_deployment,
 )
 from hawk.deploy_config import DeployConfig, SshHost
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def prune_dead_scouts(deploy_config: DeployConfig) -> None:
@@ -149,7 +152,8 @@ def start_home(mission_dir: Path) -> None:
     if check_home(mission_dir):
         stop_home(mission_dir)
     subprocess.run(
-        [sys.executable, "-m", "hawk.home.home_main", "-d", mission_dir], check=True
+        [sys.executable, "-m", "hawk.home.home_main", "-d", mission_dir],
+        check=True,
     )
 
 

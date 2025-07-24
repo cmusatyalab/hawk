@@ -10,10 +10,10 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
-from ..core.model import Model
 from .reexamination_strategy import ReexaminationStrategy
 
 if TYPE_CHECKING:
+    from ..core.model import Model
     from .reexamination_strategy import ReexaminationQueueType
 
 
@@ -47,7 +47,7 @@ class FullReexaminationStrategy(ReexaminationStrategy):
             prev_score = prev_result[0]
             logger.info(
                 f"Reexamine score id: {result.id} "
-                f"prev_score{prev_score} curr_score {result.score}"
+                f"prev_score{prev_score} curr_score {result.score}",
             )
             new_queue.put((-score, time_result, result))
 

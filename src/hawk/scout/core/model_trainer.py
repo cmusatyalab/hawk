@@ -7,15 +7,19 @@ from __future__ import annotations
 import threading
 import time
 from abc import ABC, abstractmethod
-from pathlib import Path
+from typing import TYPE_CHECKING
 from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 import torch
 
 from ...plugins import HawkPlugin
-from ..context.model_trainer_context import ModelContext
 from .config import ModelMode, ModelTrainerConfig
-from .model import ModelBase
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ..context.model_trainer_context import ModelContext
+    from .model import ModelBase
 
 
 class ModelTrainerBase(HawkPlugin, ABC):
@@ -30,7 +34,7 @@ class ModelTrainerBase(HawkPlugin, ABC):
 
 
 class ModelTrainer(ModelTrainerBase):
-    def __init__(self, config: ModelTrainerConfig, context: ModelContext):
+    def __init__(self, config: ModelTrainerConfig, context: ModelContext) -> None:
         super().__init__(config)
         self.context = context
 
@@ -44,13 +48,11 @@ class ModelTrainer(ModelTrainerBase):
     def get_new_version(self) -> int:
         with self._version_lock:
             self._latest_version += 1
-            version = self._latest_version
-        return version
+            return self._latest_version
 
     def get_version(self) -> int:
         with self._version_lock:
-            version = self._latest_version
-        return version
+            return self._latest_version
 
     def import_model(self, model: bytes) -> ModelBase:
         version = self.get_new_version()
@@ -65,7 +67,7 @@ class ModelTrainer(ModelTrainerBase):
         if self.config.mode == ModelMode.ORACLE and self.prev_model_path is not None:
             return self.load_model(self.prev_model_path, version=0)
 
-        elif self.config.mode == ModelMode.NOTIONAL:
+        if self.config.mode == ModelMode.NOTIONAL:
             # sleep for training time
             time.sleep(self.config.notional_train_time)
 

@@ -1,10 +1,11 @@
 # SPDX-FileCopyrightText: 2022 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
+from __future__ import annotations
 
 import itertools
 import time
-from typing import List
+from typing import TYPE_CHECKING
 
 import numpy as np
 from logzero import logger
@@ -12,10 +13,12 @@ from sklearn.cluster import DBSCAN
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-from ..core.result_provider import ResultProvider
 from ..core.utils import log_exceptions
-from ..reexamination.reexamination_strategy import ReexaminationStrategy
 from .topk_selector import TopKSelector
+
+if TYPE_CHECKING:
+    from ..core.result_provider import ResultProvider
+    from ..reexamination.reexamination_strategy import ReexaminationStrategy
 
 
 class DiversitySelector(TopKSelector):
@@ -28,7 +31,7 @@ class DiversitySelector(TopKSelector):
         total_countermeasures: int,
         reexamination_strategy: ReexaminationStrategy,
         add_negatives: bool = False,
-    ):
+    ) -> None:
         assert k < batch_size
         super().__init__(
             mission_id,
@@ -42,17 +45,17 @@ class DiversitySelector(TopKSelector):
 
         self._div_k = int(k / 3)
         self._k = k - self._div_k
-        self._result_list: List[ResultProvider] = []
+        self._result_list: list[ResultProvider] = []
 
         self._model = None
         self.n_pca = 5
         self.min_sample = 3
 
-    def diversity_sample(self) -> List[ResultProvider]:
+    def diversity_sample(self) -> list[ResultProvider]:
         logger.info("Diversity start")
         objects = []
         original = np.array(list(self._result_list))
-        results: List[ResultProvider] = []
+        results: list[ResultProvider] = []
 
         for result in self._result_list:
             objects.append(result)
@@ -110,9 +113,7 @@ class DiversitySelector(TopKSelector):
         q_idxs = q_idxs.astype(int)
 
         # len_array = len(original)
-        results = original[q_idxs]
-
-        return results
+        return original[q_idxs]
 
     @log_exceptions
     def select_tiles(self, _num_tiles: int) -> None:
@@ -125,7 +126,7 @@ class DiversitySelector(TopKSelector):
             result = self._priority_queues.get()[-1]
             self.priority_queue_length.dec()
             self._mission.log(
-                f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}"
+                f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}",
             )
             if not self._is_oracle:
                 # self.result_queue_length.inc()

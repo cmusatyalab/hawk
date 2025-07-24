@@ -126,12 +126,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     k600_retriever = K600Retriever.from_config(
-        dict(
-            dataset_root=args.dataset_root,
-            frames_per_clip=30,
-            frame_rate=5,
-            positive_class_idx=0,
-        )
+        {
+            "dataset_root": args.dataset_root,
+            "frames_per_clip": 30,
+            "frame_rate": 5,
+            "positive_class_idx": 0,
+        },
     )
 
     id_stream = k600_retriever.get_next_objectid()

@@ -51,7 +51,8 @@ def daemonize(mission_dir: Path) -> None:
     sys.stderr.flush()
     devnull = os.open(os.devnull, os.O_RDONLY)
     logfile = os.open(
-        mission_dir / "hawk_home.log", os.O_WRONLY | os.O_CREAT | os.O_APPEND
+        mission_dir / "hawk_home.log",
+        os.O_WRONLY | os.O_CREAT | os.O_APPEND,
     )
     os.dup2(devnull, sys.stdin.fileno())
     os.dup2(logfile, sys.stdout.fileno())
@@ -70,10 +71,15 @@ def resolve_path(config: dict[str, str], key: str, mission_dir: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-d", "--detach", action="store_true", help="Run in the detached mode"
+        "-d",
+        "--detach",
+        action="store_true",
+        help="Run in the detached mode",
     )
     parser.add_argument(
-        "config", type=Path, default=Path.cwd().joinpath("configs", "config.yml")
+        "config",
+        type=Path,
+        default=Path.cwd().joinpath("configs", "config.yml"),
     )
     args = parser.parse_args()
 
@@ -166,7 +172,7 @@ def main() -> None:
 
         try:
             metrics_port = int(
-                config.get("home-params", {}).get("metrics-port", HOME_METRICS_PORT)
+                config.get("home-params", {}).get("metrics-port", HOME_METRICS_PORT),
             )
             start_metrics_server(port=metrics_port)
         except ValueError:

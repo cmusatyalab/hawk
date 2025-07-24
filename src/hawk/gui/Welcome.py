@@ -36,7 +36,7 @@ Choose a mission from the "**Select Mission**" pulldown in the sidebar.
 Or choose a "**Template Mission**" to create a new mission from scratch.
 
 ### Template Mission
-"""
+""",
     )
     col1, col2 = st.columns(2)
     template_name = col1.selectbox(

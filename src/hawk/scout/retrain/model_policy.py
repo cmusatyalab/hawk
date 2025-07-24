@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Retrain policy based on availability of new model"""
+"""Retrain policy based on availability of new model."""
 
 import shutil
 from pathlib import Path
@@ -13,7 +13,7 @@ FILENAME = "new_model"
 
 
 class ModelPolicy(RetrainPolicyBase):
-    def __init__(self, directory: str):
+    def __init__(self, directory: str) -> None:
         super().__init__()
         self.new_examples = 0
         self._new_model_present = Path(directory, FILENAME)

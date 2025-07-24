@@ -77,7 +77,8 @@ SELECTOR_DEFAULTS: dict[str, dict[str, float | int]] = {
 
 
 def change_train_strategy(
-    train_type: str | None = None, train_args: dict[str, str] | None = None
+    train_type: str | None = None,
+    train_args: dict[str, str] | None = None,
 ) -> None:
     if train_type is None:
         train_type = st.session_state.train_strategy_type
@@ -87,7 +88,8 @@ def change_train_strategy(
     train_strategy = st.session_state.mission_config.setdefault("train_strategy", {})
     train_strategy["type"] = train_type
     train_strategy["args"] = TRAIN_STRATEGY_DEFAULTS.get(
-        train_type, {"mode": "hawk"}
+        train_type,
+        {"mode": "hawk"},
     ).copy()
     if train_args is not None:
         train_strategy["args"].update(train_args)
@@ -121,7 +123,7 @@ def update_selector_config(selector_type: str | None, field: str) -> None:
 
 
 def set_state_from_mission_config(mission_config: MissionConfig) -> None:
-    """Called whenever we reset/reload mission state to update st.session_state"""
+    """Called whenever we reset/reload mission state to update st.session_state."""
     st.session_state.mission_config = mission_config
 
     deployed_state = st.session_state.get("deployed_state", [])
@@ -162,7 +164,7 @@ def load_template() -> None:
     template_config = st.session_state.template_config
     if template_config is not None:
         mission_config = MissionConfig.from_yaml(
-            template_config.getvalue().decode("utf-8")
+            template_config.getvalue().decode("utf-8"),
         )
     else:
         mission_config = MissionConfig.from_dict({})
@@ -232,7 +234,7 @@ with st.expander(f"{status} Scout Deployment"):  # , expanded=not all_scouts_dep
             {
                 "host": pd.Series(st.session_state.scouts, dtype="string"),
                 "deployed": pd.Series(st.session_state.deployed, dtype=bool),
-            }
+            },
         ),
         column_config={
             "host": st.column_config.TextColumn(
@@ -283,7 +285,8 @@ with st.expander("Dataset"):
     )
 
     st.session_state.dataset_tiles_per_frame = dataset_config.get(
-        "tiles_per_frame", 100
+        "tiles_per_frame",
+        100,
     )
     st.number_input(
         "Tiles per frame",
@@ -509,7 +512,8 @@ with st.expander("Mission Parameters"):
         )
 
         selector_config = st.session_state.mission_config["selector"].get(
-            selector_type, {}
+            selector_type,
+            {},
         )
 
         col1, col2, col3, col4 = st.columns(4)

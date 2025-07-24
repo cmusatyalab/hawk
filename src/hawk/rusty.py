@@ -23,7 +23,8 @@ R = TypeVar("R")
 def unwrap(opt: T | None) -> T:
     """Unwrap an optional type by asserting it is not None."""
     if opt is None:
-        raise AssertionError("Unwrapping a None value")
+        msg = "Unwrapping a None value"
+        raise AssertionError(msg)
     return opt
 
 

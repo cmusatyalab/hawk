@@ -27,7 +27,8 @@ class ThumbnailImageMixin(RetrieverBase):
 
     def _crop_and_resize(self, ml_object: HawkObject, size: int) -> HawkObject:
         if not ml_object.media_type.startswith("image/"):
-            raise ValueError("resizing only works for images")
+            msg = "resizing only works for images"
+            raise ValueError(msg)
 
         with BytesIO(ml_object.content) as f:
             image = Image.open(f).convert("RGB")

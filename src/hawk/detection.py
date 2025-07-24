@@ -122,7 +122,7 @@ class Detection:
                     "y": self.y,
                     "w": self.w,
                     "h": self.h,
-                }
+                },
             )
 
         return result
@@ -144,7 +144,7 @@ class Detection:
 
     @staticmethod
     def sort_detections(detections: Iterable[Detection]) -> list[Detection]:
-        """Sort by bounding box and reversed confidence score (highest score first)"""
+        """Sort by bounding box and reversed confidence score (highest score first)."""
         return sorted(detections, key=lambda d: (d.x, d.y, d.w, d.h, -d.confidence))
 
     @staticmethod
@@ -154,13 +154,16 @@ class Detection:
         Assumes the list of detections is already sorted by boundingbox.
         """
         for _, iterator in itertools.groupby(
-            detections, key=lambda d: (d.x, d.y, d.w, d.h)
+            detections,
+            key=lambda d: (d.x, d.y, d.w, d.h),
         ):
             yield iterator
 
     @classmethod
     def to_labelkit(
-        cls, detections: list[Detection], class_list: ClassList
+        cls,
+        detections: list[Detection],
+        class_list: ClassList,
     ) -> list[LabelKitOut]:
         detections = cls.sort_detections(detections)
         return [
@@ -169,10 +172,10 @@ class Detection:
 
     def _to_labelkit(self, class_list: ClassList) -> LabelKitOut:
         class_label = class_list.index(self.class_name)
-        return dict(
-            bboxes=(self.x, self.y, self.w, self.h),
-            labels=class_label_to_int(class_label) - 1,
-        )
+        return {
+            "bboxes": (self.x, self.y, self.w, self.h),
+            "labels": class_label_to_int(class_label) - 1,
+        }
 
 
 class LabelKitOut(TypedDict):

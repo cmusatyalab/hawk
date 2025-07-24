@@ -9,16 +9,16 @@ import argparse
 import os
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import torch
-import torch.nn as nn
 import torch.nn.parallel
 import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.transforms.v2 as transforms
 from logzero import logger
-from torch.optim import Optimizer
+from torch import nn
 from torch.utils.data import DataLoader
 
 from hawk.scout.trainer.k600_classifier.action_recognition_model import (
@@ -27,6 +27,9 @@ from hawk.scout.trainer.k600_classifier.action_recognition_model import (
 from hawk.scout.trainer.k600_classifier.movinet_a0s_encoder import MovinetEncoder
 from hawk.scout.trainer.k600_classifier.temporal_encoder import TransformerParams
 from hawk.scout.trainer.k600_classifier.tensor_ds import PTListDataset
+
+if TYPE_CHECKING:
+    from torch.optim import Optimizer
 
 parser = argparse.ArgumentParser(description="PyTorch ImageNet Training")
 parser.add_argument("--trainpath", type=str, default="", help="path to train file")
@@ -38,13 +41,22 @@ parser.add_argument(
     help="path to save trained model",
 )
 parser.add_argument(
-    "--num_classes", default=2, type=int, help="number of classes to train"
+    "--num_classes",
+    default=2,
+    type=int,
+    help="number of classes to train",
 )
 parser.add_argument(
-    "--epochs", default=10, type=int, help="number of total epochs to run"
+    "--epochs",
+    default=10,
+    type=int,
+    help="number of total epochs to run",
 )
 parser.add_argument(
-    "--batch_size", default=10, type=int, help="batch size (default: 10)"
+    "--batch_size",
+    default=10,
+    type=int,
+    help="batch size (default: 10)",
 )
 parser.add_argument(
     "--resume",
@@ -84,11 +96,14 @@ def train(args: argparse.Namespace) -> None:
             lambda v: v.to(torch.float32) / 255,
             transforms.Resize((200, 200)),
             transforms.RandomCrop((172, 172)),
-        ]
+        ],
     )
     train_ds = PTListDataset(train_file_path, transform)
     train_dataloader = DataLoader(
-        train_ds, batch_size=batch_size, drop_last=True, shuffle=True
+        train_ds,
+        batch_size=batch_size,
+        drop_last=True,
+        shuffle=True,
     )
 
     val_file_path = args.valpath
@@ -98,11 +113,14 @@ def train(args: argparse.Namespace) -> None:
             lambda v: v.to(torch.float32) / 255,
             transforms.Resize((200, 200)),
             transforms.CenterCrop((172, 172)),
-        ]
+        ],
     )
     val_ds = PTListDataset(train_file_path, test_transform)
     val_dataloader = DataLoader(
-        val_ds, batch_size=batch_size, drop_last=True, shuffle=True
+        val_ds,
+        batch_size=batch_size,
+        drop_last=True,
+        shuffle=True,
     )
 
     embed_dim = int(args.embed_dim)
@@ -133,7 +151,7 @@ def train(args: argparse.Namespace) -> None:
             {"params": model._encoder.parameters(), "lr": s_lr},
             {"params": model._ln.parameters(), "lr": s_lr},
             {"params": model._temporal_enc.parameters(), "lr": t_lr},
-        ]
+        ],
     )
     ce_loss_fn_mean = torch.nn.CrossEntropyLoss()
     ce_loss_fn_sum = torch.nn.CrossEntropyLoss(reduction="sum")
@@ -161,7 +179,7 @@ def train(args: argparse.Namespace) -> None:
         )
         logger.info(
             f"[Epoch {epoch + 1}] Train Loss: {train_loss}, "
-            f"Validation Loss: {validation_loss:.3f}"
+            f"Validation Loss: {validation_loss:.3f}",
         )
         model.save(model_path, num_samples=0)
     logger.info("Done!")
@@ -215,8 +233,7 @@ def validate(
             loss = loss_fn(logits, Y)
             validation_loss += loss.item()
             N += 1
-    validation_loss = validation_loss / (N * batch_size)
-    return validation_loss
+    return validation_loss / (N * batch_size)
 
 
 def prepare_model(model: ActionRecognitionModel) -> ActionRecognitionModel:

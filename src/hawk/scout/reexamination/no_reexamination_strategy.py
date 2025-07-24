@@ -7,10 +7,10 @@ from __future__ import annotations
 import queue
 from typing import TYPE_CHECKING
 
-from ..core.model import Model
 from .reexamination_strategy import ReexaminationStrategy
 
 if TYPE_CHECKING:
+    from ..core.model import Model
     from .reexamination_strategy import ReexaminationQueueType
 
 

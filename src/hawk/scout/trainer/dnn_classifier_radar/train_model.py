@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import os
 import random
+import sys
 import time
 import warnings
 from enum import Enum
@@ -16,18 +17,17 @@ from typing import Any, Sequence
 
 import numpy as np
 import torch
-import torch.backends.cudnn as cudnn
-import torch.nn as nn
 import torch.nn.parallel
 import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
-import torchvision.models as models
-import torchvision.transforms as transforms
 from logzero import logger
 from sklearn.metrics import average_precision_score
 from sklearn.preprocessing import label_binarize
+from torch import nn
+from torch.backends import cudnn
 from torch.optim.lr_scheduler import StepLR
+from torchvision import models, transforms
 from tqdm import tqdm
 
 from ...core.utils import ImageFromList
@@ -45,7 +45,10 @@ parser = argparse.ArgumentParser(description="PyTorch ImageNet Training")
 parser.add_argument("--trainpath", type=str, default="", help="path to tain file")
 parser.add_argument("--valpath", type=str, default="", help="path to val file")
 parser.add_argument(
-    "--savepath", type=Path, default="model.pth", help="path to save trained model"
+    "--savepath",
+    type=Path,
+    default="model.pth",
+    help="path to save trained model",
 )
 parser.add_argument(
     "-a",
@@ -63,10 +66,16 @@ parser.add_argument(
     help="evaluate model on validation set",
 )
 parser.add_argument(
-    "--num-classes", default=2, type=int, help="number of classes to train"
+    "--num-classes",
+    default=2,
+    type=int,
+    help="number of classes to train",
 )
 parser.add_argument(
-    "--num-unfreeze", default=0, type=int, help="number of layers to train"
+    "--num-unfreeze",
+    default=0,
+    type=int,
+    help="number of layers to train",
 )
 parser.add_argument(
     "-j",
@@ -83,7 +92,10 @@ parser.add_argument(
     help="number of total epochs to run",
 )
 parser.add_argument(
-    "--warmup-epochs", default=5, type=int, help="initial number of epochs for warmup"
+    "--warmup-epochs",
+    default=5,
+    type=int,
+    help="initial number of epochs for warmup",
 )
 parser.add_argument(
     "--start-epoch",
@@ -134,7 +146,10 @@ parser.add_argument(
     help="path to latest checkpoint (default: none)",
 )
 parser.add_argument(
-    "--seed", default=None, type=int, help="seed for initializing training. "
+    "--seed",
+    default=None,
+    type=int,
+    help="seed for initializing training. ",
 )
 parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
 parser.add_argument(
@@ -214,7 +229,8 @@ def eval_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None
             print(f"=> no checkpoint found at '{args.resume}'")
 
     radar_normalize = transforms.Normalize(
-        mean=[0.111, 0.110, 0.111], std=[0.052, 0.050, 0.052]
+        mean=[0.111, 0.110, 0.111],
+        std=[0.052, 0.050, 0.052],
     )
 
     val_path = args.valpath
@@ -237,7 +253,7 @@ def eval_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> None
                 transforms.Resize(input_size),
                 transforms.ToTensor(),
                 radar_normalize,
-            ]
+            ],
         ),
         label_list=val_labels,
     )
@@ -267,7 +283,10 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
     model = models.__dict__[args.arch](weights="ResNet18_Weights.DEFAULT")
     logger.info(f" base model path: {args.base_model_path}")
     model, input_size = initialize_model(
-        args.arch, args.num_classes, args.num_unfreeze, args.base_model_path
+        args.arch,
+        args.num_classes,
+        args.num_unfreeze,
+        args.base_model_path,
     )
 
     if not torch.cuda.is_available():
@@ -291,7 +310,8 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
     logger.info(f"Length of train labels: {len(train_labels)}")
 
     radar_normalize = transforms.Normalize(
-        mean=[0.111, 0.110, 0.111], std=[0.052, 0.050, 0.052]
+        mean=[0.111, 0.110, 0.111],
+        std=[0.052, 0.050, 0.052],
     )
 
     train_dataset = ImageFromList(
@@ -302,7 +322,7 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
                 transforms.Resize(input_size),
                 transforms.ToTensor(),
                 radar_normalize,
-            ]
+            ],
         ),
         label_list=train_labels,
         limit=500 * sum(train_labels),
@@ -343,7 +363,7 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
                     # transforms.CenterCrop(input_size),
                     transforms.ToTensor(),
                     radar_normalize,
-                ]
+                ],
             ),
             label_list=val_labels,
             limit=500 * sum(val_labels),
@@ -359,7 +379,7 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
 
     targets = torch.LongTensor(train_dataset.targets)
     class_sample_count = torch.tensor(
-        [(targets == t).sum() for t in torch.unique(targets, sorted=True)]
+        [(targets == t).sum() for t in torch.unique(targets, sorted=True)],
     )
     logger.info(f"Class sample count: {class_sample_count}")
     total_samples = sum(class_sample_count)
@@ -371,7 +391,8 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
 
     logger.info(f"Total samples {total_samples} Class Weight {class_weights}")
     criterion = nn.CrossEntropyLoss(
-        weight=torch.Tensor(class_weights), label_smoothing=0.1
+        weight=torch.Tensor(class_weights),
+        label_smoothing=0.1,
     ).cuda()
 
     # define loss function (criterion), optimizer, and learning rate scheduler
@@ -385,7 +406,9 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
     lr_scheduler = StepLR(optimizer, step_size=100, gamma=0.9)
     lr_warmup_epochs = args.warmup_epochs
     warmup_lr_scheduler = torch.optim.lr_scheduler.LinearLR(
-        optimizer, start_factor=0.5, total_iters=lr_warmup_epochs
+        optimizer,
+        start_factor=0.5,
+        total_iters=lr_warmup_epochs,
     )
     scheduler = torch.optim.lr_scheduler.SequentialLR(
         optimizer,
@@ -405,8 +428,9 @@ def train_worker(gpu: int, ngpus_per_node: int, args: argparse.Namespace) -> Non
             scheduler.load_state_dict(checkpoint["scheduler"])
             print(
                 "=> loaded checkpoint '{}' (epoch {})".format(
-                    args.resume, checkpoint["epoch"]
-                )
+                    args.resume,
+                    checkpoint["epoch"],
+                ),
             )
         else:
             logger.info(f"=> no checkpoint found at '{args.resume}'")
@@ -515,7 +539,10 @@ def set_parameter_requires_grad(model: nn.Module, unfreeze: int = 0) -> None:
 
 
 def initialize_model(
-    arch: str, num_classes: int, unfreeze: int = 0, base_path: Path | None = None
+    arch: str,
+    num_classes: int,
+    unfreeze: int = 0,
+    base_path: Path | None = None,
 ) -> tuple[nn.Module, int]:
     model_ft = None
     input_size = 0
@@ -526,7 +553,8 @@ def initialize_model(
     logger.info(f"Base path: {base_path}")
     num_ftrs = model_ft.fc.in_features
     model_ft.fc = nn.Linear(
-        num_ftrs, 5
+        num_ftrs,
+        5,
     )  # only for training the binary model from 5 to 2 classes.
     if base_path is not None:
         radar_checkpoint = torch.load(base_path)
@@ -558,7 +586,10 @@ def initialize_model(
         """Squeezenet"""
         set_parameter_requires_grad(model_ft, unfreeze)
         model_ft.classifier[1] = nn.Conv2d(
-            512, num_classes, kernel_size=(1, 1), stride=(1, 1)
+            512,
+            num_classes,
+            kernel_size=(1, 1),
+            stride=(1, 1),
         )
         model_ft.num_classes = num_classes
         input_size = 224
@@ -591,7 +622,7 @@ def initialize_model(
 
     else:
         print("Invalid model name, exiting...")
-        exit()
+        sys.exit()
     logger.info(f"Number of classes: {num_classes}")
 
     return model_ft, input_size
@@ -658,12 +689,15 @@ def adjust_learning_rate(
 
 
 def calculate_performance(
-    y_true: Sequence[int], y_pred: Sequence[Sequence[float]]
+    y_true: Sequence[int],
+    y_pred: Sequence[Sequence[float]],
 ) -> float:
     if len(y_pred[0]) > 2:
         y_true_bin = label_binarize(y_true, classes=list(range(len(y_pred[0]))))
         ap_by_class: Sequence[float] = average_precision_score(
-            y_true_bin, y_pred, average=None
+            y_true_bin,
+            y_pred,
+            average=None,
         )
         ap: float = sum(ap_by_class[1:]) / len(ap_by_class[1:])
         logger.info(f" AP by class: {ap_by_class}")
@@ -743,13 +777,12 @@ def validate_model(
             batch_time.update(time.time() - end)
             end = time.time()
     logger.info(f"Pred list scores: {sorted(pos_list)}")
-    auc = calculate_performance(y_true, y_pred)
-
-    return auc
+    return calculate_performance(y_true, y_pred)
 
 
 def save_checkpoint(
-    state: dict[str, Any], filename: os.PathLike[str] | str = "checkpoint.pth"
+    state: dict[str, Any],
+    filename: os.PathLike[str] | str = "checkpoint.pth",
 ) -> None:
     torch.save(state, str(filename))
 
@@ -762,11 +795,14 @@ class Summary(Enum):
 
 
 class AverageMeter:
-    """Computes and stores the average and current value"""
+    """Computes and stores the average and current value."""
 
     def __init__(
-        self, name: str, fmt: str = ":f", summary_type: Summary = Summary.AVERAGE
-    ):
+        self,
+        name: str,
+        fmt: str = ":f",
+        summary_type: Summary = Summary.AVERAGE,
+    ) -> None:
         self.name = name
         self.fmt = fmt
         self.summary_type = summary_type

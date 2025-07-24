@@ -27,7 +27,7 @@ CONFIG_OVERRIDE = {"mission_id": "", "data_root": "/example"}
 
 @pytest.mark.home
 @pytest.mark.parametrize("retriever", CONFIGS_RETRIEVER.keys())
-def test_validate_retriever_config(retriever):
+def test_validate_retriever_config(retriever) -> None:
     with contextlib.suppress(ImportError):
         plugin_cls = get_plugin_entrypoint("retriever", retriever)
         plugin_cls.scrub_config(
@@ -38,7 +38,7 @@ def test_validate_retriever_config(retriever):
 
 @pytest.mark.scout
 @pytest.mark.parametrize("retriever", CONFIGS_RETRIEVER.keys())
-def test_load_retriever_plugin(retriever):
+def test_load_retriever_plugin(retriever) -> None:
     config = dict(CONFIGS_RETRIEVER[retriever], **CONFIG_OVERRIDE)
     plugin = get_plugin_entrypoint("retriever", retriever)
     with contextlib.suppress(FileNotFoundError):

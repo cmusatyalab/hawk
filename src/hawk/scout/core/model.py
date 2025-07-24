@@ -7,7 +7,6 @@ from __future__ import annotations
 import threading
 import time
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Sequence
 
 import numpy as np
@@ -19,14 +18,16 @@ from sklearn.metrics import (
 )
 
 from ...proto.messages_pb2 import ModelMetrics, TestResults
-from ..context.model_trainer_context import ModelContext
 from .config import ModelConfig, ModelMode
-from .result_provider import ResultProvider
 from .utils import log_exceptions
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from ...hawkobject import HawkObject
     from ...objectid import ObjectId
+    from ..context.model_trainer_context import ModelContext
+    from .result_provider import ResultProvider
 
 
 class Model(ABC):
@@ -90,7 +91,7 @@ class ModelBase(Model):
         version: int,
         train_examples: dict[str, int] | None,
         train_time: float,
-    ):
+    ) -> None:
         if train_examples is None:
             train_examples = {"1": 0, "0": 0}
 
@@ -162,9 +163,9 @@ class ModelBase(Model):
         pred_list: list[Sequence[float]],
         is_probability: bool = True,
     ) -> TestResults:
-        raise AssertionError(
-            "This code doesn't work because it assumes pred_list = list[float]"
-        )
+        msg = "This code doesn't work because it assumes pred_list = list[float]"
+        raise AssertionError(msg)
+
         assert len(target_list) == len(pred_list)
         pred = np.array(pred_list)
         target = np.array(target_list)
@@ -184,7 +185,7 @@ class ModelBase(Model):
         )
         logger.info(
             f"Test classification report ({best_threshold} threshold):\n"
-            f"{classification_report(target, pred)}"
+            f"{classification_report(target, pred)}",
         )
 
         stats = classification_report(target, pred, output_dict=True)

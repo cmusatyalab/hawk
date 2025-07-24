@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from io import BytesIO
 
-import matplotlib
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from logzero import logger
@@ -17,7 +17,7 @@ from ...objectid import LegacyObjectId, ObjectId
 from ...rusty import unwrap
 from .random_retriever import RandomRetriever, RandomRetrieverConfig
 
-matplotlib.use("agg")
+mpl.use("agg")
 
 
 class RadarRetriever(RandomRetriever):
@@ -37,7 +37,9 @@ class RadarRetriever(RandomRetriever):
 
         # Create RD map
         plt.imshow(
-            data.sum(axis=2).transpose(), cmap="viridis", interpolation="nearest"
+            data.sum(axis=2).transpose(),
+            cmap="viridis",
+            interpolation="nearest",
         )
         plt.xticks([0, 16, 32, 48, 63], ["-13", "-6.5", "0", "6.5", "13"], fontsize=8)
         plt.yticks([0, 64, 128, 192, 255], ["50", "37.5", "25", "12.5", "0"])
@@ -53,7 +55,8 @@ class RadarRetriever(RandomRetriever):
 
         # Locate stereo image
         stereo_path = object_path.parent.parent.joinpath(
-            "canvas", object_path.name
+            "canvas",
+            object_path.name,
         ).with_suffix(".png")
 
         if stereo_path.exists():

@@ -50,9 +50,9 @@ class MissionConfig:
     def from_dict(cls, config: dict[str, Any]) -> MissionConfig:
         # migrate config.scouts to config.deploy.scouts ('DeployConfig')
         if "deploy" not in config:
-            config["deploy"] = dict(
-                scouts=config.get("scouts", []),
-            )
+            config["deploy"] = {
+                "scouts": config.get("scouts", []),
+            }
         deploy_config = DeployConfig.from_dict(config)
         mission_config = {
             key: config[key] for key in config if key not in ["deploy", "scouts"]

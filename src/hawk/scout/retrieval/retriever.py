@@ -11,7 +11,7 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
+from typing import TYPE_CHECKING, Iterator
 
 from logzero import logger
 from pydantic import Field
@@ -23,11 +23,7 @@ from ...classes import (
     ClassName,
     class_label_to_int,
 )
-from ...detection import Detection
-from ...hawkobject import HawkObject
-from ...objectid import ObjectId
 from ...plugins import HawkPlugin, HawkPluginConfig
-from ..context.data_manager_context import DataManagerContext
 from ..stats import (
     HAWK_RETRIEVER_DROPPED_OBJECTS,
     HAWK_RETRIEVER_FAILED_OBJECTS,
@@ -38,6 +34,12 @@ from ..stats import (
     HAWK_RETRIEVER_TOTAL_OBJECTS,
     collect_metrics_total,
 )
+
+if TYPE_CHECKING:
+    from ...detection import Detection
+    from ...hawkobject import HawkObject
+    from ...objectid import ObjectId
+    from ..context.data_manager_context import DataManagerContext
 
 
 @dataclass
@@ -124,25 +126,25 @@ class Retriever(RetrieverBase):
         self.scml_active_mode: bool | None = None
 
         self.total_images = HAWK_RETRIEVER_TOTAL_IMAGES.labels(
-            mission=self.config.mission_id
+            mission=self.config.mission_id,
         )
         self.total_objects = HAWK_RETRIEVER_TOTAL_OBJECTS.labels(
-            mission=self.config.mission_id
+            mission=self.config.mission_id,
         )
         self.retrieved_images = HAWK_RETRIEVER_RETRIEVED_IMAGES.labels(
-            mission=self.config.mission_id
+            mission=self.config.mission_id,
         )
         self.retrieved_objects = HAWK_RETRIEVER_RETRIEVED_OBJECTS.labels(
-            mission=self.config.mission_id
+            mission=self.config.mission_id,
         )
         self.failed_objects = HAWK_RETRIEVER_FAILED_OBJECTS.labels(
-            mission=self.config.mission_id
+            mission=self.config.mission_id,
         )
         self.dropped_objects = HAWK_RETRIEVER_DROPPED_OBJECTS.labels(
-            mission=self.config.mission_id
+            mission=self.config.mission_id,
         )
         self.queue_length = HAWK_RETRIEVER_QUEUE_LENGTH.labels(
-            mission=self.config.mission_id
+            mission=self.config.mission_id,
         )
 
     def add_context(self, context: DataManagerContext) -> None:
@@ -157,8 +159,9 @@ class Retriever(RetrieverBase):
         self._stop_event.set()
 
     def _run_threads(self) -> None:
-        """start default thread for all retrievers and network clients
-        can be overridden in derived classes such as the network_retriever."""
+        """Start default thread for all retrievers and network clients
+        can be overridden in derived classes such as the network_retriever.
+        """
         threading.Thread(target=self._stream_objects, name="stream").start()
 
     def _stream_objects(self) -> None:
@@ -189,7 +192,7 @@ class Retriever(RetrieverBase):
                 tiles = objects - images
                 logger.info(
                     f"Retrieved Image: {images} @ {elapsed_total}"
-                    f"{tiles} / {self.total_tiles} RETRIEVED"
+                    f"{tiles} / {self.total_tiles} RETRIEVED",
                 )
 
                 remaining = image_next - time_now
@@ -217,7 +220,7 @@ class Retriever(RetrieverBase):
     def get_stats(self) -> RetrieverStats:
         self._start_event.wait()
 
-        stats = RetrieverStats(
+        return RetrieverStats(
             total_objects=collect_metrics_total(self.total_objects)
             - collect_metrics_total(self.failed_objects),
             total_images=collect_metrics_total(self.total_images),
@@ -225,7 +228,6 @@ class Retriever(RetrieverBase):
             retrieved_images=collect_metrics_total(self.retrieved_images),
             retrieved_tiles=collect_metrics_total(self.retrieved_objects),
         )
-        return stats
 
     def _class_id_to_name(self, class_label: ClassLabel) -> ClassName:
         # making sure the negative class is always called "negative" to make
@@ -238,7 +240,9 @@ class Retriever(RetrieverBase):
         return self._context.class_list[class_label]
 
     def get_ml_batch(
-        self, batch_size: int, timeout: float | None = None
+        self,
+        batch_size: int,
+        timeout: float | None = None,
     ) -> tuple[list[ObjectId], list[HawkObject]]:
         """Get a batch of ML ready items."""
         object_ids: list[ObjectId] = []

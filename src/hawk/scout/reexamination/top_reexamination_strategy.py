@@ -10,16 +10,16 @@ from typing import TYPE_CHECKING
 
 from logzero import logger
 
-from ..core.model import Model
 from .reexamination_strategy import ReexaminationStrategy
 
 if TYPE_CHECKING:
+    from ..core.model import Model
     from ..retrieval.retriever import Retriever
     from .reexamination_strategy import ReexaminationQueueType
 
 
 class TopReexaminationStrategy(ReexaminationStrategy):
-    def __init__(self, retriever: Retriever, k: int):
+    def __init__(self, retriever: Retriever, k: int) -> None:
         super().__init__(retriever)
         self._k = k
 
@@ -44,7 +44,7 @@ class TopReexaminationStrategy(ReexaminationStrategy):
                 to_reexamine.append((score, time_result, result))
             except queue.Empty:
                 break
-        if not len(to_reexamine):
+        if not to_reexamine:
             return old_queues, 0
 
         reexamine = [result.id for _, _, result in to_reexamine]
@@ -55,7 +55,7 @@ class TopReexaminationStrategy(ReexaminationStrategy):
             prev_score = prev_result[0]
             logger.info(
                 f"Reexamine score id: {result.id} "
-                f"prev_score {prev_score} curr_score {result.score}"
+                f"prev_score {prev_score} curr_score {result.score}",
             )
             new_queue.put((-score, time_result, result))
             # old_queues.put((-score, time_result, result))

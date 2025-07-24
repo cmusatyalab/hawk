@@ -31,7 +31,7 @@ class DummyMission:
 
 @pytest.mark.home
 @pytest.mark.parametrize("model", CONFIGS_MODEL.keys())
-def test_validate_trainer_config(model):
+def test_validate_trainer_config(model) -> None:
     with contextlib.suppress(ImportError):
         plugin_cls = get_plugin_entrypoint("model", model)
         plugin_cls.scrub_config(CONFIGS_MODEL[model])
@@ -39,7 +39,7 @@ def test_validate_trainer_config(model):
 
 @pytest.mark.scout
 @pytest.mark.parametrize("model", CONFIGS_MODEL.keys())
-def test_load_trainer_plugin(model):
+def test_load_trainer_plugin(model) -> None:
     plugin = get_plugin_entrypoint("model", model)
     with contextlib.suppress(FileNotFoundError):
         plugin.from_config(CONFIGS_MODEL[model], context=DummyMission())

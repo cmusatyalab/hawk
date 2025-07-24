@@ -5,12 +5,15 @@
 from __future__ import annotations
 
 import shutil
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import streamlit as st
 from PIL import Image
 
 from hawk.gui.elements import columns, load_mission
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 st.title("Hawk Mission Bootstrap")
 
@@ -29,7 +32,8 @@ if classes[0] != "negative":
 # extract various paths
 bootstrap_dir = mission.mission_dir / "bootstrap"
 bootstrap_zip = mission.mission_dir / mission.config.get("train_strategy", {}).get(
-    "bootstrap_path", "bootstrap.zip"
+    "bootstrap_path",
+    "bootstrap.zip",
 )
 
 # control buttons
@@ -141,7 +145,9 @@ if bootstrap_dir.is_dir():
         with st.expander("Add new bootstrap examples", expanded=positives == 0):
             new_class = st.selectbox("Class", classes, index=1)
             new_examples = st.file_uploader(
-                "Examples", type=["gif", "png", "jpg"], accept_multiple_files=True
+                "Examples",
+                type=["gif", "png", "jpg"],
+                accept_multiple_files=True,
             )
             if st.button("Upload"):
                 class_dir = bootstrap_dir / str(classes.index(new_class))

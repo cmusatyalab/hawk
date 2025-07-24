@@ -9,16 +9,19 @@ import shlex
 import subprocess
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import torch
 import yaml
 from logzero import logger
 
-from ...context.model_trainer_context import ModelContext
 from ...core.model_trainer import ModelTrainer
 from ...core.utils import log_exceptions
 from .config import YOLOTrainerConfig
 from .model import YOLOModelRadar
+
+if TYPE_CHECKING:
+    from ...context.model_trainer_context import ModelContext
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
@@ -27,7 +30,7 @@ class YOLOTrainerRadar(ModelTrainer):
     config_class = YOLOTrainerConfig
     config: YOLOTrainerConfig
 
-    def __init__(self, config: YOLOTrainerConfig, context: ModelContext):
+    def __init__(self, config: YOLOTrainerConfig, context: ModelContext) -> None:
         super().__init__(config, context)
 
         logger.info(f"Model_dir {self.context.model_dir}")
@@ -63,16 +66,14 @@ class YOLOTrainerRadar(ModelTrainer):
 
         with open(trainpath, "w") as f:
             for label in labels:
-                for sample in train_samples[label]:
-                    f.write(f"{sample}\n")
+                f.writelines(f"{sample}\n" for sample in train_samples[label])
 
         noval = True
         if self.config.test_dir:
             noval = False
             valpath = self.context.model_path(new_version, template="val-{}.txt")
             with open(valpath, "w") as f:
-                for path in self.config.test_dir.glob("*/*"):
-                    f.write(f"{path}\n")
+                f.writelines(f"{path}\n" for path in self.config.test_dir.glob("*/*"))
 
         num_epochs = self.config.initial_model_epochs
         if new_version > 0:

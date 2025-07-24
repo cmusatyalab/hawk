@@ -28,7 +28,8 @@ class StringAttributeCodec:
     def decode(self, data: bytes) -> str:
         decoded = data.decode()
         if decoded[-1] != "\0":
-            raise ValueError(f"Attribute value is not null-terminated: {decoded!s}")
+            msg = f"Attribute value is not null-terminated: {decoded!s}"
+            raise ValueError(msg)
         return decoded[:-1]
 
 
@@ -40,13 +41,13 @@ class IntegerAttributeCodec:
         return struct.pack("i", item)
 
     def decode(self, data: bytes) -> int:
-        return cast(int, struct.unpack("i", data)[0])
+        return cast("int", struct.unpack("i", data)[0])
 
 
 class AverageMeter:
     """Computes and stores the average and current value
     Imported from
-        https://github.com/pytorch/examples/blob/master/imagenet/main.py#L247-L262
+        https://github.com/pytorch/examples/blob/master/imagenet/main.py#L247-L262.
     """
 
     def __init__(self) -> None:
@@ -66,9 +67,7 @@ class AverageMeter:
 
 
 class Dict2Obj:
-    """
-    Turns a dictionary into a class
-    """
+    """Turns a dictionary into a class."""
 
     def __init__(self, dictionary: dict[str, Any]) -> None:
         for key in dictionary:
@@ -79,7 +78,7 @@ T = TypeVar("T")
 
 
 class BaseImageFromList(Dataset[T]):  # type: ignore[misc]
-    """Load dataset from path list"""
+    """Load dataset from path list."""
 
     def __init__(
         self,
@@ -88,7 +87,7 @@ class BaseImageFromList(Dataset[T]):  # type: ignore[misc]
         label_list: list[int] | None = None,
         limit: int | None = None,
         loader: Callable[[Path], Image.Image] | None = None,
-    ):
+    ) -> None:
         self.loader = loader if loader is not None else self.image_loader
 
         self.transform = transform
@@ -107,8 +106,8 @@ class BaseImageFromList(Dataset[T]):  # type: ignore[misc]
         if limit is None:
             limit = len(labels)
 
-        max_count = {k: limit for k in set(label_list)}
-        num_count = {k: 0 for k in max_count}
+        max_count = dict.fromkeys(set(label_list), limit)
+        num_count = dict.fromkeys(max_count, 0)
         self.targets = []
         self.imlist = []
 
@@ -123,7 +122,7 @@ class BaseImageFromList(Dataset[T]):  # type: ignore[misc]
             f"Number of Dataset(Limit {limit}): \n"
             f" Targets {len(self.targets)} \n"
             f" Positives {sum(self.targets)}"
-            f" Labels {set(self.targets)}"
+            f" Labels {set(self.targets)}",
         )
 
     def image_loader(self, path: Path) -> Image.Image:
@@ -159,14 +158,14 @@ class ImageFromList(BaseImageFromList[Tuple[Image.Image, int]]):
 
 
 class ImageWithPath(BaseImageFromList[Tuple[Path, Image.Image, int]]):
-    """Returns image path with data"""
+    """Returns image path with data."""
 
     def __init__(
         self,
         image_list: list[Path],
         transform: Callable[[Image.Image], Image.Image],
         label_list: list[int] | None = None,
-    ):
+    ) -> None:
         self.img_paths = image_list
         super().__init__(image_list, transform, label_list)
 
@@ -225,6 +224,6 @@ def log_exceptions(func: Callable[..., T]) -> Callable[..., T]:
             return func(*args, **kwargs)
         except Exception as e:
             logger.exception(e)
-            raise e
+            raise
 
-    return cast(Callable[..., T], func_wrapper)
+    return cast("Callable[..., T]", func_wrapper)

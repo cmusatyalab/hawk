@@ -30,7 +30,8 @@ def main() -> int:
         return 0
 
     build_parser = subparsers.add_parser(
-        "build", help="Build cmuhawk wheel and requirements files"
+        "build",
+        help="Build cmuhawk wheel and requirements files",
     )
     build_parser.set_defaults(func=build_wrapper)
 
@@ -53,7 +54,8 @@ def main() -> int:
         return ret
 
     check_parser = subparsers.add_parser(
-        "check", help="Check if all deployed Hawk scouts are running"
+        "check",
+        help="Check if all deployed Hawk scouts are running",
     )
     check_parser.add_argument("config", type=Path)
     check_parser.set_defaults(func=check_wrapper)
@@ -63,7 +65,8 @@ def main() -> int:
         return restart_deployment(config)
 
     restart_parser = subparsers.add_parser(
-        "restart", help="Restart deployed Hawk scouts"
+        "restart",
+        help="Restart deployed Hawk scouts",
     )
     restart_parser.add_argument("config", type=Path)
     restart_parser.set_defaults(func=restart_wrapper)
@@ -77,7 +80,8 @@ def main() -> int:
     stop_parser.set_defaults(func=stop_wrapper)
 
     split_parser = subparsers.add_parser(
-        "split", help="Split stream.txt (index) across deployed Hawk scouts"
+        "split",
+        help="Split stream.txt (index) across deployed Hawk scouts",
     )
     split_parser.add_argument("-n", "--dry-run", action="store_true")
     split_parser.add_argument("--random-seed", type=int)

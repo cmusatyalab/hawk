@@ -16,7 +16,7 @@ class MaxEntropySelector(TopKSelector):
         countermeasure_threshold: float,
         total_countermeasures: int,
         reexamination_strategy: ReexaminationStrategy,
-    ):
+    ) -> None:
         super().__init__(
             mission_id,
             k,
@@ -38,9 +38,7 @@ class MaxEntropySelector(TopKSelector):
             self._priority_queues.put((calc_score(result.score), time_result, result))
             self._batch_added += 1
 
-            if (
-                self._batch_added >= self._batch_size
-                or self._clear_event.is_set()
-                and self._batch_added != 0
+            if self._batch_added >= self._batch_size or (
+                self._clear_event.is_set() and self._batch_added != 0
             ):
                 self.select_tiles(self._k)

@@ -14,7 +14,7 @@ from torchvision.models import resnet18  # , ResNet18_Weights
 
 @pytest.mark.scout
 @pytest.mark.benchmark(group="torchvision_transform")
-def test_torchvision_transforms(benchmark, reference_image):
+def test_torchvision_transforms(benchmark, reference_image) -> None:
     # weights = ResNet18_Weights.DEFAULT
     # preprocess = weights.transforms()
     preprocess = T.Compose(
@@ -23,7 +23,7 @@ def test_torchvision_transforms(benchmark, reference_image):
             T.CenterCrop(224),
             T.ToTensor(),
             T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ]
+        ],
     )
     transformed_img = benchmark(preprocess, reference_image)
     assert isinstance(transformed_img, torch.Tensor)
@@ -32,9 +32,10 @@ def test_torchvision_transforms(benchmark, reference_image):
 @pytest.mark.scout
 @pytest.mark.benchmark(group="resnet18_inference")
 @pytest.mark.parametrize(
-    "device", ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)]
+    "device",
+    ["cpu", pytest.param("cuda", marks=pytest.mark.cuda)],
 )
-def test_resnet18_model_eval(benchmark, reference_image, device):
+def test_resnet18_model_eval(benchmark, reference_image, device) -> None:
     if device == "cuda" and not torch.cuda.is_available():
         pytest.skip("CUDA not available")
 
@@ -42,7 +43,7 @@ def test_resnet18_model_eval(benchmark, reference_image, device):
         {
             "torch_version": torch.__version__,
             "torchvision_version": torchvision.__version__,
-        }
+        },
     )
     # Initialize model
     # weights = ResNet18_Weights.DEFAULT
@@ -61,7 +62,7 @@ def test_resnet18_model_eval(benchmark, reference_image, device):
             T.CenterCrop(224),
             T.ToTensor(),
             T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ]
+        ],
     )
 
     # apply inference

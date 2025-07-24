@@ -5,15 +5,13 @@
 from __future__ import annotations
 
 import io
-import multiprocessing as mp
 import operator
 import os
 import random
 import threading
 from collections import defaultdict
-from multiprocessing.connection import _ConnectionBase
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -21,8 +19,12 @@ import torch
 from logzero import logger
 from sklearn.cluster import KMeans, kmeans_plusplus
 
-from ..core.result_provider import ResultProvider
-from ..retrieval.retriever import Retriever
+if TYPE_CHECKING:
+    import multiprocessing as mp
+    from multiprocessing.connection import _ConnectionBase
+
+    from ..core.result_provider import ResultProvider
+    from ..retrieval.retriever import Retriever
 
 
 class Novel_Class_Clustering:
@@ -35,7 +37,7 @@ class Novel_Class_Clustering:
         fv_dir: Path,
         scout_index: int,
         semi_supervised: bool = False,
-    ):
+    ) -> None:
         self.retriever = retriever
         self.fv_dir = fv_dir
         self.inbound_result_queue = inbound_result_queue
@@ -70,9 +72,11 @@ class Novel_Class_Clustering:
         threading.Thread(target=self.receive_labels_thread).start()
 
     def euclidean_distance(
-        self, point1: npt.NDArray[Any], point2: npt.NDArray[Any]
+        self,
+        point1: npt.NDArray[Any],
+        point2: npt.NDArray[Any],
     ) -> float:
-        return cast(float, np.linalg.norm(point1 - point2))
+        return cast("float", np.linalg.norm(point1 - point2))
 
     def novel_clustering_process(self) -> None:
         logger.info("Running novel class discovery...")
@@ -111,7 +115,7 @@ class Novel_Class_Clustering:
                 ## to labeled samples (i.e. they have been labeled in the time
                 ## since they were received by this queue)
                 self.unlabeled_result_list.sort(
-                    key=lambda x: x[0]
+                    key=lambda x: x[0],
                 )  ## sort the current state of the unlabeled results list
                 if self.unlabeled_selection_mode == "top":
                     ## get the top N highest-scoring samples
@@ -141,10 +145,10 @@ class Novel_Class_Clustering:
                 [
                     torch.load(
                         # When novel class discovery is enabled we should have fv
-                        io.BytesIO(result.feature_vector)  # type: ignore[arg-type]
+                        io.BytesIO(result.feature_vector),  # type: ignore[arg-type]
                     )
                     for result in unlabeled_result_obj
-                ]
+                ],
             ).numpy()  ## numpy stack of vectors for clustering
 
             ## choose whether to perform default kmeans or semi-supervised kmeans
@@ -156,25 +160,25 @@ class Novel_Class_Clustering:
                     n_init=1,
                 )
                 sklearn_kmeans.fit(
-                    unlabeled_feature_vectors
+                    unlabeled_feature_vectors,
                 )  ## All default KMeans calls.
                 cluster_labels = sklearn_kmeans.labels_
                 cluster_centroids = sklearn_kmeans.cluster_centers_
             else:
                 ## semi-supervised approach...
                 ## need to track labeled samples for clustering
-                label_dirs = sorted(list(self.labeled_samples_dict.keys()))
+                label_dirs = sorted(self.labeled_samples_dict.keys())
                 logger.info(f"Label dir keys: {label_dirs}")
                 for label_dir in label_dirs:
                     if label_dir == "0":
                         start_index = len(unlabeled_result_obj)
                         end_index = len(unlabeled_result_obj) + len(
-                            self.labeled_samples_dict[label_dir]
+                            self.labeled_samples_dict[label_dir],
                         )
                     else:
                         start_index = end_index
                         end_index = start_index + len(
-                            self.labeled_samples_dict[label_dir]
+                            self.labeled_samples_dict[label_dir],
                         )
                     self.start_end_index_labeled[label_dir] = (start_index, end_index)
                 num_labels_by_dir = [
@@ -182,7 +186,7 @@ class Novel_Class_Clustering:
                     for label_dir in label_dirs
                 ]
                 must_link, cannot_link = self.create_constraints_multiple_groups(
-                    num_labels_by_dir
+                    num_labels_by_dir,
                 )  ## generate constraint tuples in and across labeled samples
 
                 ## create the labeled feature vectors from paths in label dirs
@@ -191,12 +195,13 @@ class Novel_Class_Clustering:
                         torch.load(base)
                         for label_dir in label_dirs
                         for base in self.labeled_samples_dict[label_dir]
-                    ]
+                    ],
                 ).numpy()
 
                 ## concatenate unlabeled and labeled feature vectors for clustering
                 self.semi_super_all_vectors = np.concatenate(
-                    (unlabeled_feature_vectors, self.all_labeled_fvs), axis=0
+                    (unlabeled_feature_vectors, self.all_labeled_fvs),
+                    axis=0,
                 )
 
                 cluster_labels, cluster_centroids = self.semi_kmeans(
@@ -224,8 +229,8 @@ class Novel_Class_Clustering:
             ## clustering results to scout for each iter.
             self.send_samples(
                 list(
-                    operator.itemgetter(*selected_sample_indices)(unlabeled_result_obj)
-                )
+                    operator.itemgetter(*selected_sample_indices)(unlabeled_result_obj),
+                ),
             )
 
             self.cluster_iteration.clear()
@@ -234,7 +239,9 @@ class Novel_Class_Clustering:
         ## For each selected sample, create tile and send to home
         for i, selected_sample in enumerate(selected_samples):
             tile = selected_sample.to_protobuf(
-                self.retriever, self.scout_index, novel_sample=True
+                self.retriever,
+                self.scout_index,
+                novel_sample=True,
             )
             ## the cluster label integer: if 1 is first cluster, 2 is second cluster
             ## cluster assignment
@@ -255,17 +262,21 @@ class Novel_Class_Clustering:
             # logger.info(f"Got a label: {label_path}")
 
     def select_sample_labels(
-        self, labels: list[str], num_samples_per_label: int = 2
+        self,
+        labels: list[str],
+        num_samples_per_label: int = 2,
     ) -> list[bool]:
-        """
-        Randomly samples a specified number of indices for each unique label in a list.
+        """Randomly samples a indices for each unique label in a list.
+
         Args:
             labels: A list of labels.
             num_samples_per_label: The number of samples to randomly select for
               each label.
+
         Returns:
             A list of indices of the sampled elements. Returns an empty list if
             there are fewer samples than requested for a label.
+
         """
         unique_labels = np.unique(labels)
         sampled_indices: list[bool] = []
@@ -293,7 +304,8 @@ class Novel_Class_Clustering:
         return sampled_indices
 
     def create_constraints_multiple_groups(
-        self, group_sizes: list[int]
+        self,
+        group_sizes: list[int],
     ) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
         """Creates must-link and cannot-link constraints for multiple groups.
 
@@ -303,8 +315,8 @@ class Novel_Class_Clustering:
 
         Returns:
             A tuple containing two lists: (must_link, cannot_link).
-        """
 
+        """
         must_link = []
         cannot_link = []
         total_samples = 0
@@ -322,7 +334,10 @@ class Novel_Class_Clustering:
                 for i in range(group_size):
                     for j in range(prev_group_size):
                         cannot_link.append(
-                            (total_samples + i, sum(group_sizes[:prev_group_index]) + j)
+                            (
+                                total_samples + i,
+                                sum(group_sizes[:prev_group_index]) + j,
+                            ),
                         )
 
             total_samples += group_size
@@ -340,7 +355,6 @@ class Novel_Class_Clustering:
         cannot_link: list[tuple[int, int]] | None = None,
     ) -> tuple[npt.NDArray[Any], npt.NDArray[Any]]:
         """K-Means from scratch using sklearn's k-means++ initialization."""
-
         centroids, _ = kmeans_plusplus(vectors, n_clusters, random_state=random_state)
 
         n_samples = vectors.shape[0]
@@ -369,7 +383,7 @@ class Novel_Class_Clustering:
                     [
                         self.euclidean_distance(vectors[i], centroids[k])
                         for k in possible_labels
-                    ]
+                    ],
                 )
                 best_label_index = np.argmin(distances)
                 new_labels[i] = possible_labels[best_label_index]

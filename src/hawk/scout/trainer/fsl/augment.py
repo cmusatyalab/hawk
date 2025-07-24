@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Augments the single input image provided by user to a set of five"""
+"""Augments the single input image provided by user to a set of five."""
 
 import os
 import shutil
@@ -28,14 +28,14 @@ train_transform = A.Compose(
         A.RGBShift(r_shift_limit=15, g_shift_limit=15, b_shift_limit=15, p=0.5),
         A.RandomBrightnessContrast(p=0.5),
         A.ColorJitter(),
-    ]
+    ],
 )
 
 
 def AugmentSave(destdir: Path, pil_image: Image.Image) -> None:
     image = np.array(pil_image)
     for _ in range(1, N_SHOT):
-        transform = A.Compose([t for t in train_transform])
+        transform = A.Compose(list(train_transform))
         image_transform = transform(image=image)["image"]
         transformed_img = Image.fromarray(image_transform)
         transformed_name = destdir.joinpath(str(uuid.uuid4())).with_suffix(".png")

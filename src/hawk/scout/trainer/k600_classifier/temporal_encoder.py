@@ -17,7 +17,7 @@ class TransformerParams:
         mlp_dim: int,
         num_classes: int,
         head_dim: int,
-    ):
+    ) -> None:
         assert embed_dim % num_heads == 0
         assert embed_dim / num_heads == head_dim
         self.head_dim: int = head_dim
@@ -46,7 +46,7 @@ def posemb_sincos_1d(tokens: torch.Tensor, temperature: int = 10000) -> torch.Te
 
 
 class FeedForward(nn.Module):  # type: ignore[misc]
-    def __init__(self, dim: int, hidden_dim: int):
+    def __init__(self, dim: int, hidden_dim: int) -> None:
         super().__init__()
         self.net = nn.Sequential(
             nn.LayerNorm(dim),
@@ -60,7 +60,7 @@ class FeedForward(nn.Module):  # type: ignore[misc]
 
 
 class Attention(nn.Module):  # type: ignore[misc]
-    def __init__(self, dim: int, heads: int, dim_head: int):
+    def __init__(self, dim: int, heads: int, dim_head: int) -> None:
         super().__init__()
         inner_dim = dim_head * heads
         self.heads = heads
@@ -76,7 +76,7 @@ class Attention(nn.Module):  # type: ignore[misc]
         x = self.norm(x)
 
         qkv = self.to_qkv(x).chunk(3, dim=-1)
-        q, k, v = map(lambda t: rearrange(t, "b n (h d) -> b h n d", h=self.heads), qkv)
+        q, k, v = (rearrange(t, "b n (h d) -> b h n d", h=self.heads) for t in qkv)
 
         dots = torch.matmul(q, k.transpose(-1, -2)) * self.scale
 
@@ -88,7 +88,14 @@ class Attention(nn.Module):  # type: ignore[misc]
 
 
 class Transformer(nn.Module):  # type: ignore[misc]
-    def __init__(self, dim: int, depth: int, heads: int, dim_head: int, mlp_dim: int):
+    def __init__(
+        self,
+        dim: int,
+        depth: int,
+        heads: int,
+        dim_head: int,
+        mlp_dim: int,
+    ) -> None:
         super().__init__()
         self.norm = nn.LayerNorm(dim)
         self.layers = nn.ModuleList([])
@@ -98,8 +105,8 @@ class Transformer(nn.Module):  # type: ignore[misc]
                     [
                         Attention(dim, heads=heads, dim_head=dim_head),
                         FeedForward(dim, mlp_dim),
-                    ]
-                )
+                    ],
+                ),
             )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -119,7 +126,7 @@ class SimpleViT(nn.Module):  # type: ignore[misc]
         heads: int,
         mlp_dim: int,
         dim_head: int,
-    ):
+    ) -> None:
         super().__init__()
 
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim)

@@ -2,11 +2,10 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Scout to Scout internal api calls"""
+"""Scout to Scout internal api calls."""
 
 from __future__ import annotations
 
-from multiprocessing import Queue
 from typing import TYPE_CHECKING
 
 import zmq
@@ -17,13 +16,17 @@ from ...proto import Empty
 from ...proto.messages_pb2 import LabeledTile, SendLabel
 
 if TYPE_CHECKING:
+    from multiprocessing import Queue
+
     from ..core.mission import Mission
 
 
 def s2s_receive_request(
-    s2s_input: Queue[tuple[bytes, bytes]], s2s_output: Queue[bytes], s2s_port: int
+    s2s_input: Queue[tuple[bytes, bytes]],
+    s2s_output: Queue[bytes],
+    s2s_port: int,
 ) -> None:
-    """Function to receive and invoke S2S api calls
+    """Function to receive and invoke S2S api calls.
 
     Uses Request-Response messaging protocol
 
@@ -33,6 +36,7 @@ def s2s_receive_request(
 
     Returns:
         str: serialized output responses
+
     """
     context = zmq.Context()
     socket = context.socket(zmq.REP)
@@ -44,17 +48,17 @@ def s2s_receive_request(
             s2s_input.put((method, req))
             reply = s2s_output.get()
             socket.send(reply)
-    except Exception as e:
+    except Exception:
         logger.exception()
-        raise e
+        raise
 
 
 class S2SServicer:
-    def __init__(self, mission: Mission):
+    def __init__(self, mission: Mission) -> None:
         self._mission = mission
 
     def s2s_get_tile(self, msg: bytes) -> bytes:
-        """API call to fetch contents of requested tile ids
+        """API call to fetch contents of requested tile ids.
 
         Call made by COORDINATOR to (PARENT) scout where image is present
 
@@ -63,6 +67,7 @@ class S2SServicer:
 
         Returns:
             str: transmits serialized HawkObject message
+
         """
         try:
             label = SendLabel()
@@ -81,7 +86,7 @@ class S2SServicer:
                 response = obj.to_protobuf().SerializeToString()
                 logger.info(
                     f"Fetch Tile for {object_id} parent {label.scoutIndex}"
-                    f" Reply {len(response)}"
+                    f" Reply {len(response)}",
                 )
             else:
                 response = Empty
@@ -99,12 +104,13 @@ class S2SServicer:
         return response
 
     def s2s_add_tile_and_label(self, msg: bytes) -> bytes:
-        """API call to add tile content and labels
+        """API call to add tile content and labels.
 
         Call made by COORDINATOR to non-PARENT scouts
 
         Args:
             msg: serialized LabeledTile message
+
         """
         try:
             request = LabeledTile()

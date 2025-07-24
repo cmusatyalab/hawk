@@ -7,6 +7,7 @@ from __future__ import annotations
 import io
 import multiprocessing as mp
 import queue
+import sys
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Iterable, Sequence
@@ -14,24 +15,23 @@ from typing import TYPE_CHECKING, Callable, Iterable, Sequence
 import numpy as np
 import numpy.typing as npt
 import torch
-import torchvision.transforms as transforms
 from logzero import logger
 from PIL import Image, ImageFile
 from skimage.measure import label, regionprops
 from torch.utils.data import DataLoader
-from torchvision import datasets, models
+from torchvision import datasets, models, transforms
 
 from ....detection import Detection
-from ....proto.messages_pb2 import TestResults
-from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.result_provider import ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
-from .config import DNNRadarModelConfig
 
 if TYPE_CHECKING:
     from ....hawkobject import HawkObject
     from ....objectid import ObjectId
+    from ....proto.messages_pb2 import TestResults
+    from ...context.model_trainer_context import ModelContext
+    from .config import DNNRadarModelConfig
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -49,11 +49,12 @@ class DNNClassifierModelRadar(ModelBase):
         *,
         train_examples: dict[str, int] | None = None,
         train_time: float = 0.0,
-    ):
+    ) -> None:
         logger.info(f"Loading DNN Model from {model_path}")
         assert model_path.is_file()
         radar_normalize = transforms.Normalize(
-            mean=[0.111, 0.110, 0.111], std=[0.052, 0.050, 0.052]
+            mean=[0.111, 0.110, 0.111],
+            std=[0.052, 0.050, 0.052],
         )
         test_transforms = transforms.Compose(
             [
@@ -61,7 +62,7 @@ class DNNClassifierModelRadar(ModelBase):
                 transforms.Resize(config.input_size),
                 transforms.ToTensor(),
                 radar_normalize,
-            ]
+            ],
         )
 
         super().__init__(
@@ -141,7 +142,10 @@ class DNNClassifierModelRadar(ModelBase):
         elif "squeezenet" in arch:
             """Squeezenet"""
             model_ft.classifier[1] = torch.nn.Conv2d(
-                512, num_classes, kernel_size=(1, 1), stride=(1, 1)
+                512,
+                num_classes,
+                kernel_size=(1, 1),
+                stride=(1, 1),
             )
             model_ft.num_classes = num_classes
 
@@ -167,7 +171,7 @@ class DNNClassifierModelRadar(ModelBase):
 
         else:
             logger.error("Invalid model name, exiting...")
-            exit()
+            sys.exit()
 
         return model_ft
 
@@ -201,7 +205,7 @@ class DNNClassifierModelRadar(ModelBase):
             start_infer = time.time()
             results = self._process_batch(requests)
             logger.info(
-                f"Process batch took {time.time() - start_infer}s for {len(requests)}"
+                f"Process batch took {time.time() - start_infer}s for {len(requests)}",
             )
             for result in results:
                 self.result_count += 1
@@ -266,7 +270,9 @@ class DNNClassifierModelRadar(ModelBase):
                 label_list.append(int(label))
 
         dataset = ImageFromList(
-            image_list, transform=self._test_transforms, label_list=label_list
+            image_list,
+            transform=self._test_transforms,
+            label_list=label_list,
         )
         data_loader = DataLoader(
             dataset,
@@ -296,14 +302,15 @@ class DNNClassifierModelRadar(ModelBase):
 
         if test_path.is_dir():
             return self.infer_dir(test_path, self.calculate_performance)
-        elif test_path.is_file():
+        if test_path.is_file():
             logger.info("Evaluating model")
             return self.infer_path(test_path, self.calculate_performance)
-        else:
-            raise Exception(f"ERROR: {test_path} does not exist")
+        msg = f"ERROR: {test_path} does not exist"
+        raise Exception(msg)
 
     def _process_batch(
-        self, batch: list[tuple[ObjectId, torch.Tensor]]
+        self,
+        batch: list[tuple[ObjectId, torch.Tensor]],
     ) -> Iterable[ResultProvider]:
         assert self.context is not None
         if self._model is None:
@@ -360,7 +367,7 @@ class DNNClassifierModelRadar(ModelBase):
                         bboxes,
                         self.version,
                         None,
-                    )
+                    ),
                 )
         return results
 
@@ -371,7 +378,8 @@ class DNNClassifierModelRadar(ModelBase):
             self._model = None
 
     def patch_processing(
-        self, img_batch: list[tuple[ObjectId, torch.Tensor]]
+        self,
+        img_batch: list[tuple[ObjectId, torch.Tensor]],
     ) -> tuple[Sequence[Sequence[float]], list[list[tuple[int, int, int, int]]]]:
         num_image = 0
         tensors_for_predict = []
@@ -380,7 +388,8 @@ class DNNClassifierModelRadar(ModelBase):
         ## loop through batch and determine which samples have potential instances
         for object_id, tensor in img_batch:
             obj = self.context.retriever.get_ml_data(object_id)
-            assert obj is not None and obj.media_type in (
+            assert obj is not None
+            assert obj.media_type in (
                 "x-array/numpy",
                 "x-array/numpyz",
             )
@@ -399,18 +408,18 @@ class DNNClassifierModelRadar(ModelBase):
                 for crop in cropped_images:
                     tensors_for_predict.append(crop)
                 crop_assign.append(
-                    [i for i in range(num_image, num_image + num_crops)]
+                    list(range(num_image, num_image + num_crops)),
                 )  # not the list indices where these crops will be.
                 boxes_list.append(coords)
                 num_image += num_crops
 
-        input_tensors = torch.stack([tens for tens in tensors_for_predict])
+        input_tensors = torch.stack(list(tensors_for_predict))
         # predictions include all cropped samples and those that are negs.
         predictions_tiles = self.get_predictions(input_tensors)
         predictions = []
         for crops in crop_assign:
             predictions_per_sample = np.array(
-                predictions_tiles[crops[0] : crops[0] + len(crops)]
+                predictions_tiles[crops[0] : crops[0] + len(crops)],
             )
             # across all patches for a given sample we combine the scores as follows
             # to make sure negative results don't diminish positive detections.
@@ -433,7 +442,8 @@ class DNNClassifierModelRadar(ModelBase):
         return predictions, boxes_list
 
     def select_patches(
-        self, source_img: npt.NDArray[np.uint8]
+        self,
+        source_img: npt.NDArray[np.uint8],
     ) -> tuple[list[Image.Image], list[tuple[int, int, int, int]]]:
         # print(source_img.shape)
         threshold = 4.56 * 1.46  # Global median of negatives mult by constant factor
@@ -457,7 +467,7 @@ class DNNClassifierModelRadar(ModelBase):
 
         regions = [region for region in regions if not condition(region)]
 
-        if not len(regions):
+        if not regions:
             return [], []
         box_distance_xthresh, box_distance_ythresh = 10, 10
         merged_regions: list[tuple[int, int, int, int]] = []
@@ -498,7 +508,9 @@ class DNNClassifierModelRadar(ModelBase):
                 np.max(source_img) - np.min(source_img)
             )  # normalize
             cropped_image = norm_source_img[
-                left_border : right_border + 1, top_border : bottom_border + 1, :
+                left_border : right_border + 1,
+                top_border : bottom_border + 1,
+                :,
             ]
             padded_image = np.pad(
                 cropped_image,

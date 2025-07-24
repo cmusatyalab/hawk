@@ -167,5 +167,5 @@ def collect_metrics_total(metric: Counter | Gauge) -> int:
             for instance in metric.collect()
             for sample in instance.samples
             if not sample.name.endswith("_created")
-        )
+        ),
     )

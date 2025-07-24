@@ -10,28 +10,28 @@ import multiprocessing as mp
 import os
 import queue
 import time
-from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Iterable, Sequence, cast
 
 import torch
-import torchvision.transforms as transforms
 from logzero import logger
 from PIL import Image, ImageFile
 from sklearn.metrics import average_precision_score
 from torch.utils.data import DataLoader
-from torchvision import datasets
+from torchvision import datasets, transforms
 
 from ....detection import Detection
-from ....proto.messages_pb2 import TestResults
-from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.result_provider import ResultProvider
 from ...core.utils import log_exceptions
-from .config import YOLOModelConfig
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from ....hawkobject import HawkObject
     from ....objectid import ObjectId
+    from ....proto.messages_pb2 import TestResults
+    from ...context.model_trainer_context import ModelContext
+    from .config import YOLOModelConfig
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -49,7 +49,7 @@ class YOLOModelRadar(ModelBase):
         *,
         train_examples: dict[str, int] | None = None,
         train_time: float = 0.0,
-    ):
+    ) -> None:
         logger.info(f"Loading DNN Model from {model_path}")
         assert model_path.is_file()
         test_transforms = transforms.Compose(
@@ -58,13 +58,15 @@ class YOLOModelRadar(ModelBase):
                 transforms.CenterCrop(config.input_size),
                 transforms.ToTensor(),
                 transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225],
                 ),
-            ]
+            ],
         )
 
         self.yolo_repo = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "yolov5"
+            os.path.dirname(os.path.abspath(__file__)),
+            "yolov5",
         )
 
         super().__init__(
@@ -99,17 +101,15 @@ class YOLOModelRadar(ModelBase):
 
         with io.BytesIO() as f:
             torch.save({"state_dict": self._model.state_dict()}, f)
-            content = f.getvalue()
-        return content
+            return f.getvalue()
 
     def load_model(self, model_path: Path) -> torch.nn.Module:
-        model = torch.hub.load(
+        return torch.hub.load(
             self.yolo_repo,
             "custom",
             path=str(model_path),
             source="local",
         )
-        return model
 
     def get_predictions(self, inputs: torch.Tensor) -> list[float]:
         assert self._model is not None
@@ -192,14 +192,16 @@ class YOLOModelRadar(ModelBase):
 
     def evaluate_model(self, test_path: Path) -> TestResults:
         def calculate_performance(
-            y_true: Sequence[int], y_pred: Sequence[float]
+            y_true: Sequence[int],
+            y_pred: Sequence[float],
         ) -> float:
-            return cast(float, average_precision_score(y_true, y_pred, average=None))
+            return cast("float", average_precision_score(y_true, y_pred, average=None))
 
         return self.infer_dir(test_path, calculate_performance)
 
     def _process_batch(
-        self, batch: Sequence[tuple[ObjectId, torch.Tensor]]
+        self,
+        batch: Sequence[tuple[ObjectId, torch.Tensor]],
     ) -> Iterable[ResultProvider]:
         if self._model is None:
             if len(batch) > 0:

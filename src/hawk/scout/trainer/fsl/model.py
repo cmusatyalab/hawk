@@ -7,29 +7,29 @@ from __future__ import annotations
 import io
 import queue
 import time
-from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, Sequence, cast
 
 import numpy as np
 import torch
-import torchvision.transforms as transforms
 from logzero import logger
 from PIL import Image, ImageFile
 from sklearn.metrics.pairwise import cosine_similarity
-from torchvision import models
+from torchvision import models, transforms
 
 from ....classes import POSITIVE_CLASS
 from ....detection import Detection
-from ....proto.messages_pb2 import TestResults
-from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.result_provider import ResultProvider
 from ...core.utils import log_exceptions
-from .config import FSLModelConfig
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from ....hawkobject import HawkObject
     from ....objectid import ObjectId
+    from ....proto.messages_pb2 import TestResults
+    from ...context.model_trainer_context import ModelContext
+    from .config import FSLModelConfig
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -48,7 +48,7 @@ class FSLModel(ModelBase):
         *,
         train_examples: dict[str, int] | None = None,
         train_time: float = 0.0,
-    ):
+    ) -> None:
         logger.info(f"Loading FSL Model from {model_path}")
         assert model_path.is_file()
 
@@ -57,9 +57,10 @@ class FSLModel(ModelBase):
                 transforms.Resize((224, 224)),
                 transforms.ToTensor(),
                 transforms.Normalize(
-                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                    (0.4914, 0.4822, 0.4465),
+                    (0.2023, 0.1994, 0.2010),
                 ),
-            ]
+            ],
         )
 
         super().__init__(
@@ -87,7 +88,7 @@ class FSLModel(ModelBase):
         im_tensor = torch.unsqueeze(self._test_transforms(im), dim=0)
         with torch.no_grad():
             preds = self._model(im_tensor.to(device))
-            return cast(Sequence[float], np.array([preds[0].cpu().numpy()]))
+            return cast("Sequence[float]", np.array([preds[0].cpu().numpy()]))
 
     @property
     def version(self) -> int:
@@ -108,8 +109,7 @@ class FSLModel(ModelBase):
 
         with io.BytesIO() as f:
             torch.save({"state_dict": self._model.state_dict()}, f)
-            content = f.getvalue()
-        return content
+            return f.getvalue()
 
     def load_model(self, model_path: Path) -> torch.nn.Module:
         logger.info("Starting model load")
@@ -175,7 +175,8 @@ class FSLModel(ModelBase):
         return output
 
     def _process_batch(
-        self, batch: list[tuple[ObjectId, torch.Tensor]]
+        self,
+        batch: list[tuple[ObjectId, torch.Tensor]],
     ) -> Iterable[ResultProvider]:
         if self._model is None:
             if len(batch) > 0:
@@ -194,7 +195,8 @@ class FSLModel(ModelBase):
                 yield ResultProvider(batch[i][0], score, bboxes, self.version)
 
     def evaluate_model(self, test_path: Path) -> TestResults:
-        raise Exception("ERROR: fsl.model.evaluate_model not implemented")
+        msg = "ERROR: fsl.model.evaluate_model not implemented"
+        raise Exception(msg)
 
     def stop(self) -> None:
         logger.info(f"Stopping model of version {self.version}")

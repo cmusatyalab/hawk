@@ -10,11 +10,10 @@ import time
 from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import zmq
 from logzero import logger
-from prometheus_client import Gauge, Histogram, Summary
 
 from ..classes import class_name_to_str
 from ..detection import Detection
@@ -31,6 +30,11 @@ from .stats import (
     HAWK_UNLABELED_RECEIVED,
     HAWK_UNLABELED_RECEIVED_SCORE,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from prometheus_client import Gauge, Histogram, Summary
 
 
 class Strategy(Enum):
@@ -103,7 +107,8 @@ class HomeToScoutWorker:
     scout: str
     h2c_port: int
     zmq_context: zmq.Context = field(  # type: ignore[type-arg]
-        default_factory=zmq.Context, repr=False
+        default_factory=zmq.Context,
+        repr=False,
     )
     queue: queue.SimpleQueue[bytes] = field(default_factory=queue.SimpleQueue)
 
@@ -166,10 +171,11 @@ class ScoutQueue:
     coordinator: int | None = None
 
     zmq_context: zmq.Context = field(  # type: ignore[type-arg]
-        default_factory=zmq.Context, repr=False
+        default_factory=zmq.Context,
+        repr=False,
     )
     label_queue: queue.PriorityQueue[tuple[float, UnlabeledResult]] = field(
-        default_factory=queue.PriorityQueue
+        default_factory=queue.PriorityQueue,
     )
     to_scout: list[HomeToScoutWorker] = field(init=False)
 
@@ -197,10 +203,10 @@ class ScoutQueue:
             for scout in self.scouts
         ]
         self.unlabeled_queue_length = HAWK_UNLABELED_QUEUE_LENGTH.labels(
-            mission=self.mission_id
+            mission=self.mission_id,
         )
         self.unlabeled_queue_time = HAWK_UNLABELED_QUEUE_TIME.labels(
-            mission=self.mission_id
+            mission=self.mission_id,
         )
 
     def start(self) -> ScoutQueue:
@@ -228,7 +234,7 @@ class ScoutQueue:
             received += 1
             received_from_scout.update([result.scoutIndex])
             logger.debug(
-                f"Received {result.scoutIndex} {result.objectId} {result.score}"
+                f"Received {result.scoutIndex} {result.objectId} {result.score}",
             )
 
             if self.strategy in [Strategy.SCORE, Strategy.TOP]:

@@ -19,18 +19,18 @@ from torchvision import datasets
 from torchvision.transforms import transforms
 
 from ....detection import Detection
-from ....proto.messages_pb2 import TestResults
-from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.result_provider import ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
 from .action_recognition_model import ActionRecognitionModel
-from .config import ActivityModelConfig
 from .movinet_a0s_encoder import MovinetEncoder
 
 if TYPE_CHECKING:
     from ....hawkobject import HawkObject
     from ....objectid import ObjectId
+    from ....proto.messages_pb2 import TestResults
+    from ...context.model_trainer_context import ModelContext
+    from .config import ActivityModelConfig
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
@@ -47,12 +47,17 @@ class ActivityClassifierModel(ModelBase):
         *,
         train_examples: dict[str, int] | None = None,
         train_time: float = 0.0,
-    ):
+    ) -> None:
         logger.info(f"Loading Action Recognition Model from {model_path}")
         assert model_path.is_file()
 
         super().__init__(
-            config, context, model_path, version, train_examples, train_time
+            config,
+            context,
+            model_path,
+            version,
+            train_examples,
+            train_time,
         )
         assert self.context is not None
 
@@ -62,7 +67,7 @@ class ActivityClassifierModel(ModelBase):
                 lambda v: v.to(torch.float32) / 255,
                 transforms.Resize((200, 200)),
                 transforms.CenterCrop((172, 172)),
-            ]
+            ],
         )
         self._preprocess = transform
         self._device = torch.device("cpu")
@@ -142,7 +147,7 @@ class ActivityClassifierModel(ModelBase):
             # logger.info(f"\nFeeding {len(requests)} to inference...\n")
             results = self._process_batch(requests)
             logger.info(
-                f"Process batch took {time.time() - start_infer}s for {len(requests)}"
+                f"Process batch took {time.time() - start_infer}s for {len(requests)}",
             )
             for result in results:
                 self.result_count += 1
@@ -209,7 +214,9 @@ class ActivityClassifierModel(ModelBase):
                 label_list.append(int(label))
 
         dataset = ImageFromList(
-            image_list, transform=self._preprocess, label_list=label_list
+            image_list,
+            transform=self._preprocess,
+            label_list=label_list,
         )
         data_loader = DataLoader(
             dataset,
@@ -239,14 +246,15 @@ class ActivityClassifierModel(ModelBase):
 
         if test_path.is_dir():
             return self.infer_dir(test_path, self.calculate_performance)
-        elif test_path.is_file():
+        if test_path.is_file():
             logger.info("Evaluating model")
             return self.infer_path(test_path, self.calculate_performance)
-        else:
-            raise Exception(f"ERROR: {test_path} does not exist")
+        msg = f"ERROR: {test_path} does not exist"
+        raise Exception(msg)
 
     def _process_batch(
-        self, batch: list[tuple[ObjectId, torch.Tensor]]
+        self,
+        batch: list[tuple[ObjectId, torch.Tensor]],
     ) -> Iterable[ResultProvider]:
         assert self.context is not None
         if self._model is None:
@@ -284,7 +292,7 @@ class ActivityClassifierModel(ModelBase):
                         bboxes,
                         self.version,
                         final_fv,
-                    )  ## score for priority queue is sum of all positive classes
+                    ),  ## score for priority queue is sum of all positive classes
                 )
         return results
 
@@ -294,9 +302,13 @@ class ActivityClassifierModel(ModelBase):
             self._running = False
 
     def forward_hook(
-        self, module: torch.nn.Module, input: torch.Tensor, output: torch.Tensor
+        self,
+        module: torch.nn.Module,
+        input: torch.Tensor,
+        output: torch.Tensor,
     ) -> None:
         self.batch_feature_vectors = output.detach().cpu()
         self.batch_feature_vectors = self.batch_feature_vectors.reshape(
-            self.batch_feature_vectors.shape[0], -1
+            self.batch_feature_vectors.shape[0],
+            -1,
         )

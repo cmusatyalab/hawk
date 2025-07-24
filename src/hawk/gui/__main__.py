@@ -6,7 +6,7 @@ import argparse
 import os
 from pathlib import Path
 
-import streamlit.web.bootstrap as bootstrap
+from streamlit.web import bootstrap
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-l", "--listen", default="localhost", help="address to listen on")

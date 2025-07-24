@@ -121,7 +121,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Convert Hawk object-id to short-id to locate related resources"
+        description="Convert Hawk object-id to short-id to locate related resources",
     )
     parser.add_argument(
         "-v",

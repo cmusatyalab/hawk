@@ -6,14 +6,11 @@ from __future__ import annotations
 
 import queue
 import threading
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from logzero import logger
 
 from ...classes import NEGATIVE_CLASS
-from ..core.model import Model
-from ..core.result_provider import ResultProvider
 from ..stats import (
     HAWK_SELECTOR_DISCARD_QUEUE_LENGTH,
     HAWK_SELECTOR_DROPPED_OBJECTS,
@@ -22,6 +19,10 @@ from ..stats import (
 from .selector_base import SelectorBase
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ..core.model import Model
+    from ..core.result_provider import ResultProvider
     from ..reexamination.reexamination_strategy import (
         ReexaminationQueueType,
         ReexaminationStrategy,
@@ -34,14 +35,14 @@ class ThresholdSelector(SelectorBase):
         mission_id: str,
         threshold: float,
         reexamination_strategy: ReexaminationStrategy,
-    ):
+    ) -> None:
         super().__init__(mission_id)
 
         self._threshold = threshold
         self._reexamination_strategy = reexamination_strategy
 
         self.discard_queue_length = HAWK_SELECTOR_DISCARD_QUEUE_LENGTH.labels(
-            mission=mission_id
+            mission=mission_id,
         )
         self._discard_queue: ReexaminationQueueType = queue.PriorityQueue()
         self._insert_lock = threading.Lock()
@@ -77,11 +78,12 @@ class ThresholdSelector(SelectorBase):
                     self._discard_queue,
                     num_revisited,
                 ) = self._reexamination_strategy.get_new_queues(
-                    model, self._discard_queue, self._mission.start_time
+                    model,
+                    self._discard_queue,
+                    self._mission.start_time,
                 )
                 self.discard_queue_length.set(self._discard_queue.qsize())
                 self.num_revisited.inc(num_revisited)
 
     def add_easy_negatives(self, path: Path) -> None:
-        """not implemented yet"""
-        pass
+        """Not implemented yet."""

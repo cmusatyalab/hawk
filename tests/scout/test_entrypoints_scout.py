@@ -14,6 +14,6 @@ from hawk.scout.trainer.fsl.augment import main as _fsl_augment_main  # noqa: F4
 
 
 @pytest.mark.scout
-def test_entrypoints_scout():
-    """The real test was if we could import the various entrypoints"""
+def test_entrypoints_scout() -> None:
+    """The real test was if we could import the various entrypoints."""
     assert True

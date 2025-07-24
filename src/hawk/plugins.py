@@ -54,16 +54,21 @@ class HawkPlugin:
     @classmethod
     def validate_config(cls, config: dict[str, Any]) -> HawkPluginConfig:
         return cls.config_class.model_validate(
-            {k: v for k, v in config.items() if not k.startswith("_")}
+            {k: v for k, v in config.items() if not k.startswith("_")},
         )
 
     @classmethod
     def scrub_config(
-        cls, config: dict[str, Any], *, exclude: set[str] | None = None
+        cls,
+        config: dict[str, Any],
+        *,
+        exclude: set[str] | None = None,
     ) -> dict[str, str]:
         validated = cls.validate_config(config)
         json_dict = validated.model_dump(
-            mode="json", exclude_defaults=True, exclude=exclude
+            mode="json",
+            exclude_defaults=True,
+            exclude=exclude,
         )
         return {k: str(v) for k, v in json_dict.items()}
 
@@ -95,10 +100,12 @@ def get_plugin_entrypoint(plugin_type: str, plugin: str) -> type[HawkPlugin]:
 
 
 def load_plugin(
-    plugin_type: str, plugin: str, config: dict[str, Any], **kwargs: Any
+    plugin_type: str,
+    plugin: str,
+    config: dict[str, Any],
+    **kwargs: Any,
 ) -> HawkPlugin:
     """Attempt to load and instantiate a plugin."""
-
     try:
         plugin_cls = get_plugin_entrypoint(plugin_type, plugin)
         return plugin_cls.from_config(config, **kwargs)
@@ -134,12 +141,13 @@ def validate_and_scrub_config(
         plugin_cls = get_plugin_entrypoint(plugin_type, plugin)
 
         clean_config = plugin_cls.scrub_config(
-            dict(clean_config, **inject), exclude=set(inject)
+            dict(clean_config, **inject),
+            exclude=set(inject),
         )
 
     except ImportError:
         logger.info(
-            f"Import error, deferring {plugin_type}.{plugin} validation to scout."
+            f"Import error, deferring {plugin_type}.{plugin} validation to scout.",
         )
 
     except Exception as e:
@@ -160,7 +168,7 @@ if __name__ == "__main__":
     parser.add_argument("config", nargs="*", metavar="config=value")
     args = parser.parse_args()
 
-    config = {k: v for k, v in [setting.split("=", 1) for setting in args.config]}
+    config = dict([setting.split("=", 1) for setting in args.config])
 
     try:
         plugin_cls = get_plugin_entrypoint(args.plugin_type, args.plugin)

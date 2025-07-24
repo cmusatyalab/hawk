@@ -26,7 +26,7 @@ class StoreMetadataVideoClips(VideoClips):  # type: ignore[misc]
         _precomputed_metadata: dict[str, Any] | None = None,
         num_workers: int = 0,
         output_format: str = "THWC",
-    ):
+    ) -> None:
         self.metadata_path: str = metadata_path
         super().__init__(
             video_paths=video_paths,
@@ -72,8 +72,7 @@ def calculate_metadata(
 
 
 def create_gif_from_video_tensor_bytes(video: torch.Tensor, fps: int = 10) -> bytes:
-    """
-    Creates a GIF from a sequence of RGB video frames represented as a PyTorch tensor
+    """Creates a GIF from a sequence of RGB video frames represented as a PyTorch tensor
     and returns it as a binary (bytes) object.
 
     Args:
@@ -87,16 +86,20 @@ def create_gif_from_video_tensor_bytes(video: torch.Tensor, fps: int = 10) -> by
 
     Returns:
         bytes: The GIF content as a binary object.
+
     """
     if not isinstance(video, torch.Tensor):
-        raise TypeError("Input 'video' must be a PyTorch tensor.")
+        msg = "Input 'video' must be a PyTorch tensor."
+        raise TypeError(msg)
     if video.dim() != 4:
-        raise ValueError("Input 'video' tensor must have 4 dimensions (T, C, H, W).")
+        msg = "Input 'video' tensor must have 4 dimensions (T, C, H, W)."
+        raise ValueError(msg)
     if video.shape[1] != 3:
-        raise ValueError("Input 'video' tensor must have 3 channels (RGB).")
+        msg = "Input 'video' tensor must have 3 channels (RGB)."
+        raise ValueError(msg)
     if not torch.all((video >= 0) & (video <= 255)):
         print(
-            "Warning: Pixel values are not strictly within 0-255. Clamping will occur."
+            "Warning: Pixel values are not strictly within 0-255. Clamping will occur.",
         )
 
     # Convert PyTorch tensor to NumPy array
@@ -117,8 +120,7 @@ def create_gif_from_video_tensor_bytes(video: torch.Tensor, fps: int = 10) -> by
             loop=0,
             format="gif",
         )
-        content = byte_stream.getvalue()
-    return content
+        return byte_stream.getvalue()
 
 
 # --- Example Usage ---
@@ -154,7 +156,7 @@ if __name__ == "__main__":
             with open("in_memory_output.gif", "wb") as f:
                 f.write(gif_data_bytes)
             print(
-                "In-memory GIF also saved to 'in_memory_output.gif' for verification."
+                "In-memory GIF also saved to 'in_memory_output.gif' for verification.",
             )
 
     except Exception as e:

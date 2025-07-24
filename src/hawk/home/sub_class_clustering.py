@@ -15,7 +15,7 @@ from .label_utils import LabelSample, read_jsonl
 
 
 class SubClassClustering:
-    def __init__(self, mission_dir: Path, cluster_sample_interval: int = 1):
+    def __init__(self, mission_dir: Path, cluster_sample_interval: int = 1) -> None:
         self.mission_dir = mission_dir
         self.cluster_sample_interval = cluster_sample_interval
         self.labeled_json_file = mission_dir / "labeled.jsonl"
@@ -38,7 +38,8 @@ class SubClassClustering:
                 continue
             self.entry_list.append(new_entry)
             fv_path = new_entry.content(
-                self.mission_dir / "feature_vectors", suffix=".pt"
+                self.mission_dir / "feature_vectors",
+                suffix=".pt",
             )
             new_vector = torch.load(fv_path).unsqueeze(0)
             self.feature_vector_list.append(fv_path)
@@ -46,7 +47,8 @@ class SubClassClustering:
                 self.feature_vector_stack = new_vector
             else:
                 self.feature_vector_stack = torch.cat(
-                    (self.feature_vector_stack, new_vector), dim=0
+                    (self.feature_vector_stack, new_vector),
+                    dim=0,
                 )  ## concatenate next feature vector
                 samples_since_last_cluster += 1
             total_samples += 1

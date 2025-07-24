@@ -16,7 +16,7 @@ class PTListDataset(Dataset):  # type: ignore[misc]
         list_file: str,
         transform: Callable[[torch.Tensor], torch.Tensor] | None = None,
         target_transform: Callable[[int], int] | None = None,
-    ):
+    ) -> None:
         # read all (path, label) pairs up front
         with open(list_file) as f:
             lines = [ln.strip().split() for ln in f if ln.strip()]

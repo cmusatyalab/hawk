@@ -84,7 +84,7 @@ def collect_histogram_bucket(stat: Histogram, le: float) -> int:
             for metric in stat.collect()
             for sample in metric.samples
             if sample.name.endswith("_bucket") and sample.labels["le"] == value
-        )
+        ),
     )
 
 
@@ -95,7 +95,7 @@ def collect_summary_count(stat: Histogram | Summary) -> int:
             for metric in stat.collect()
             for sample in metric.samples
             if sample.name.endswith("_count")
-        )
+        ),
     )
 
 
@@ -106,5 +106,5 @@ def collect_summary_total(stat: Histogram | Summary) -> int:
             for metric in stat.collect()
             for sample in metric.samples
             if sample.name.endswith("_sum")
-        )
+        ),
     )

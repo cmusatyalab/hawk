@@ -8,19 +8,22 @@ import base64
 import subprocess
 import sys
 import time
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import torch
-import torch.optim as optim
-import torchvision.transforms as transforms
 from logzero import logger
-from torchvision import models
+from torch import optim
+from torchvision import models, transforms
 
-from ...context.model_trainer_context import ModelContext
 from ...core.model_trainer import ModelTrainer
 from .config import FSLTrainerConfig
 from .model import FSLModel
 from .utils import TripletData, TripletLoss
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ...context.model_trainer_context import ModelContext
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -30,7 +33,7 @@ class FSLTrainer(ModelTrainer):
     config_class = FSLTrainerConfig
     config: FSLTrainerConfig
 
-    def __init__(self, config: FSLTrainerConfig, context: ModelContext):
+    def __init__(self, config: FSLTrainerConfig, context: ModelContext) -> None:
         super().__init__(config, context)
 
         # FIXME use tmpfile
@@ -68,9 +71,10 @@ class FSLTrainer(ModelTrainer):
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize(
-                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                    (0.4914, 0.4822, 0.4465),
+                    (0.2023, 0.1994, 0.2010),
                 ),
-            ]
+            ],
         )
 
         # val_transforms = transforms.Compose(
@@ -85,7 +89,10 @@ class FSLTrainer(ModelTrainer):
 
         train_data = TripletData(train_dataset, train_transforms)
         train_loader = torch.utils.data.DataLoader(
-            dataset=train_data, batch_size=32, shuffle=True, num_workers=4
+            dataset=train_data,
+            batch_size=32,
+            shuffle=True,
+            num_workers=4,
         )
 
         device = "cuda"

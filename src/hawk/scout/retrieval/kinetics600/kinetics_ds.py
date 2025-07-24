@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import pickle
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
-from torch import Tensor
 from torchvision.datasets import Kinetics
+
+if TYPE_CHECKING:
+    from torch import Tensor
 
 
 class KineticsDs(Kinetics):  # type: ignore[misc]
@@ -46,7 +48,8 @@ class KineticsDs(Kinetics):  # type: ignore[misc]
     def get_label(self, idx: int) -> int:
         nclips = self.video_clips.num_clips()
         if idx >= nclips:
-            raise IndexError(f"Index {idx} out of range ({nclips} number of clips)")
+            msg = f"Index {idx} out of range ({nclips} number of clips)"
+            raise IndexError(msg)
 
         video_idx, clip_idx = self.video_clips.get_clip_location(idx)
         label: int = self.samples[video_idx][1]
@@ -77,7 +80,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Download Kinetics-600 dataset")
     parser.add_argument(
-        "--num-workers", type=int, default=1, help="Number of download workers"
+        "--num-workers",
+        type=int,
+        default=1,
+        help="Number of download workers",
     )
     parser.add_argument("root", type=Path, help="Root directory")
     args = parser.parse_args()

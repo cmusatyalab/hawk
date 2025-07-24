@@ -7,15 +7,12 @@ from torch import Tensor, nn
 
 
 class BackboneEncoder(nn.Module):  # type: ignore[misc]
-    def __init__(self, embed_dim: int):
+    def __init__(self, embed_dim: int) -> None:
         super().__init__()
         self._embed_dim: int = embed_dim
 
     def forward(self, X: Tensor) -> Tensor:
-        """
-        :param X: (B, N, C, H, W)
-        """
-        pass
+        """:param X: (B, N, C, H, W)"""
 
     @property
     def embed_dim(self) -> int:

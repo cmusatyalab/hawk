@@ -48,7 +48,7 @@ dopp_width_mean = 51
 # represent mean + st dev for each class.
 
 
-def visualize(RAD, RD_path):
+def visualize(RAD, RD_path) -> None:
     # This function is only used for generating new heat maps if wanting to
     # visualize the new created samples.
     RD = np.load(RD_path)
@@ -70,7 +70,12 @@ def visualize(RAD, RD_path):
 
     drawer.clearAxes(axes)
     drawer.drawRadarBoxes(
-        stereo_left_image, RD_img, gt_instances, classes, colors, axes
+        stereo_left_image,
+        RD_img,
+        gt_instances,
+        classes,
+        colors,
+        axes,
     )
 
     tile_num = RD_path.split("/")[-1].split(".")[0]
@@ -78,7 +83,13 @@ def visualize(RAD, RD_path):
 
 
 def slice_rad_file(
-    rad_file, az_left, az_right, range_top, range_bottom, dopp_left, dopp_right
+    rad_file,
+    az_left,
+    az_right,
+    range_top,
+    range_bottom,
+    dopp_left,
+    dopp_right,
 ):
     # This function takes a npy file path of the original RADDETR dataset npy
     # tensor along with the 3D extraction boundaries from the original npy
@@ -300,7 +311,8 @@ new_sample_count = 0
 for label_file in tqdm(sorted(label_files)):
     part, label_base = label_file.split("/")[-2:]
     image_name = os.path.join(
-        ORIGINAL_IMAGES_DIR, part + "/" + label_base.split(".")[0] + ".npy"
+        ORIGINAL_IMAGES_DIR,
+        part + "/" + label_base.split(".")[0] + ".npy",
     )
     class_count = {
         "car": 0,
@@ -374,7 +386,7 @@ for label_file in tqdm(sorted(label_files)):
                 str(int(range_cent[i])),
                 str(int(dopp_width[i])),
                 str(int(range_width[i])),
-            ]
+            ],
         )
         new_sample_count += 1
         if new_sample_count % 100 == 0:

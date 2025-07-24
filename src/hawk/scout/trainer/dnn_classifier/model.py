@@ -18,17 +18,17 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 
 from ....detection import Detection
-from ....proto.messages_pb2 import TestResults
-from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.result_provider import ResultProvider
 from ...core.utils import ImageFromList, log_exceptions
-from .config import DNNModelConfig
 from .training_state import TrainingState
 
 if TYPE_CHECKING:
     from ....hawkobject import HawkObject
     from ....objectid import ObjectId
+    from ....proto.messages_pb2 import TestResults
+    from ...context.model_trainer_context import ModelContext
+    from .config import DNNModelConfig
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -46,7 +46,7 @@ class DNNClassifierModel(ModelBase):
         *,
         train_examples: dict[str, int] | None = None,
         train_time: float = 0.0,
-    ):
+    ) -> None:
         logger.info(f"Loading DNN Model from {model_path}")
         assert model_path.is_file()
 
@@ -95,7 +95,8 @@ class DNNClassifierModel(ModelBase):
     def load_model(self, model_path: Path) -> torch.nn.Module:
         assert self.context is not None
         model, preprocess, _ = TrainingState.load_for_inference(
-            model_path, self.config.arch
+            model_path,
+            self.config.arch,
         )
         return model, preprocess
 
@@ -146,7 +147,7 @@ class DNNClassifierModel(ModelBase):
             # logger.info(f"\nFeeding {len(requests)} to inference...\n")
             results = self._process_batch(requests)
             logger.info(
-                f"Process batch took {time.time() - start_infer}s for {len(requests)}"
+                f"Process batch took {time.time() - start_infer}s for {len(requests)}",
             )
             for result in results:
                 self.result_count += 1
@@ -213,7 +214,9 @@ class DNNClassifierModel(ModelBase):
                 label_list.append(int(label))
 
         dataset = ImageFromList(
-            image_list, transform=self._preprocess, label_list=label_list
+            image_list,
+            transform=self._preprocess,
+            label_list=label_list,
         )
         data_loader = DataLoader(
             dataset,
@@ -243,14 +246,15 @@ class DNNClassifierModel(ModelBase):
 
         if test_path.is_dir():
             return self.infer_dir(test_path, self.calculate_performance)
-        elif test_path.is_file():
+        if test_path.is_file():
             logger.info("Evaluating model")
             return self.infer_path(test_path, self.calculate_performance)
-        else:
-            raise Exception(f"ERROR: {test_path} does not exist")
+        msg = f"ERROR: {test_path} does not exist"
+        raise Exception(msg)
 
     def _process_batch(
-        self, batch: list[tuple[ObjectId, torch.Tensor]]
+        self,
+        batch: list[tuple[ObjectId, torch.Tensor]],
     ) -> Iterable[ResultProvider]:
         assert self.context is not None
         if self._model is None:
@@ -288,7 +292,7 @@ class DNNClassifierModel(ModelBase):
                         bboxes,
                         self.version,
                         final_fv,
-                    )  ## score for priority queue is sum of all positive classes
+                    ),  ## score for priority queue is sum of all positive classes
                 )
         return results
 
@@ -299,9 +303,13 @@ class DNNClassifierModel(ModelBase):
             self._model = None
 
     def forward_hook(
-        self, module: torch.nn.Module, input: torch.Tensor, output: torch.Tensor
+        self,
+        module: torch.nn.Module,
+        input: torch.Tensor,
+        output: torch.Tensor,
     ) -> None:
         self.batch_feature_vectors = output.detach().cpu()
         self.batch_feature_vectors = self.batch_feature_vectors.reshape(
-            self.batch_feature_vectors.shape[0], -1
+            self.batch_feature_vectors.shape[0],
+            -1,
         )

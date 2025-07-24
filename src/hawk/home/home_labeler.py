@@ -7,13 +7,10 @@ from __future__ import annotations
 import threading
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from logzero import logger
-from prometheus_client import Counter, Gauge, Histogram
 
-from ..classes import ClassList
 from .label_utils import index_jsonl, read_jsonl
 from .stats import (
     HAWK_LABELED_CLASSES,
@@ -23,6 +20,11 @@ from .stats import (
 )
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
+    from prometheus_client import Counter, Gauge, Histogram
+
+    from ..classes import ClassList
     from .home_scout import ScoutQueue
 
 
@@ -50,21 +52,26 @@ class LabelerDiskQueue:
 
         # track labeler statistics
         self.labeled_objects = HAWK_LABELED_OBJECTS.labels(
-            mission=self.mission_id, labeler="disk"
+            mission=self.mission_id,
+            labeler="disk",
         )
 
         self.labeled_classes = HAWK_LABELED_CLASSES
         # Hint to prometheus_client which class names we may use later
         for class_name in self.class_list:
             HAWK_LABELED_CLASSES.labels(
-                mission=self.mission_id, labeler="disk", class_name=class_name
+                mission=self.mission_id,
+                labeler="disk",
+                class_name=class_name,
             )
 
         self.queue_length = HAWK_LABELER_QUEUED_LENGTH.labels(
-            mission=self.mission_id, labeler="disk"
+            mission=self.mission_id,
+            labeler="disk",
         )
         self.queued_time = HAWK_LABELER_QUEUED_TIME.labels(
-            mission=self.mission_id, labeler="disk"
+            mission=self.mission_id,
+            labeler="disk",
         )
 
     def start(self) -> LabelerDiskQueue:
@@ -85,7 +92,7 @@ class LabelerDiskQueue:
             result = self.scout_queue.get()
 
             logger.info(
-                f"Labeling {result.objectId} {result.scoutIndex} {result.score}"
+                f"Labeling {result.objectId} {result.scoutIndex} {result.score}",
             )
 
             # update queued time so we can track labeling delay.

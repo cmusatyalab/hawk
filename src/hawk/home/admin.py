@@ -168,20 +168,20 @@ class Admin:
                 percentage=PercentagePolicyConfig(
                     threshold=retrain_config["threshold"],
                     onlyPositives=retrain_config["only_positives"],
-                )
+                ),
             )
         elif retrain_type == "absolute":
             retrain_policy = RetrainPolicyConfig(
                 absolute=AbsolutePolicyConfig(
                     threshold=retrain_config["threshold"],
                     onlyPositives=retrain_config["only_positives"],
-                )
+                ),
             )
         elif retrain_type == "sample":
             retrain_policy = RetrainPolicyConfig(
                 sample=SampleIntervalPolicyConfig(
                     num_intervals=retrain_config["num_intervals"],
-                )
+                ),
             )
         else:
             errmsg = f"Unknown retrain policy {retrain_type}"
@@ -201,19 +201,19 @@ class Admin:
         for index, _scout in enumerate(self.scouts):
             if dataset_type == "network":
                 network_config = dataset_config["network"]
-                config_dict = dict(
-                    index_path=dataset_config["index_path"],
-                    server_host=network_config["server_address"],
-                    server_port=network_config["server_port"],
-                    balance_mode=dataset_config.get("data_rate_balance"),
-                    tiles_per_frame=dataset_config.get("tiles_per_frame"),
-                    timeout=dataset_config.get("timeout"),
-                )
+                config_dict = {
+                    "index_path": dataset_config["index_path"],
+                    "server_host": network_config["server_address"],
+                    "server_port": network_config["server_port"],
+                    "balance_mode": dataset_config.get("data_rate_balance"),
+                    "tiles_per_frame": dataset_config.get("tiles_per_frame"),
+                    "timeout": dataset_config.get("timeout"),
+                }
             elif dataset_type == "video":
-                config_dict = dict(
-                    video_path=dataset_config["video_list"][index],
-                    timeout=dataset_config.get("timeout"),
-                )
+                config_dict = {
+                    "video_path": dataset_config["video_list"][index],
+                    "timeout": dataset_config.get("timeout"),
+                }
             else:
                 config_dict = dataset_config
 
@@ -224,7 +224,7 @@ class Admin:
                 "retriever",
                 dataset_type,
                 config_dict,
-                inject=dict(mission_id="", data_root="/"),
+                inject={"mission_id": "", "data_root": "/"},
             )
 
             datasets[index] = Dataset(
@@ -243,7 +243,7 @@ class Admin:
                 type=reexamination_type,
                 k=k_value,
             )
-        elif reexamination_type == "full" or reexamination_type == "none":
+        elif reexamination_type in {"full", "none"}:
             reexamination = ReexaminationStrategyConfig(
                 type=reexamination_type,
             )
@@ -267,7 +267,7 @@ class Admin:
                     batchSize=batch_size,
                     countermeasure_threshold=countermeasure_threshold,
                     total_countermeasures=total_countermeasures,
-                )
+                ),
             )
         elif selector_type == "token":
             token_config = selector_config.get("token", {})
@@ -291,7 +291,7 @@ class Admin:
                     lower_threshold_start=lower_thresh_start,
                     lower_threshold_delta=lower_thresh_delta,
                     sliding_window=sliding_window,
-                )
+                ),
             )
         else:
             errmsg = f"Unknown selector {selector_type}"
@@ -317,13 +317,16 @@ class Admin:
             ## home conditions to trigger new scout activation
             default_deploy_home = deployment_options["default_deploy_home"]
             self.min_num_scout_destroyed = default_deploy_home.get(
-                "min_num_scouts_destroyed", 0
+                "min_num_scouts_destroyed",
+                0,
             )
             self.min_num_scouts_remaining = default_deploy_home.get(
-                "min_num_scouts_remaining", 0
+                "min_num_scouts_remaining",
+                0,
             )
             self.deploy_on_any_loss = default_deploy_home.get(
-                "deploy_on_any_loss", False
+                "deploy_on_any_loss",
+                False,
             )
 
             ## Add the per scout override to set conditions for individual scouts.
@@ -345,7 +348,8 @@ class Admin:
                     or scml_deploy_options[scout].scout_dict.get("start_on_model", 0)
                     > 0
                     or scml_deploy_options[scout].scout_dict.get(
-                        "start_mission_duration_percentage", 0
+                        "start_mission_duration_percentage",
+                        0,
                     )
                     > 0
                 ):
@@ -366,7 +370,7 @@ class Admin:
                         "start_time": default_start_time,
                         "start_on_model": default_on_model,
                         "mission_percentage": default_mission_duration_percentage,
-                    }
+                    },
                 )
             if (
                 default_start_time > 0
@@ -456,7 +460,7 @@ class Admin:
                 errormsg = return_msgs.get(index, "No response")
                 scout = self.scouts[index]
                 logger.error(
-                    f"ERROR during Configuration from Scout {scout}: {errormsg}"
+                    f"ERROR during Configuration from Scout {scout}: {errormsg}",
                 )
                 del self.scout_stubs[index]
 
@@ -464,7 +468,7 @@ class Admin:
             self.start_mission()
 
     def start_mission(self) -> None:
-        """Explicit start Mission command"""
+        """Explicit start Mission command."""
         # Start Mission
 
         logger.info("Starting mission")
@@ -491,7 +495,7 @@ class Admin:
         ## start tracking scml deployment status of each scout
 
     def stop_mission(self) -> None:
-        """Explicit stop Mission command"""
+        """Explicit stop Mission command."""
         # close per-scout log files to suspend stats collection
         log_files, self.log_files = self.log_files, {}
         for log_file in log_files.values():
@@ -561,7 +565,7 @@ class Admin:
                     )
                 for _ in range(num_scouts_to_deploy):
                     activating_scout = idle_scouts.pop(
-                        random.randint(0, len(idle_scouts) - 1)
+                        random.randint(0, len(idle_scouts) - 1),
                     )  ## pick a random idle scout to deploy
                     data = ChangeDeploymentStatus(ActiveStatus=True)
                     msg = [b"a2s_change_deploy_status", data.SerializeToString()]
@@ -599,7 +603,7 @@ class Admin:
                         "negatives": negatives,
                         "bytes": collect_summary_total(HAWK_UNLABELED_RECEIVED),
                         "count_by_class": dict(per_class_counts),
-                    }
+                    },
                 )
 
                 log_path = self.log_dir / f"stats-{count:06}.json"
@@ -642,9 +646,9 @@ class Admin:
                 count += 1
                 if finish_time < time.time():
                     break
-        except (Exception, KeyboardInterrupt) as e:
-            logger.exception("Exception in get_mission_stats")
-            raise e
+        except (Exception, KeyboardInterrupt):
+            logger.error("Exception in get_mission_stats")
+            raise
         finally:
             self.stop_event.set()
 

@@ -10,18 +10,19 @@ import queue
 import random
 import threading
 from collections import defaultdict
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from logzero import logger
 
 from ...classes import NEGATIVE_CLASS
-from ..core.model import Model
-from ..core.result_provider import ResultProvider
 from ..core.utils import get_example_key, log_exceptions
 from .selector_base import SelectorBase
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ..core.model import Model
+    from ..core.result_provider import ResultProvider
     from ..reexamination.reexamination_strategy import (
         ReexaminationQueueType,
         ReexaminationStrategy,
@@ -38,7 +39,7 @@ class TopKSelector(SelectorBase):
         total_countermeasures: int,
         reexamination_strategy: ReexaminationStrategy,
         add_negatives: bool = True,
-    ):
+    ) -> None:
         logger.info(f"K: {k}, batchsize: {batch_size}")
         assert k < batch_size
         super().__init__(mission_id)
@@ -68,7 +69,7 @@ class TopKSelector(SelectorBase):
             result = self._priority_queues.get()[-1]
             self.priority_queue_length.dec()
             self._mission.log(
-                f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}"
+                f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}",
             )
             if not self._is_oracle:
                 self.result_queue_length.inc()
@@ -83,7 +84,7 @@ class TopKSelector(SelectorBase):
             time_result = self._mission.mission_time()
             self._mission.log(
                 f"{self.version} CLASSIFICATION: {result.id} "
-                f"GT {result.gt} Score {result.score:.4f}"
+                f"GT {result.gt} Score {result.score:.4f}",
             )
 
             # Incrementing positives in stream
@@ -139,7 +140,7 @@ class TopKSelector(SelectorBase):
         logger.info(
             f"[EASY NEG] Length of result list {length_results}"
             f" negatives added: {num_auto_negative}"
-            f" total false negatives: {sum(labels)}"
+            f" total false negatives: {sum(labels)}",
         )
 
         self.num_negatives_added += len(auto_negative_list)

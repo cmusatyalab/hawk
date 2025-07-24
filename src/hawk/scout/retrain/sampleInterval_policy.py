@@ -2,13 +2,13 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Retrain policy based on percentage of #tiles retrieved increment"""
+"""Retrain policy based on percentage of #tiles retrieved increment."""
 
 from .retrain_policy_base import RetrainPolicyBase
 
 
 class SampleIntervalPolicy(RetrainPolicyBase):
-    def __init__(self, num_intervals: int):
+    def __init__(self, num_intervals: int) -> None:
         super().__init__()
         self.new_examples = 0
         self.num_intervals = num_intervals
@@ -32,7 +32,7 @@ class SampleIntervalPolicy(RetrainPolicyBase):
     def should_retrain(self) -> bool:
         if self.retrain_num < self.num_intervals:
             completed_interval = self.interval_samples_retrieved >= int(
-                self.total_tiles / self.num_intervals
+                self.total_tiles / self.num_intervals,
             )
             if completed_interval:
                 self.retrain_num += 1

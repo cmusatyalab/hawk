@@ -11,15 +11,12 @@ import threading
 from abc import ABCMeta, abstractmethod
 from collections import Counter
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import torch
 from logzero import logger
 
 from ...classes import NEGATIVE_CLASS
-from ..core.model import Model
-from ..core.result_provider import ResultProvider
 from ..stats import (
     HAWK_INFERENCED_OBJECTS,
     HAWK_SELECTOR_DEQUEUED_OBJECTS,
@@ -36,7 +33,11 @@ from ..stats import (
 )
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from ..core.mission import Mission
+    from ..core.model import Model
+    from ..core.result_provider import ResultProvider
 
 
 @dataclass
@@ -57,38 +58,31 @@ class SelectorStats:
 class Selector(metaclass=ABCMeta):
     @abstractmethod
     def add_result(self, result: ResultProvider | None) -> int:
-        """Add processed results from model to selector"""
-        pass
+        """Add processed results from model to selector."""
 
     @abstractmethod
     def clear(self) -> None:
-        """Clean up on end of mission"""
-        pass
+        """Clean up on end of mission."""
 
     @abstractmethod
     def add_context(self, context: Mission) -> None:
-        """Add data manager context"""
-        pass
+        """Add data manager context."""
 
     @abstractmethod
     def get_result(self) -> ResultProvider | None:
-        """Transmit selected results"""
-        pass
+        """Transmit selected results."""
 
     @abstractmethod
     def new_model(self, model: Model | None) -> None:
-        """Triggered when a new model is available"""
-        pass
+        """Triggered when a new model is available."""
 
     @abstractmethod
     def get_stats(self) -> SelectorStats:
-        """Returns current mission stats"""
-        pass
+        """Returns current mission stats."""
 
     @abstractmethod
     def add_easy_negatives(self, path: Path) -> None:
-        """Add unlabeled easy negatives to training set"""
-        pass
+        """Add unlabeled easy negatives to training set."""
 
 
 class SelectorBase(Selector):
@@ -110,18 +104,22 @@ class SelectorBase(Selector):
             # Hint to prometheus_client which labels we might use
             for class_name in self._mission.class_list:
                 HAWK_INFERENCED_OBJECTS.labels(
-                    mission=mission_id, gt=class_name, model_version="0"
+                    mission=mission_id,
+                    gt=class_name,
+                    model_version="0",
                 )
                 HAWK_SELECTOR_DEQUEUED_OBJECTS.labels(
-                    mission=mission_id, gt=class_name, model_version="0"
+                    mission=mission_id,
+                    gt=class_name,
+                    model_version="0",
                 )
 
         self.items_skipped = HAWK_SELECTOR_SKIPPED_OBJECTS.labels(mission=mission_id)
         self.priority_queue_length = HAWK_SELECTOR_PRIORITY_QUEUE_LENGTH.labels(
-            mission=mission_id
+            mission=mission_id,
         )
         self.result_queue_length = HAWK_SELECTOR_RESULT_QUEUE_LENGTH.labels(
-            mission=mission_id
+            mission=mission_id,
         )
         self.num_revisited = HAWK_SELECTOR_REVISITED_OBJECTS.labels(mission=mission_id)
 
@@ -136,7 +134,7 @@ class SelectorBase(Selector):
 
         # incremented by 1 for every FN and every TP when countermeasures remaining = 0
         self.surv_threat_not_neut = HAWK_SURVIVABILITY_THREATS_NOT_COUNTERED.labels(
-            mission=mission_id
+            mission=mission_id,
         )
 
         self._model_lock = threading.Lock()
@@ -147,19 +145,17 @@ class SelectorBase(Selector):
 
     @abstractmethod
     def _add_result(self, result: ResultProvider) -> None:
-        """Helper function specific to selection strategy"""
-        pass
+        """Helper function specific to selection strategy."""
 
     @abstractmethod
     def _new_model(self, model: Model | None) -> None:
-        """Helper function specific to selection strategy"""
-        pass
+        """Helper function specific to selection strategy."""
 
     def add_context(self, context: Mission) -> None:
         self._mission = context
 
     def add_result(self, result: ResultProvider | None) -> int:
-        """Add processed results from model to selection strategy"""
+        """Add processed results from model to selection strategy."""
         if result is None:
             return self.items_processed
 
@@ -191,19 +187,18 @@ class SelectorBase(Selector):
                 if perceived_truth:
                     self.surv_TPs.inc()
                     countermeasures_used = collect_metrics_total(
-                        self.surv_TPs
+                        self.surv_TPs,
                     ) + collect_metrics_total(self.surv_FPs)
                     if countermeasures_used > self.num_countermeasures:
                         self.surv_threat_not_neut.inc()
                 else:
                     self.surv_FNs.inc()
                     self.surv_threat_not_neut.inc()
+            elif perceived_truth:
+                self.surv_FPs.inc()
+                # self.countermeasures_used.inc()
             else:
-                if perceived_truth:
-                    self.surv_FPs.inc()
-                    # self.countermeasures_used.inc()
-                else:
-                    self.surv_TNs.inc()
+                self.surv_TNs.inc()
 
             # Here is where we'll compare threshold to ground truth and actual
             # score to determine TP, TN, FP, FN
@@ -217,7 +212,7 @@ class SelectorBase(Selector):
         return self.items_processed
 
     def new_model(self, model: Model | None) -> None:
-        """New model generation is available from trainer"""
+        """New model generation is available from trainer."""
         with self._model_lock:
             self._model_present = model is not None
 
@@ -231,7 +226,7 @@ class SelectorBase(Selector):
         self.result_queue.put(None)
 
     def get_result(self) -> ResultProvider | None:
-        """Returns result for transmission when available"""
+        """Returns result for transmission when available."""
         while True:
             try:
                 result = self.result_queue.get(timeout=10)
@@ -247,7 +242,7 @@ class SelectorBase(Selector):
                         ## save the feature vector of any sample sent to home
                         ## to temp/ until we receive the label.
                         vector: torch.Tensor = torch.load(
-                            io.BytesIO(result.feature_vector)
+                            io.BytesIO(result.feature_vector),
                         )
                         fv_path = result.id.file_name(temp_dir, ".pt")
                         torch.save(vector, fv_path)

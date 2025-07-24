@@ -5,13 +5,15 @@
 from __future__ import annotations
 
 import time
-from multiprocessing import Queue
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import cv2
 import numpy as np
 import numpy.typing as npt
 from logzero import logger
+
+if TYPE_CHECKING:
+    from multiprocessing import Queue
 
 """
 class VideoFrameProducer:
@@ -24,7 +26,8 @@ class VideoFrameProducer:
 
 
 def produce_video_frames(
-    producer_queue: Queue[tuple[str, npt.NDArray[np.uint8]]], video_source: str
+    producer_queue: Queue[tuple[str, npt.NDArray[np.uint8]]],
+    video_source: str,
 ) -> None:
     logger.info("About to load the video file...")
     capture = cv2.VideoCapture(video_source)
@@ -40,7 +43,7 @@ def produce_video_frames(
         if frame_num % 15 == 0:  # add fps functionality later
             sample_num += 1
             try:
-                npframe = cast(npt.NDArray[np.uint8], np.array(frame))
+                npframe = cast("npt.NDArray[np.uint8]", np.array(frame))
                 producer_queue.put(("scout_1_" + str(sample_num) + ".jpeg", npframe))
                 logger.info(f"Put frame {sample_num} in the queue...")
                 time.sleep(10)  # artificial delay

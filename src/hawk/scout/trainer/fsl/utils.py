@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Callable, Tuple
 
 import torch
-import torch.nn as nn
 from logzero import logger
 from PIL import Image
+from torch import nn
 from torch.utils.data import Dataset
 
 TripletType = Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
@@ -21,7 +21,7 @@ class TripletData(Dataset[TripletType]):  # type: ignore[misc]
         path: Path,
         transforms: Callable[[Image.Image], torch.Tensor],
         split: str = "train",
-    ):
+    ) -> None:
         self.path = path
         self.split = split  # train or valid
         self.classes = [p.name for p in path.glob("*")]
@@ -39,7 +39,7 @@ class TripletData(Dataset[TripletType]):  # type: ignore[misc]
         im1, im2 = random.sample(positives, 2)
 
         # choosing a negative class and negative image (im3)
-        negative_cats = [x for x in range(self.cats)]
+        negative_cats = list(range(self.cats))
         negative_cats.remove(idx)
         negative_idx = int(random.choice(negative_cats))
         negative_cat = self.classes[negative_idx]
@@ -63,7 +63,7 @@ class TripletData(Dataset[TripletType]):  # type: ignore[misc]
 
 
 class TripletLoss(nn.Module):  # type: ignore[misc]
-    def __init__(self, margin: float = 1.0):
+    def __init__(self, margin: float = 1.0) -> None:
         super().__init__()
         self.margin = margin
 
@@ -72,7 +72,10 @@ class TripletLoss(nn.Module):  # type: ignore[misc]
 
     # Distances in embedding space is calculated in euclidean
     def forward(
-        self, anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor
+        self,
+        anchor: torch.Tensor,
+        positive: torch.Tensor,
+        negative: torch.Tensor,
     ) -> torch.Tensor:
         distance_positive = self.calc_euclidean(anchor, positive)
         distance_negative = self.calc_euclidean(anchor, negative)

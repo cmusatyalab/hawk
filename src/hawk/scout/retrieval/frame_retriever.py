@@ -56,14 +56,16 @@ class FrameRetriever(Retriever, LegacyRetrieverMixin):
     ) -> Path:
         subimg = copy.deepcopy(
             img[
-                up : (up + self.config.tile_size), left : (left + self.config.tile_size)
-            ]
+                up : (up + self.config.tile_size),
+                left : (left + self.config.tile_size),
+            ],
         )
         outpath = imagename.parent.joinpath(subimgname)
         if self.padding:
             h, w, c = np.shape(subimg)
             outimg = np.zeros(
-                (self.config.tile_size, self.config.tile_size, c), dtype=np.uint8
+                (self.config.tile_size, self.config.tile_size, c),
+                dtype=np.uint8,
             )
             outimg[0:h, 0:w, :] = subimg
         else:
@@ -72,7 +74,7 @@ class FrameRetriever(Retriever, LegacyRetrieverMixin):
         return outpath
 
     def _split_frame(self, frame: Path) -> Iterator[Path]:
-        image = cast(npt.NDArray[np.uint8], cv2.imread(str(frame)))
+        image = cast("npt.NDArray[np.uint8]", cv2.imread(str(frame)))
 
         width = np.shape(image)[1]
         height = np.shape(image)[0]

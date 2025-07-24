@@ -1,17 +1,18 @@
 # SPDX-FileCopyrightText: 2023 Carnegie Mellon University
 # SPDX-License-Identifier: GPL-2.0-only
+from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import cattrs
 import yaml
 
 from .ports import A2S_PORT, H2C_PORT, S2S_PORT
 
-BANDWIDTH_PRESETS: Dict[str, Dict[str, int]] = {
+BANDWIDTH_PRESETS: dict[str, dict[str, int]] = {
     "12k": {"scout2client_speed": 12, "scout2client_delay": 2000},
     "30k": {"scout2client_speed": 30, "scout2client_delay": 2000},
     "100k": {"scout2client_speed": 100, "scout2client_delay": 1000},
@@ -26,7 +27,7 @@ class SshHost:
     """Class representing an SSH endpoint."""
 
     host: str
-    user: Optional[str] = None
+    user: str | None = None
     port: int = SSH_DEFAULT_PORT
 
     def __str__(self) -> str:
@@ -38,7 +39,7 @@ class SshHost:
         return str(self)
 
     @classmethod
-    def from_str(cls, ssh_host: str) -> "SshHost":
+    def from_str(cls, ssh_host: str) -> SshHost:
         user, host_port = ([None, *ssh_host.split("@", 1)])[-2:]
         assert host_port is not None
         host, port = ([*host_port.rsplit(":", 1), f"{SSH_DEFAULT_PORT}"])[:2]
@@ -57,17 +58,17 @@ class Bandwidth:
 class DeployConfig:
     """Class representing the deployment part of the Hawk config file."""
 
-    scouts: List[SshHost]
-    scout_port: Optional[int] = None
-    bandwidth: Optional[Bandwidth] = None
+    scouts: list[SshHost]
+    scout_port: int | None = None
+    bandwidth: Bandwidth | None = None
 
     @classmethod
-    def from_yaml(cls, config_yaml: str) -> "DeployConfig":
+    def from_yaml(cls, config_yaml: str) -> DeployConfig:
         config_dict = yaml.safe_load(config_yaml)
         return cls.from_dict(config_dict)
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "DeployConfig":
+    def from_dict(cls, config_dict: dict[str, Any]) -> DeployConfig:
         try:
             return cattrs.structure(config_dict["deploy"], cls)
         except Exception as exc:
@@ -102,7 +103,8 @@ cattrs.register_structure_hook(
 )
 # to handle parsing both "[user@]host[:port]" and yaml dict variants.
 cattrs.register_structure_hook(
-    SshHost, lambda o, _: SshHost.from_str(o) if isinstance(o, str) else SshHost(**o)
+    SshHost,
+    lambda o, _: SshHost.from_str(o) if isinstance(o, str) else SshHost(**o),
 )
 cattrs.register_structure_hook(Path, lambda o, _: Path(o))
 

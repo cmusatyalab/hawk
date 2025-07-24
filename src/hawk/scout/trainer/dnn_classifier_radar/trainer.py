@@ -8,15 +8,19 @@ import shlex
 import subprocess
 import sys
 import time
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import torch
 from logzero import logger
 
-from ...context.model_trainer_context import ModelContext
 from ...core.model_trainer import ModelTrainer
 from .config import DNNRadarTrainerConfig
 from .model import DNNClassifierModelRadar
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ...context.model_trainer_context import ModelContext
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
@@ -25,7 +29,7 @@ class DNNClassifierTrainerRadar(ModelTrainer):
     config_class = DNNRadarTrainerConfig
     config: DNNRadarTrainerConfig
 
-    def __init__(self, config: DNNRadarTrainerConfig, context: ModelContext):
+    def __init__(self, config: DNNRadarTrainerConfig, context: ModelContext) -> None:
         super().__init__(config, context)
 
         self.base_model_path = self.context.model_dir / "base_model.pth"
@@ -60,8 +64,7 @@ class DNNClassifierTrainerRadar(ModelTrainer):
 
         with open(trainpath, "w") as f:
             for label in labels:
-                for path in train_samples[label]:
-                    f.write(f"{path} {label}\n")
+                f.writelines(f"{path} {label}\n" for path in train_samples[label])
 
         if self.context.check_create_test():
             valpath = self.context.model_path(new_version, template="val-{}.txt")
@@ -77,8 +80,7 @@ class DNNClassifierTrainerRadar(ModelTrainer):
 
             with open(valpath, "w") as f:
                 for label in labels:
-                    for path in val_samples[label]:
-                        f.write(f"{path} {label}\n")
+                    f.writelines(f"{path} {label}\n" for path in val_samples[label])
         else:
             valpath = None
 

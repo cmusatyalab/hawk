@@ -7,16 +7,19 @@
 from __future__ import annotations
 
 from itertools import count
-from typing import Iterator
+from typing import TYPE_CHECKING, Iterator
 
 import httpx
 from logzero import logger
-from pydantic import HttpUrl
 
-from ...detection import Detection
 from ...hawkobject import HawkObject
 from ...objectid import ObjectId
 from .retriever import Retriever, RetrieverConfig
+
+if TYPE_CHECKING:
+    from pydantic import HttpUrl
+
+    from ...detection import Detection
 
 
 class HTTPRetrieverConfig(RetrieverConfig):
@@ -32,7 +35,7 @@ class HTTPRetriever(Retriever):
         super().__init__(config)
 
         self.http = httpx.Client(
-            base_url=f"{self.config.base_url}/{self.config.mission_id}"
+            base_url=f"{self.config.base_url}/{self.config.mission_id}",
         )
 
         self.total_images.set(0)
@@ -71,7 +74,7 @@ class HTTPRetriever(Retriever):
 
             obj = HawkObject(content=r.content, media_type=r.headers["content-type"])
             logger.debug(
-                f"/get_oracle_data/{i}/{oid} elapsed: {r.elapsed.total_seconds()}"
+                f"/get_oracle_data/{i}/{oid} elapsed: {r.elapsed.total_seconds()}",
             )
             oracle_data.append(obj)
         return oracle_data

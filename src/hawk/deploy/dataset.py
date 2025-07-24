@@ -23,12 +23,11 @@ def shuffle_and_generate_index_files(
     random_seed: int | None = None,
     dry_run: bool = False,
 ) -> int:
-    """
-    Read stream.txt from input dir
+    """Read stream.txt from input dir
     filter out (accidental) duplicates
     reshuffle
     split into per-scout, non-overlapping, index files
-    send index files to the scouts
+    send index files to the scouts.
     """
     data_config = config["dataset"]
     stream_file = Path(data_config["stream_path"])
@@ -73,7 +72,7 @@ def shuffle_and_generate_index_files(
     items_per_frame = total_tiles // total_keys
 
     print(
-        f"** Splitting items over {total_keys} frames (~{items_per_frame} items/frame)"
+        f"** Splitting items over {total_keys} frames (~{items_per_frame} items/frame)",
     )
 
     # tiles_per_frame = math.ceil(total_tiles / total_keys)
@@ -96,7 +95,7 @@ def shuffle_and_generate_index_files(
 
     print(
         f"** Splitting frames across {num_hosts} hosts (~{frames_per_host} frames/host,"
-        f" ~{min_items_per_host}-{max_items_per_host} items/host)"
+        f" ~{min_items_per_host}-{max_items_per_host} items/host)",
     )
 
     div_keys = [keys[i::num_hosts] for i in range(num_hosts)]
@@ -149,7 +148,10 @@ def shuffle_and_generate_index_files(
 def split_dataset(args: argparse.Namespace) -> int:
     config = load_config(args.mission_config)
     return shuffle_and_generate_index_files(
-        config, args.split_by_prefix, args.random_seed, args.dry_run
+        config,
+        args.split_by_prefix,
+        args.random_seed,
+        args.dry_run,
     )
 
 

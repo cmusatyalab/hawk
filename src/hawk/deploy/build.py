@@ -23,7 +23,12 @@ def build() -> Path:
 
     subprocess.run(["uv", "build", "--wheel"], check=True)
 
-    result = subprocess.run(["uv", "version"], capture_output=True, text=True)
+    result = subprocess.run(
+        ["uv", "version"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
     project, version = result.stdout.strip().split()
 
     return root / "dist" / f"{project}-{version}-py3-none-any.whl"
@@ -53,7 +58,7 @@ def export_requirements() -> Path:
 
 
 def builder() -> tuple[Path, Path]:
-    """build Hawk wheel and requirements files"""
+    """Build Hawk wheel and requirements files."""
     dist_wheel = build()
     if not dist_wheel.exists():
         msg = f"Could not find {dist_wheel}"

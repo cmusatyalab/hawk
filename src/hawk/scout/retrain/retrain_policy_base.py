@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Abstract class for retrain policies"""
+"""Abstract class for retrain policies."""
 
 from abc import ABCMeta, abstractmethod
 
@@ -14,16 +14,14 @@ class RetrainPolicyBase(metaclass=ABCMeta):
 
     @abstractmethod
     def update(self, new_positives: int, new_negatives: int) -> None:
-        """Updating the number of labeled items"""
+        """Updating the number of labeled items."""
         self.positives += new_positives
         self.negatives += new_negatives
 
     @abstractmethod
     def should_retrain(self) -> bool:
-        """Checks if model retain condition satisfied"""
-        pass
+        """Checks if model retain condition satisfied."""
 
     @abstractmethod
     def reset(self) -> None:
-        """Resets the retrain policy"""
-        pass
+        """Resets the retrain policy."""

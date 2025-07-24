@@ -70,12 +70,17 @@ class VideoRetriever(Retriever, LegacyRetrieverMixin):
         self.total_tiles = 192 * 600
 
     def _save_tile(
-        self, img: npt.NDArray[np.uint8], subimgname: str, left: int, up: int
+        self,
+        img: npt.NDArray[np.uint8],
+        subimgname: str,
+        left: int,
+        up: int,
     ) -> Path:
         subimg = copy.deepcopy(
             img[
-                up : (up + self.config.tile_size), left : (left + self.config.tile_size)
-            ]
+                up : (up + self.config.tile_size),
+                left : (left + self.config.tile_size),
+            ],
         )
 
         tile_name = self.config.video_path.with_suffix(f"{subimgname}.jpeg").name
@@ -91,7 +96,9 @@ class VideoRetriever(Retriever, LegacyRetrieverMixin):
         return tile_path
 
     def _split_frame(
-        self, frame_name: str, frame: npt.NDArray[np.uint8]
+        self,
+        frame_name: str,
+        frame: npt.NDArray[np.uint8],
     ) -> Iterator[Path]:
         logger.info(self.frame_producer_queue.qsize())
         # frame = cv2.imread(os.path.join(self.temp_image_dir, frame_name))
@@ -146,7 +153,7 @@ class VideoRetriever(Retriever, LegacyRetrieverMixin):
             delta_t = time.time() - self._start_time
             logger.info(
                 f"Retrieved Image: Frame # {num_retrieved_images} "
-                f"Tiles:{len(tiles)} @ {delta_t}"
+                f"Tiles:{len(tiles)} @ {delta_t}",
             )
             for tile_path in tiles:
                 rel_path = tile_path.resolve().relative_to(self.config.data_root)

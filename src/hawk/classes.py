@@ -52,7 +52,7 @@ POSITIVE_CLASS = ClassName(sys.intern("positive"))
 
 @dataclass
 class ClassList:
-    """List of (known unique) class names, "negative" is always class 0"""
+    """List of (known unique) class names, "negative" is always class 0."""
 
     classes: InitVar[Iterable[str]] = []
 
@@ -119,7 +119,8 @@ class ClassCounter:
             logger.error("Unknown class {label} encountered")
 
     def update(
-        self, counts: Iterable[ClassName] | dict[ClassName, int] | ClassCounter
+        self,
+        counts: Iterable[ClassName] | dict[ClassName, int] | ClassCounter,
     ) -> None:
         if isinstance(counts, ClassCounter):
             counts = counts.counter
@@ -149,7 +150,7 @@ class ClassCounter:
 @dataclass
 class LabelRemap:
     """Class used to remap class labels or names to (different) class names.
-    takes as input a file containing lines like,
+    takes as input a file containing lines like.
 
         <old-class-or-label> <class-name>
 
@@ -175,7 +176,7 @@ class LabelRemap:
 
     def __getitem__(self, label: str) -> ClassName:
         return ClassName(
-            self.map.get(label, "negative" if self.default_to_negative else label)
+            self.map.get(label, "negative" if self.default_to_negative else label),
         )
 
     def is_empty(self) -> bool:

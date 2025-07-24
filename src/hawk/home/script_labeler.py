@@ -37,7 +37,8 @@ class ScriptLabeler:
         with suppress(KeyboardInterrupt):
             logger.debug("Waiting for data to label")
             for result in self.mission_data.read_unlabeled(
-                exclude_labeled=self.avoid_duplicates, tail=True
+                exclude_labeled=self.avoid_duplicates,
+                tail=True,
             ):
                 logger.debug("Received new results to label")
                 self.label_data(result)
@@ -64,7 +65,7 @@ class ScriptLabeler:
         logger.info(
             f"Labeling {result.index:06} {counts} {result.objectId}, "
             f"(Pos, Neg): ({self.class_counter.positives},"
-            f" {self.class_counter.negatives})"
+            f" {self.class_counter.negatives})",
         )
         logger.info(f"By class: {self.class_counter!r}")
 

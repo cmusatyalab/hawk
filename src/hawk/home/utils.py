@@ -28,20 +28,22 @@ BASE64_RE = "[A-Za-z0-9+/=\n]+"
 
 
 def parse_cookie(data: str) -> tuple[str, list[str]]:
-    """Parse a (single) scope cookie string and return a ScopeCookie
+    """Parse a (single) scope cookie string and return a ScopeCookie.
 
     Arguments:
         data {str} -- A single base64-encoded cookie
 
     Returns:
         [ScopeCookie] -- [description]
+
     """
     assert isinstance(data, str)
 
     # Check for boundary markers and remove them
     match = re.match(BOUNDARY_START + "(" + BASE64_RE + ")" + BOUNDARY_END, data)
     if match is None:
-        raise logger.error("Invalid boundary markers")
+        msg = "Invalid boundary markers"
+        raise logger.error(msg)
     data = match.group(1)
     # Base64-decode contents
     try:
@@ -104,7 +106,7 @@ def get_ip() -> str:
 
 
 def tailf(fp: TextIO, stop_event: Event | None = None) -> Iterator[str]:
-    """Iterate over the lines in the file, wait for more when we hit EOF"""
+    """Iterate over the lines in the file, wait for more when we hit EOF."""
     fragments: list[str] = []
     while stop_event is None or not stop_event.is_set():
         for line in fp:

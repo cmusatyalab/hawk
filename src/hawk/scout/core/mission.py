@@ -11,8 +11,6 @@ import threading
 import time
 import zipfile
 from collections import defaultdict
-from multiprocessing.connection import _ConnectionBase
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from logzero import logger
@@ -32,10 +30,7 @@ from ..api.s2h_api import S2HPublisher
 from ..api.s2s_api import S2SServicer, s2s_receive_request
 from ..context.data_manager_context import DataManagerContext
 from ..context.model_trainer_context import ModelContext
-from ..retrain.retrain_policy_base import RetrainPolicyBase
 from ..retrain.sampleInterval_policy import SampleIntervalPolicy
-from ..retrieval.retriever import Retriever
-from ..selection.selector_base import Selector
 from ..selection.token_selector import TokenSelector
 from ..stats import (
     HAWK_MISSION_CONFIGURING,
@@ -48,14 +43,20 @@ from ..stats import (
 )
 from ..trainer import novel_class_discover
 from .data_manager import DataManager
-from .hawk_stub import HawkStub
-from .model import Model
-from .model_trainer import ModelTrainer
-from .result_provider import ResultProvider
 from .utils import get_server_ids, log_exceptions
 
 if TYPE_CHECKING:
+    from multiprocessing.connection import _ConnectionBase
+    from pathlib import Path
+
     from ...proto.messages_pb2 import DatasetSplitValue, TrainConfig
+    from ..retrain.retrain_policy_base import RetrainPolicyBase
+    from ..retrieval.retriever import Retriever
+    from ..selection.selector_base import Selector
+    from .hawk_stub import HawkStub
+    from .model import Model
+    from .model_trainer import ModelTrainer
+    from .result_provider import ResultProvider
 
 
 class Mission(DataManagerContext, ModelContext):
@@ -79,16 +80,16 @@ class Mission(DataManagerContext, ModelContext):
         validate: bool = False,
         novel_class_discovery: bool = False,
         sub_class_discovery: bool = False,
-    ):
+    ) -> None:
         super().__init__(retriever=retriever)
 
         self.start_time = time.time()
 
         self._mission_configuring = HAWK_MISSION_CONFIGURING.labels(
-            mission=mission_id.value
+            mission=mission_id.value,
         )
         self._mission_training_bootstrap = HAWK_MISSION_TRAINING_BOOTSTRAP.labels(
-            mission=mission_id.value
+            mission=mission_id.value,
         )
         self._mission_waiting = HAWK_MISSION_WAITING.labels(mission=mission_id.value)
         self._mission_running = HAWK_MISSION_RUNNING.labels(mission=mission_id.value)
@@ -148,7 +149,7 @@ class Mission(DataManagerContext, ModelContext):
 
         self._model_training = HAWK_MODEL_TRAINING.labels(mission=mission_id.value)
         self._model_reexamining = HAWK_MODEL_REEXAMINING.labels(
-            mission=mission_id.value
+            mission=mission_id.value,
         )
         self._model_version = HAWK_MODEL_VERSION.labels(mission=mission_id.value)
         self._model_version.set(-1)
@@ -181,12 +182,15 @@ class Mission(DataManagerContext, ModelContext):
         logger.info("SETTING UP S2H API")
         s2h_conn, s2h_input = mp.Pipe(False)
         p = mp.Process(
-            target=S2HPublisher.s2h_send_tiles, args=(self.home_ip, s2h_conn)
+            target=S2HPublisher.s2h_send_tiles,
+            args=(self.home_ip, s2h_conn),
         )
         p.start()
 
         self._result_thread = threading.Thread(
-            target=self._get_results, args=(s2h_input,), name="get-results"
+            target=self._get_results,
+            args=(s2h_input,),
+            name="get-results",
         )
 
         logger.info("SETTING UP H2C API")
@@ -194,10 +198,13 @@ class Mission(DataManagerContext, ModelContext):
         h2c_port = port + 1
         # receive labels continuously over ZMQ socket
         p = mp.Process(
-            target=H2CSubscriber.h2c_receive_labels, args=(h2c_input, h2c_port)
+            target=H2CSubscriber.h2c_receive_labels,
+            args=(h2c_input, h2c_port),
         )
         self._label_thread = threading.Thread(
-            target=self._get_labels, args=(h2c_output,), name="get-labels"
+            target=self._get_labels,
+            args=(h2c_output,),
+            name="get-labels",
         )
         p.start()
         logger.info(f"SETTING UP S2S Server {self._scout_index}")
@@ -358,7 +365,7 @@ class Mission(DataManagerContext, ModelContext):
 
         logger.info(
             "New labels call back has been called... "
-            f"{new_positives=}, {new_negatives=}, by class={sample_counts!r}"
+            f"{new_positives=}, {new_negatives=}, by class={sample_counts!r}",
         )
         end_t = time.time()
 
@@ -470,12 +477,12 @@ class Mission(DataManagerContext, ModelContext):
                 if self._model is not None and self._model.version != starting_version:
                     logger.info(
                         f"Done evaluating with model version {starting_version} "
-                        f"(new version {self._model.version} available)"
+                        f"(new version {self._model.version} available)",
                     )
                     ## make sure to put this back in retriever put object
                     self.retriever.put_objectid(object_id)
                     logger.info(
-                        "\n\nATTENTION --- PUTTING OBJECT BACK IN RETRIEVER QUEUE\n\n"
+                        "\n\nATTENTION --- PUTTING OBJECT BACK IN RETRIEVER QUEUE\n\n",
                     )
                     return
 
@@ -553,7 +560,9 @@ class Mission(DataManagerContext, ModelContext):
                 oracle_mode = self._model is not None and self._model.is_oracle()
 
                 tile = result.to_protobuf(
-                    self.retriever, self.scout_index, oracle_mode=oracle_mode
+                    self.retriever,
+                    self.scout_index,
+                    oracle_mode=oracle_mode,
                 )
                 pipe.send(tile.SerializeToString())
         except Exception as e:
@@ -586,7 +595,9 @@ class Mission(DataManagerContext, ModelContext):
 
     @log_exceptions
     def _s2s_process(
-        self, input_q: mp.Queue[tuple[bytes, bytes]], output_q: mp.Queue[bytes]
+        self,
+        input_q: mp.Queue[tuple[bytes, bytes]],
+        output_q: mp.Queue[bytes],
     ) -> None:
         try:
             while not self._abort_event.is_set():
@@ -634,7 +645,7 @@ class Mission(DataManagerContext, ModelContext):
             return
 
         with self._data_manager.get_examples(
-            DatasetSplit.TRAIN
+            DatasetSplit.TRAIN,
         ) as train_dir:  # important
             logger.info(f"Train dir {train_dir}")
             self.selector.add_easy_negatives(train_dir)
@@ -644,7 +655,8 @@ class Mission(DataManagerContext, ModelContext):
         logger.info(f"Trained model in {eval_start - train_start:.3f} seconds")
         if model is not None and self.enable_logfile:
             self.log(
-                f"{model.version} TRAIN NEW MODEL in {eval_start - train_start} seconds"
+                f"{model.version} TRAIN NEW MODEL in "
+                f"{eval_start - train_start} seconds",
             )
         self._set_model(model, False)
         logger.info(f"Evaluated model in {time.time() - eval_start:.3f} seconds")

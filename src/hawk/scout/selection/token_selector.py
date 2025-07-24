@@ -26,7 +26,7 @@ class TokenSelector(TopKSelector):
         upper_threshold_delta: float,
         lower_threshold_start: float,
         lower_threshold_delta: float,
-    ):
+    ) -> None:
         super().__init__(
             mission_id,
             k,
@@ -45,7 +45,7 @@ class TokenSelector(TopKSelector):
         logger.info(
             f"Token attrs: {self.sliding_window}, "
             f"{self.upper_threshold_delta}, {self.upper_threshold_start}, "
-            f"{self.lower_threshold_delta}, {self.lower_threshold_start}"
+            f"{self.lower_threshold_delta}, {self.lower_threshold_start}",
         )
 
     @log_exceptions
@@ -83,7 +83,7 @@ class TokenSelector(TopKSelector):
             time_result = self._mission.mission_time()
             self._mission.log(
                 f"{self.version} CLASSIFICATION: {result.id} "
-                f"GT {result.gt} Score {result.score:.4f}"
+                f"GT {result.gt} Score {result.score:.4f}",
             )
 
             # Queueing positives in stream

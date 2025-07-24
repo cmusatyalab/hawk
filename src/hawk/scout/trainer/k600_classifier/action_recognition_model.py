@@ -4,15 +4,17 @@
 from __future__ import annotations
 
 import io
-import os
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import torch
 from torch import Tensor, nn
 
 from .backbone_encoder import BackboneEncoder
 from .temporal_encoder import SimpleViT, TransformerParams
+
+if TYPE_CHECKING:
+    import os
 
 Encoder = TypeVar("Encoder", bound=BackboneEncoder)
 
@@ -24,7 +26,7 @@ class ActionRecognitionModel(nn.Module):  # type: ignore[misc]
         transformer_params: TransformerParams,
         T: int,
         stride: int,
-    ):
+    ) -> None:
         super().__init__()
         assert transformer_params.embed_dim == encoder.embed_dim
         embed_dim = transformer_params.embed_dim
@@ -46,8 +48,7 @@ class ActionRecognitionModel(nn.Module):  # type: ignore[misc]
         )
 
     def forward(self, X: Tensor) -> tuple[Tensor, Tensor]:
-        """
-        :param X: (B,N,C,H,W) tensor
+        """:param X: (B,N,C,H,W) tensor
         :return: (B,num_classes) logits tensor, where B is the batch size,
                  and (B,n_clips,T,K) Z-embedding tensor, where n_clips=(N-T)//stride +1
         """
@@ -76,15 +77,22 @@ class ActionRecognitionModel(nn.Module):  # type: ignore[misc]
 
     @staticmethod
     def load(
-        model_path: Path, backbone_encoder: BackboneEncoder, patch: Any | None = None
+        model_path: Path,
+        backbone_encoder: BackboneEncoder,
+        patch: Any | None = None,
     ) -> tuple[ActionRecognitionModel, int]:
         if model_path.suffix in [".pth", ".pt"]:
             snapshot: dict[str, Any] = torch.load(
-                str(model_path), map_location="cpu", pickle_module=patch
+                str(model_path),
+                map_location="cpu",
+                pickle_module=patch,
             )
             transformer_params = snapshot["transformer_params"]
             model: ActionRecognitionModel = ActionRecognitionModel(
-                backbone_encoder, transformer_params, snapshot["T"], snapshot["stride"]
+                backbone_encoder,
+                transformer_params,
+                snapshot["T"],
+                snapshot["stride"],
             )
             if snapshot["version"] == 6:
                 print("Loading v6 model")
@@ -95,10 +103,11 @@ class ActionRecognitionModel(nn.Module):  # type: ignore[misc]
                 del model._temporal_enc.norm
             num_samples = snapshot["num_samples"]
         else:
-            raise ValueError(f"Illegal extension {model_path.suffix}")
+            msg = f"Illegal extension {model_path.suffix}"
+            raise ValueError(msg)
         print(
             f"Loaded action recognition model {model_path}"
-            f" with num_samples={num_samples}"
+            f" with num_samples={num_samples}",
         )
         return model, num_samples
 
@@ -110,7 +119,8 @@ class ActionRecognitionModel(nn.Module):  # type: ignore[misc]
         transformer_params: TransformerParams,
     ) -> ActionRecognitionModel:
         old_model, num_samples = ActionRecognitionModel.load(
-            Path(model_path), backbone_encoder
+            Path(model_path),
+            backbone_encoder,
         )
         backbone_encoder = old_model._encoder
         backbone_encoder.embed_dim = transformer_params.embed_dim
@@ -125,7 +135,7 @@ class ActionRecognitionModel(nn.Module):  # type: ignore[misc]
 
 
 if __name__ == "__main__":
-    import torchvision.transforms as transforms
+    from torchvision import transforms
 
     from ...retrieval.kinetics600.kinetics_600_retriever import K600Retriever
     from .movinet_a0s_encoder import MovinetEncoder
@@ -145,7 +155,7 @@ if __name__ == "__main__":
             lambda v: v.to(torch.float32) / 255,
             transforms.Resize((200, 200)),
             transforms.CenterCrop((172, 172)),
-        ]
+        ],
     )
     model = ActionRecognitionModel(
         MovinetEncoder(embed_dim=transformer_params.embed_dim),
@@ -156,12 +166,12 @@ if __name__ == "__main__":
     model.eval()
 
     k600_retriever = K600Retriever.from_config(
-        dict(
-            root="/home/gil/data/k600",
-            frames_per_clip=50,
-            frame_rate=5,
-            positive_class_idx=0,
-        )
+        {
+            "root": "/home/gil/data/k600",
+            "frames_per_clip": 50,
+            "frame_rate": 5,
+            "positive_class_idx": 0,
+        },
     )
     id_stream = k600_retriever._get_next_objectid()
     video_id = next(id_stream)

@@ -8,15 +8,19 @@ import shlex
 import subprocess
 import sys
 import time
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import torch
 from logzero import logger
 
-from ...context.model_trainer_context import ModelContext
 from ...core.model_trainer import ModelTrainer
 from .config import DNNTrainerConfig
 from .model import DNNClassifierModel
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ...context.model_trainer_context import ModelContext
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
@@ -25,7 +29,7 @@ class DNNClassifierTrainer(ModelTrainer):
     config_class = DNNTrainerConfig
     config: DNNTrainerConfig
 
-    def __init__(self, config: DNNTrainerConfig, context: ModelContext):
+    def __init__(self, config: DNNTrainerConfig, context: ModelContext) -> None:
         super().__init__(config, context)
 
         logger.info(f"Model_dir {self.context.model_dir}")
@@ -59,12 +63,12 @@ class DNNClassifierTrainer(ModelTrainer):
 
         with open(trainpath, "w") as f:
             # get easy negatives
-            for easy in list(train_dir.joinpath("-1").glob("*")):
-                f.write(f"{easy} 0\n")
+            f.writelines(
+                f"{easy} 0\n" for easy in list(train_dir.joinpath("-1").glob("*"))
+            )
 
             for label in labels:
-                for path in train_samples[label]:
-                    f.write(f"{path} {label}\n")
+                f.writelines(f"{path} {label}\n" for path in train_samples[label])
 
         if self.context.check_create_test():
             valpath = self.context.model_path(new_version, template="val-{}.txt")
@@ -80,8 +84,7 @@ class DNNClassifierTrainer(ModelTrainer):
 
             with open(valpath, "w") as f:
                 for label in labels:
-                    for path in val_samples[label]:
-                        f.write(f"{path} {label}\n")
+                    f.writelines(f"{path} {label}\n" for path in val_samples[label])
         else:
             valpath = None
 

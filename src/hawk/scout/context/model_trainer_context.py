@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 
-"""Abstract class for model context"""
+"""Abstract class for model context."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ import multiprocessing as mp
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any
 
-from ..retrieval.retriever import Retriever
 from .context_base import ContextBase
 
 if TYPE_CHECKING:
@@ -19,6 +18,7 @@ if TYPE_CHECKING:
 
     from ...objectid import ObjectId
     from ..core.result_provider import ResultProvider
+    from ..retrieval.retriever import Retriever
 
 
 class ModelContext(ContextBase):
@@ -47,8 +47,7 @@ class ModelContext(ContextBase):
 
     @abstractmethod
     def check_create_test(self) -> bool:
-        """Checks if TEST dataset needs to be created"""
-        pass
+        """Checks if TEST dataset needs to be created."""
 
     def model_path(self, version: int, template: str = "model-{}.pth") -> Path:
         return self.model_dir / template.format(str(version).zfill(3))

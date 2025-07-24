@@ -24,7 +24,7 @@ class ResultProvider:
         bboxes: list[Detection],
         model_version: int | None = None,
         feature_vector: bytes | None = None,
-    ):
+    ) -> None:
         self.id = object_id
         self.score = score
         self.bboxes = bboxes

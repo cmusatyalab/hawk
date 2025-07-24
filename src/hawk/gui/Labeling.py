@@ -9,7 +9,6 @@ import time
 from typing import TYPE_CHECKING, Iterator
 
 import streamlit as st
-from blinker import Signal
 from streamlit_label_kit import detection as st_detection
 
 from hawk import Detection
@@ -22,10 +21,12 @@ from hawk.gui.elements import (
     mission_stats,
     paginate,
 )
-from hawk.home.label_utils import LabelSample
 
 if TYPE_CHECKING:
+    from blinker import Signal
     from streamlit.delta_generator import DeltaGenerator
+
+    from hawk.home.label_utils import LabelSample
 
 st.title("Hawk Mission Results")
 # st.write(st.session_state)
@@ -33,7 +34,8 @@ st.title("Hawk Mission Results")
 
 def reset_state_cb(sender: Signal | None) -> None:
     """Reset any mission specific session_state variables when we switched to a
-    different mission"""
+    different mission.
+    """
     st.session_state.saves = {}
 
 
@@ -60,8 +62,7 @@ class_list.extend(inprogress_classes)
 # save/clear label controls in sidebar
 #
 def update_labels(mission: Mission) -> None:
-    """update labels to include pending labels"""
-
+    """Update labels to include pending labels."""
     pending = []
     for sample in mission.unlabeled:
         if sample.objectId in mission.labeled:
@@ -77,7 +78,7 @@ def update_labels(mission: Mission) -> None:
 
 
 def clear_labels() -> None:
-    """clear pending (uncommitted) label values"""
+    """Clear pending (uncommitted) label values."""
     st.session_state.saves = {}
 
 
@@ -127,7 +128,9 @@ if "rows" not in st.session_state:
 st.sidebar.slider("columns", min_value=1, max_value=8, key="columns")
 st.sidebar.slider("rows", min_value=1, max_value=8, key="rows")
 st.sidebar.segmented_control(
-    "Filter", ["Unlabeled", "Positives", "All"], key="display_filter"
+    "Filter",
+    ["Unlabeled", "Positives", "All"],
+    key="display_filter",
 )
 
 
@@ -144,7 +147,9 @@ if new_class:
 
 
 def classification_pulldown(
-    mission: Mission, result: LabelSample, key: str | None = None
+    mission: Mission,
+    result: LabelSample,
+    key: str | None = None,
 ) -> None:
     scores = {
         detection.class_name: detection.confidence for detection in result.detections
@@ -365,7 +370,9 @@ def display_radar_images(mission: Mission, column: Iterator[DeltaGenerator]) -> 
 
 
 def display_images(
-    mission: Mission, column: Iterator[DeltaGenerator], mark_negative: bool
+    mission: Mission,
+    column: Iterator[DeltaGenerator],
+    mark_negative: bool,
 ) -> None:
     if st.session_state.display_filter == "All":
         results = mission.unlabeled

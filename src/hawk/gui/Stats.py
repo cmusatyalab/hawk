@@ -81,7 +81,7 @@ def display_logs(mission: Mission) -> None:
     if mission_log.exists():
         with st.expander("Mission Logs"):
             log = pd.read_json(mission_log, lines=True)
-            log.set_index("asctime", inplace=True)
+            log = log.set_index("asctime")
 
             st.dataframe(
                 log,

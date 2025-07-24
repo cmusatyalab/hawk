@@ -13,7 +13,7 @@ import numpy as np
 import yaml
 
 
-def split_single_warp(name, split_base, extent):
+def split_single_warp(name, split_base, extent) -> None:
     split_base.split_frame(name, extent)
 
 
@@ -44,7 +44,7 @@ class Frame2TileSplitter:
         ext=".png",
         padding=True,
         num_process=8,
-    ):
+    ) -> None:
         self.code = code
         self.gap = gap
         self.tilesize = tilesize
@@ -66,7 +66,7 @@ class Frame2TileSplitter:
 
     def save_tile(self, img, subimgname, left, up):
         subimg = copy.deepcopy(
-            img[up : (up + self.tilesize), left : (left + self.tilesize)]
+            img[up : (up + self.tilesize), left : (left + self.tilesize)],
         )
         outdir = os.path.join(self.outimagepath, subimgname + self.ext)
         h, w, c = np.shape(subimg)
@@ -103,16 +103,14 @@ class Frame2TileSplitter:
                 tiles.append(tile)
                 if up + self.tilesize >= height:
                     break
-                else:
-                    up = up + self.slide
+                up = up + self.slide
             if left + self.tilesize >= weight:
                 break
-            else:
-                left = left + self.slide
+            left = left + self.slide
 
         return tiles
 
-    def splitdata(self):
+    def splitdata(self) -> None:
         imagelist = GetFileFromThisRootDir(self.imagepath)
         imagenames = [
             custombasename(x) for x in imagelist if (custombasename(x) != "Thumbs")
@@ -131,6 +129,10 @@ if __name__ == "__main__":
     image_dir = dataset_config["image_dir"]
     label_dir = dataset_config["label_dir"]
     split = Frame2TileSplitter(
-        image_dir, label_dir, gap=200, tilesize=1024, num_process=8
+        image_dir,
+        label_dir,
+        gap=200,
+        tilesize=1024,
+        num_process=8,
     )
     split.splitdata(1)

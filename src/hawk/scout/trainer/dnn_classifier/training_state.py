@@ -5,12 +5,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import torch
 from torchvision.models import get_model, get_model_weights
-from torchvision.transforms.v2 import Transform
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from torchvision.transforms.v2 import Transform
 
 
 class CheckpointState(TypedDict):
@@ -63,11 +66,13 @@ class TrainingState:
 
     @staticmethod
     def _load_checkpoint_state(
-        checkpoint_path: Path, bootstrap_arch: str
+        checkpoint_path: Path,
+        bootstrap_arch: str,
     ) -> CheckpointState:
         """Load the training state from a checkpoint file."""
         if checkpoint_path is None or not checkpoint_path.is_file():
-            raise ValueError(f"Checkpoint {checkpoint_path} does not exist")
+            msg = f"Checkpoint {checkpoint_path} does not exist"
+            raise ValueError(msg)
 
         checkpoint_state: CheckpointState = torch.load(checkpoint_path)
 
@@ -79,7 +84,8 @@ class TrainingState:
 
     @classmethod
     def _load_model_from_checkpoint(
-        cls, checkpoint: CheckpointState
+        cls,
+        checkpoint: CheckpointState,
     ) -> tuple[torch.nn.Module, Transform, int]:
         """Create or load a model based on the parameters in the checkpoint state."""
         arch = checkpoint["arch"]
@@ -99,7 +105,9 @@ class TrainingState:
 
     @classmethod
     def load_for_inference(
-        cls, checkpoint_path: Path, bootstrap_arch: str
+        cls,
+        checkpoint_path: Path,
+        bootstrap_arch: str,
     ) -> tuple[torch.nn.Module, Transform, int]:
         """Load a torch model for inference from a checkpoint file."""
         checkpoint = cls._load_checkpoint_state(checkpoint_path, bootstrap_arch)
@@ -161,10 +169,14 @@ class TrainingState:
 
         # load scheduler
         lr_scheduler = torch.optim.lr_scheduler.StepLR(
-            optimizer, step_size=100, gamma=0.9
+            optimizer,
+            step_size=100,
+            gamma=0.9,
         )
         warmup_lr_scheduler = torch.optim.lr_scheduler.LinearLR(
-            optimizer, start_factor=0.5, total_iters=warmup_epochs
+            optimizer,
+            start_factor=0.5,
+            total_iters=warmup_epochs,
         )
         scheduler = torch.optim.lr_scheduler.SequentialLR(
             optimizer,
@@ -247,7 +259,10 @@ def patch_final_layer(model: torch.nn.Module, arch: str, num_classes: int) -> No
     elif "squeezenet" in arch:
         """Squeezenet"""
         model.classifier[1] = torch.nn.Conv2d(
-            512, num_classes, kernel_size=(1, 1), stride=(1, 1)
+            512,
+            num_classes,
+            kernel_size=(1, 1),
+            stride=(1, 1),
         )
         model.num_classes = num_classes
 
@@ -300,6 +315,5 @@ def to_gpu(torch_model: torch.nn.Module) -> torch.nn.Module:
     if torch.cuda.is_available():
         print("using GPU")
         return torch_model.cuda()
-    else:
-        print("using CPU, this will be slow")
-        return torch_model
+    print("using CPU, this will be slow")
+    return torch_model

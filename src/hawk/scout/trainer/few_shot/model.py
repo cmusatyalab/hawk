@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
+from __future__ import annotations
 
 import io
 import queue
@@ -8,27 +9,27 @@ import time
 import zipfile
 from argparse import Namespace
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable, List, Sequence, Tuple
+from typing import TYPE_CHECKING, Iterable, Sequence
 
 import numpy as np
 import torch
 import torchvision
-import torchvision.transforms as transforms
 from logzero import logger
 from PIL import Image, ImageFile
+from torchvision import transforms
 
 from ....classes import POSITIVE_CLASS
 from ....detection import Detection
-from ...context.model_trainer_context import ModelContext
 from ...core.model import ModelBase
 from ...core.result_provider import ResultProvider
 from ...core.utils import log_exceptions
-from .config import FewShotModelConfig
 from .models.SnaTCHerF import SnaTCHerF
 
 if TYPE_CHECKING:
     from ....hawkobject import HawkObject
     from ....objectid import ObjectId
+    from ...context.model_trainer_context import ModelContext
+    from .config import FewShotModelConfig
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -48,7 +49,7 @@ class FewShotModel(ModelBase):
         *,
         train_examples: dict[str, int] | None = None,
         train_time: float = 0.0,
-    ):
+    ) -> None:
         # model_path is None for few-shot
         # Hardcoding model architecture to resnet-50
         logger.info(f"Loading FSL Model from {model_path}")
@@ -59,13 +60,13 @@ class FewShotModel(ModelBase):
                 transforms.ToTensor(),
                 transforms.Normalize(
                     np.array(
-                        [x / 255.0 for x in [120.39586422, 115.59361427, 104.54012653]]
+                        [x / 255.0 for x in [120.39586422, 115.59361427, 104.54012653]],
                     ),
                     np.array(
-                        [x / 255.0 for x in [70.68188272, 68.27635443, 72.54505529]]
+                        [x / 255.0 for x in [70.68188272, 68.27635443, 72.54505529]],
                     ),
                 ),
-            ]
+            ],
         )
 
         super().__init__(
@@ -106,7 +107,8 @@ class FewShotModel(ModelBase):
     def load_supports(self) -> None:
         self.unzip_support()
         trainset = torchvision.datasets.ImageFolder(
-            self.train_dir, transform=self._test_transforms
+            self.train_dir,
+            transform=self._test_transforms,
         )
         train_loader = torch.utils.data.DataLoader(dataset=trainset, pin_memory=True)
         batch = next(iter(train_loader))
@@ -114,7 +116,7 @@ class FewShotModel(ModelBase):
         _ = self._model(data)
         instance_embs = self._model.probe_instance_embs
         support_shape = (1, 5, 5)
-        support = instance_embs.view(*(support_shape + (-1,)))
+        support = instance_embs.view(*((*support_shape, -1)))
         logger.info(f"Support emb shape {support.shape}")
         self.emb_dim = support.shape[-1]
         support = support.contiguous()
@@ -154,7 +156,11 @@ class FewShotModel(ModelBase):
 
     def load_model(self, model_path: Path) -> SnaTCHerF:
         args = Namespace(
-            backbone_class="Res12", closed_way=5, gpu="0", multi_gpu=False, shot=5
+            backbone_class="Res12",
+            closed_way=5,
+            gpu="0",
+            multi_gpu=False,
+            shot=5,
         )
         model = SnaTCHerF(args)
         weights = torch.load(model_path)
@@ -162,7 +168,7 @@ class FewShotModel(ModelBase):
         model.load_state_dict(model_weights, strict=False)
         return model
 
-    def get_predictions(self, inputs: torch.Tensor) -> List[float]:
+    def get_predictions(self, inputs: torch.Tensor) -> list[float]:
         if len(inputs.shape) == 3:
             inputs = torch.unsqueeze(inputs, dim=0)
         _ = self._model(inputs)
@@ -187,11 +193,10 @@ class FewShotModel(ModelBase):
                 predictions.append(pdiff)
 
         pkdiff = torch.stack(predictions)
-        pkdiff = pkdiff.cpu().detach().numpy()
-        return pkdiff
+        return pkdiff.cpu().detach().numpy()
 
     @log_exceptions
-    def _infer_results(self):
+    def _infer_results(self) -> None:
         logger.info("INFER RESULTS THREAD STARTED")
 
         requests = []
@@ -236,7 +241,8 @@ class FewShotModel(ModelBase):
         return output
 
     def _process_batch(
-        self, batch: List[Tuple[ObjectId, torch.Tensor]]
+        self,
+        batch: list[tuple[ObjectId, torch.Tensor]],
     ) -> Iterable[ResultProvider]:
         if self._model is None:
             if len(batch) > 0:
@@ -254,7 +260,7 @@ class FewShotModel(ModelBase):
                 bboxes = [Detection(class_name=POSITIVE_CLASS, confidence=score)]
                 yield ResultProvider(batch[i][0], score, bboxes, self.version)
 
-    def stop(self):
+    def stop(self) -> None:
         logger.info(f"Stopping model of version {self.version}")
         with self._model_lock:
             self._running = False

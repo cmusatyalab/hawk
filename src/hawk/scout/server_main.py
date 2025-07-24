@@ -79,7 +79,7 @@ def main() -> None:
         pass
     except Exception as e:
         logger.exception(e)
-        raise e
+        raise
 
 
 if __name__ == "__main__":

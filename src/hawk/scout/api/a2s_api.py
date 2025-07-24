@@ -2,7 +2,9 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-"""Admin to Scouts internal api calls"""
+"""Admin to Scouts internal api calls."""
+
+from __future__ import annotations
 
 import dataclasses
 import io
@@ -12,7 +14,7 @@ import subprocess
 import time
 import zipfile
 from pathlib import Path
-from typing import Dict
+from typing import TYPE_CHECKING
 
 from google.protobuf import json_format
 from logzero import logger
@@ -40,16 +42,13 @@ from ..core.model_trainer import ModelTrainer
 from ..core.utils import log_exceptions
 from ..reexamination.full_reexamination_strategy import FullReexaminationStrategy
 from ..reexamination.no_reexamination_strategy import NoReexaminationStrategy
-from ..reexamination.reexamination_strategy import ReexaminationStrategy
 from ..reexamination.top_reexamination_strategy import TopReexaminationStrategy
 from ..retrain.absolute_policy import AbsolutePolicy
 from ..retrain.model_policy import ModelPolicy
 from ..retrain.percentage_policy import PercentagePolicy
-from ..retrain.retrain_policy_base import RetrainPolicyBase
 from ..retrain.sampleInterval_policy import SampleIntervalPolicy
 from ..retrieval.retriever import Retriever
 from ..selection.diversity_selector import DiversitySelector
-from ..selection.selector_base import Selector
 from ..selection.threshold_selector import ThresholdSelector
 from ..selection.token_selector import TokenSelector
 from ..selection.topk_selector import TopKSelector
@@ -63,11 +62,16 @@ from ..stats import (
     collect_metrics_total,
 )
 
+if TYPE_CHECKING:
+    from ..reexamination.reexamination_strategy import ReexaminationStrategy
+    from ..retrain.retrain_policy_base import RetrainPolicyBase
+    from ..selection.selector_base import Selector
+
 MODEL_FORMATS = [".pt", ".pth"]
 
 
 class A2SAPI:
-    """Admin to Scouts API Calls
+    """Admin to Scouts API Calls.
 
     API calls from admin to scouts to configure missions, explicitly start /
     stop mission, and other control calls.
@@ -80,20 +84,22 @@ class A2SAPI:
         TCP port number
     _manager : MissionManager
         manages hawk mission (sets and clears)
+
     """
 
-    def __init__(self, port: int):
+    def __init__(self, port: int) -> None:
         self._port = port
         self._manager = MissionManager()
 
     def a2s_configure_scout(self, msg: bytes) -> bytes:
-        """API call to configure scouts before mission
+        """API call to configure scouts before mission.
 
         Args:
             msg (str): Serialized ScoutConfiguration message from home
 
         Returns:
             bytes: SUCCESS or ERROR message
+
         """
         try:
             request = ScoutConfiguration()
@@ -108,10 +114,11 @@ class A2SAPI:
         return reply.encode()
 
     def a2s_start_mission(self, _arg: bytes) -> bytes:
-        """API call to start mission
+        """API call to start mission.
 
         Returns:
             bytes: SUCCESS or ERROR message
+
         """
         try:
             self._a2s_start_mission()
@@ -121,10 +128,11 @@ class A2SAPI:
         return reply.encode()
 
     def a2s_stop_mission(self, _arg: bytes) -> bytes:
-        """API call to stop mission
+        """API call to stop mission.
 
         Returns:
             bytes: SUCCESS or ERROR message
+
         """
         try:
             self._a2s_stop_mission()
@@ -134,7 +142,7 @@ class A2SAPI:
         return reply.encode()
 
     def a2s_sync_deploy_status(self, msg: bytes) -> bytes:
-        """sync knowledge about deploy status between home and scout"""
+        """Sync knowledge about deploy status between home and scout."""
         try:
             reply = self._a2s_sync_deploy_status(msg)
         except Exception as e:
@@ -142,7 +150,7 @@ class A2SAPI:
         return reply.encode()
 
     def a2s_change_deploy_status(self, msg: bytes) -> bytes:
-        """change depl status"""
+        """Change depl status."""
         request = ChangeDeploymentStatus()
         request.ParseFromString(msg)
         try:
@@ -166,10 +174,11 @@ class A2SAPI:
             retriever.scml_active_mode = False
 
     def a2s_get_mission_stats(self, _arg: bytes) -> bytes:
-        """API call to send mission stats to HOME
+        """API call to send mission stats to HOME.
 
         Returns:
             str: serialized MissionStats message
+
         """
         try:
             stats = self._a2s_get_mission_stats()
@@ -179,13 +188,14 @@ class A2SAPI:
         return reply
 
     def a2s_new_model(self, msg: bytes) -> bytes:
-        """API call to import new model from HOME
+        """API call to import new model from HOME.
 
         Args:
             request (str): serialized ModelArchive message
 
         Returns:
             bytes: SUCCESS or ERROR message
+
         """
         try:
             request = ModelArchive()
@@ -199,13 +209,14 @@ class A2SAPI:
         return reply.encode()
 
     def a2s_get_test_results(self, msg: bytes) -> bytes:
-        """API call to test the model on the TEST dataset
+        """API call to test the model on the TEST dataset.
 
         Args:
             request (str): path to the TEST dataset on the scouts
 
         Returns:
             str: serialized MissionResults message
+
         """
         try:
             test_path = msg.decode()
@@ -220,10 +231,11 @@ class A2SAPI:
         return reply
 
     def a2s_get_post_mission_archive(self, _arg: bytes) -> bytes:
-        """API call to send mission models and logs archive
+        """API call to send mission models and logs archive.
 
         Returns:
             bytes: mission archive zip file as a byte array
+
         """
         try:
             reply = self._a2s_get_post_mission_archive()
@@ -233,10 +245,11 @@ class A2SAPI:
 
     @log_exceptions
     def _a2s_configure_scout(self, request: ScoutConfiguration) -> None:
-        """Function to parse config message and setup for mission
+        """Function to parse config message and setup for mission.
 
         Args:
             request (ScoutConfiguration): configuration message
+
         """
         root_dir = Path(request.missionDirectory) / "data"
         assert root_dir.is_dir(), f"Root directory {root_dir} does not exist"
@@ -260,10 +273,13 @@ class A2SAPI:
             retrain_policy.num_interval_sample(retriever.total_tiles)
 
         reexamination_strategy = self._get_reexamination_strategy(
-            request.reexamination, retriever
+            request.reexamination,
+            retriever,
         )
         selector = self._get_selector(
-            request.missionId, request.selector, reexamination_strategy
+            request.missionId,
+            request.selector,
+            reexamination_strategy,
         )
 
         # Setting up Mission with config params
@@ -271,7 +287,7 @@ class A2SAPI:
         logger.info(
             f"Class list: {request.class_list}, "
             f"Novel class discovery: {request.novel_class_discovery}, "
-            f"Sub class discovery: {request.sub_class_discovery}"
+            f"Sub class discovery: {request.sub_class_discovery}",
         )
         mission = Mission(
             mission_id,
@@ -317,7 +333,7 @@ class A2SAPI:
         mission._mission_configuring.set(0)
 
     def _setup_bandwidth(self, bandwidth_func: str) -> None:
-        """Function for FireQos Bandwidth limiting"""
+        """Function for FireQos Bandwidth limiting."""
         bandwidth_map = {
             "100k": "/root/fireqos/scenario-100k.conf",
             "30k": "/root/fireqos/scenario-30k.conf",
@@ -341,7 +357,7 @@ class A2SAPI:
 
     @log_exceptions
     def _a2s_start_mission(self) -> None:
-        """Function to start mission"""
+        """Function to start mission."""
         logger.info("Starting mission calling mission")
         mission = self._manager.get_mission()
         mission_id = mission.mission_id.value
@@ -351,7 +367,7 @@ class A2SAPI:
 
     @log_exceptions
     def _a2s_stop_mission(self) -> None:
-        """Function to stop mission"""
+        """Function to stop mission."""
         try:
             mission = self._manager.get_mission()
             mission_id = mission.mission_id.value
@@ -367,10 +383,11 @@ class A2SAPI:
 
     @log_exceptions
     def _a2s_get_mission_stats(self) -> MissionStats:
-        """Function to send mission stats to home
+        """Function to send mission stats to home.
 
         Returns:
             MissionStats
+
         """
         mission = self._manager.get_mission()
         time_now = mission.mission_time()
@@ -432,7 +449,7 @@ class A2SAPI:
                 "server_negatives": str(mission.negatives),
                 "training": str(model_training),
                 "mission_state": mission_state,
-            }
+            },
         )
 
         reply = MissionStats(
@@ -448,10 +465,11 @@ class A2SAPI:
 
     @log_exceptions
     def _a2s_new_model(self, request: ModelArchive) -> None:
-        """Function to import new model from HOME
+        """Function to import new model from HOME.
 
         Args:
             request (ModelArchive) ModelArchive message
+
         """
         mission = self._manager.get_mission()
         mission.import_model(request.content)
@@ -460,21 +478,24 @@ class A2SAPI:
 
     @log_exceptions
     def _a2s_get_test_results(self, request: str) -> MissionResults:
-        """Function to test the model on the TEST dataset
+        """Function to test the model on the TEST dataset.
 
         Args:
             request (str): path to the TEST dataset on the scouts
 
         Returns:
             MissionResults
+
         """
         test_path = Path(request)
         if not test_path.is_file():
-            raise Exception(f"{test_path} does not exist")
+            msg = f"{test_path} does not exist"
+            raise Exception(msg)
 
         mission = self._manager.get_mission()
         if mission.trainer is None:
-            raise Exception("Mission not set up")
+            msg = "Mission not set up"
+            raise Exception(msg)
 
         model_paths = sorted(
             x for x in mission.model_dir.iterdir() if x.suffix.lower() in MODEL_FORMATS
@@ -487,7 +508,7 @@ class A2SAPI:
                 version = idx
             return version
 
-        results: Dict[int, TestResults] = {}
+        results: dict[int, TestResults] = {}
         for idx, path in enumerate(model_paths):
             version = get_version(path, idx)
             logger.info(f"model {path} version {version}")
@@ -500,10 +521,11 @@ class A2SAPI:
 
     @log_exceptions
     def _a2s_get_post_mission_archive(self) -> bytes:
-        """Function to send mission models and logs archive
+        """Function to send mission models and logs archive.
 
         Returns:
             bytes: mission archive zip file as a byte array
+
         """
         mission = self._manager.get_mission()
         # data_dir = mission.data_dir
@@ -511,7 +533,9 @@ class A2SAPI:
 
         with io.BytesIO() as mission_archive:
             with zipfile.ZipFile(
-                mission_archive, "w", compression=zipfile.ZIP_DEFLATED
+                mission_archive,
+                "w",
+                compression=zipfile.ZIP_DEFLATED,
             ) as zf:
                 for dirname, _subdirs, files in os.walk(model_dir):
                     zf.write(dirname)
@@ -522,21 +546,24 @@ class A2SAPI:
             return mission_archive.getvalue()
 
     def _get_retrain_policy(
-        self, retrain_policy: RetrainPolicyConfig, model_dir: Path
+        self,
+        retrain_policy: RetrainPolicyConfig,
+        model_dir: Path,
     ) -> RetrainPolicyBase:
         if retrain_policy.HasField("absolute"):
             return AbsolutePolicy(
-                retrain_policy.absolute.threshold, retrain_policy.absolute.onlyPositives
+                retrain_policy.absolute.threshold,
+                retrain_policy.absolute.onlyPositives,
             )
-        elif retrain_policy.HasField("percentage"):
+        if retrain_policy.HasField("percentage"):
             return PercentagePolicy(
                 retrain_policy.percentage.threshold,
                 retrain_policy.percentage.onlyPositives,
             )
-        elif retrain_policy.HasField("model"):
+        if retrain_policy.HasField("model"):
             logger.info("Model Policy")
             return ModelPolicy(str(model_dir))
-        elif retrain_policy.HasField("sample"):
+        if retrain_policy.HasField("sample"):
             return SampleIntervalPolicy(retrain_policy.sample.num_intervals)
 
         msg = f"unknown retrain policy: {json_format.MessageToJson(retrain_policy)}"
@@ -559,7 +586,7 @@ class A2SAPI:
                 selector.topk.total_countermeasures,
                 reexamination_strategy,
             )
-        elif selector.HasField("token"):
+        if selector.HasField("token"):
             return TokenSelector(
                 mission_id,
                 selector.token.initial_samples,
@@ -573,13 +600,13 @@ class A2SAPI:
                 selector.token.lower_threshold_start,
                 selector.token.lower_threshold_delta,
             )
-        elif selector.HasField("threshold"):
+        if selector.HasField("threshold"):
             return ThresholdSelector(
                 mission_id,
                 selector.threshold.threshold,
                 reexamination_strategy,
             )
-        elif selector.HasField("diversity"):
+        if selector.HasField("diversity"):
             top_k_param = json_format.MessageToDict(selector.diversity)
             logger.info(f"Diversity Params {top_k_param}")
             return DiversitySelector(
@@ -602,9 +629,9 @@ class A2SAPI:
         reexamination_type = reexamination_strategy.type
         if reexamination_type == "none":
             return NoReexaminationStrategy(retriever)
-        elif reexamination_type == "top":
+        if reexamination_type == "top":
             return TopReexaminationStrategy(retriever, reexamination_strategy.k)
-        elif reexamination_type == "full":
+        if reexamination_type == "full":
             return FullReexaminationStrategy(retriever)
 
         msg = (
@@ -614,7 +641,11 @@ class A2SAPI:
         raise NotImplementedError(msg)
 
     def _get_retriever(
-        self, mission_id: str, dataset: Dataset, N: int, M: int
+        self,
+        mission_id: str,
+        dataset: Dataset,
+        N: int,
+        M: int,
     ) -> Retriever:
         retriever = load_plugin(
             "retriever",
@@ -625,7 +656,9 @@ class A2SAPI:
         return retriever
 
     def _get_trainer(
-        self, train_strategy: TrainConfig, context: Mission
+        self,
+        train_strategy: TrainConfig,
+        context: Mission,
     ) -> ModelTrainer:
         trainer = load_plugin(
             "model",
