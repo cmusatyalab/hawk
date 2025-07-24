@@ -116,13 +116,14 @@ dev = [
     "pre-commit (>=3.3.3,<4.0.0)",
     "pytest (>=7.4.3,<8.0.0)",
     "pytest-benchmark (>=4.0.0,<5.0.0)",
+    "ruff>=0.12.5",
     "types-invoke (>=2.0.0.10,<3.0.0.0)",
     "types-paramiko (>=3.0.0.8,<4.0.0.0)",
     "types-pillow (>=10.0.0.3,<11.0.0.0)",
     "types-protobuf >= 4.24.0.2",
     "types-pyyaml (>=6.0.12.10,<7.0.0.0)",
     "types-requests (>=2.31.0.6,<3.0.0.0)",
-    "types-tqdm (>=4.66.0.2,<5.0.0.0)"
+    "types-tqdm (>=4.66.0.2,<5.0.0.0)",
 ]
 
 [tool.mypy]
