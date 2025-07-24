@@ -35,10 +35,6 @@ class Model(ABC):
         pass
 
     @abstractmethod
-    def load_model(self, path: Path) -> None:
-        pass
-
-    @abstractmethod
     def evaluate_model(self, test_path: Path) -> TestResults:
         pass
 
