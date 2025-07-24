@@ -21,47 +21,41 @@ def _connect(config: DeployConfig) -> ThreadingGroup:
 
 
 def _start_hawk_scout(conn: ThreadingGroup, config: DeployConfig) -> None:
-    cmd = shlex.join(
-        [
-            "tmux",
-            "new-session",
-            "-s",
-            _session_name(config),
-            "-d",
-            "hawk-venv/bin/hawk_scout",
-            "--a2s-port",
-            str(config.a2s_port),
-        ],
-    )
-    conn.run(cmd, hide="out", echo=True, warn=True, disown=True)
+    cmd = [
+        "tmux",
+        "new-session",
+        "-s",
+        _session_name(config),
+        "-d",
+        "hawk-venv/bin/hawk_scout",
+        "--a2s-port",
+        str(config.a2s_port),
+    ]
+    conn.run(shlex.join(cmd), hide="out", echo=True, warn=True, disown=True)
 
 
 def _stop_hawk_scout(conn: ThreadingGroup, config: DeployConfig) -> None:
     try:
-        cmd = shlex.join(
-            [
-                "tmux",
-                "kill-session",
-                "-t",
-                _session_name(config),
-            ],
-        )
-        conn.run(cmd, hide="both", echo=True, warn=True)
+        cmd = [
+            "tmux",
+            "kill-session",
+            "-t",
+            _session_name(config),
+        ]
+        conn.run(shlex.join(cmd), hide="both", echo=True, warn=True)
     except (GroupException, UnexpectedExit):
         pass
 
 
 def _check_hawk_scout(conn: ThreadingGroup, config: DeployConfig) -> int:
     try:
-        cmd = shlex.join(
-            [
-                "tmux",
-                "has-session",
-                "-t",
-                _session_name(config),
-            ],
-        )
-        conn.run(cmd, hide="both", echo=True)
+        cmd = [
+            "tmux",
+            "has-session",
+            "-t",
+            _session_name(config),
+        ]
+        conn.run(shlex.join(cmd), hide="both", echo=True)
         return 0
     except (GroupException, UnexpectedExit):
         return 1
@@ -77,76 +71,60 @@ def deploy(
     config: DeployConfig,
     dist_wheel: Path,
     dist_requirements: Optional[Path] = None,
+    *,
+    install_uv: bool = False,
 ) -> int:
+    PATH = "${HOME}/.local/bin/"
     with _connect(config) as c:
-        # make sure venv exists
-        c.run("uv venv --python 3.10", hide="both", echo=True)
+        if install_uv:
+            print("Installing uv...")
+            c.run("curl -LsSf https://astral.sh/uv/install.sh | sh", echo=True)
 
-        # update pip?
-        cmd = shlex.join(
-            [
-                "hawk-venv/bin/python",
-                "-m",
-                "pip",
-                "install",
-                "--upgrade",
-                "pip",
-            ]
-        )
-        # c.run(cmd, hide="both", echo=True)
+        # make sure venv exists
+        cmd = ["uv", "venv", "--quiet", "--python", "3.10"]
+        c.run(PATH + shlex.join(cmd), hide="out", echo=False)
 
         # upload wheel
         c.put(dist_wheel)
 
         _stop_hawk_scout(c, config)
 
-        # uninstall
-        if dist_requirements is not None:
-            c.put(dist_requirements, "requirements-scout.txt")
-            cmd = shlex.join(
-                [
-                    "uv",
-                    "pip",
-                    "sync",
-                    "--index",
-                    "https://storage.cmusatyalab.org/wheels",
-                    "--index",
-                    "https://download.pytorch.org/whl/cu118",
-                    "requirements-scout.txt",
-                ]
-            )
-            c.run(cmd, hide="out", echo=True, warn=True)
-        else:
-            try:
-                cmd = shlex.join(
-                    [
-                        "uv",
-                        "pip",
-                        "uninstall",
-                        dist_wheel.name,
-                    ]
-                )
-                c.run(cmd, hide="both", echo=True)
-            except (GroupException, UnexpectedExit):
-                pass
-
-        # reinstall
-        pip_install = [
-            "uv",
-            "pip",
-            "install",
+        extra_indices = [
             "--index",
             "https://storage.cmusatyalab.org/wheels",
             "--index",
             "https://download.pytorch.org/whl/cu118",
+            "--index-strategy",
+            "unsafe-best-match",
         ]
+
+        # uninstall
+        if dist_requirements is not None:
+            c.put(dist_requirements, "requirements-scout.txt")
+            cmd = [
+                "uv",
+                "pip",
+                "sync",
+                "--quiet",
+                *extra_indices,
+                "requirements-scout.txt",
+            ]
+            c.run(PATH + shlex.join(cmd), hide="out", echo=True, warn=True)
+        else:
+            try:
+                cmd = ["pip", "uninstall", "--quiet", dist_wheel.name]
+                c.run(PATH + shlex.join(cmd), hide="both", echo=True)
+            except (GroupException, UnexpectedExit):
+                pass
+
+        # reinstall
+        cmd = ["uv", "pip", "install", "--quiet", *extra_indices]
         for extra_wheel in Path("wheels").glob("*.whl"):
             c.put(extra_wheel, extra_wheel.name)
-            pip_install.append(f"./{extra_wheel.name}")
-        pip_install.append(f"./{dist_wheel.name}")
+            cmd.append(f"./{extra_wheel.name}")
+        cmd.append(f"./{dist_wheel.name}")
 
-        cmd = shlex.join(pip_install)
-        c.run(cmd, hide="out", echo=True, warn=True)
+        c.run(PATH + shlex.join(cmd), hide="out", echo=True, warn=True)
 
         _start_hawk_scout(c, config)
     return 0
@@ -174,6 +152,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=["check", "deploy", "restart", "stop"])
+    parser.add_argument("--install-uv", action="store_true")
     parser.add_argument("config", type=Path)
     parser.add_argument("wheel", type=Path)
     args = parser.parse_args()

@@ -38,9 +38,10 @@ def main() -> int:
         config = config_from_args(args)
         dist_wheel, dist_requirements = builder()
         print(f"deploying hawk-scout @ {config.scouts}")
-        return deploy(config, dist_wheel, dist_requirements)
+        return deploy(config, dist_wheel, dist_requirements, install_uv=args.install_uv)
 
     deploy_parser = subparsers.add_parser("deploy", help="Deploy new Hawk scouts")
+    deploy_parser.add_argument("--install-uv", action="store_true")
     deploy_parser.add_argument("config", type=Path)
     deploy_parser.set_defaults(func=deploy_wrapper)
 

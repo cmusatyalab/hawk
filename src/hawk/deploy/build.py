@@ -37,6 +37,8 @@ def export_requirements() -> Path:
             "export",
             "--format",
             "requirements.txt",
+            "--quiet",
+            "--no-emit-project",
             "--no-dev",
             "--no-hashes",
             "--no-annotate",
