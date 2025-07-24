@@ -107,10 +107,10 @@ yolo_radar = "hawk.scout.trainer.yolo_radar.trainer:YOLOTrainerRadar"
 
 [dependency-groups]
 dev = [
-    "grpcio-tools (>=1.48.2,<1.73.0)",
+    "grpcio-tools (>=1.48.2,<1.72.0)",
     "mypy (>=1.2.0,<2.0.0)",
     "mypy-protobuf (>=1.20,<2.0)",
-    "nox >= 2025.5.1",
+    "nox[uv] >= 2025.5.1",
     "pandas-stubs (>=2.0,<3.0)",
     "poethepoet (>=0.19.0,<0.20.0)",
     "pre-commit (>=3.3.3,<4.0.0)",
