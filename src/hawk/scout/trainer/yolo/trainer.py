@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import glob
 import shlex
 import subprocess
 import sys
@@ -51,30 +50,21 @@ class YOLOTrainer(ModelTrainer):
         new_version = self.get_new_version()
 
         model_savepath = self.context.model_path(new_version, template="model-{}.pt")
-        trainpath = self.context.model_path(new_version, template="train-{}.txt")
 
-        # can change this to also train on empty (no detection) images in 0/
+        num_classes = len(self.context.class_list)
+        # change range to 0 to also train on empty (no detection) images in 0/
         # directory from examples dir
-        labels = ["1"]
-        train_samples = {
-            label: glob.glob(str(train_dir / label / "*")) for label in labels
-        }
-        train_len = {label: len(train_samples[label]) for label in labels}
-        if train_len["1"] == 0:
-            logger.error(train_len)
-            logger.error([str(train_dir / label / "*") for label in labels])
-            raise Exception
+        labels = [str(label) for label in range(1, num_classes)]
 
-        with open(trainpath, "w") as f:
-            for label in labels:
-                f.writelines(f"{sample}\n" for sample in train_samples[label])
+        trainpath = self.context.model_path(new_version, template="train-{}.txt")
+        train_len = self.make_train_txt(
+            trainpath, train_dir, labels, include_label=False
+        )
 
-        noval = True
         if self.config.test_dir is not None:
-            noval = False
             valpath = self.context.model_path(new_version, template="val-{}.txt")
-            with open(valpath, "w") as f:
-                f.writelines(f"{path}\n" for path in self.config.test_dir.glob("*/*"))
+            val_dir = self.config.test_dir
+            self.make_train_txt(valpath, val_dir, labels, include_label=False)
 
         num_epochs = self.config.initial_model_epochs
         if new_version > 0:
@@ -94,8 +84,7 @@ class YOLOTrainer(ModelTrainer):
             "nc": 1,
             "names": ["positive"],
         }
-
-        if not noval:
+        if self.config.test_dir is not None:
             data_dict["val"] = valpath
 
         data_file = self.context.model_dir / "data.yaml"
@@ -139,8 +128,8 @@ class YOLOTrainer(ModelTrainer):
         self.capture_trainingset(cmd_str, capture_files)
 
         logger.info(f"TRAIN CMD \n {cmd_str}")
-        proc = subprocess.Popen(cmd)
-        proc.communicate()
+        subprocess.run(cmd, check=True)
+
         if not model_savepath.exists():
             raise FileNotFoundError
         logger.info("Training completed")

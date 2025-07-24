@@ -42,49 +42,19 @@ class DNNClassifierTrainer(ModelTrainer):
 
     def train_model(self, train_dir: Path) -> DNNClassifierModel:
         new_version = self.get_new_version()
-
         model_savepath = self.context.model_path(new_version)
-        trainpath = self.context.model_path(new_version, template="train-{}.txt")
 
-        # labels = [subdir.name for subdir in self._train_dir.iterdir()]
-        ## reference class manager here to determine labels
         num_classes = len(self.context.class_list)
         labels = [str(label) for label in range(num_classes)]
         logger.info(f"List of labels in trainer: {labels}")
-        # labels = ["0", "1"]
-        train_samples = {
-            label: list(train_dir.joinpath(label).glob("*")) for label in labels
-        }
-        train_len = {label: len(train_samples[label]) for label in labels}
-        if train_len["1"] == 0:
-            logger.error(train_len)
-            logger.error([str(train_dir / label / "*") for label in labels])
-            raise Exception
 
-        with open(trainpath, "w") as f:
-            # get easy negatives
-            f.writelines(
-                f"{easy} 0\n" for easy in list(train_dir.joinpath("-1").glob("*"))
-            )
-
-            for label in labels:
-                f.writelines(f"{path} {label}\n" for path in train_samples[label])
+        trainpath = self.context.model_path(new_version, template="train-{}.txt")
+        train_len = self.make_train_txt(trainpath, train_dir, labels)
 
         if self.context.check_create_test():
             valpath = self.context.model_path(new_version, template="val-{}.txt")
             val_dir = train_dir.parent / "test"
-            val_samples = {
-                label: list(val_dir.joinpath(label).glob("*")) for label in labels
-            }
-            val_len = {label: len(val_samples[label]) for label in labels}
-            if val_len["1"] == 0:
-                logger.error(val_len)
-                logger.error([str(val_dir / label / "*") for label in labels])
-                raise Exception
-
-            with open(valpath, "w") as f:
-                for label in labels:
-                    f.writelines(f"{path} {label}\n" for path in val_samples[label])
+            self.make_train_txt(valpath, val_dir, labels)
         else:
             valpath = None
 
@@ -132,8 +102,7 @@ class DNNClassifierTrainer(ModelTrainer):
         self.capture_trainingset(cmd_str, capture_files)
 
         logger.info(f"TRAIN CMD\n {cmd_str}")
-        proc = subprocess.Popen(cmd)
-        proc.communicate()
+        subprocess.run(cmd, check=True)
 
         # train completed time
         train_time = time.time() - self.context.start_time

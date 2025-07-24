@@ -62,8 +62,7 @@ class FSLTrainer(ModelTrainer):
             str(train_dataset),
             str(support_path),
         ]
-        proc = subprocess.Popen(cmd)
-        proc.communicate()
+        subprocess.run(cmd, check=True)
 
         train_transforms = transforms.Compose(
             [

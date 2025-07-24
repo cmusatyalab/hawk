@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -11,6 +12,7 @@ from typing import TYPE_CHECKING
 from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 import torch
+from logzero import logger
 
 from ...plugins import HawkPlugin
 from .config import ModelMode, ModelTrainerConfig
@@ -75,6 +77,36 @@ class ModelTrainer(ModelTrainerBase):
             return self.load_model(self.config.notional_model_path, version=0)
 
         return self.train_model(train_dir)
+
+    @staticmethod
+    def make_train_txt(
+        train_txt: Path,
+        sample_dir: Path,
+        labels: list[str],
+        *,
+        include_label: bool = True,
+    ) -> dict[str, int]:
+        examples = {
+            label: list(sample_dir.joinpath(label).iterdir()) for label in labels
+        }
+        n_examples = {label: len(examples[label]) for label in labels}
+        if n_examples["1"] == 0:
+            logger.error("No positive examples in {train_txt.name} {n_examples}")
+            raise Exception
+
+        with open(train_txt, "w") as f:
+            for label in labels:
+                label_str = f" {label}" if include_label else ""
+                f.writelines(f"{path}{label_str}\n" for path in examples[label])
+
+            # train.txt for yolo trainers don't include labels (or negatives)
+            if not include_label:
+                with contextlib.suppress(FileNotFoundError):
+                    # add easy negatives
+                    f.writelines(
+                        f"{easy} 0\n" for easy in sample_dir.joinpath("-1").iterdir()
+                    )
+        return n_examples
 
     def capture_trainingset(self, cmd: str, extra_files: list[Path]) -> None:
         if not self.config.capture_trainingset:
