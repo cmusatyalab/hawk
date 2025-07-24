@@ -90,10 +90,6 @@ class FSLModel(ModelBase):
             preds = self._model(im_tensor.to(device))
             return cast("Sequence[float]", np.array([preds[0].cpu().numpy()]))
 
-    @property
-    def version(self) -> int:
-        return self._version
-
     def preprocess(self, obj: HawkObject) -> Sequence[float]:
         assert obj.media_type.startswith("image/")
 

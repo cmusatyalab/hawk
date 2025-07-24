@@ -83,10 +83,6 @@ class DNNClassifierModelRadar(ModelBase):
         self._model.eval()
         self._running = True
 
-    @property
-    def version(self) -> int:
-        return self._version
-
     def preprocess(self, obj: HawkObject) -> torch.Tensor:
         if obj.media_type in ("x-array/numpy", "x-array/numpyz"):
             array = np.load(io.BytesIO(obj.content))

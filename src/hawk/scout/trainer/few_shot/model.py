@@ -126,10 +126,6 @@ class FewShotModel(ModelBase):
         s_proto = s_proto[0]
         self.support_proto = s_proto
 
-    @property
-    def version(self) -> int:
-        return self._version
-
     def preprocess(self, obj: HawkObject) -> torch.Tensor:
         assert obj.media_type.startswith("image/")
 
