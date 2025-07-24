@@ -75,6 +75,7 @@ COPY --from=builder /app/requirements-scout.txt ./
 
 RUN uv venv --python ${PYTHON_VERSION} \
  && uv pip sync --no-cache \
+    --index https://storage.cmusatyalab.org/wheels \
     --index https://download.pytorch.org/whl/cu118 \
     --index-strategy unsafe-best-match \
     requirements-scout.txt
