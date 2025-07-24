@@ -27,7 +27,6 @@ from ...core.utils import ImageFromList, log_exceptions
 from .action_recognition_model import ActionRecognitionModel
 from .config import ActivityModelConfig
 from .movinet_a0s_encoder import MovinetEncoder
-from .training_state import TrainingState
 
 if TYPE_CHECKING:
     from ....hawkobject import HawkObject
@@ -52,17 +51,12 @@ class ActivityClassifierModel(ModelBase):
         logger.info(f"Loading Action Recognition Model from {model_path}")
         assert model_path.is_file()
 
-        model, _ = ActionRecognitionModel.load(
-            model_path=str(model_path),
-            backbone_encoder=MovinetEncoder(embed_dim=config.embed_dim),
-        )
-
         super().__init__(
             config, context, model_path, version, train_examples, train_time
         )
         assert self.context is not None
 
-        self._model = model
+        self._model = self.load_model(model_path)
         transform = transforms.Compose(
             [
                 lambda v: v.to(torch.float32) / 255,
@@ -95,9 +89,11 @@ class ActivityClassifierModel(ModelBase):
             return content.getvalue()
 
     def load_model(self, model_path: Path) -> torch.nn.Module:
-        assert self.context is not None
-        model, preprocess, _ = TrainingState.load_for_inference(model_path)
-        return model, preprocess
+        model, _ = ActionRecognitionModel.load(
+            model_path=model_path,
+            backbone_encoder=MovinetEncoder(embed_dim=self.config.embed_dim),
+        )
+        return model
 
     def get_predictions(self, inputs: torch.Tensor) -> Sequence[Sequence[float]]:
         with torch.no_grad():

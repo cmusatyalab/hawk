@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import io
+import os
+from pathlib import Path
 from typing import Any, TypeVar
 
 import torch
@@ -74,14 +76,11 @@ class ActionRecognitionModel(nn.Module):  # type: ignore[misc]
 
     @staticmethod
     def load(
-        model_path: str, backbone_encoder: BackboneEncoder, patch: Any | None = None
+        model_path: Path, backbone_encoder: BackboneEncoder, patch: Any | None = None
     ) -> tuple[ActionRecognitionModel, int]:
-        import os
-
-        model_path_without_extension, extension = os.path.splitext(model_path)
-        if extension in [".pth", ".pt"]:
+        if model_path.suffix in [".pth", ".pt"]:
             snapshot: dict[str, Any] = torch.load(
-                model_path, map_location="cpu", pickle_module=patch
+                str(model_path), map_location="cpu", pickle_module=patch
             )
             transformer_params = snapshot["transformer_params"]
             model: ActionRecognitionModel = ActionRecognitionModel(
@@ -96,7 +95,7 @@ class ActionRecognitionModel(nn.Module):  # type: ignore[misc]
                 del model._temporal_enc.norm
             num_samples = snapshot["num_samples"]
         else:
-            raise ValueError(f"Illegal extension {extension}")
+            raise ValueError(f"Illegal extension {model_path.suffix}")
         print(
             f"Loaded action recognition model {model_path}"
             f" with num_samples={num_samples}"
@@ -105,13 +104,13 @@ class ActionRecognitionModel(nn.Module):  # type: ignore[misc]
 
     @staticmethod
     def replace_head(
-        model_path: str,
-        new_model_path: str,
+        model_path: os.PathLike[str] | str,
+        new_model_path: os.PathLike[str] | str,
         backbone_encoder: BackboneEncoder,
         transformer_params: TransformerParams,
     ) -> ActionRecognitionModel:
         old_model, num_samples = ActionRecognitionModel.load(
-            model_path, backbone_encoder
+            Path(model_path), backbone_encoder
         )
         backbone_encoder = old_model._encoder
         backbone_encoder.embed_dim = transformer_params.embed_dim
@@ -121,7 +120,7 @@ class ActionRecognitionModel(nn.Module):  # type: ignore[misc]
             T=old_model.T,
             stride=old_model.stride,
         )
-        new_model.save(new_model_path, num_samples)
+        new_model.save(str(new_model_path), num_samples)
         return new_model
 
 
