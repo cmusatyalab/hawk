@@ -128,7 +128,7 @@ dev = [
 
 [tool.mypy]
 strict = true
-files = ["src", "hawk-plugin-template"]
+files = ["src", "plugins/hawk-plugins-template"]
 exclude = "^src/hawk/scout/trainer/(few_shot/|yolo.*/yolov5.*/)"
 plugins = ["numpy.typing.mypy_plugin", "pydantic.mypy"]
 
@@ -179,7 +179,14 @@ exclude = [
     "src/hawk/scout/trainer/yolo/yolov5/*",
     "src/hawk/scout/trainer/yolo_radar/yolov5_radar/*",
 ]
-include = ["pyproject.toml", "src/**/*.py", "scripts/**/*.py", "tests/**/*.py"]
+include = [
+    "pyproject.toml",
+    "src/**/*.py",
+    "scripts/**/*.py",
+    "tests/**/*.py",
+    "plugins/hawk-plugins-template/pyproject.toml",
+    "plugins/hawk-plugins-template/**/*.py",
+]
 
 [tool.ruff.lint]
 select = [

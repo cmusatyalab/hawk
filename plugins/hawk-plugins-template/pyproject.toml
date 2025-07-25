@@ -1,7 +1,7 @@
 [project]
-name = "hawk-plugin-template"
+name = "hawk-plugins-template"
 version = "0.1.0"
-description = "Example plugin for CMU Hawk"
+description = "Example plugins for CMU Hawk"
 readme = "README.md"
 authors = [
     { name = "Jan Harkes", email = "jaharkes@cs.cmu.edu" }
@@ -13,10 +13,10 @@ dependencies = [
 ]
 
 [project.entry-points."cmuhawk.retrievers"]
-example_retriever = "hawk_plugin_template.retriever:ExampleRetriever"
+example_retriever = "hawk_plugins_template.retriever:ExampleRetriever"
 
 [project.entry-points."cmuhawk.models"]
-example_model = "hawk_plugin_template.model:ExampleTrainer"
+example_model = "hawk_plugins_template.model:ExampleTrainer"
 
 [build-system]
 requires = ["hatchling"]
@@ -27,7 +27,7 @@ build-backend = "hatchling.build"
 # information is not required for building and only used for dependency
 # resolution and locking.
 [tool.poetry.dependencies]
-cmuhawk = { path = "../", develop = true }
+cmuhawk = { path = "../../", develop = true }
 
 [tool.uv.sources]
-cmuhawk = { path = "../", editable = true }
+cmuhawk = { path = "../../", editable = true }
