@@ -19,6 +19,7 @@ class ActivityTrainerConfig(ActivityModelConfig, ModelTrainerConfig):
     num_classes: int = 2
     head_dim: int = 480
     train_batch_size: int = 1
+
     initial_model_epochs: int = 10
     online_epochs: int | list[tuple[int, int]] = 10
 

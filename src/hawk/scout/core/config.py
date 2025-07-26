@@ -29,6 +29,9 @@ class ModelConfig(HawkPluginConfig):
 
 
 class ModelTrainerConfig(ModelConfig):
+    initial_model_epochs: int = 15
+    online_epochs: int | list[tuple[int, int]] = [(10, 0), (15, 100)]
+
     # set compress level to 0 for no compression
     capture_trainingset: bool = True
     capture_trainingset_compresslevel: int = 1

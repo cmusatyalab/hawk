@@ -108,6 +108,19 @@ class ModelTrainer(ModelTrainerBase):
                     )
         return n_examples
 
+    def get_num_epochs(self, *, version: int, positives: int) -> int:
+        num_epochs = self.config.initial_model_epochs
+        if version > 0:
+            online_epochs = self.config.online_epochs
+
+            if isinstance(online_epochs, list):
+                for epoch, pos in online_epochs:
+                    if positives >= pos:
+                        num_epochs = epoch
+            else:
+                num_epochs = online_epochs
+        return num_epochs
+
     def capture_trainingset(self, cmd: str, extra_files: list[Path]) -> None:
         if not self.config.capture_trainingset:
             return

@@ -67,16 +67,7 @@ class YOLOTrainerRadar(ModelTrainer):
             val_dir = self.config.test_dir
             self.make_train_txt(valpath, val_dir, labels, include_label=False)
 
-        num_epochs = self.config.initial_model_epochs
-        if new_version > 0:
-            online_epochs = self.config.online_epochs
-
-            if isinstance(online_epochs, list):
-                for epoch, pos in online_epochs:
-                    if train_len["1"] >= pos:
-                        num_epochs = epoch
-            else:
-                num_epochs = online_epochs
+        num_epochs = self.get_num_epochs(version=new_version, positives=train_len["1"])
 
         data_dict = {  # need to modify this data dict
             "path": str(self.context.model_dir),
