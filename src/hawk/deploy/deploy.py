@@ -27,7 +27,7 @@ def _start_hawk_scout(conn: ThreadingGroup, config: DeployConfig) -> None:
         "-s",
         _session_name(config),
         "-d",
-        "hawk-venv/bin/hawk_scout",
+        ".venv/bin/hawk_scout",
         "--a2s-port",
         str(config.a2s_port),
     ]
@@ -118,7 +118,7 @@ def deploy(
                 pass
 
         # reinstall
-        cmd = ["uv", "pip", "install", "--quiet", *extra_indices]
+        cmd = ["uv", "pip", "install", "--quiet", "--reinstall", *extra_indices]
         for extra_wheel in Path("wheels").glob("*.whl"):
             c.put(extra_wheel, extra_wheel.name)
             cmd.append(f"./{extra_wheel.name}")
