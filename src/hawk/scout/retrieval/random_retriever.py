@@ -60,7 +60,7 @@ class RandomRetriever(Retriever, LegacyRetrieverMixin):
             yield None
 
     def _tile_to_objectid(self, tile: str) -> ObjectId:
-        file_path, groundtruth = (tile.split() + ["0"])[:2]
+        file_path, groundtruth = (tile.rsplit(maxsplit=1) + ["0"])[:2]
         image_path = (
             self._index_root.joinpath(file_path)
             .resolve()
