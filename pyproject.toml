@@ -50,7 +50,6 @@ scout = [
     "scikit-image >= 0.21",
     "scikit-learn (>=1.3.0,<2.0.0)",
     "tensorboard (>=2.1.1,<3.0.0)",
-
     # Here we can try and compare different pytorch releases, after changing
     # this run `uv lock ; uv sync --all-extras`
     # "torch (>=1.13,<2.0)",
@@ -61,13 +60,14 @@ scout = [
     # "torchvision (>=0.16,<0.17)",
     "torch (>=2.2,<3.0)",
     "torchvision (>=0.17,<0.18)",
-
     # for activity recognition
     "av == 12.0.0",
     "einops ~= 0.8.0",
     # "movinet-pytorch @ git+https://github.com/Atze00/MoViNet-pytorch.git@main",
     # pre-built wheel for the above git repo at https://storage.cmusatyalab.org/wheels
     "movinet-pytorch == 0.2.2",
+    # for webdataset retriever
+    "wids>=0.1.11 ; python_version >= '3.10'",
 ]
 
 # under development, to be added to scout
@@ -96,6 +96,7 @@ radar = "hawk.scout.retrieval.radar_retriever:RadarRetriever"
 random = "hawk.scout.retrieval.random_retriever:RandomRetriever"
 tile = "hawk.scout.retrieval.tile_retriever:TileRetriever"
 video = "hawk.scout.retrieval.video_retriever:VideoRetriever"
+webdataset = "hawk.scout.retrieval.webdataset_retriever:WebDatasetRetriever"
 
 [project.entry-points."cmuhawk.models"]
 activity_recognition = "hawk.scout.trainer.k600_classifier.trainer:ActivityTrainer"
@@ -145,6 +146,7 @@ module = [
     "sklearn.*",
     "streamlit_label_kit",
     "websockets.*",
+    "wids.*",
 ]
 ignore_missing_imports = true
 

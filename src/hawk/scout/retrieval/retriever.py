@@ -191,8 +191,8 @@ class Retriever(RetrieverBase):
 
                 tiles = objects - images
                 logger.info(
-                    f"Retrieved Image: {images} @ {elapsed_total}"
-                    f"{tiles} / {self.total_tiles} RETRIEVED",
+                    f"Retrieved Image: {images} @ {elapsed_total:.3f}"
+                    f" {tiles} / {self.total_tiles} RETRIEVED",
                 )
 
                 remaining = image_next - time_now

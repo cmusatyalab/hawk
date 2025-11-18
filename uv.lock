@@ -428,6 +428,15 @@ wheels = [
 ]
 
 [[package]]
+name = "braceexpand"
+version = "0.1.7"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/54/93/badd4f5ccf25209f3fef2573073da9fe4a45a3da99fca2f800f942130c0f/braceexpand-0.1.7.tar.gz", hash = "sha256:e6e539bd20eaea53547472ff94f4fb5c3d3bf9d0a89388c4b56663aba765f705", size = 7777, upload-time = "2021-05-07T13:49:07.323Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fa/93/e8c04e80e82391a6e51f218ca49720f64236bc824e92152a2633b74cf7ab/braceexpand-0.1.7-py2.py3-none-any.whl", hash = "sha256:91332d53de7828103dcae5773fb43bc34950b0c8160e35e0f44c4427a3b85014", size = 5923, upload-time = "2021-05-07T13:49:05.146Z" },
+]
+
+[[package]]
 name = "cachetools"
 version = "5.5.2"
 source = { registry = "https://pypi.org/simple" }
@@ -776,6 +785,7 @@ scout = [
     { name = "tensorboard", version = "2.20.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
     { name = "torch" },
     { name = "torchvision" },
+    { name = "wids", marker = "python_full_version >= '3.10'" },
 ]
 
 [package.dev-dependencies]
@@ -845,6 +855,7 @@ requires-dist = [
     { name = "torchvision", marker = "extra == 'scout'", specifier = ">=0.17,<0.18", index = "https://download.pytorch.org/whl/cu118" },
     { name = "tqdm", specifier = ">=4.66.1,<5.0.0" },
     { name = "typing-extensions", specifier = ">=4.9.0,<5.0.0" },
+    { name = "wids", marker = "python_full_version >= '3.10' and extra == 'scout'", specifier = ">=0.1.11" },
 ]
 provides-extras = ["home", "scout", "http"]
 
@@ -6846,6 +6857,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/8a/98/2d9906746cdc6a6ef809ae6338005b3f21bb568bea3165cfc6a243fdc25c/wheel-0.45.1.tar.gz", hash = "sha256:661e1abd9198507b1409a20c02106d9670b2576e916d58f520316666abca6729", size = 107545, upload-time = "2024-11-23T00:18:23.513Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0b/2c/87f3254fd8ffd29e4c02732eee68a83a1d3c346ae39bc6822dcbcb697f2b/wheel-0.45.1-py3-none-any.whl", hash = "sha256:708e7481cc80179af0e556bbf0cc00b8444c7321e2700b8d8580231d13017248", size = 72494, upload-time = "2024-11-23T00:18:21.207Z" },
+]
+
+[[package]]
+name = "wids"
+version = "0.1.11"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "braceexpand", marker = "python_full_version >= '3.10'" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "pyyaml", marker = "python_full_version >= '3.10'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/78/63/fc53a3b1590e8286b8dec162e726b30ac9ed692680a95661c4cf29dd2185/wids-0.1.11.tar.gz", hash = "sha256:b266230250f93396ee6075d76462d1087566819bdad48b194357dc8758d05eb9", size = 33885, upload-time = "2025-02-11T01:09:38.896Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/53/7b/1ee36ea732ec1f5bf0e1607423fac1b75cd86e2ae6d437ddda32e574fe50/wids-0.1.11-py3-none-any.whl", hash = "sha256:501c082efbe8cdeded76cef82a2182f2f425513c964f4c1a6242cefd9b077915", size = 27656, upload-time = "2025-02-11T01:09:37.165Z" },
 ]
 
 [[package]]
