@@ -44,10 +44,10 @@ class FullReexaminationStrategy(ReexaminationStrategy):
 
         for result, prev_result in zip(results, to_reexamine):
             time_result = time.time() - start_time
-            prev_score = prev_result[0]
+            prev_score = -prev_result[0]
             logger.info(
                 f"Reexamine score id: {result.id} "
-                f"prev_score{prev_score} curr_score {result.score}",
+                f"prev_score {prev_score} curr_score {result.score}",
             )
             new_queue.put((-score, time_result, result))
 

@@ -52,7 +52,7 @@ class TopReexaminationStrategy(ReexaminationStrategy):
         results = model.infer(reexamine)
         for result, prev_result in zip(results, to_reexamine):
             time_result = time.time() - start_time
-            prev_score = prev_result[0]
+            prev_score = -prev_result[0]
             logger.info(
                 f"Reexamine score id: {result.id} "
                 f"prev_score {prev_score} curr_score {result.score}",
