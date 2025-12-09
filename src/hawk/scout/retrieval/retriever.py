@@ -184,12 +184,15 @@ class Retriever(RetrieverBase):
 
             else:
                 self.retrieved_images.inc()
+
+                # enumerate starts counting at 0, so we need to do this
+                # subtraction before adding one to images.
+                tiles = objects - images
                 images += 1
 
                 time_now = time.time()
                 elapsed_total = time_now - self._start_time
 
-                tiles = objects - images
                 logger.info(
                     f"Retrieved Image: {images} @ {elapsed_total:.3f}"
                     f" {tiles} / {self.total_tiles} RETRIEVED",
