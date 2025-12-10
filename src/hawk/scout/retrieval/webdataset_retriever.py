@@ -26,12 +26,13 @@ tuples, or the json description equivalent.
 
 from __future__ import annotations
 
-import json
 import math
 from pathlib import Path
 from typing import Iterator
 
 import wids
+from logzero import logger
+from pydantic import BaseModel, ValidationError
 
 from ...detection import Detection
 from ...hawkobject import MEDIA_TYPES, HawkObject
@@ -64,6 +65,11 @@ class WebDatasetRetrieverConfig(ImageRetrieverConfig):
 
     # used to slow down the retrieval rate
     tiles_per_frame: int = 200
+
+
+# structure of the meta (json) object containing groundtruth for each item
+class WebDatasetMetaObject(BaseModel):
+    groundtruth: list[Detection] = []
 
 
 class WebDatasetRetriever(Retriever, ThumbnailImageMixin):
@@ -135,6 +141,11 @@ class WebDatasetRetriever(Retriever, ThumbnailImageMixin):
     def get_groundtruth(self, object_id: ObjectId) -> list[Detection]:
         index = int(object_id.oid)
         sample = self.dataset[index]
-        meta = json.loads(sample.get("json", "{}"))
-        detections = meta.get("groundtruth", [])
-        return [Detection(**detection) for detection in detections]
+
+        try:
+            meta_json = sample.get("json", "{}")
+            meta = WebDatasetMetaObject.model_validate_json(meta_json)
+            return meta.groundtruth
+        except ValidationError:
+            logger.warning("Invalid JSON metadata for object {object_id}")
+            return []

@@ -11,10 +11,10 @@ from __future__ import annotations
 
 import itertools
 import sys
-from dataclasses import dataclass
 from typing import Any, Iterable, Iterator, TypedDict
 
 from logzero import logger
+from pydantic import BaseModel
 
 from .classes import (
     NEGATIVE_CLASS,
@@ -27,8 +27,7 @@ from .classes import (
 from .proto import common_pb2
 
 
-@dataclass
-class Detection:
+class Detection(BaseModel):
     class_name: ClassName
     confidence: float = 1.0
     x: float = 0.5  # center X coordinate of bounding box
