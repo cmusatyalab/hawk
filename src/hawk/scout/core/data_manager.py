@@ -222,6 +222,7 @@ class DataManager:
             return
 
         # Transmit
+        logger.info(f"Forwarding label for {object_id}")
         msg = [b"s2s_add_tile_and_label", labeled_tile.SerializeToString()]
         for i, stub in enumerate(self._context.scouts):  # send positives to all scouts
             if i in [self._context.scout_index, scout_index]:
