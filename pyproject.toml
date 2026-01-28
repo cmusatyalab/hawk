@@ -70,6 +70,11 @@ scout = [
     "wids>=0.1.11 ; python_version >= '3.10'",
 ]
 
+# Optional YOLOv5 based model trainers for hawk scouts
+yolo = [
+    "hawk-yolo-trainers @ git+https://github.com/cmusatyalab/hawk-yolo-trainers.git",
+]
+
 # under development, to be added to scout
 # for http retriever
 http = [
@@ -103,8 +108,6 @@ activity_recognition = "hawk.scout.trainer.k600_classifier.trainer:ActivityTrain
 dnn_classifier = "hawk.scout.trainer.dnn_classifier.trainer:DNNClassifierTrainer"
 dnn_classifier_radar = "hawk.scout.trainer.dnn_classifier_radar.trainer:DNNClassifierTrainerRadar"
 fsl = "hawk.scout.trainer.fsl.trainer:FSLTrainer"
-yolo = "hawk.scout.trainer.yolo.trainer:YOLOTrainer"
-yolo_radar = "hawk.scout.trainer.yolo_radar.trainer:YOLOTrainerRadar"
 
 [dependency-groups]
 dev = [
@@ -130,7 +133,7 @@ dev = [
 [tool.mypy]
 strict = true
 files = ["src", "plugins/hawk-plugins-template"]
-exclude = "^src/hawk/scout/trainer/(few_shot/|yolo.*/yolov5.*/)"
+exclude = "^src/hawk/scout/trainer/few_shot/"
 plugins = ["numpy.typing.mypy_plugin", "pydantic.mypy"]
 
 [[tool.mypy.overrides]]
@@ -178,8 +181,6 @@ target-version = "py38"
 exclude = [
     "*_pb2.py",
     "src/hawk/scout/trainer/few_shot/*/*",
-    "src/hawk/scout/trainer/yolo/yolov5/*",
-    "src/hawk/scout/trainer/yolo_radar/yolov5_radar/*",
 ]
 include = [
     "pyproject.toml",

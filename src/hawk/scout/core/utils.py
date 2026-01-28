@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2022 Carnegie Mellon University
 #
-# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 from __future__ import annotations
 

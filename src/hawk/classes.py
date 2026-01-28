@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2024 Carnegie Mellon University
 #
-# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 """Types and functions for managing class names and labels."""
 

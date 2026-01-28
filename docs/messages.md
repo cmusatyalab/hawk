@@ -21,7 +21,6 @@ List of protobuf messages used in Hawk RPC calls.
 *   [SVMMode](#SVMMode)
 *   [FastMPNCOVConfig](#FastMPNCOVConfig)
 *   [FinetuneConfig](#FinetuneConfig)
-*   [YOLOConfig](#YOLOConfig)
 *   [RetrainPolicyConfig](#RetrainPolicyConfig)
 *   [AbsolutePolicyConfig](#AbsolutePolicyConfig)
 *   [PercentagePolicyConfig](#PercentagePolicyConfig)
@@ -131,7 +130,6 @@ One of
 | fastMPNCOV|FastMPNCOVConfig| Fine-grained configuration|
 | dnn|       FinetuneConfig| DNN only configuration|
 | dnn_svm|   FinetuneConfig| DNN + SVM Configuration|
-| yolo|      YOLOConfig| YOLO configuration|
 
 ### **SVMConfig**
 
@@ -161,13 +159,6 @@ Choice of SVM Training
 | --------|---- |---------------| -----|
 | arch | string | True | Model Architecture|
 | args| map<string, string> | False | DNN training parameters|
-
-### **YOLOConfig**
-
-| Fields  | Type  | Description |
-| ------------ |---------------| -----|
-| imageSize| int32| tile size|
-| yolo_args| map<string, string>| YOLO training parameters|
 
 ### **RetrainPolicyConfig**
 

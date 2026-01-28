@@ -787,6 +787,9 @@ scout = [
     { name = "torchvision" },
     { name = "wids", marker = "python_full_version >= '3.10'" },
 ]
+yolo = [
+    { name = "hawk-yolo-trainers" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -826,6 +829,7 @@ requires-dist = [
     { name = "decorator", marker = "extra == 'home'", specifier = ">=5.1.1,<6.0.0" },
     { name = "einops", marker = "extra == 'scout'", specifier = "~=0.8.0" },
     { name = "fabric", marker = "extra == 'home'", specifier = ">=3.0.1,<4.0.0" },
+    { name = "hawk-yolo-trainers", marker = "extra == 'yolo'", git = "https://github.com/cmusatyalab/hawk-yolo-trainers.git" },
     { name = "httpx", marker = "extra == 'http'", specifier = ">=0.28.1,<0.29.0" },
     { name = "importlib-metadata", specifier = ">=8.5,<9.0" },
     { name = "importlib-resources", specifier = ">=6.4,<7.0" },
@@ -857,7 +861,7 @@ requires-dist = [
     { name = "typing-extensions", specifier = ">=4.9.0,<5.0.0" },
     { name = "wids", marker = "python_full_version >= '3.10' and extra == 'scout'", specifier = ">=0.1.11" },
 ]
-provides-extras = ["home", "scout", "http"]
+provides-extras = ["home", "scout", "yolo", "http"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1725,6 +1729,27 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/01/ee/02a2c011bdab74c6fb3c75474d40b3052059d95df7e73351460c8588d963/h11-0.16.0.tar.gz", hash = "sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1", size = 101250, upload-time = "2025-04-24T03:35:25.427Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86", size = 37515, upload-time = "2025-04-24T03:35:24.344Z" },
+]
+
+[[package]]
+name = "hawk-yolo-trainers"
+version = "0.1.0"
+source = { git = "https://github.com/cmusatyalab/hawk-yolo-trainers.git#57d617ca91c03b6dbca1137b641c43e263fbebc3" }
+dependencies = [
+    { name = "albumentations", version = "1.4.18", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "albumentations", version = "1.4.24", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
+    { name = "opencv-python-headless" },
+    { name = "pillow" },
+    { name = "pyyaml" },
+    { name = "requests" },
+    { name = "scikit-learn", version = "1.3.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "scikit-learn", version = "1.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
+    { name = "scikit-learn", version = "1.7.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "tensorboard", version = "2.14.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "tensorboard", version = "2.20.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
+    { name = "torch" },
+    { name = "torchvision" },
+    { name = "tqdm" },
 ]
 
 [[package]]

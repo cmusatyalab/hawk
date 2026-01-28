@@ -9,9 +9,6 @@ from hawk.scout.trainer.dnn_classifier.train_model import (  # noqa: F401
 )
 from hawk.scout.trainer.fsl.augment import main as _fsl_augment_main  # noqa: F401
 
-# the following depends on CUDA
-# from hawk.scout.trainer.yolo.yolov5.train import main as _yolo_train_main
-
 
 @pytest.mark.scout
 def test_entrypoints_scout() -> None:

@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2025 Carnegie Mellon University
-# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 """Hawk Detection datatype. Defines a datatype that contains the information
 about a detected object.

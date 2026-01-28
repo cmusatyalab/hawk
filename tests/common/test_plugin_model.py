@@ -20,8 +20,6 @@ CONFIGS_MODEL = {
     "dnn_classifier": {},
     "dnn_classifier_radar": {},
     "fsl": {"support_data": base64.b64encode(REFERENCE_IMAGE_DATA).decode("utf-8")},
-    "yolo": {},
-    "yolo_radar": {},
 }
 
 

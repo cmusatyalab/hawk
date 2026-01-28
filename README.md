@@ -52,7 +52,7 @@ Provide relevant data and model parameters in the [config file.](/configs/dota_s
     - only_positives: this flag specifies that only a certain increases positives affects retraining conditions, as opposed to positives and negatives.
     - threshold: percentage or absolute threshold for retrain conditions to be met.
 - train_strategy: Specifies training and model details.
-    - type: dnn_classifier, yolo, etc. the type of model used
+    - type: dnn_classifier, fsl, etc. the type of model used
     - initial_model_path: This allows the user to specify a path to an initial model on the home machine or on the scout.  If the path is invalid, a new model will be trained on the scouts at the beginning of the mission, otherwise the model pointed to by the specified path will be used.
     - bootstrap_path: This is the path to a .zip folder containing two directories: 0/ and 1/ where 1/ represents a directory of true positives (of the desired class) and 0/ represents the set of true negatives.  Common practice is to use 20 positives and 100 negatives, but any numbers can be used.  The bootstrap dataset is used to train the initial model if no valid path is given for initial_model_path.  The bootstrap dataset is also used for all future training iterations, so it is required.  An example list of images and labels that is used to generate this bootstrap dataset for initial training can be found here: [example_DOTA_train_file](/configs/train_example_DOTA_roundabout.txt)
     - args: additional arguments
@@ -149,4 +149,3 @@ Unless otherwise stated, the source code is copyright Carnegie Mellon University
 Project | Modified | License
 ---|---|---|
 [pytorch/examples](https://github.com/pytorch/examples) | Yes | BSD
-[yolov5](https://github.com/ultralytics/yolov5) | Yes | GNUv3
