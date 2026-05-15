@@ -4,8 +4,9 @@
 
 from __future__ import annotations
 
+from io import BytesIO
 import shutil
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterator
 
 import streamlit as st
 from PIL import Image
@@ -110,6 +111,19 @@ def _class_name(class_dir: Path) -> str:
     return class_name
 
 
+def _unpack(new_examples: list | None) -> Iterator[tuple[str, BytesIO]]:
+    import zipfile
+
+    for example in new_examples or []:
+        if not zipfile.is_zipfile(example):
+            yield example.name, example
+        else:
+            with zipfile.ZipFile(example) as z:
+                for name in z.namelist():
+                    with z.open(name) as item:
+                        yield name.split("/")[-1], BytesIO(item.read())
+
+
 # display extracted bootstrap examples
 if bootstrap_dir.is_dir():
     column = columns(4)
@@ -146,13 +160,13 @@ if bootstrap_dir.is_dir():
             new_class = st.selectbox("Class", classes, index=1)
             new_examples = st.file_uploader(
                 "Examples",
-                type=["gif", "png", "jpg"],
+                type=["gif", "png", "jpg", "zip"],
                 accept_multiple_files=True,
             )
             if st.button("Upload"):
                 class_dir = bootstrap_dir / str(classes.index(new_class))
                 class_dir.mkdir(exist_ok=True)
-                for example in new_examples or []:
+                for name, example in _unpack(new_examples):
                     img = Image.open(example)
                     # crop to centered square and resize to 256 by 256
                     size = min(img.size)
@@ -160,5 +174,5 @@ if bootstrap_dir.is_dir():
                     top = (img.size[1] - size) // 2
                     img = img.crop((left, top, left + size, top + size))
                     img = img.resize((256, 256))
-                    img.save(class_dir / example.name)
+                    img.save(class_dir / name)
                 st.rerun()
