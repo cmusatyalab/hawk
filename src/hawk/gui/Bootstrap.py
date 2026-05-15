@@ -4,8 +4,9 @@
 
 from __future__ import annotations
 
-from io import BytesIO
 import shutil
+import zipfile
+from io import BytesIO
 from typing import TYPE_CHECKING, Iterator
 
 import streamlit as st
@@ -15,6 +16,8 @@ from hawk.gui.elements import columns, load_mission
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 st.title("Hawk Mission Bootstrap")
 
@@ -111,9 +114,7 @@ def _class_name(class_dir: Path) -> str:
     return class_name
 
 
-def _unpack(new_examples: list | None) -> Iterator[tuple[str, BytesIO]]:
-    import zipfile
-
+def _unpack(new_examples: list[UploadedFile] | None) -> Iterator[tuple[str, BytesIO]]:
     for example in new_examples or []:
         if not zipfile.is_zipfile(example):
             yield example.name, example
