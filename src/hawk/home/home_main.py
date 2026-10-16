@@ -25,6 +25,7 @@ from ..ports import H2A_PORT, HOME_METRICS_PORT
 from .admin import Admin
 from .home_labeler import LabelerDiskQueue
 from .home_scout import ScoutQueue, Strategy
+from .scope import resolve_scoped_dataset
 from .script_labeler import ScriptLabeler
 from .stats import HAWK_MISSION_STATUS
 from .utils import define_scope, get_ip
@@ -104,7 +105,7 @@ def main() -> None:
     mission_status = HAWK_MISSION_STATUS.labels(mission=mission_id)
     mission_status.state("starting")
 
-    if config["dataset"]["type"] == "cookie":
+    if config.get("dataset", {}).get("type") == "cookie":
         logger.info("Reading Scope Cookie")
         logger.info(f"Participating scouts \n{config.scouts}")
         config = define_scope(config)
@@ -146,6 +147,8 @@ def main() -> None:
     # resolve local paths relative to mission_dir
     resolve_path(config["train_strategy"], "bootstrap_path", mission_dir)
     resolve_path(config["train_strategy"], "initial_model_path", mission_dir)
+
+    resolve_scoped_dataset(config)
 
     # Save final config file to log_dir
     # this includes scope derived parameters, normalized bandwidth, and

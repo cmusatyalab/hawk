@@ -32,7 +32,7 @@ from typing import Iterator
 
 import wids
 from logzero import logger
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from ...detection import Detection
 from ...hawkobject import MEDIA_TYPES, HawkObject
@@ -49,8 +49,17 @@ IMAGE_TYPES = {
 }
 
 
+class Shard(BaseModel):
+    url: str
+    nsamples: int
+
+
+ShardList = TypeAdapter(list[Shard])
+
+
 class WebDatasetRetrieverConfig(ImageRetrieverConfig):
-    webdataset: str | list[tuple[str, int]]
+    webdataset: str = ""
+    shardlist: str | None = None
 
     # split dataset between workers, set to false if each worker has a
     # pre-sharded local copy of the dataset
@@ -79,8 +88,16 @@ class WebDatasetRetriever(Retriever, ThumbnailImageMixin):
     def __init__(self, config: WebDatasetRetrieverConfig) -> None:
         super().__init__(config)
 
+        if self.config.shardlist is not None:
+            webdataset: str | list[dict[str, str | int]] = [
+                shard.model_dump()
+                for shard in ShardList.validate_json(self.config.shardlist)
+            ]
+        else:
+            webdataset = self.config.webdataset
+
         self.dataset = wids.ShardListDataset(
-            self.config.webdataset,
+            webdataset,
             cache_dir=self.config.cache_dir,
         )
         # disable automatic image decoding
