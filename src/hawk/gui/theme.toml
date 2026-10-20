@@ -1,0 +1,71 @@
+# SPDX-FileCopyrightText: 2026 Carnegie Mellon University
+#
+# SPDX-License-Identifier: GPL-2.0-only
+
+# Hawk Browser theme.
+#
+# Loaded by `hawk_gui` through the `theme.base` config option, so any theme
+# settings in a user's own ~/.streamlit/config.toml still take precedence.
+# Streamlit follows the browser's light/dark preference and lets the user
+# switch between the [theme.light] and [theme.dark] variants from the
+# settings menu.
+
+[theme]
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+headingFont = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+codeFont = "JetBrains Mono:https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap, ui-monospace, SFMono-Regular, Menlo, monospace"
+baseFontSize = 15
+baseFontWeight = 400
+headingFontWeights = [650, 600, 600, 600, 600, 600]
+headingFontSizes = ["2rem", "1.4rem", "1.15rem", "1rem", "0.95rem", "0.9rem"]
+metricValueFontSize = "1.75rem"
+metricValueFontWeight = 600
+baseRadius = "0.6rem"
+buttonRadius = "0.5rem"
+showWidgetBorder = true
+showSidebarBorder = true
+linkUnderline = false
+
+[theme.light]
+base = "light"
+primaryColor = "#2563eb"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f4f6fa"
+textColor = "#0f172a"
+borderColor = "#e2e8f0"
+linkColor = "#2563eb"
+codeBackgroundColor = "#f1f5f9"
+dataframeHeaderBackgroundColor = "#f4f6fa"
+blueColor = "#2563eb"
+greenColor = "#16a34a"
+orangeColor = "#ea580c"
+redColor = "#dc2626"
+violetColor = "#7c3aed"
+grayColor = "#64748b"
+chartCategoricalColors = ["#2563eb", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"]
+
+[theme.light.sidebar]
+backgroundColor = "#f8fafc"
+secondaryBackgroundColor = "#ffffff"
+
+[theme.dark]
+base = "dark"
+primaryColor = "#60a5fa"
+backgroundColor = "#0b1020"
+secondaryBackgroundColor = "#141a2e"
+textColor = "#e2e8f0"
+borderColor = "#1f2940"
+linkColor = "#60a5fa"
+codeBackgroundColor = "#141a2e"
+dataframeHeaderBackgroundColor = "#141a2e"
+blueColor = "#60a5fa"
+greenColor = "#4ade80"
+orangeColor = "#fb923c"
+redColor = "#f87171"
+violetColor = "#a78bfa"
+grayColor = "#94a3b8"
+chartCategoricalColors = ["#60a5fa", "#fbbf24", "#34d399", "#f87171", "#a78bfa", "#22d3ee", "#f472b6", "#a3e635"]
+
+[theme.dark.sidebar]
+backgroundColor = "#0f1528"
+secondaryBackgroundColor = "#141a2e"

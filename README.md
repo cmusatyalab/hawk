@@ -97,7 +97,7 @@ The configuration file will need to be modified to include the actual host name 
 
 ## Running Hawk UI
 
-Hawk UI is developed using [Streamlit](https://streamlit.io) and has been tested using the Firefox and Chrome browsers.
+Hawk UI is developed using [Streamlit](https://streamlit.io) and has been tested using the Firefox and Chrome browsers. It requires Python 3.10 or newer.
 
 ### Step 1. Setting up Environment
 
@@ -136,11 +136,14 @@ Navigate your browser to [http://localhost:8501](http://localhost:8501).
 
 ### Step 5. Create, configure, and manage missions.
 
-- Select the mission template and click 'Create Mission'.
-- If needed, update mission configuration parameters or use 'Bootstrap Explorer' to extract/update/repack the bootstrap dataset.
-- From the 'Configuration' tab you can then start scouts, when all scouts are running you will be able to 'Start Mission'.
-- Go to the 'Labeling' tab, the mission state should be 'Starting' while the scouts are configured, the bootstrap dataset is uploaded, and the first bootstrap model is trained. Once all scouts have loaded the first model the state should switch to 'Running'. At this point the scouts will start inferencing, and once the first N entries have been inferenced on each scout they will start to send their results to home.
-- When results start to appear, you can manually label the results and then use 'Send Labels' to send the labels back to the scouts.
+- On the **Missions** page, pick a template under 'Start from a template' and click 'Create mission'. Existing missions are listed on the same page, and the mission picker in the sidebar switches between them.
+- If needed, update the mission configuration on the **Setup** page, or use the **Bootstrap** page to review, add or remove bootstrap examples ('Edit examples', then 'Save changes').
+- From the **Setup** page you can then deploy and start the scouts, when all scouts are running you will be able to 'Start mission'. Less common actions (clone, check scouts, reset, delete) are in the '⋯' menu.
+- Go to the **Labeling** page, the mission state in the sidebar should be 'Starting' while the scouts are configured, the bootstrap dataset is uploaded, and the first bootstrap model is trained. Once all scouts have loaded the first model the state should switch to 'Running'. At this point the scouts will start inferencing, and once the first N entries have been inferenced on each scout they will start to send their results to home.
+- When results start to appear, you can label them and then use 'Submit labels' (or Ctrl+Enter) to send the labels back to the scouts.
+- Mission progress, charts and the mission log are on the **Statistics** page, and samples the scouts could not match to a known class on the **Clusters** page.
+
+The GUI follows the browser's light or dark mode preference, this and other theme settings can be overridden in `~/.streamlit/config.toml`.
 
 # Licensing
 
