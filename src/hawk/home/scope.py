@@ -44,7 +44,7 @@ def resolve_scoped_dataset(config: MissionConfig) -> None:
     # scope:
     # *required fields*
     #   scope_server: http://cloudlet032.elijah.cs.cmu.edu:8000/
-    #   embedding: clip-2
+    #   dataset: clip-yfcc100m
     #
     # *optional fields*
     #   limit: 500000
@@ -58,7 +58,7 @@ def resolve_scoped_dataset(config: MissionConfig) -> None:
 
     # required config
     scope_server = scope_config["scope_server"]
-    embedding = scope_config["embedding"]
+    dataset = scope_config["dataset"]
     bootstrap_zip = config["train_strategy"]["bootstrap_path"]
 
     # optional config
@@ -81,16 +81,14 @@ def resolve_scoped_dataset(config: MissionConfig) -> None:
     # bootstrap_image -> clusters -> scoped webdataset descriptor
     with requests.Session() as s:
         logger.info(f"Finding nearby clusters for {len(bootstrap_images)} examples")
-        find_clusters = urljoin(scope_server, f"/api/clusters/{embedding}")
+        find_clusters = urljoin(scope_server, f"/api/clusters/{dataset}")
         r = s.post(find_clusters, files=bootstrap_images)
         r.raise_for_status()
         clusters = r.json().get("clusters", [])
 
         # get scoped webdataset descriptor
         logger.info("Retrieving webdataset descriptor")
-        create_scope = urljoin(
-            scope_server, f"/clustered/{embedding}.json?limit={limit}"
-        )
+        create_scope = urljoin(scope_server, f"/clustered/{dataset}.json?limit={limit}")
         r = s.post(create_scope, json=clusters)
         r.raise_for_status()
         wids = r.json()
