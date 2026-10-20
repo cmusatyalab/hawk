@@ -57,7 +57,7 @@ class TopReexaminationStrategy(ReexaminationStrategy):
                 f"Reexamine score id: {result.id} "
                 f"prev_score {prev_score} curr_score {result.score}",
             )
-            new_queue.put((-score, time_result, result))
+            new_queue.put((-result.score, time_result, result))
             # old_queues.put((-score, time_result, result))
 
         # return old_queues, len(reexamine)
