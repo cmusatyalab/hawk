@@ -34,6 +34,7 @@ Only the standard library and Pillow are needed.
 from __future__ import annotations
 
 import sys
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -134,3 +135,41 @@ def grid(length: int, tile: int) -> list[int]:
     if starts[-1] + tile < length:
         starts.append(length - tile)
     return starts
+
+
+def visible_fraction(box: Box, x: int, y: int, size: int) -> float:
+    ix = max(0.0, min(box.x1, x + size) - max(box.x0, x))
+    iy = max(0.0, min(box.y1, y + size) - max(box.y0, y))
+    area = max(1e-9, (box.x1 - box.x0) * (box.y1 - box.y0))
+    return ix * iy / area
+
+
+def label_tile(
+    boxes: list[Box],
+    x: int,
+    y: int,
+    size: int,
+    min_visible: float,
+    mixed: str,
+) -> tuple[int | None, str]:
+    """Return (label, reason). label None means the tile is dropped."""
+    full: Counter[int] = Counter()
+    partial = 0
+    for box in boxes:
+        v = visible_fraction(box, x, y, size)
+        if v >= min_visible:
+            full[box.pose] += 1
+        elif v > 0:
+            partial += 1
+    if not full:
+        # only cut-off people: we can't say what the tile shows, so drop it
+        return (None, "partial_only") if partial else (0, "empty")
+    if len(full) == 1:
+        return next(iter(full)) + 1, "single_pose"
+    if mixed == "drop":
+        return None, "mixed_pose"
+    # majority pose, ties dropped
+    (top, n1), (_, n2) = full.most_common(2)
+    if n1 == n2:
+        return None, "mixed_pose_tie"
+    return top + 1, "mixed_majority"
