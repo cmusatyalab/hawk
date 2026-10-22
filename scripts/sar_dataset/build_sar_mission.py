@@ -33,11 +33,15 @@ Only the standard library and Pillow are needed.
 
 from __future__ import annotations
 
+import argparse
+import json
+import random
 import sys
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
+from PIL import Image
 
 POSES = ["bent", "kneeling", "lying", "sitting", "upright"]  # C2A pose ids 0..4
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
@@ -52,6 +56,19 @@ class Box:
     x1: float
     y1: float
     pose: int
+
+
+@dataclass
+class Tile:
+    source: Path  # source image
+    origin: str  # "c2a" or "aider"
+    split: str  # c2a split, or "aider"
+    x: int
+    y: int
+    size: int
+    label: int  # 0 negative, 1..5 pose
+    name: str = ""
+    extra: dict = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------- reading
@@ -123,6 +140,19 @@ def find_c2a_images(c2a_root: Path) -> list[tuple[str, Path, Path]]:
     return found
 
 
+def find_aider_images(aider_root: Path, classes: list[str]) -> list[Path]:
+    wanted = {c.lower() for c in classes}
+    images = [
+        p
+        for p in list_images(aider_root)
+        if any(part.lower() in wanted for part in p.relative_to(aider_root).parts[:-1])
+    ]
+    if not images:
+        msg = f"no AIDER images in folders named {sorted(wanted)} under {aider_root}"
+        raise SystemExit(msg)
+    return images
+
+
 # ---------------------------------------------------------------- tiling
 
 
@@ -173,3 +203,114 @@ def label_tile(
     if n1 == n2:
         return None, "mixed_pose_tie"
     return top + 1, "mixed_majority"
+
+
+# ---------------------------------------------------------------- main
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--c2a-root", type=Path, required=True,
+                    help="C2A folder that holds train/ val/ test/ and 'All labels with Pose information/'")
+    ap.add_argument("--aider-root", type=Path, required=True,
+                    help="extracted AIDER folder (one subfolder per class)")
+    ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--aider-classes", default="normal",
+                    help="comma list of AIDER class folders to use as negatives (default: normal)")
+    ap.add_argument("--tile-size", type=int, default=256)
+    ap.add_argument("--min-visible", type=float, default=0.5,
+                    help="fraction of a person's box that must be inside a tile to count")
+    ap.add_argument("--mixed", choices=["drop", "majority"], default="drop",
+                    help="what to do with a tile that holds people of different poses")
+    ap.add_argument("--positive-rate", type=float, default=0.05,
+                    help="target share of tiles with a person in the stream")
+    ap.add_argument("--c2a-empty-negatives", action=argparse.BooleanOptionalAction, default=True,
+                    help="also use empty C2A tiles as negatives (default: yes)")
+    ap.add_argument("--limit-images", type=int, default=0,
+                    help="use at most this many C2A images (0 = all); for a quick subset")
+    ap.add_argument("--seed", type=int, default=0)
+    args = ap.parse_args(argv)
+
+    if not 0 < args.positive_rate < 1:
+        ap.error("--positive-rate must be between 0 and 1")
+    rng = random.Random(args.seed)
+    stats: dict = {"args": {k: str(v) for k, v in vars(args).items()}}
+    reasons: Counter[str] = Counter()
+
+    # 1. label C2A tiles from the boxes (no pixels needed yet)
+    c2a = find_c2a_images(args.c2a_root)
+    rng.shuffle(c2a)
+    if args.limit_images:
+        c2a = c2a[: args.limit_images]
+    c2a_tiles: list[Tile] = []
+    people_per_image = []
+    for split, image_path, label_path in c2a:
+        with Image.open(image_path) as im:
+            width, height = im.size
+        boxes = read_c2a_boxes(label_path, width, height)
+        people_per_image.append(len(boxes))
+        for y in grid(height, args.tile_size):
+            for x in grid(width, args.tile_size):
+                label, why = label_tile(boxes, x, y, args.tile_size,
+                                        args.min_visible, args.mixed)
+                reasons[why] += 1
+                if label is not None:
+                    c2a_tiles.append(Tile(image_path, "c2a", split, x, y,
+                                          args.tile_size, label))
+
+    # 2. AIDER tiles are all negatives
+    aider_images = find_aider_images(args.aider_root,
+                                     [c.strip() for c in args.aider_classes.split(",")])
+    aider_tiles: list[Tile] = []
+    for image_path in aider_images:
+        with Image.open(image_path) as im:
+            width, height = im.size
+        for y in grid(height, args.tile_size):
+            for x in grid(width, args.tile_size):
+                aider_tiles.append(Tile(image_path, "aider", "aider", x, y,
+                                        args.tile_size, 0))
+
+    held_out: set[Path] = set()  # bootstrap images, added later
+
+    # 3. stream: all remaining positives, plus negatives up to the target rate
+    positives = [t for t in c2a_tiles if t.label > 0 and t.source not in held_out]
+    negatives = [t for t in aider_tiles if t.source not in held_out]
+    if args.c2a_empty_negatives:
+        negatives += [t for t in c2a_tiles if t.label == 0 and t.source not in held_out]
+    rng.shuffle(positives)
+    rng.shuffle(negatives)
+    want_neg = round(len(positives) * (1 - args.positive_rate) / args.positive_rate)
+    if want_neg > len(negatives):
+        # not enough negatives: keep all of them and drop positives instead
+        keep_pos = round(len(negatives) * args.positive_rate / (1 - args.positive_rate))
+        print(f"note: only {len(negatives)} negative tiles; keeping {keep_pos} of "
+              f"{len(positives)} positive tiles to reach the target rate",
+              file=sys.stderr)
+        positives = positives[:keep_pos]
+        want_neg = len(negatives)
+    stream = positives + negatives[:want_neg]
+    rng.shuffle(stream)
+
+    # 4. stats
+    def per_class(tiles: list[Tile]) -> dict[str, int]:
+        c = Counter(t.label for t in tiles)
+        return {"negative": c[0], **{p: c[i + 1] for i, p in enumerate(POSES)}}
+
+    stats.update({
+        "c2a_images": len(c2a),
+        "c2a_people_per_image_mean": round(sum(people_per_image) / max(1, len(people_per_image)), 1),
+        "aider_images": len(aider_images),
+        "c2a_tile_outcomes": dict(reasons),
+        "c2a_tiles_by_class": per_class(c2a_tiles),
+        "aider_tiles": len(aider_tiles),
+        "stream_by_class": per_class(stream),
+        "stream_tiles": len(stream),
+        "stream_positive_rate": round(sum(t.label > 0 for t in stream) / max(1, len(stream)), 4),
+    })
+    args.out.mkdir(parents=True, exist_ok=True)
+    (args.out / "stats.json").write_text(json.dumps(stats, indent=2) + "\n")
+    print(json.dumps({k: v for k, v in stats.items() if k != "args"}, indent=2))
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
