@@ -37,6 +37,7 @@ import argparse
 import json
 import random
 import sys
+import zipfile
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -205,6 +206,55 @@ def label_tile(
     return top + 1, "mixed_majority"
 
 
+# ---------------------------------------------------------------- output
+
+
+def crop(image: Image.Image, t: Tile) -> Image.Image:
+    region = image.crop((t.x, t.y, t.x + t.size, t.y + t.size))  # pads past edges
+    return region.convert("RGB")
+
+
+def write_tiles(tiles: list[Tile], out: Path, quality: int) -> None:
+    by_source: dict[Path, list[Tile]] = {}
+    for t in tiles:
+        by_source.setdefault(t.source, []).append(t)
+    for n, (source, group) in enumerate(sorted(by_source.items()), 1):
+        with Image.open(source) as image:
+            for t in group:
+                path = out / t.name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                crop(image, t).save(path, quality=quality)
+        if n % 500 == 0:
+            print(f"  wrote tiles for {n}/{len(by_source)} source images")
+
+
+def tile_name(t: Tile, root: Path) -> str:
+    rel = t.source.relative_to(root).with_suffix("")
+    safe = "__".join(rel.parts).replace(" ", "_")
+    return f"tiles/{t.origin}/{safe}__{t.x}_{t.y}.jpg"
+
+
+def snippet(args: argparse.Namespace, n_tiles: int) -> str:
+    return f"""# Paste into your Hawk mission config (paths are examples: adjust them).
+label-mode: script            # scripted labeler answers from the groundtruth
+dataset:
+  type: random
+  class_list: [{", ".join(POSES)}]
+  stream_path: {(args.out / "index" / "stream.txt").resolve()}   # on home, used by `hawk_deploy split`
+  index_path: index/scout.txt  # on each scout, relative to the scout data_root
+  tiles_per_frame: {args.tiles_per_frame}
+train_strategy:
+  type: dnn_classifier
+  bootstrap_path: {(args.out / "bootstrap.zip").resolve()}
+selector:
+  type: topk
+  topk:
+    k: 4
+    batchSize: 1000
+# stream: {n_tiles} tiles, positive rate target {args.positive_rate}
+"""
+
+
 # ---------------------------------------------------------------- main
 
 
@@ -228,7 +278,13 @@ def main(argv: list[str] | None = None) -> int:
                     help="also use empty C2A tiles as negatives (default: yes)")
     ap.add_argument("--limit-images", type=int, default=0,
                     help="use at most this many C2A images (0 = all); for a quick subset")
+    ap.add_argument("--bootstrap-per-pose", type=int, default=20)
+    ap.add_argument("--bootstrap-negatives", type=int, default=100)
+    ap.add_argument("--tiles-per-frame", type=int, default=200)
+    ap.add_argument("--quality", type=int, default=90)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--dry-run", action="store_true",
+                    help="compute labels and stats only, write no images")
     args = ap.parse_args(argv)
 
     if not 0 < args.positive_rate < 1:
@@ -270,9 +326,26 @@ def main(argv: list[str] | None = None) -> int:
                 aider_tiles.append(Tile(image_path, "aider", "aider", x, y,
                                         args.tile_size, 0))
 
-    held_out: set[Path] = set()  # bootstrap images, added later
+    # 3. bootstrap: from C2A train images and some AIDER images; every tile of
+    #    a bootstrap source image is kept out of the stream
+    boot: list[Tile] = []
+    by_pose: dict[int, list[Tile]] = {}
+    for t in c2a_tiles:
+        if t.split == "train" and t.label > 0:
+            by_pose.setdefault(t.label, []).append(t)
+    for label in range(1, len(POSES) + 1):
+        pool = by_pose.get(label, [])
+        rng.shuffle(pool)
+        boot += pool[: args.bootstrap_per_pose]
+        if len(pool) < args.bootstrap_per_pose:
+            print(f"warning: only {len(pool)} bootstrap tiles for {POSES[label - 1]}",
+                  file=sys.stderr)
+    neg_pool = aider_tiles[:]
+    rng.shuffle(neg_pool)
+    boot += neg_pool[: args.bootstrap_negatives]
+    held_out = {t.source for t in boot}
 
-    # 3. stream: all remaining positives, plus negatives up to the target rate
+    # 4. stream: all remaining positives, plus negatives up to the target rate
     positives = [t for t in c2a_tiles if t.label > 0 and t.source not in held_out]
     negatives = [t for t in aider_tiles if t.source not in held_out]
     if args.c2a_empty_negatives:
@@ -291,7 +364,11 @@ def main(argv: list[str] | None = None) -> int:
     stream = positives + negatives[:want_neg]
     rng.shuffle(stream)
 
-    # 4. stats
+    for t in boot + stream:
+        root = args.c2a_root if t.origin == "c2a" else args.aider_root
+        t.name = tile_name(t, root)
+
+    # 5. stats
     def per_class(tiles: list[Tile]) -> dict[str, int]:
         c = Counter(t.label for t in tiles)
         return {"negative": c[0], **{p: c[i + 1] for i, p in enumerate(POSES)}}
@@ -303,6 +380,7 @@ def main(argv: list[str] | None = None) -> int:
         "c2a_tile_outcomes": dict(reasons),
         "c2a_tiles_by_class": per_class(c2a_tiles),
         "aider_tiles": len(aider_tiles),
+        "bootstrap_by_class": per_class(boot),
         "stream_by_class": per_class(stream),
         "stream_tiles": len(stream),
         "stream_positive_rate": round(sum(t.label > 0 for t in stream) / max(1, len(stream)), 4),
@@ -310,7 +388,22 @@ def main(argv: list[str] | None = None) -> int:
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "stats.json").write_text(json.dumps(stats, indent=2) + "\n")
     print(json.dumps({k: v for k, v in stats.items() if k != "args"}, indent=2))
+    if args.dry_run:
+        return 0
+
+    # 6. write tiles, stream, bootstrap, config snippet
+    print(f"writing {len(boot) + len(stream)} tiles to {args.out}/tiles ...")
+    write_tiles(boot + stream, args.out, args.quality)
+    index_dir = args.out / "index"
+    index_dir.mkdir(exist_ok=True)
+    (index_dir / "stream.txt").write_text("".join(f"{t.name} {t.label}\n" for t in stream))
+    with zipfile.ZipFile(args.out / "bootstrap.zip", "w") as zf:
+        for t in boot:
+            zf.write(args.out / t.name, f"{t.label}/{Path(t.name).name}")
+    (args.out / "mission_snippet.yml").write_text(snippet(args, len(stream)))
+    print("done:", args.out / "index" / "stream.txt", args.out / "bootstrap.zip")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
