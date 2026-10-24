@@ -255,6 +255,35 @@ selector:
 """
 
 
+def parse_pose_mix(text: str) -> dict[int, float]:
+    shares: dict[int, float] = {}
+    for item in text.split(","):
+        name, _, value = item.partition("=")
+        name = name.strip().lower()
+        if name not in POSES:
+            msg = f"unknown pose {name!r} in --pose-mix (poses: {', '.join(POSES)})"
+            raise SystemExit(msg)
+        shares[POSES.index(name) + 1] = float(value)
+    total = sum(shares.values())
+    if total <= 0:
+        msg = "--pose-mix shares must add up to more than 0"
+        raise SystemExit(msg)
+    return {label: share / total for label, share in shares.items()}
+
+
+def apply_pose_mix(positives: list[Tile], shares: dict[int, float]) -> list[Tile]:
+    """Keep the largest number of positives that matches the requested shares.
+    Poses left out of the mix are dropped."""
+    by_label: dict[int, list[Tile]] = {}
+    for t in positives:
+        by_label.setdefault(t.label, []).append(t)
+    total = min(len(by_label.get(label, [])) / share for label, share in shares.items() if share > 0)
+    kept: list[Tile] = []
+    for label, share in shares.items():
+        kept += by_label.get(label, [])[: int(total * share)]
+    return kept
+
+
 # ---------------------------------------------------------------- main
 
 
@@ -274,6 +303,11 @@ def main(argv: list[str] | None = None) -> int:
                     help="what to do with a tile that holds people of different poses")
     ap.add_argument("--positive-rate", type=float, default=0.05,
                     help="target share of tiles with a person in the stream")
+    ap.add_argument("--pose-mix", default="",
+                    help="relative share of each pose among the positives, e.g. "
+                         "'upright=0.4,sitting=0.25,bent=0.15,kneeling=0.15,lying=0.05'; "
+                         "C2A's poses are roughly balanced, so this is how a pose is made rare "
+                         "(default: keep C2A's own mix)")
     ap.add_argument("--c2a-empty-negatives", action=argparse.BooleanOptionalAction, default=True,
                     help="also use empty C2A tiles as negatives (default: yes)")
     ap.add_argument("--limit-images", type=int, default=0,
@@ -352,6 +386,9 @@ def main(argv: list[str] | None = None) -> int:
         negatives += [t for t in c2a_tiles if t.label == 0 and t.source not in held_out]
     rng.shuffle(positives)
     rng.shuffle(negatives)
+    if args.pose_mix:
+        positives = apply_pose_mix(positives, parse_pose_mix(args.pose_mix))
+        rng.shuffle(positives)
     want_neg = round(len(positives) * (1 - args.positive_rate) / args.positive_rate)
     if want_neg > len(negatives):
         # not enough negatives: keep all of them and drop positives instead
