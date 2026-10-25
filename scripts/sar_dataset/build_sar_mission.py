@@ -37,6 +37,7 @@ import argparse
 import json
 import random
 import sys
+import time
 import zipfile
 from collections import Counter
 from dataclasses import dataclass, field
@@ -214,18 +215,28 @@ def crop(image: Image.Image, t: Tile) -> Image.Image:
     return region.convert("RGB")
 
 
-def write_tiles(tiles: list[Tile], out: Path, quality: int) -> None:
+def write_tiles(tiles: list[Tile], out: Path, quality: int, deadline: float) -> bool:
+    """Write missing tiles. Returns False if the deadline passed first; running
+    the script again with the same arguments continues where it stopped."""
     by_source: dict[Path, list[Tile]] = {}
     for t in tiles:
-        by_source.setdefault(t.source, []).append(t)
+        if not (out / t.name).exists():
+            by_source.setdefault(t.source, []).append(t)
     for n, (source, group) in enumerate(sorted(by_source.items()), 1):
         with Image.open(source) as image:
+            image.load()
             for t in group:
                 path = out / t.name
                 path.parent.mkdir(parents=True, exist_ok=True)
-                crop(image, t).save(path, quality=quality)
+                tmp = path.with_name(path.name + ".part")
+                crop(image, t).save(tmp, format="JPEG", quality=quality)
+                tmp.replace(path)
         if n % 500 == 0:
             print(f"  wrote tiles for {n}/{len(by_source)} source images")
+        if deadline and time.monotonic() > deadline:
+            print(f"stopped after {n}/{len(by_source)} source images; run again to continue")
+            return False
+    return True
 
 
 def tile_name(t: Tile, root: Path) -> str:
@@ -308,6 +319,9 @@ def main(argv: list[str] | None = None) -> int:
                          "'upright=0.4,sitting=0.25,bent=0.15,kneeling=0.15,lying=0.05'; "
                          "C2A's poses are roughly balanced, so this is how a pose is made rare "
                          "(default: keep C2A's own mix)")
+    ap.add_argument("--max-seconds", type=float, default=0,
+                    help="stop writing tiles after this many seconds (0 = no limit); "
+                         "rerun the same command to continue")
     ap.add_argument("--c2a-empty-negatives", action=argparse.BooleanOptionalAction, default=True,
                     help="also use empty C2A tiles as negatives (default: yes)")
     ap.add_argument("--limit-images", type=int, default=0,
@@ -430,7 +444,9 @@ def main(argv: list[str] | None = None) -> int:
 
     # 6. write tiles, stream, bootstrap, config snippet
     print(f"writing {len(boot) + len(stream)} tiles to {args.out}/tiles ...")
-    write_tiles(boot + stream, args.out, args.quality)
+    deadline = time.monotonic() + args.max_seconds if args.max_seconds else 0.0
+    if not write_tiles(boot + stream, args.out, args.quality, deadline):
+        return 3
     index_dir = args.out / "index"
     index_dir.mkdir(exist_ok=True)
     (index_dir / "stream.txt").write_text("".join(f"{t.name} {t.label}\n" for t in stream))
