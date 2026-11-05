@@ -10,15 +10,15 @@ extracted images, 1 GB of tiles):
     python build_sar_mission.py all --dest ~/sar_data
 
 or step by step: `download`, `extract`, `build`, `validate` (see --help of
-each). Running `build` with flags only (no step name) still works.
+each).
 
 Hawk's dnn_classifier labels whole tiles, one class per tile, so this script
 turns the two public datasets into tiles with exactly one label each:
 
 * C2A (Nihal et al., 2024): AIDER disaster photos with synthetic people pasted
   in. Every person has a box and one of five poses. We cut each image into a
-  grid of tiles. A tile that fully contains people of one pose gets that pose.
-  A tile with no people is a negative.
+  grid of tiles. A tile that shows people of one pose (at least half of each
+  box inside) gets that pose. A tile with no people is a negative.
 * AIDER (Kyrkou and Theocharides, 2020): real aerial disaster photos. We tile
   the "normal" scenes (not used as C2A backgrounds) and use them as extra
   negatives, so that people become rare in the stream, like in a real search.
@@ -51,7 +51,7 @@ import time
 import urllib.request
 import zipfile
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image
@@ -65,12 +65,10 @@ C2A_SPLITS = ["train", "val", "test"]
 AIDER_URL = "https://zenodo.org/records/3888300/files/AIDER.zip?download=1"
 AIDER_ZIP = "AIDER.zip"
 AIDER_MD5 = "1ad4eb02ed156e8dfa19986ff382e58b"  # 275,701,096 bytes
-C2A_GDRIVE_ID = (
-    "1Uba6CHJRCvF-rgfCXDR6NhTnOvngWsfe"  # linked from github.com/Ragib-Amin-Nihal/C2A
-)
+# The Google Drive file linked from github.com/Ragib-Amin-Nihal/C2A
 C2A_URL = (
     "https://drive.usercontent.google.com/download"
-    f"?id={C2A_GDRIVE_ID}&export=download&confirm=t"
+    "?id=1Uba6CHJRCvF-rgfCXDR6NhTnOvngWsfe&export=download&confirm=t"
 )
 C2A_ZIP = "C2A_Dataset.zip"
 C2A_MD5 = "d836a206fb7c682c893fd47665ea24f1"  # 4,901,971,513 bytes
@@ -112,11 +110,7 @@ class Tile:
     y: int
     size: int
     label: int  # 0 negative, 1..5 pose
-    name: str = ""
-    extra: dict = field(default_factory=dict)
-
-
-# ---------------------------------------------------------------- reading
+    name: str = ""  # path of the written tile, relative to --out
 
 
 def list_images(folder: Path) -> list[Path]:
@@ -196,9 +190,6 @@ def find_aider_images(aider_root: Path, classes: list[str]) -> list[Path]:
     return images
 
 
-# ---------------------------------------------------------------- tiling
-
-
 def grid(length: int, tile: int) -> list[int]:
     """Tile origins along one axis. The last tile is shifted back so it stays
     inside the image; an image smaller than a tile gets one (padded) tile."""
@@ -226,29 +217,26 @@ def label_tile(
     mixed: str,
 ) -> tuple[int | None, str]:
     """Return (label, reason). label None means the tile is dropped."""
-    full: Counter[int] = Counter()
-    partial = 0
+    visible: Counter[int] = Counter()  # people per pose that count for the tile
+    cut_off = 0
     for box in boxes:
         v = visible_fraction(box, x, y, size)
         if v >= min_visible:
-            full[box.pose] += 1
+            visible[box.pose] += 1
         elif v > 0:
-            partial += 1
-    if not full:
+            cut_off += 1
+    if not visible:
         # only cut-off people: we can't say what the tile shows, so drop it
-        return (None, "partial_only") if partial else (0, "empty")
-    if len(full) == 1:
-        return next(iter(full)) + 1, "single_pose"
+        return (None, "partial_only") if cut_off else (0, "empty")
+    if len(visible) == 1:
+        return next(iter(visible)) + 1, "single_pose"
     if mixed == "drop":
         return None, "mixed_pose"
     # majority pose, ties dropped
-    (top, n1), (_, n2) = full.most_common(2)
+    (top, n1), (_, n2) = visible.most_common(2)
     if n1 == n2:
         return None, "mixed_pose_tie"
     return top + 1, "mixed_majority"
-
-
-# ---------------------------------------------------------------- output
 
 
 def crop(image: Image.Image, t: Tile) -> Image.Image:
@@ -344,11 +332,8 @@ def apply_pose_mix(positives: list[Tile], shares: dict[int, float]) -> list[Tile
     return kept
 
 
-# ---------------------------------------------------------------- download
-
-
-def md5sum(path: Path) -> str:
-    h = hashlib.md5()  # noqa: S324 (integrity check, not security)
+def checksum(path: Path, algorithm: str = "sha256") -> str:
+    h = hashlib.new(algorithm)
     with path.open("rb") as fp:
         for chunk in iter(lambda: fp.read(1 << 20), b""):
             h.update(chunk)
@@ -372,11 +357,18 @@ def fetch(url: str, dest: Path, md5: str | None) -> None:
             if total and done / total >= next_report:
                 print(f"  {done / 1e6:,.0f} / {total / 1e6:,.0f} MB")
                 next_report += 0.1
-    if md5 and md5sum(part) != md5:
+    if md5 and checksum(part, "md5") != md5:
         part.unlink()
         msg = f"MD5 of {dest.name} does not match {md5}"
         raise OSError(msg)
     part.replace(dest)
+
+
+def add_download_args(ap: argparse.ArgumentParser) -> None:
+    ap.add_argument("--dest", type=Path, default=Path("sar_data"))
+    ap.add_argument("--aider-url", default=AIDER_URL)
+    ap.add_argument("--c2a-url", default=C2A_URL)
+    ap.add_argument("--no-verify", action="store_true", help="skip the MD5 checks")
 
 
 def download_main(argv: list[str]) -> int:
@@ -384,10 +376,7 @@ def download_main(argv: list[str]) -> int:
         prog="build_sar_mission.py download",
         description="Download AIDER (Zenodo) and C2A (Google Drive).",
     )
-    ap.add_argument("--dest", type=Path, default=Path("sar_data"))
-    ap.add_argument("--aider-url", default=AIDER_URL)
-    ap.add_argument("--c2a-url", default=C2A_URL)
-    ap.add_argument("--no-verify", action="store_true", help="skip the MD5 checks")
+    add_download_args(ap)
     args = ap.parse_args(argv)
     args.dest.mkdir(parents=True, exist_ok=True)
     failed = False
@@ -398,7 +387,7 @@ def download_main(argv: list[str]) -> int:
         path = args.dest / name
         expected = None if args.no_verify else md5
         if path.exists():
-            if expected and md5sum(path) != expected:
+            if expected and checksum(path, "md5") != expected:
                 print(
                     f"error: {path} exists but its MD5 is not {expected}",
                     file=sys.stderr,
@@ -415,9 +404,6 @@ def download_main(argv: list[str]) -> int:
             if name == C2A_ZIP:
                 print(C2A_MANUAL.format(path=path), file=sys.stderr)
     return 1 if failed else 0
-
-
-# ---------------------------------------------------------------- extract
 
 
 def extract_members(zip_path: Path, dest: Path, prefixes: list[str]) -> int:
@@ -473,23 +459,12 @@ def extract_main(argv: list[str]) -> int:
     return 0
 
 
-# ---------------------------------------------------------------- validate
-
-
-def sha256sum(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as fp:
-        for chunk in iter(lambda: fp.read(1 << 20), b""):
-            h.update(chunk)
-    return h.hexdigest()
-
-
 def validate_main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(
         prog="build_sar_mission.py validate",
-        description="Check a built mission folder. With --write-manifest, record a "
-        "SHA-256 for "
-        "every file; otherwise check the files against an existing manifest.",
+        description="Check a built mission folder. With --write-manifest, record "
+        "a SHA-256 for every file; otherwise check the files against an existing "
+        "manifest.",
     )
     ap.add_argument("--out", type=Path, required=True, help="the folder `build` wrote")
     ap.add_argument("--write-manifest", action="store_true")
@@ -504,10 +479,11 @@ def validate_main(argv: list[str]) -> int:
     stream_sources = set()
     for line in lines:
         path, label = line.rsplit(maxsplit=1)
+        if not label.isdigit() or int(label) > len(POSES):
+            errors.append(f"bad label: {line}")
+            continue
         counts[int(label)] += 1
         stream_sources.add(Path(path).name.rsplit("__", 1)[0])
-        if not 0 <= int(label) <= len(POSES):
-            errors.append(f"bad label: {line}")
         try:
             with Image.open(out / path) as im:
                 if im.size != (size, size):
@@ -531,18 +507,18 @@ def validate_main(argv: list[str]) -> int:
         line.rsplit(maxsplit=1)[0] for line in lines
     ]
     if args.write_manifest:
-        manifest.write_text("".join(f"{sha256sum(out / f)}  {f}\n" for f in files))
+        manifest.write_text("".join(f"{checksum(out / f)}  {f}\n" for f in files))
         print(f"wrote {manifest} ({len(files)} files)")
     elif manifest.exists():
         recorded = dict(
             reversed(line.split("  ", 1)) for line in manifest.read_text().splitlines()
         )
         for f in files:
-            if recorded.get(f) != sha256sum(out / f):
+            if recorded.get(f) != checksum(out / f):
                 errors.append(f"checksum differs: {f}")
 
     print(f"stream: {len(lines)} tiles {got}")
-    print(f"stream.txt sha256: {sha256sum(out / 'index' / 'stream.txt')}")
+    print(f"stream.txt sha256: {checksum(out / 'index' / 'stream.txt')}")
     for e in errors[:20]:
         print("error:", e, file=sys.stderr)
     if errors:
@@ -550,9 +526,6 @@ def validate_main(argv: list[str]) -> int:
         return 1
     print("ok")
     return 0
-
-
-# ---------------------------------------------------------------- build
 
 
 def build_main(argv: list[str]) -> int:
@@ -614,10 +587,10 @@ def build_main(argv: list[str]) -> int:
         "rerun the same command to continue",
     )
     ap.add_argument(
-        "--c2a-empty-negatives",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="also use empty C2A tiles as negatives (default: yes)",
+        "--no-c2a-empty-negatives",
+        dest="c2a_empty_negatives",
+        action="store_false",
+        help="use only AIDER tiles as negatives, not the empty C2A tiles",
     )
     ap.add_argument(
         "--limit-images",
@@ -772,7 +745,7 @@ def build_main(argv: list[str]) -> int:
         for t in boot:
             zf.write(args.out / t.name, f"{t.label}/{Path(t.name).name}")
     (args.out / "mission_snippet.yml").write_text(snippet(args, len(stream)))
-    stats["stream_sha256"] = sha256sum(index_dir / "stream.txt")
+    stats["stream_sha256"] = checksum(index_dir / "stream.txt")
     (args.out / "stats.json").write_text(json.dumps(stats, indent=2) + "\n")
     print("done:", args.out / "index" / "stream.txt", args.out / "bootstrap.zip")
     return 0
@@ -781,42 +754,37 @@ def build_main(argv: list[str]) -> int:
 def all_main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(
         prog="build_sar_mission.py all",
-        description="download, extract, build and validate, with our settings.",
+        description="Download, extract, build and validate, with our settings.",
     )
-    ap.add_argument("--dest", type=Path, default=Path("sar_data"))
+    add_download_args(ap)
     ap.add_argument("--out", type=Path, help="default: DEST/mission_v1")
-    ap.add_argument("--aider-url", default=AIDER_URL)
-    ap.add_argument("--c2a-url", default=C2A_URL)
-    ap.add_argument("--no-verify", action="store_true", help="skip the MD5 checks")
     args = ap.parse_args(argv)
-    dl = [
+    dest, raw = str(args.dest), args.dest / "raw"
+    out = str(args.out or args.dest / "mission_v1")
+    download = [
         "--dest",
-        str(args.dest),
+        dest,
         "--aider-url",
         args.aider_url,
         "--c2a-url",
         args.c2a_url,
     ]
     if args.no_verify:
-        dl.append("--no-verify")
-    out = args.out or args.dest / "mission_v1"
-    raw = args.dest / "raw"
-    for step in (
-        lambda: download_main(dl),
-        lambda: extract_main(["--dest", str(args.dest)]),
-        lambda: build_main(
-            [
-                "--c2a-root",
-                str(raw / "new_dataset3"),
-                "--aider-root",
-                str(raw / "AIDER"),
-                "--out",
-                str(out),
-            ]
-        ),
-        lambda: validate_main(["--out", str(out), "--write-manifest"]),
-    ):
-        rc = step()
+        download.append("--no-verify")
+    build = [
+        "--c2a-root",
+        str(raw / "new_dataset3"),
+        "--aider-root",
+        str(raw / "AIDER"),
+    ]
+    steps = [
+        (download_main, download),
+        (extract_main, ["--dest", dest]),
+        (build_main, [*build, "--out", out]),
+        (validate_main, ["--out", out, "--write-manifest"]),
+    ]
+    for step, step_argv in steps:
+        rc = step(step_argv)
         if rc:
             return rc
     return 0
@@ -835,11 +803,9 @@ def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
     if argv and argv[0] in STEPS:
         return STEPS[argv[0]](argv[1:])
-    if argv and argv[0] in ("-h", "--help"):
-        print(__doc__)
-        print("steps:", ", ".join(STEPS))
-        return 0
-    return build_main(argv)  # flags only: the original build command
+    print(__doc__)
+    print("steps:", ", ".join(STEPS))
+    return 0 if argv[:1] in (["-h"], ["--help"]) else 2
 
 
 if __name__ == "__main__":

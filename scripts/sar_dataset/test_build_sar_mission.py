@@ -61,6 +61,12 @@ def fake(tmp_path: Path) -> tuple[Path, Path]:
     return c2a, tmp_path / "AIDER"
 
 
+def _build(fake: tuple[Path, Path], out: Path, *flags: str) -> int:
+    c2a, aider = fake
+    argv = ["build", "--c2a-root", str(c2a), "--aider-root", str(aider)]
+    return bsm.main([*argv, "--out", str(out), *flags])
+
+
 def test_grid() -> None:
     assert bsm.grid(100, 256) == [0]
     assert bsm.grid(512, 256) == [0, 256]
@@ -94,40 +100,17 @@ def test_read_c2a_boxes(tmp_path: Path) -> None:
     f = tmp_path / "a.txt"
     _yolo(f, 400, 200, [(100, 50, 140, 100, 2)])
     (b,) = bsm.read_c2a_boxes(f, 400, 200)
-    assert (round(b.x0), round(b.y0), round(b.x1), round(b.y1), b.pose) == (
-        100,
-        50,
-        140,
-        100,
-        2,
-    )
+    assert [b.x0, b.y0, b.x1, b.y1] == pytest.approx([100, 50, 140, 100])
+    assert b.pose == 2
     f.write_text("0 0.5 0.5 0.1 0.1\n")  # no pose field
     with pytest.raises(ValueError):
         bsm.read_c2a_boxes(f, 400, 200)
 
 
 def test_end_to_end(fake: tuple[Path, Path], tmp_path: Path) -> None:
-    c2a, aider = fake
     out = tmp_path / "out"
-    rc = bsm.main(
-        [
-            "--c2a-root",
-            str(c2a),
-            "--aider-root",
-            str(aider),
-            "--out",
-            str(out),
-            "--positive-rate",
-            "0.2",
-            "--bootstrap-per-pose",
-            "2",
-            "--bootstrap-negatives",
-            "5",
-            "--seed",
-            "3",
-        ]
-    )
-    assert rc == 0
+    flags = ["--positive-rate", "0.2", "--bootstrap-per-pose", "2"]
+    assert _build(fake, out, *flags, "--bootstrap-negatives", "5", "--seed", "3") == 0
     stats = json.loads((out / "stats.json").read_text())
 
     # stream: every line points to a written tile, labels in range
@@ -168,24 +151,9 @@ def test_stream_parses_with_hawk_random_retriever(
     hawk = pytest.importorskip("hawk.scout.retrieval.random_retriever")
     from hawk.classes import ClassList, ClassName
 
-    c2a, aider = fake
     out = tmp_path / "out"
-    bsm.main(
-        [
-            "--c2a-root",
-            str(c2a),
-            "--aider-root",
-            str(aider),
-            "--out",
-            str(out),
-            "--positive-rate",
-            "0.3",
-            "--bootstrap-per-pose",
-            "1",
-            "--bootstrap-negatives",
-            "2",
-        ]
-    )
+    flags = ["--positive-rate", "0.3", "--bootstrap-per-pose", "1"]
+    assert _build(fake, out, *flags, "--bootstrap-negatives", "2") == 0
 
     class Ctx:
         class_list = ClassList(bsm.POSES)
@@ -212,9 +180,8 @@ def test_pose_mix_makes_a_pose_rare() -> None:
     )
     kept = bsm.apply_pose_mix(tiles, shares)
     counts = {p: sum(t.label == i + 1 for t in kept) for i, p in enumerate(bsm.POSES)}
-    assert (
-        counts["upright"] == 200
-    )  # the scarcest pose relative to its share sets the size
+    # upright is the scarcest pose relative to its share, so it sets the size
+    assert counts["upright"] == 200
     assert counts["lying"] == 25
     assert counts["sitting"] == 150
     with pytest.raises(SystemExit):
@@ -222,31 +189,20 @@ def test_pose_mix_makes_a_pose_rare() -> None:
 
 
 def test_tile_writing_resumes(fake: tuple[Path, Path], tmp_path: Path) -> None:
-    c2a, aider = fake
     out = tmp_path / "out"
-    common = [
-        "--c2a-root",
-        str(c2a),
-        "--aider-root",
-        str(aider),
-        "--out",
-        str(out),
-        "--positive-rate",
-        "0.2",
-        "--bootstrap-per-pose",
-        "1",
-        "--bootstrap-negatives",
-        "2",
-    ]
-    assert bsm.main([*common, "--max-seconds", "1e-9"]) == 3  # stops right away
+    flags = ["--positive-rate", "0.2", "--bootstrap-per-pose", "1"]
+    flags += ["--bootstrap-negatives", "2"]
+    assert _build(fake, out, *flags, "--max-seconds", "1e-9") == 3  # stops at once
     assert not (out / "index" / "stream.txt").exists()
-    assert bsm.main(common) == 0  # second run finishes
+    assert _build(fake, out, *flags) == 0  # second run finishes
     lines = (out / "index" / "stream.txt").read_text().splitlines()
     assert all((out / line.rsplit(maxsplit=1)[0]).is_file() for line in lines)
     assert not list(out.rglob("*.part"))
 
 
-# ------------------------------------------------- download, extract, validate
+def test_main_needs_a_step() -> None:
+    assert bsm.main(["--out", "x"]) == 2
+    assert bsm.main(["--help"]) == 0
 
 
 def _zip_tree(root: Path, top: str, zip_path: Path) -> None:
@@ -290,7 +246,7 @@ def test_all_steps_reproduce_and_validate(
     out = dest / "mission_v1"
     assert (out / "manifest.sha256").is_file()
     stats = json.loads((out / "stats.json").read_text())
-    assert stats["stream_sha256"] == bsm.sha256sum(out / "index" / "stream.txt")
+    assert stats["stream_sha256"] == bsm.checksum(out / "index" / "stream.txt")
     # only the parts we need were extracted
     assert not (dest / "raw" / "new_dataset3" / "train" / "labels").exists()
     assert not (dest / "raw" / "AIDER" / "fire").exists()
@@ -322,22 +278,10 @@ def test_all_steps_reproduce_and_validate(
 def test_validate_catches_missing_tile_and_wrong_size(
     fake: tuple[Path, Path], tmp_path: Path
 ) -> None:
-    c2a, aider = fake
     out = tmp_path / "out"
-    bsm.main(
-        [
-            "build",
-            "--c2a-root",
-            str(c2a),
-            "--aider-root",
-            str(aider),
-            "--out",
-            str(out),
-            "--bootstrap-per-pose",
-            "1",
-            "--bootstrap-negatives",
-            "2",
-        ]
+    assert (
+        _build(fake, out, "--bootstrap-per-pose", "1", "--bootstrap-negatives", "2")
+        == 0
     )
     lines = (out / "index" / "stream.txt").read_text().split("\n")
     (out / lines[0].rsplit(maxsplit=1)[0]).unlink()
