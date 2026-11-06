@@ -96,6 +96,22 @@ def test_label_tile_rules() -> None:
     assert bsm.label_tile([upright, cut], 0, 0, 256, 0.5, "drop") == (5, "single_pose")
 
 
+def test_label_tile_crop_margin() -> None:
+    # a 128 tile with an 8 px margin: the classifier sees x and y in 8..120
+    inside = bsm.Box(40, 40, 60, 70, 2)
+    edge = bsm.Box(0, 40, 12, 70, 2)  # fully in the tile, 2/3 of it in the margin
+    border = bsm.Box(1, 40, 7, 70, 2)  # only in the margin
+    assert bsm.label_tile([inside], 0, 0, 128, 0.5, "drop", 8) == (3, "single_pose")
+    assert bsm.label_tile([edge], 0, 0, 128, 0.5, "drop") == (3, "single_pose")
+    assert bsm.label_tile([edge], 0, 0, 128, 0.5, "drop", 8) == (None, "partial_only")
+    # a person the classifier never sees still keeps the tile out of negatives
+    assert bsm.label_tile([border], 0, 0, 128, 0.5, "drop", 8) == (None, "partial_only")
+    assert bsm.label_tile([inside, edge], 0, 0, 128, 0.5, "drop", 8) == (
+        3,
+        "single_pose",
+    )
+
+
 def test_read_c2a_boxes(tmp_path: Path) -> None:
     f = tmp_path / "a.txt"
     _yolo(f, 400, 200, [(100, 50, 140, 100, 2)])

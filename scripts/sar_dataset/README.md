@@ -12,7 +12,7 @@ python scripts/sar_dataset/build_sar_mission.py all --dest ~/sar_data
 
 This downloads both datasets (about 5.2 GB), checks their MD5 sums, extracts
 only the parts we use (about 6 GB), builds `~/sar_data/mission_v1` (about
-1 GB, 164,706 tiles) and validates it. Each step can also be run on its own:
+1 GB, 164,792 tiles) and validates it. Each step can also be run on its own:
 
 | Step | What it does |
 |---|---|
@@ -30,17 +30,17 @@ With the same inputs and the default settings (seed 0), you should get exactly:
 
 | | Tiles |
 |---|---|
-| Stream, total | 164,506 |
-| Negative | 156,281 |
-| Upright | 3,329 |
-| Sitting | 2,050 |
-| Kneeling | 1,229 |
-| Bent | 1,200 |
-| Lying | 417 |
+| Stream, total | 164,592 |
+| Negative | 156,362 |
+| Upright | 3,295 |
+| Sitting | 2,034 |
+| Bent | 1,260 |
+| Kneeling | 1,227 |
+| Lying | 414 |
 | Bootstrap | 20 per pose + 100 negatives |
 
 and `index/stream.txt` with SHA-256
-`6ca8a2f7baadd85210480916e6bf75d3089c70e4c48c378ab00758d44cd4b52b`
+`4396d124d613222d4812fc9366dd53c89e5959a19a92d6dfa34a41408fee395d`
 (`validate` prints it).
 
 ## The source datasets
@@ -66,19 +66,32 @@ tile:
 | Tile contents | Label |
 |---|---|
 | No person | negative (0) |
-| People of one pose, at least half of each box inside (`--min-visible`) | that pose (1 to 5) |
+| People of one pose, at least half of each box inside the cropped tile (`--min-visible`) | that pose (1 to 5) |
 | People of different poses | dropped, or the majority pose with `--mixed majority` |
 | Only cut-off people | dropped (we can't tell what it shows) |
 
 Labels: 0 negative, 1 bent, 2 kneeling, 3 lying, 4 sitting, 5 upright, the
 order of `dataset.class_list` in the snippet.
 
-**Why 128 px.** C2A packs about 35 people of mixed poses into each image:
+**The crop border.** The default `dnn_classifier` model (ResNet-50, ImageNet
+V1 weights) resizes each tile to 256 px and crops the center 224 px, so it
+never sees the outer 1/16 of the tile on each side: 8 px of a 128 px tile.
+A person counts for a tile only by the part of their box inside that crop
+(`--crop-margin`, 0 to use the whole tile). Otherwise a tile could be labeled
+with a pose whose person the model cannot see. A person who is only in the
+border makes the tile "only cut-off people", so it is dropped rather than
+used as a negative.
+
+**Why 128 px.** C2A packs about 35 people of mixed poses into each image
+(counts with the default crop margin):
 
 | Tile size | Single-pose tiles | Mixed-pose tiles (dropped) | Empty tiles |
 |---|---|---|---|
-| 256 px | 7,886 | 52,300 | 13,422 |
-| 128 px | 54,281 | 93,237 | 92,978 |
+| 256 px | 8,536 | 49,843 | 13,422 |
+| 128 px | 57,593 | 78,488 | 92,978 |
+
+The model scales a 128 px tile up to 256 px before the crop. That costs some
+compute, but at 256 px there are too few tiles with a single pose.
 
 **Why mix in AIDER.** In C2A alone nearly every image is full of people, so
 nothing is rare. Hawk is built for rare targets. We add AIDER's `normal`
@@ -112,7 +125,7 @@ uv run pytest scripts/sar_dataset
 ```
 
 The tests build small fake C2A and AIDER folders and zips in the real layouts.
-They cover the labeling rules, the pose mix, the full `all` pipeline from
+They cover the labeling rules (including the crop margin), the pose mix, the full `all` pipeline from
 (local) downloads to validation, that the same inputs give the same stream,
 that `validate` catches changed, missing or wrongly sized tiles, that a bad
 MD5 is rejected, that unsafe paths in a zip are refused, and that Hawk's own

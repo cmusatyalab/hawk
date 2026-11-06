@@ -18,7 +18,8 @@ turns the two public datasets into tiles with exactly one label each:
 * C2A (Nihal et al., 2024): AIDER disaster photos with synthetic people pasted
   in. Every person has a box and one of five poses. We cut each image into a
   grid of tiles. A tile that shows people of one pose (at least half of each
-  box inside) gets that pose. A tile with no people is a negative.
+  box inside the part of the tile the classifier sees after its center crop)
+  gets that pose. A tile with no people is a negative.
 * AIDER (Kyrkou and Theocharides, 2020): real aerial disaster photos. We tile
   the "normal" scenes (not used as C2A backgrounds) and use them as extra
   negatives, so that people become rare in the stream, like in a real search.
@@ -215,15 +216,19 @@ def label_tile(
     size: int,
     min_visible: float,
     mixed: str,
+    margin: int = 0,
 ) -> tuple[int | None, str]:
-    """Return (label, reason). label None means the tile is dropped."""
+    """Return (label, reason). label None means the tile is dropped.
+
+    A person counts only by the part of their box inside the tile minus
+    `margin` pixels on each edge, the border the classifier crops away."""
     visible: Counter[int] = Counter()  # people per pose that count for the tile
     cut_off = 0
+    inner = size - 2 * margin
     for box in boxes:
-        v = visible_fraction(box, x, y, size)
-        if v >= min_visible:
+        if visible_fraction(box, x + margin, y + margin, inner) >= min_visible:
             visible[box.pose] += 1
-        elif v > 0:
+        elif visible_fraction(box, x, y, size) > 0:
             cut_off += 1
     if not visible:
         # only cut-off people: we can't say what the tile shows, so drop it
@@ -560,6 +565,13 @@ def build_main(argv: list[str]) -> int:
         help="fraction of a person's box that must be inside a tile to count",
     )
     ap.add_argument(
+        "--crop-margin",
+        type=int,
+        help="pixels at each tile edge that Hawk's classifier crops away "
+        "(ResNet resizes to 256 and crops 224); people are counted only "
+        "inside it (default: tile size / 16, 0 to count the whole tile)",
+    )
+    ap.add_argument(
         "--mixed",
         choices=["drop", "majority"],
         default="drop",
@@ -612,6 +624,10 @@ def build_main(argv: list[str]) -> int:
 
     if not 0 < args.positive_rate < 1:
         ap.error("--positive-rate must be between 0 and 1")
+    if args.crop_margin is None:
+        args.crop_margin = args.tile_size // 16
+    if not 0 <= args.crop_margin < args.tile_size / 2:
+        ap.error("--crop-margin must be at least 0 and less than half a tile")
     rng = random.Random(args.seed)
     stats: dict = {"args": {k: str(v) for k, v in vars(args).items()}}
     reasons: Counter[str] = Counter()
@@ -631,7 +647,13 @@ def build_main(argv: list[str]) -> int:
         for y in grid(height, args.tile_size):
             for x in grid(width, args.tile_size):
                 label, why = label_tile(
-                    boxes, x, y, args.tile_size, args.min_visible, args.mixed
+                    boxes,
+                    x,
+                    y,
+                    args.tile_size,
+                    args.min_visible,
+                    args.mixed,
+                    args.crop_margin,
                 )
                 reasons[why] += 1
                 if label is not None:
