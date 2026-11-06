@@ -43,6 +43,33 @@ and `index/stream.txt` with SHA-256
 `4396d124d613222d4812fc9366dd53c89e5959a19a92d6dfa34a41408fee395d`
 (`validate` prints it).
 
+### A rarer stream (1% people)
+
+Real searches have far fewer people than 5%: Hawk missions in our papers had
+about 300 to 500 true positives in 250,000 to 500,000 images. We also build a
+1% stream to check that results hold when people are rarer:
+
+```bash
+python scripts/sar_dataset/build_sar_mission.py build \
+    --c2a-root ~/sar_data/raw/new_dataset3 --aider-root ~/sar_data/raw/AIDER \
+    --positive-rate 0.01 --out ~/sar_data/mission_v1_1pct
+```
+
+| | Tiles |
+|---|---|
+| Stream, total | 157,941 |
+| Negative | 156,362 |
+| Upright | 629 |
+| Sitting | 369 |
+| Kneeling | 254 |
+| Bent | 243 |
+| Lying | 84 |
+
+`index/stream.txt` SHA-256:
+`cd76b89bab80f7ab929fcdf04c317e6d501304b67759bd65566a47b26e750e72`.
+All the negative tiles are already used at 1%, so a rarer stream has fewer
+people, not more negatives: at 0.1% only about 16 lying tiles would be left.
+
 ## The source datasets
 
 | Dataset | What it is | Source | MD5 of the zip we used | License |
