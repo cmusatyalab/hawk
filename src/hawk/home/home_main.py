@@ -112,6 +112,7 @@ def main() -> None:
 
     bandwidth = config.get("bandwidth", "100")
     assert int(bandwidth) in [
+        0,
         100,
         50,
         30,

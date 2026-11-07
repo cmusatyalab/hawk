@@ -70,7 +70,7 @@ Provide relevant data and model parameters in the [config file.](/configs/dota_s
 - reexamination: options for how scouts reexamine samples inferenced in previous batches.
     - type: top, full, etc. - affects numbers of samples reexamined.
     - k: 100 - number of samples reexamined each time a new model is trained.
-- bandwidth: scout-home bandwidth constraint (in kbps)
+- bandwidth: scout-home bandwidth constraint (in kbps), one of 12, 30, 50 or 100; 0 turns shaping off
 
 ### Step 3. Split dataset across Scout Servers
 
