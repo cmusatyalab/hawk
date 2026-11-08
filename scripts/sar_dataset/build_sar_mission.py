@@ -691,9 +691,21 @@ def build_main(argv: list[str]) -> int:
                 f"warning: only {len(pool)} bootstrap tiles for {POSES[label - 1]}",
                 file=sys.stderr,
             )
+    # negatives from AIDER and, when the stream has them, from empty C2A train
+    # tiles, in the same proportion as the stream negatives; with AIDER alone
+    # the model learns that any C2A tile is a person
     neg_pool = aider_tiles[:]
     rng.shuffle(neg_pool)
-    boot += neg_pool[: args.bootstrap_negatives]
+    num_aider = args.bootstrap_negatives
+    if args.c2a_empty_negatives:
+        c2a_empty = [t for t in c2a_tiles if t.label == 0]
+        c2a_share = len(c2a_empty) / max(1, len(c2a_empty) + len(aider_tiles))
+        c2a_pool = [t for t in c2a_empty if t.split == "train"]
+        rng.shuffle(c2a_pool)
+        num_c2a = round(args.bootstrap_negatives * c2a_share)
+        boot += c2a_pool[:num_c2a]
+        num_aider -= num_c2a
+    boot += neg_pool[:num_aider]
     held_out = {t.source for t in boot}
 
     # 4. stream: all remaining positives, plus negatives up to the target rate

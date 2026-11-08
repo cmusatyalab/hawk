@@ -134,8 +134,12 @@ as negatives (`--no-c2a-empty-negatives` turns that off).
 `--pose-mix natural` keeps C2A's own mix). This is a designed condition for
 the experiment, not a measurement of real disasters.
 
-**Bootstrap.** 20 tiles per pose from C2A's train split and 100 AIDER tiles.
-Every tile from a bootstrap source image is kept out of the stream.
+**Bootstrap.** 20 tiles per pose from C2A's train split and 100 negatives.
+The negatives are empty C2A train tiles and AIDER tiles in the same
+proportion as the stream's negatives (about 57 and 43). With AIDER negatives
+alone, the first model learns that any C2A tile has a person in it, and at a
+1% positive rate it never finds enough people to retrain. Every tile from a
+bootstrap source image is kept out of the stream.
 
 ## Use it in a Hawk mission
 
