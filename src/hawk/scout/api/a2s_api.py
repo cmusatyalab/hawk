@@ -48,6 +48,7 @@ from ..retrain.model_policy import ModelPolicy
 from ..retrain.percentage_policy import PercentagePolicy
 from ..retrain.sampleInterval_policy import SampleIntervalPolicy
 from ..retrieval.retriever import Retriever
+from ..selection.class_aware_selector import ClassAwareSelector
 from ..selection.diversity_selector import DiversitySelector
 from ..selection.threshold_selector import ThresholdSelector
 from ..selection.token_selector import TokenSelector
@@ -585,6 +586,20 @@ class A2SAPI:
                 selector.topk.countermeasure_threshold,
                 selector.topk.total_countermeasures,
                 reexamination_strategy,
+            )
+        if selector.HasField("class_aware"):
+            logger.info(
+                f"Class-aware Params {json_format.MessageToDict(selector.class_aware)}",
+            )
+            return ClassAwareSelector(
+                mission_id,
+                selector.class_aware.k,
+                selector.class_aware.batchSize,
+                selector.class_aware.scheduler,
+                selector.class_aware.countermeasure_threshold,
+                selector.class_aware.total_countermeasures,
+                reexamination_strategy,
+                warm_start=selector.class_aware.warm_start,
             )
         if selector.HasField("token"):
             return TokenSelector(
