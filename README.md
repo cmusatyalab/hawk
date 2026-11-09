@@ -94,6 +94,8 @@ uv run hawk_home configs/config.yml
 ```
 The configuration file will need to be modified to include the actual host name of the scout and will need to include the index file path location on the scout (see step 3).  If the mission successfully runs, you should see the scout retrieving and inferencing batches of images and periodically reporting scores of positives.
 
+To run more than one mission on the same hosts at once, give each home and scout pair its own `HAWK_PORT_OFFSET` (e.g. 0, 10, 20) when starting `hawk_scout` and `hawk_home`. It shifts all of Hawk's default ports. Also set `deploy: scout_port` in each config to `6100 + offset`.
+
 
 ## Running Hawk UI
 
