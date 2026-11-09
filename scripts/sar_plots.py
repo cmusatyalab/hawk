@@ -97,8 +97,16 @@ def recall_plot(
         color=INK,
         loc="left",
         fontsize=11,
+        pad=40,  # room for the legend between title and plot
     )
-    ax.legend(frameon=False, fontsize=9, labelcolor=INK)
+    ax.legend(
+        frameon=False,
+        fontsize=9,
+        labelcolor=INK,
+        loc="lower left",
+        bbox_to_anchor=(0, 1.0),
+        ncol=2,
+    )
     fig.tight_layout()
     fig.savefig(out / "recall_by_class.png", dpi=160)
     plt.close(fig)
