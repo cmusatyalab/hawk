@@ -97,7 +97,7 @@ def recall_plot(
         color=INK,
         loc="left",
         fontsize=11,
-        pad=40,  # room for the legend between title and plot
+        pad=14 + 13 * ((len(names) + 1) // 2),  # room for the legend rows
     )
     ax.legend(
         frameon=False,
