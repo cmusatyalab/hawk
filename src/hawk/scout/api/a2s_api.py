@@ -13,6 +13,7 @@ import os
 import subprocess
 import time
 import zipfile
+from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -343,17 +344,17 @@ class A2SAPI:
         logger.info(bandwidth_func)
         bandwidth_list = json.loads(bandwidth_func)
         default_file = bandwidth_map["100k"]
-        # bandwidth_file = default_file
-        if bandwidth_list[0] == "0k":
+
+        if bandwidth_list[0][1] == "0k":
             return
 
-        for _time_stamp, bandwidth in bandwidth_list:
-            bandwidth_file = bandwidth_map.get(bandwidth.lower(), default_file)
+        # for _time_stamp, bandwidth in bandwidth_list:
+        bandwidth = bandwidth_list[0][1]
+        bandwidth_file = bandwidth_map.get(bandwidth.lower(), default_file)
 
         # start fireqos
         bandwidth_cmd = ["fireqos", "start", str(bandwidth_file)]
-        b = subprocess.Popen(bandwidth_cmd)
-        b.communicate()
+        subprocess.run(bandwidth_cmd)
 
     @log_exceptions
     def _a2s_start_mission(self) -> None:
@@ -378,8 +379,8 @@ class A2SAPI:
         finally:
             # Stop fireqos
             bandwidth_cmd = ["fireqos", "stop"]
-            b = subprocess.Popen(bandwidth_cmd)
-            b.communicate()
+            with suppress(FileNotFoundError):
+                subprocess.run(bandwidth_cmd)
 
     @log_exceptions
     def _a2s_get_mission_stats(self) -> MissionStats:

@@ -110,8 +110,9 @@ def main() -> None:
         logger.info(f"Participating scouts \n{config.scouts}")
         config = define_scope(config)
 
-    bandwidth = config.get("bandwidth", "100")
+    bandwidth = config.get("bandwidth", "0")
     assert int(bandwidth) in [
+        0,
         100,
         50,
         30,
