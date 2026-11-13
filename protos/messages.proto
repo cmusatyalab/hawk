@@ -120,6 +120,7 @@ message SelectiveConfig {
     ThresholdConfig threshold = 2;
     TokenConfig token = 3;
     DiversityConfig diversity = 4;
+    ClassAwareConfig class_aware = 5;
   }
 }
 
@@ -151,6 +152,15 @@ message DiversityConfig {
   int32 batchSize = 2;
   double countermeasure_threshold = 3;
   int32 total_countermeasures = 4;
+}
+
+message ClassAwareConfig {
+  int32 k = 1;
+  int32 batchSize = 2;
+  string scheduler = 3;
+  double countermeasure_threshold = 4;
+  int32 total_countermeasures = 5;
+  int32 warm_start = 6;
 }
 
 message ReexaminationStrategyConfig {
