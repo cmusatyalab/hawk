@@ -56,7 +56,11 @@ MISSION_STATES: dict[MissionState, tuple[BadgeColor, str]] = {
 class Mission(MissionData):
     @classmethod
     def missions(cls) -> list[str]:
-        return [mission.name for mission in sorted(HOME_MISSION_DIR.iterdir())]
+        return [
+            mission.name
+            for mission in sorted(HOME_MISSION_DIR.iterdir())
+            if mission.is_dir()
+        ]
 
     @classmethod
     def load(cls, mission_name: str) -> Mission:
