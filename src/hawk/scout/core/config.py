@@ -36,6 +36,11 @@ class ModelTrainerConfig(ModelConfig):
     capture_trainingset: bool = True
     capture_trainingset_compresslevel: int = 1
 
+    # retry a training run that fails because the GPU is out of memory or
+    # cuDNN cannot start, as happens when several scouts share one GPU
+    train_gpu_retries: int = 0
+    train_gpu_retry_delay: float = 60.0  # seconds, randomized by +/- 50%
+
     # for mode == NOTIONAL
     notional_model_path: Optional[Path] = None
     notional_train_time: float = 0.0

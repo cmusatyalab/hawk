@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import base64
-import subprocess
 import sys
 import time
 from typing import TYPE_CHECKING
@@ -62,7 +61,7 @@ class FSLTrainer(ModelTrainer):
             str(train_dataset),
             str(support_path),
         ]
-        subprocess.run(cmd, check=True)
+        self.run_training(cmd)
 
         train_transforms = transforms.Compose(
             [
