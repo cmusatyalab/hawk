@@ -128,6 +128,9 @@ message TopKConfig {
   int32 batchSize = 2;
   double countermeasure_threshold = 3;
   int32 total_countermeasures = 4;
+  // when set, results that reexamination puts back in the queue do not
+  // count towards the batch, so retraining does not release extra labels
+  bool exclude_reexamined = 5;
 }
 
 message ThresholdConfig {

@@ -39,6 +39,7 @@ class TopKSelector(SelectorBase):
         total_countermeasures: int,
         reexamination_strategy: ReexaminationStrategy,
         add_negatives: bool = True,
+        exclude_reexamined: bool = False,
     ) -> None:
         logger.info(f"K: {k}, batchsize: {batch_size}")
         assert k < batch_size
@@ -46,6 +47,7 @@ class TopKSelector(SelectorBase):
 
         self.version = 0
         self.add_negatives = add_negatives
+        self.exclude_reexamined = exclude_reexamined
         self.easy_negatives: dict[int, list[Path]] = defaultdict(list)
         self.num_negatives_added = 0
 
@@ -185,7 +187,8 @@ class TopKSelector(SelectorBase):
                 self.priority_queue_length.set(self._priority_queues.qsize())
                 self.num_revisited.inc(num_revisited)
 
-                self._batch_added += num_revisited
+                if not self.exclude_reexamined:
+                    self._batch_added += num_revisited
                 logger.info(f"ADDING Reexamined to result Queue {num_revisited}")
 
                 self.num_negatives_added = 0

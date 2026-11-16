@@ -210,6 +210,7 @@ One of:
 | ------------ |--|-------------| -----|
 | k | int32| True | Number of tiles selected|
 | batchSize| int32| True | Number of tiles processed before selecting|
+| exclude_reexamined| bool| False | Reexamined tiles do not count towards batchSize|
 
 ### **ThresholdConfig**
 

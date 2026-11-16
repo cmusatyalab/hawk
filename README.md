@@ -67,6 +67,7 @@ Provide relevant data and model parameters in the [config file.](/configs/dota_s
     - topk (specific type arguments)
         - k: batch size per each transmission (4 samples transmitted)
         - batchSize: number of samples required to be inferenced before transmitting k samples to home.
+        - exclude_reexamined: when true, samples that reexamination puts back in the queue do not count towards batchSize (default false).
 - reexamination: options for how scouts reexamine samples inferenced in previous batches.
     - type: top, full, etc. - affects numbers of samples reexamined.
     - k: 100 - number of samples reexamined each time a new model is trained.

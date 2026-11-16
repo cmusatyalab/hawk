@@ -261,12 +261,14 @@ class Admin:
             batch_size = topk_config.get("batchSize", 1000)
             countermeasure_threshold = topk_config.get("countermeasure_threshold", 0.5)
             total_countermeasures = topk_config.get("total_countermeasures", 700)
+            exclude_reexamined = topk_config.get("exclude_reexamined", False)
             selector = SelectiveConfig(
                 topk=TopKConfig(
                     k=k_value,
                     batchSize=batch_size,
                     countermeasure_threshold=countermeasure_threshold,
                     total_countermeasures=total_countermeasures,
+                    exclude_reexamined=exclude_reexamined,
                 ),
             )
         elif selector_type == "token":
