@@ -27,7 +27,6 @@ showSidebarBorder = true
 linkUnderline = false
 
 [theme.light]
-base = "light"
 primaryColor = "#2563eb"
 backgroundColor = "#ffffff"
 secondaryBackgroundColor = "#f4f6fa"
@@ -49,7 +48,6 @@ backgroundColor = "#f8fafc"
 secondaryBackgroundColor = "#ffffff"
 
 [theme.dark]
-base = "dark"
 primaryColor = "#60a5fa"
 backgroundColor = "#0b1020"
 secondaryBackgroundColor = "#141a2e"
