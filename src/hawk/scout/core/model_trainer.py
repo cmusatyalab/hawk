@@ -5,9 +5,13 @@
 from __future__ import annotations
 
 import contextlib
+import random
+import subprocess
+import sys
 import threading
 import time
 from abc import ABC, abstractmethod
+from collections import deque
 from typing import TYPE_CHECKING
 from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
@@ -22,6 +26,29 @@ if TYPE_CHECKING:
 
     from ..context.model_trainer_context import ModelContext
     from .model import ModelBase
+
+# stderr of a training run that failed because the GPU was busy
+GPU_ERRORS = (
+    "out of memory",
+    "CUDNN_STATUS_NOT_INITIALIZED",
+    "CUDNN_STATUS_INTERNAL_ERROR",
+)
+
+
+def run_and_tail(cmd: list[str], lines: int = 100) -> tuple[int, str]:
+    """Run cmd and pass its stderr through.
+
+    Returns the exit code and the last lines of stderr.
+    """
+    tail: deque[str] = deque(maxlen=lines)
+    with subprocess.Popen(
+        cmd, stderr=subprocess.PIPE, text=True, errors="replace"
+    ) as proc:
+        assert proc.stderr is not None
+        for line in proc.stderr:
+            sys.stderr.write(line)
+            tail.append(line)
+    return proc.returncode, "".join(tail)
 
 
 class ModelTrainerBase(HawkPlugin, ABC):
@@ -77,6 +104,28 @@ class ModelTrainer(ModelTrainerBase):
             return self.load_model(self.config.notional_model_path, version=0)
 
         return self.train_model(train_dir)
+
+    def run_training(self, cmd: list[str]) -> None:
+        """Run a training command.
+
+        A run that fails on a GPU error is retried up to train_gpu_retries
+        times. Any other failure raises CalledProcessError at once.
+        """
+        retries = self.config.train_gpu_retries
+        for attempt in range(retries + 1):
+            returncode, stderr = run_and_tail(cmd)
+            if returncode == 0:
+                return
+            if attempt == retries or not any(e in stderr for e in GPU_ERRORS):
+                raise subprocess.CalledProcessError(returncode, cmd, stderr=stderr)
+            # a random delay keeps scouts that failed together from
+            # retrying together
+            delay = self.config.train_gpu_retry_delay * random.uniform(0.5, 1.5)
+            logger.warning(
+                f"Training failed on a GPU error, retry {attempt + 1} of "
+                f"{retries} in {delay:.0f} s"
+            )
+            time.sleep(delay)
 
     @staticmethod
     def make_train_txt(

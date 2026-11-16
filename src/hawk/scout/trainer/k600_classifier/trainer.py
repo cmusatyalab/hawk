@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import shlex
-import subprocess
 import sys
 import time
 from typing import TYPE_CHECKING
@@ -100,7 +99,7 @@ class ActivityTrainer(ModelTrainer):
         self.capture_trainingset(cmd_str, capture_files)
 
         logger.info(f"TRAIN CMD\n {cmd_str}")
-        subprocess.run(cmd, check=True)
+        self.run_training(cmd)
 
         # train completed time
         train_time = time.time() - self.context.start_time
