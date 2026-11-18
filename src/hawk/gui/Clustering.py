@@ -19,6 +19,7 @@ from hawk.home.label_utils import LabelSample, read_jsonl
 ALL_SCOUTS = "All scouts"
 
 mission = load_mission()
+mission_active = mission.is_active
 
 if "cluster_columns" not in st.session_state:
     st.session_state["cluster_columns"] = 6
@@ -71,14 +72,14 @@ def display_cluster(mission: Mission, sample: LabelSample) -> None:
                 image_zoom_popup(mission, sample)
 
 
-@st.fragment(run_every="10s" if mission.is_active else None)
+@st.fragment(run_every="10s" if mission_active else None)
 def display_images() -> None:
     clusters = list(read_jsonl(mission.mission_dir / "novel.jsonl"))
     if not clusters:
         empty_state(
-            "No novel clusters yet" if mission.is_active else "No novel clusters",
+            "No novel clusters yet" if mission_active else "No novel clusters",
             "Scouts report clusters of unfamiliar samples while the mission runs."
-            if mission.is_active
+            if mission_active
             else "This mission did not report any novel clusters.",
             icon=":material/bubble_chart:",
         )

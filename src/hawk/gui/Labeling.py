@@ -13,6 +13,7 @@ from streamlit_label_kit import detection as st_detection
 from hawk import Detection
 from hawk.classes import ClassList, ClassName, class_label_to_int
 from hawk.gui.elements import (
+    ACTIVE_STATES,
     Mission,
     columns,
     empty_state,
@@ -20,6 +21,7 @@ from hawk.gui.elements import (
     mission_changed,
     page_header,
     paginate,
+    plural,
 )
 
 if TYPE_CHECKING:
@@ -79,7 +81,7 @@ def clear_labels() -> None:
 
 
 mission_state = mission.state()
-mission_active = mission_state in ["Starting", "Running", "Training"]
+mission_active = mission_state in ACTIVE_STATES
 
 # show unlabeled samples by default, or the positives once a mission finished
 if "display_filter" not in st.session_state:
@@ -107,10 +109,7 @@ def reset_new_class() -> None:
 
 submitted = st.session_state.pop("_submitted", None)
 if submitted is not None:
-    st.toast(
-        f"Submitted {submitted} label{'s' if submitted != 1 else ''}",
-        icon=":material/check_circle:",
-    )
+    st.toast(f"Submitted {plural(submitted, 'label')}", icon=":material/check_circle:")
 
 actions = page_header("Labeling", mission)
 with actions:
@@ -499,7 +498,7 @@ def display_results() -> None:
         horizontal_alignment="distribute",
     ):
         st.caption(
-            f"**{pending}** pending label{'s' if pending != 1 else ''}"
+            f"**{plural(pending, 'pending label')}**"
             if pending
             else "Review the samples below, then submit your labels.",
         )
@@ -522,9 +521,7 @@ def display_results() -> None:
                 disabled=not pending,
             )
             st.button(
-                f"Submit {pending} label{'s' if pending != 1 else ''}"
-                if pending
-                else "Submit labels",
+                f"Submit {plural(pending, 'label')}" if pending else "Submit labels",
                 icon=":material/send:",
                 type="primary",
                 on_click=update_labels,

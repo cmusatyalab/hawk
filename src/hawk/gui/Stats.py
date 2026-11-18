@@ -97,11 +97,15 @@ def confidence_chart(df: pd.DataFrame) -> None:
         empty_state("No samples received yet", icon=":material/hourglass_empty:")
         return
 
-    df = df.copy()
+    labeled = df["groundtruth"].notna()
     correct = df["class_name"] == df["groundtruth"]
-    df["Label matches"] = df[correct]["confidence"]
-    df["Label differs"] = df[~correct & df["groundtruth"].notna()]["confidence"]
-    df["Not labeled"] = df[df["groundtruth"].isna()]["confidence"]
+    df = df.assign(
+        **{
+            "Label matches": df["confidence"].where(labeled & correct),
+            "Label differs": df["confidence"].where(labeled & ~correct),
+            "Not labeled": df["confidence"].where(~labeled),
+        },
+    )
     st.scatter_chart(
         df,
         x="time_queued",

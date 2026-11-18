@@ -13,7 +13,13 @@ from typing import TYPE_CHECKING, Iterator
 import streamlit as st
 from PIL import Image
 
-from hawk.gui.elements import columns, empty_state, load_mission, page_header
+from hawk.gui.elements import (
+    columns,
+    empty_state,
+    load_mission,
+    page_header,
+    plural,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -273,7 +279,7 @@ def upload_examples(positives: int) -> None:
                 img.save(class_dir / name)
                 count += 1
             st.toast(
-                f"Added {count} {new_class} example{'s' if count != 1 else ''}",
+                f"Added {plural(count, f'{new_class} example')}",
                 icon=":material/check_circle:",
             )
             st.rerun()

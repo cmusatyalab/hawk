@@ -7,12 +7,13 @@ from __future__ import annotations
 import streamlit as st
 
 from hawk.gui.elements import (
+    ACTIVE_STATES,
     Mission,
     mission_changed,
     mission_stats,
     state_badge,
 )
-from hawk.gui.Welcome import ABOUT_TEXT, welcome_page
+from hawk.gui.Welcome import ABOUT_TEXT, open_mission_cb, welcome_page
 
 st.set_page_config(
     page_title="Hawk Browser",
@@ -82,13 +83,11 @@ else:
 
 
 def select_mission_cb() -> None:
-    mission_changed.send()
     mission_name = st.session_state.get("mission_name")
     if mission_name is not None:
-        mission = Mission.load(mission_name)
-        st.session_state["_goto"] = (
-            "setup" if mission.state() == "Not Started" else "labeling"
-        )
+        open_mission_cb(mission_name)
+    else:
+        mission_changed.send()
 
 
 def mission_status(mission_name: str, was_active: bool) -> None:
@@ -96,7 +95,7 @@ def mission_status(mission_name: str, was_active: bool) -> None:
     mission = Mission.load(mission_name)
     mission.resync()
     state = mission.state()
-    if was_active and not mission.is_active:
+    if was_active and state not in ACTIVE_STATES:
         # mission finished, rerun the whole app to stop the periodic refresh
         st.rerun()
 

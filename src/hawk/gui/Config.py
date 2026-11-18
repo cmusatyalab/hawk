@@ -178,7 +178,8 @@ set_state_from_mission_config(mission.config)
 actions = page_header("Mission setup", mission)
 mission_controls(mission, actions)
 
-if not mission.config_writable:
+readonly = not mission.config_writable
+if readonly:
     st.info(
         "This mission has been started, so its configuration is read-only. "
         "Use **Clone mission** from the :material/more_horiz: menu to start a "
@@ -229,7 +230,7 @@ with tab_general, st.container(width=800):
             None,
             "mission-name",
         ),
-        disabled=not mission.config_writable,
+        disabled=readonly,
     )
     st.session_state["labeler"] = mission.config.get("label-mode", "ui") == "script"
     st.toggle(
@@ -302,7 +303,7 @@ with tab_scouts, st.container(width=800):
         hide_index=True,
         key="scout_edits",
         on_change=update_scouts,
-        disabled=not mission.config_writable,
+        disabled=readonly,
     )
 
     st.session_state.scout_port = st.session_state.get("_scout_port", 6100)
@@ -326,7 +327,7 @@ with tab_dataset, st.container(width=800):
         ["cookie", "frame", "random", "tile", "video"],
         key="dataset_type",
         # on_change=change_dataset_type,
-        disabled=not mission.config_writable,
+        disabled=readonly,
     )
 
     st.session_state.dataset_index_path = dataset_config.get("index_path")
@@ -335,7 +336,7 @@ with tab_dataset, st.container(width=800):
         key="dataset_index_path",
         on_change=update_config,
         args=("dataset", "index_path"),
-        disabled=not mission.config_writable,
+        disabled=readonly,
     )
 
     st.session_state.dataset_tiles_per_frame = dataset_config.get(
@@ -348,7 +349,7 @@ with tab_dataset, st.container(width=800):
         min_value=1,
         on_change=update_config,
         args=("dataset", "tiles_per_frame"),
-        disabled=not mission.config_writable,
+        disabled=readonly,
     )
 
     def save_dataset_stream() -> None:
@@ -364,7 +365,7 @@ with tab_dataset, st.container(width=800):
         type=["txt"],
         key="dataset_stream",
         on_change=save_dataset_stream,
-        disabled=not mission.config_writable,
+        disabled=readonly,
     )
 
 ###
@@ -385,14 +386,14 @@ with tab_training:
         list(TRAIN_STRATEGY_DEFAULTS.keys()),
         key="train_strategy_type",
         on_change=change_train_strategy,
-        disabled=not mission.config_writable,
+        disabled=readonly,
     )
     if st.session_state.train_strategy_type == "custom":
         col1.text_input(
             "Custom strategy",
             key="train_strategy_custom_type",
             on_change=change_train_strategy,
-            disabled=not mission.config_writable,
+            disabled=readonly,
         )
 
     train_args = train_config["args"]
@@ -408,7 +409,7 @@ with tab_training:
         ["hawk", "oracle", "notional"],
         key="train_strategy_mode",
         on_change=change_train_strategy_mode,
-        disabled=not mission.config_writable,
+        disabled=readonly,
     )
 
     def save_training_bootstrap() -> None:
@@ -427,7 +428,7 @@ with tab_training:
         type=["zip"],
         key="training_bootstrap",
         on_change=save_training_bootstrap,
-        disabled=not mission.config_writable,
+        disabled=readonly,
     )
 
     def save_training_initial_model() -> None:
@@ -443,7 +444,7 @@ with tab_training:
         type=["pth"],
         key="training_initial_model",
         on_change=save_training_initial_model,
-        disabled=not mission.config_writable,
+        disabled=readonly,
     )
 
     st.markdown("**Hyperparameters**")
@@ -470,7 +471,7 @@ with tab_training:
         num_rows="dynamic",
         hide_index=True,
         key="train_strategy_args_edits",
-        disabled=not mission.config_writable,
+        disabled=readonly,
     )
 
     def change_train_strategy_support_data() -> None:
@@ -488,7 +489,7 @@ with tab_training:
             type=["jpg", "jpeg", "png"],
             key="train_strategy_support_data",
             on_change=change_train_strategy_support_data,
-            disabled=not mission.config_writable,
+            disabled=readonly,
         )
 with tab_policies:
     policy_col1, policy_col2 = st.columns(2)
@@ -506,7 +507,7 @@ with policy_col1, st.container(border=True, height="stretch"):
         key="retrain_policy_type",
         on_change=update_config,
         args=("retrain_policy", "type"),
-        disabled=not mission.config_writable,
+        disabled=readonly,
     )
 
     col1, col2 = st.columns(2, vertical_alignment="bottom")
@@ -519,7 +520,7 @@ with policy_col1, st.container(border=True, height="stretch"):
             key="retrain_policy_threshold",
             on_change=update_config,
             args=("retrain_policy", "threshold"),
-            disabled=not mission.config_writable,
+            disabled=readonly,
         )
 
     if "only_positives" in retrain_policy_config:
@@ -531,7 +532,7 @@ with policy_col1, st.container(border=True, height="stretch"):
             key="retrain_policy_only_positives",
             on_change=update_config,
             args=("retrain_policy", "only_positives"),
-            disabled=not mission.config_writable,
+            disabled=readonly,
         )
 
     if "num_intervals" in retrain_policy_config:
@@ -544,7 +545,7 @@ with policy_col1, st.container(border=True, height="stretch"):
             key="retrain_policy_num_intervals",
             on_change=update_config,
             args=("retrain_policy", "num_intervals"),
-            disabled=not mission.config_writable,
+            disabled=readonly,
         )
 ###
 # Reexamination
@@ -559,7 +560,7 @@ with policy_col2, st.container(border=True, height="stretch"):
         key="reexamination_type",
         on_change=update_config,
         args=("reexamination", "type"),
-        disabled=not mission.config_writable,
+        disabled=readonly,
     )
 
     col1, _ = st.columns(2)
@@ -571,7 +572,7 @@ with policy_col2, st.container(border=True, height="stretch"):
             key="reexamination_k",
             on_change=update_config,
             args=("reexamination", "k"),
-            disabled=not mission.config_writable,
+            disabled=readonly,
         )
 ###
 # Selector
@@ -586,7 +587,7 @@ with tab_policies, st.container(border=True):
         key="selector_type",
         on_change=update_selector_config,
         args=(None, "type"),
-        disabled=not mission.config_writable,
+        disabled=readonly,
     )
 
     selector_config = st.session_state.mission_config["selector"].get(
@@ -604,7 +605,7 @@ with tab_policies, st.container(border=True):
             key="selector_threshold",
             on_change=update_selector_config,
             args=(selector_type, "threshold"),
-            disabled=not mission.config_writable,
+            disabled=readonly,
         )
 
     if "initial_samples" in selector_config:
@@ -615,7 +616,7 @@ with tab_policies, st.container(border=True):
             key="selector_initial_samples",
             on_change=update_selector_config,
             args=(selector_type, "initial_samples"),
-            disabled=not mission.config_writable,
+            disabled=readonly,
         )
 
     if "k" in selector_config:
@@ -626,7 +627,7 @@ with tab_policies, st.container(border=True):
             key="selector_k",
             on_change=update_selector_config,
             args=(selector_type, "k"),
-            disabled=not mission.config_writable,
+            disabled=readonly,
         )
 
     if "batchSize" in selector_config:  # diversity and topk use batchSize
@@ -637,7 +638,7 @@ with tab_policies, st.container(border=True):
             key="selector_batchSize",
             on_change=update_selector_config,
             args=(selector_type, "batchSize"),
-            disabled=not mission.config_writable,
+            disabled=readonly,
         )
 
     if "batch_size" in selector_config:  # token uses batch_size
@@ -648,7 +649,7 @@ with tab_policies, st.container(border=True):
             key="selector_batch_size",
             on_change=update_selector_config,
             args=(selector_type, "batch_size"),
-            disabled=not mission.config_writable,
+            disabled=readonly,
         )
 
     if "countermeasure_threshold" in selector_config:
@@ -662,7 +663,7 @@ with tab_policies, st.container(border=True):
             key="selector_countermeasure_threshold",
             on_change=update_selector_config,
             args=(selector_type, "countermeasure_threshold"),
-            disabled=not mission.config_writable,
+            disabled=readonly,
         )
 
         st.session_state.selector_total_countermeasures = selector_config[
@@ -674,7 +675,7 @@ with tab_policies, st.container(border=True):
             key="selector_total_countermeasures",
             on_change=update_selector_config,
             args=(selector_type, "total_countermeasures"),
-            disabled=not mission.config_writable,
+            disabled=readonly,
         )
 
 # developer aid, append ?debug=1 to the URL to inspect the session state

@@ -28,6 +28,7 @@ HOME_MISSION_DIR = Path(os.environ.get("HAWK_MISSION_DIR", Path.cwd()))
 SCOUT_MISSION_DIR = Path("hawk-missions")
 
 MissionState = Literal["Not Started", "Starting", "Training", "Running", "Finished"]
+ACTIVE_STATES: tuple[MissionState, ...] = ("Starting", "Running", "Training")
 BadgeColor = Literal["red", "orange", "yellow", "blue", "green", "violet", "gray"]
 
 # Per-scout state as reported in logs/mission-stats.json
@@ -130,7 +131,7 @@ class Mission(MissionData):
     @property
     def is_active(self) -> bool:
         """True while the mission is still producing new results."""
-        return self.state() in ("Starting", "Running", "Training")
+        return self.state() in ACTIVE_STATES
 
     def scout_states(self) -> list[tuple[str, str]]:
         """List of (scout host, scout state) tuples."""
@@ -325,6 +326,11 @@ def empty_state(
         st.space("small")
 
 
+def plural(count: int, word: str) -> str:
+    """E.g. "1 label" or "3 labels"."""
+    return f"{count:,} {word}{'' if count == 1 else 's'}"
+
+
 def format_duration(seconds: float) -> str:
     """Human friendly duration, e.g. 1h 04m or 8m 52s."""
     seconds = int(seconds)
@@ -490,71 +496,56 @@ def mission_stats(
                 st.markdown(f"**{value}**")
         return summary
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric(
-            "Model version",
-            summary.model,
-            icon=":material/neurology:",
-            border=True,
-            height="stretch",
-        )
-    with col2:
-        st.metric(
+    scout_progress: dict[str, Any] = (
+        {
+            "delta": f"{summary.progress:.0%}",
+            "delta_description": f"of {summary.samples_total:,}",
+        }
+        if summary.has_scout_stats
+        else {}
+    )
+    metrics: list[tuple[str, str, str, dict[str, Any]]] = [
+        ("Model version", summary.model, "neurology", {}),
+        (
             "Samples inferenced",
             f"{summary.samples_inferenced:,}",
-            delta=f"{summary.progress:.0%}" if summary.has_scout_stats else None,
-            delta_description=f"of {summary.samples_total:,}"
-            if summary.has_scout_stats
-            else None,
-            delta_color="off",
-            delta_arrow="off",
-            icon=":material/memory:",
-            border=True,
-            height="stretch",
-        )
-    with col3:
-        st.metric(
+            "memory",
+            scout_progress,
+        ),
+        (
             "Samples received",
             f"{summary.samples_received:,}",
-            delta=f"{summary.received_ratio:.2%}",
-            delta_description="of inferenced",
-            delta_color="off",
-            delta_arrow="off",
-            icon=":material/download:",
-            border=True,
-            height="stretch",
-        )
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric(
+            "download",
+            {
+                "delta": f"{summary.received_ratio:.2%}",
+                "delta_description": "of inferenced",
+            },
+        ),
+        (
             "Positives labeled",
             f"{summary.positives_labeled:,}",
-            delta=f"{summary.positive_ratio:.0%}",
-            delta_description="of labeled",
-            delta_color="green" if summary.positives_labeled else "off",
-            delta_arrow="off",
-            help=positive_class_counts or None,
-            icon=":material/check_circle:",
-            border=True,
-            height="stretch",
-        )
-    with col2:
-        st.metric(
-            "Negatives labeled",
-            f"{summary.negatives_labeled:,}",
-            icon=":material/cancel:",
-            border=True,
-            height="stretch",
-        )
-    with col3:
-        st.metric(
-            "Elapsed time",
-            format_duration(summary.elapsed),
-            icon=":material/schedule:",
-            border=True,
-            height="stretch",
-        )
+            "check_circle",
+            {
+                "delta": f"{summary.positive_ratio:.0%}",
+                "delta_description": "of labeled",
+                "delta_color": "green" if summary.positives_labeled else "off",
+                "help": positive_class_counts or None,
+            },
+        ),
+        ("Negatives labeled", f"{summary.negatives_labeled:,}", "cancel", {}),
+        ("Elapsed time", format_duration(summary.elapsed), "schedule", {}),
+    ]
+    for column, (label, value, icon, extra) in zip(columns(3), metrics):
+        options = {"delta_color": "off", "delta_arrow": "off", **extra}
+        with column:
+            st.metric(
+                label,
+                value,
+                icon=f":material/{icon}:",
+                border=True,
+                height="stretch",
+                **options,
+            )
 
     if summary.has_scout_stats:
         st.progress(

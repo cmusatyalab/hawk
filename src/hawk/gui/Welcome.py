@@ -20,6 +20,7 @@ conditions.
 
 
 def open_mission_cb(mission_name: str) -> None:
+    """Open a mission on Setup if it has not started yet, otherwise on Labeling."""
     st.session_state["mission_name"] = mission_name
     mission_changed.send()
     mission = Mission.load(mission_name)
