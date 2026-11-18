@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 Carnegie Mellon University
+# SPDX-FileCopyrightText: 2024-2026 Carnegie Mellon University
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
@@ -25,13 +25,16 @@ def main() -> None:
 
     os.environ["HAWK_MISSION_DIR"] = str(args.logdir.resolve())
 
-    entrypoint = Path(__file__).parent.joinpath("app.py")
+    gui_dir = Path(__file__).parent
+    entrypoint = gui_dir.joinpath("app.py")
     config = {
         "browser_gatherUsageStats": False,
         "client_toolbarMode": "viewer",
         "server_address": args.listen,
         "server_port": args.port,
         "server_headless": True,
+        # Hawk look and feel, user config.toml theme settings still override this.
+        "theme_base": str(gui_dir.joinpath("theme.toml")),
     }
     bootstrap.load_config_options(flag_options=config)
     bootstrap.run(str(entrypoint), False, [str(args.logdir)], config)
