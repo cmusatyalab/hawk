@@ -133,25 +133,20 @@ with actions:
 if new_class:
     class_list.add(ClassName(sys.intern(new_class)))
 
-n_unlabeled = sum(1 for r in mission.unlabeled if r.objectId not in mission.labeled)
-n_positives = sum(
-    1
-    for r in mission.unlabeled
-    if r.objectId in mission.labeled and mission.labeled[r.objectId].detections
-)
-filter_counts = {
-    "Unlabeled": n_unlabeled,
-    "Positives": n_positives,
-    "All": len(mission.unlabeled),
-}
-st.segmented_control(
-    "Show",
-    list(filter_counts),
-    key="display_filter",
-    format_func=lambda option: f"{option} · {filter_counts[option]:,}",
-    required=True,
-    label_visibility="collapsed",
-)
+DISPLAY_FILTERS = ("Unlabeled", "Positives", "All")
+
+
+def filter_samples(mission: Mission, display_filter: str) -> list[LabelSample]:
+    """Received samples that match the Unlabeled, Positives or All filter."""
+    if display_filter == "Unlabeled":
+        return [s for s in mission.unlabeled if s.objectId not in mission.labeled]
+    if display_filter == "Positives":
+        return [
+            s
+            for s in mission.unlabeled
+            if s.objectId in mission.labeled and mission.labeled[s.objectId].detections
+        ]
+    return mission.unlabeled
 
 
 def classification_pulldown(
@@ -390,14 +385,11 @@ def detection_ui(mission: Mission, sample: LabelSample) -> None:
             annotation_editor_popup(mission, sample)
 
 
-def display_radar_images(mission: Mission, column: Iterator[DeltaGenerator]) -> None:
-    exclude = mission.labeled
-    display_filter = st.session_state.display_filter
-    results = [
-        result
-        for result in mission.unlabeled
-        if display_filter == "All" or result.objectId not in exclude
-    ]
+def display_radar_images(
+    mission: Mission,
+    results: list[LabelSample],
+    column: Iterator[DeltaGenerator],
+) -> None:
     if not results:
         no_results()
         return
@@ -454,25 +446,10 @@ def no_results() -> None:
 
 def display_images(
     mission: Mission,
+    results: list[LabelSample],
     column: Iterator[DeltaGenerator],
     mark_negative: bool,
 ) -> None:
-    if st.session_state.display_filter == "All":
-        results = mission.unlabeled
-    elif st.session_state.display_filter == "Positives":
-        results = [
-            result
-            for result in mission.unlabeled
-            if result.objectId in mission.labeled
-            and mission.labeled[result.objectId].detections
-        ]
-    elif st.session_state.display_filter == "Unlabeled":
-        results = [
-            result
-            for result in mission.unlabeled
-            if result.objectId not in mission.labeled
-        ]
-
     if not results:
         no_results()
         return
@@ -499,9 +476,20 @@ def display_images(
 @st.fragment(run_every="2s" if mission_active and not dialog_displayed else None)
 def display_results() -> None:
     # labels were submitted from within this fragment, rerun the whole page to
-    # update the counters outside of the fragment.
+    # show the toast.
     if "_submitted" in st.session_state:
         st.rerun()
+
+    mission.resync()
+    samples = {f: filter_samples(mission, f) for f in DISPLAY_FILTERS}
+    st.segmented_control(
+        "Show",
+        DISPLAY_FILTERS,
+        key="display_filter",
+        format_func=lambda option: f"{option} · {len(samples[option]):,}",
+        required=True,
+        label_visibility="collapsed",
+    )
 
     pending = len(st.session_state.saves)
 
@@ -546,12 +534,13 @@ def display_results() -> None:
             )
 
     column = columns(st.session_state.columns)
+    results = samples[st.session_state.display_filter]
 
     train_strategy = mission.config["train_strategy"]["type"]
     if train_strategy == "dnn_classifier_radar":
-        display_radar_images(mission, column)  # only for radar missions
+        display_radar_images(mission, results, column)
     else:
-        display_images(mission, column, mark_negative)  # RGB default function call
+        display_images(mission, results, column, mark_negative)
 
 
 display_results()
