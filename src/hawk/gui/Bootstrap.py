@@ -30,8 +30,10 @@ mission = load_mission()
 mission_state = mission.state()
 editable = mission_state == "Not Started" and not mission.is_template
 
-# get list of class names
-classes: list[str] = mission.config.get("dataset", {}).get("class_list", ["positive"])
+# get list of class names, without changing the mission config
+classes: list[str] = list(
+    mission.config.get("dataset", {}).get("class_list", ["positive"]),
+)
 if classes[0] != "negative":
     classes.insert(0, "negative")
 
@@ -58,6 +60,7 @@ def _action(action: str) -> None:
 
 
 action = st.session_state.pop("bootstrap_action", None)
+extract_failed = False
 
 if action == EXTRACT_CMD:
     try:
@@ -65,9 +68,11 @@ if action == EXTRACT_CMD:
             bootstrap_dir.mkdir()
             shutil.unpack_archive(bootstrap_zip, extract_dir=bootstrap_dir)
     except (OSError, ValueError):
-        st.error("Failed to extract bootstrap.")
         shutil.rmtree(bootstrap_dir, ignore_errors=True)
-    st.rerun()
+        # no rerun, so that the error is shown below
+        extract_failed = True
+    else:
+        st.rerun()
 
 if action == REPACK_CMD:
     with st.spinner("Saving bootstrap examples…"):
@@ -116,6 +121,9 @@ with actions:
             help=f"Repack the examples into {bootstrap_zip.name}",
         )
 
+if extract_failed:
+    st.error(f"Failed to extract {bootstrap_zip.name}.", icon=":material/error:")
+
 
 # delete image callback
 def _delete(class_name: str, image_name: str) -> None:
@@ -160,7 +168,11 @@ def dir_examples() -> dict[str, list[Path]]:
 
 
 def show_archive_preview() -> None:
-    examples = zip_examples()
+    try:
+        examples = zip_examples()
+    except zipfile.BadZipFile:
+        st.error(f"{bootstrap_zip.name} is not a valid zip archive.")
+        return
     if not examples:
         empty_state("The bootstrap archive is empty", icon=":material/folder_off:")
         return
