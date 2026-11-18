@@ -586,6 +586,7 @@ class A2SAPI:
                 selector.topk.countermeasure_threshold,
                 selector.topk.total_countermeasures,
                 reexamination_strategy,
+                exclude_reexamined=selector.topk.exclude_reexamined,
             )
         if selector.HasField("token"):
             return TokenSelector(
