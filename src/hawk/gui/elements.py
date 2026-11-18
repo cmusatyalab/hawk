@@ -348,37 +348,26 @@ def paginate(
     can be shared.
     """
     nresults = len(result_list)
-    pages = max(1, (nresults + results_per_page - 1) // results_per_page)
+    pages = max(1, -(-nresults // results_per_page))
 
-    if "page" not in st.session_state:
-        try:
-            st.session_state["page"] = int(st.query_params.get("page", 1))
-        except ValueError:
-            st.session_state["page"] = 1
-    page = max(1, min(pages, st.session_state["page"]))
-    st.session_state["page"] = page
-
-    # return slice of the original list based on current page
-    start = results_per_page * (page - 1)
-    end = start + results_per_page
-    yield result_list[start:end]
-
-    if nresults == 0:
-        return
-
-    with st.container(
+    # the page selector is shown below the results, but we need its value first
+    results = st.container()
+    footer = st.container(
         horizontal=True,
         horizontal_alignment="distribute",
         vertical_alignment="center",
-    ):
-        st.caption(f"Showing {start + 1}–{min(end, nresults)} of {nresults:,}")
-        if pages > 1:
-            page = st.pagination(pages, key="page")
+    )
+    with footer:
+        caption = st.empty()
+        page = st.pagination(pages, key="page", bind="query-params") if pages > 1 else 1
 
-    if page > 1:
-        st.query_params["page"] = str(page)
-    else:
-        st.query_params.pop("page", None)
+    start = results_per_page * (page - 1)
+    end = min(start + results_per_page, nresults)
+    if nresults:
+        caption.caption(f"Showing {start + 1}–{end} of {nresults:,}")
+
+    with results:
+        yield result_list[start:end]
 
 
 @dataclass
