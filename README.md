@@ -67,6 +67,9 @@ Provide relevant data and model parameters in the [config file.](/configs/dota_s
     - topk (specific type arguments)
         - k: batch size per each transmission (4 samples transmitted)
         - batchSize: number of samples required to be inferenced before transmitting k samples to home.
+    - class_aware (same k and batchSize as topk, with one queue per class ranked by that class's score)
+        - scheduler: round_robin takes turns between the classes, deficit picks from the class with the fewest labeled examples so far.
+        - warm_start: pick as topk until the model reaches this version (default 0, off). A new model ranks each class poorly, so splitting the picks between the classes can find too few positives to train the next model on.
 - reexamination: options for how scouts reexamine samples inferenced in previous batches.
     - type: top, full, etc. - affects numbers of samples reexamined.
     - k: 100 - number of samples reexamined each time a new model is trained.

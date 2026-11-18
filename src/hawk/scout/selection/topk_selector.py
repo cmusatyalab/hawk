@@ -66,7 +66,9 @@ class TopKSelector(SelectorBase):
     def select_tiles(self, num_tiles: int) -> None:
         assert self._mission is not None
         for i in range(num_tiles):
-            result = self._priority_queues.get()[-1]
+            result = self._next_result()
+            if result is None:
+                break
             self.priority_queue_length.dec()
             self._mission.log(
                 f"{self.version} {i}_{self._k} SEL: FILE SELECTED {result.id}",
@@ -97,9 +99,7 @@ class TopKSelector(SelectorBase):
                 logger.info(f"[Result] Id {result.id} Score {result.score}")
 
             self.priority_queue_length.inc()
-            ## need adjustment here to account for different simple methods for
-            ## prioritizing sample, by default is sum of all pos classes
-            self._priority_queues.put((-result.score, time_result, result))
+            self._enqueue(result, time_result)
             self._batch_added += 1
 
             # Logging for debugging
@@ -112,6 +112,37 @@ class TopKSelector(SelectorBase):
                 logger.info("Select tiles being called in add_result topk...")
                 self.select_tiles(self._k)
 
+    def _enqueue(self, result: ResultProvider, time_result: float) -> None:
+        """Queue a result, ranked by the sum of all positive class scores."""
+        self._priority_queues.put((-result.score, time_result, result))
+
+    def _next_result(self) -> ResultProvider | None:
+        """Take the next result to send to home."""
+        return self._priority_queues.get()[-1]
+
+    def _queued_results(self) -> list[ResultProvider]:
+        """Copy of the results that are queued but not sent yet."""
+        with self._insert_lock:
+            return [item[-1] for item in copy.deepcopy(self._priority_queues.queue)]
+
+    def _reexamine(self, model: Model) -> int:
+        """Rescore queued results with a new model, returns how many."""
+        assert self._mission is not None
+        (
+            self._priority_queues,
+            num_revisited,
+        ) = self._reexamination_strategy.get_new_queues(
+            model,
+            self._priority_queues,
+            self._mission.start_time,
+        )
+        self.priority_queue_length.set(self._priority_queues.qsize())
+        return num_revisited
+
+    def _reset_queues(self) -> None:
+        self._priority_queues = queue.PriorityQueue()
+        self.priority_queue_length.set(0)
+
     @log_exceptions
     def add_easy_negatives(self, path: Path) -> None:
         if not self.add_negatives:
@@ -121,11 +152,7 @@ class TopKSelector(SelectorBase):
         negative_path = path / "-1"
         os.makedirs(str(negative_path), exist_ok=True)
 
-        result_queue: ReexaminationQueueType = queue.PriorityQueue()
-        with self._insert_lock:
-            result_queue.queue = copy.deepcopy(self._priority_queues.queue)
-
-        result_list = [item[-1] for item in list(result_queue.queue)]
+        result_list = self._queued_results()
         length_results = len(result_list)
 
         if length_results < 10:
@@ -173,16 +200,7 @@ class TopKSelector(SelectorBase):
                     for v in versions:
                         self.delete_examples(self.easy_negatives[v])
 
-                (
-                    self._priority_queues,
-                    num_revisited,
-                ) = self._reexamination_strategy.get_new_queues(
-                    model,
-                    self._priority_queues,
-                    self._mission.start_time,
-                )
-
-                self.priority_queue_length.set(self._priority_queues.qsize())
+                num_revisited = self._reexamine(model)
                 self.num_revisited.inc(num_revisited)
 
                 self._batch_added += num_revisited
@@ -191,6 +209,5 @@ class TopKSelector(SelectorBase):
                 self.num_negatives_added = 0
             else:
                 # this is a reset, discard everything
-                self._priority_queues = queue.PriorityQueue()
-                self.priority_queue_length.set(0)
+                self._reset_queues()
                 self._batch_added = 0

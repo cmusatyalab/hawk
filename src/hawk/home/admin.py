@@ -27,6 +27,7 @@ from ..ports import H2A_PORT
 from ..proto.messages_pb2 import (
     AbsolutePolicyConfig,
     ChangeDeploymentStatus,
+    ClassAwareConfig,
     Dataset,
     MissionResults,
     MissionStats,
@@ -267,6 +268,24 @@ class Admin:
                     batchSize=batch_size,
                     countermeasure_threshold=countermeasure_threshold,
                     total_countermeasures=total_countermeasures,
+                ),
+            )
+        elif selector_type == "class_aware":
+            class_aware_config = selector_config.get("class_aware", {})
+            selector = SelectiveConfig(
+                class_aware=ClassAwareConfig(
+                    k=class_aware_config.get("k", 10),
+                    batchSize=class_aware_config.get("batchSize", 1000),
+                    scheduler=class_aware_config.get("scheduler", "round_robin"),
+                    countermeasure_threshold=class_aware_config.get(
+                        "countermeasure_threshold",
+                        0.5,
+                    ),
+                    total_countermeasures=class_aware_config.get(
+                        "total_countermeasures",
+                        700,
+                    ),
+                    warm_start=class_aware_config.get("warm_start", 0),
                 ),
             )
         elif selector_type == "token":
